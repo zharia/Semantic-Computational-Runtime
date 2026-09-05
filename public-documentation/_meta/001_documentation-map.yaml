@@ -1,0 +1,57 @@
+schema_version: 1.0.0
+document: public-documentation-map
+phase: 1
+
+authority:
+  public_documentation: explanatory
+  semantic_definitions: normative
+  status_records: descriptive
+  library_graphs: derived
+
+layers:
+  orientation:
+    purpose: "Introduce SCR and establish the conceptual frame."
+  concepts:
+    purpose: "Explain the semantic concepts on which the architecture depends."
+  architecture:
+    purpose: "Explain how semantic computation becomes executable computation."
+  examples:
+    purpose: "Demonstrate the architecture through concrete vertical narratives."
+  comparisons:
+    purpose: "Position SCR relative to adjacent technologies."
+  research:
+    purpose: "Expose open architectural and theoretical questions."
+  status:
+    purpose: "Distinguish current evidence from architectural intent."
+  meta:
+    purpose: "Govern documentation coverage, status, and traceability."
+
+phase_1:
+  required:
+    - 000_index.md
+    - 010_orientation/001_what-is-scr.md
+    - 010_orientation/002_why-semantic-computation.md
+    - 010_orientation/003_the-computational-universe.md
+    - 020_concepts/001_semantic-computation.md
+    - 020_concepts/002_semantic-primacy.md
+    - 020_concepts/003_meaning-and-representation.md
+    - 020_concepts/008_information-as-computation.md
+    - 020_concepts/009_patterns-and-morphology.md
+    - 030_architecture/001_architecture-overview.md
+    - 030_architecture/004_mlir.md
+    - 030_architecture/007_providers.md
+    - 030_architecture/010_adaptive-execution.md
+    - 030_architecture/011_the-two-graphs.md
+    - 060_examples/002_particle-system.md
+    - 060_examples/007_simulation-to-rendering.md
+    - 080_comparisons/001_scr-and-mlir.md
+    - 080_comparisons/003_scr-and-simulation-engines.md
+    - 090_research/001_semantic-equivalence.md
+    - 090_research/003-computational-morphology.md
+    - 090_research/005-semantic-hypergraphs.md
+    - 100_status/001-current-state.md
+
+governance:
+  stable_ids: true
+  cross_reference_policy: _meta/004_cross-reference-policy.md
+  traceability_policy: _meta/005_source-traceability.md
