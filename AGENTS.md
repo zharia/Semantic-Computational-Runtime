@@ -4,48 +4,44 @@
 
 **Project:** Semantic Computational Runtime (SCR)
 **Document:** `AGENTS.md`
-**Version:** `1.0.0`
+**Version:** `2.0.0`
 **Date:** 2026-09-05
-**Authority:** Project-level agent instructions
+**Authority:** Project-level agent operating policy
 
 ---
 
-# 1. Purpose
+## 1. Purpose
 
 This document defines how AI coding agents must operate within the Semantic Computational Runtime (SCR) repository.
 
-SCR is not merely a software library.
+It is an **agent control-plane document**.
 
-It is an **MLIR-based semantic computational environment** in which computational domains are represented through explicit semantic contracts and progressively transformed into executable implementations.
+It defines:
 
-Agents must therefore treat:
+* how agents discover the architecture;
+* how agents determine authority;
+* how agents scope work;
+* how agents modify semantic definitions and implementations;
+* how agents validate changes;
+* when agents must stop and escalate ambiguity.
 
-```text
-semantics
-specification
-architecture
-implementation
-testing
-validation
-```
+It does **not** attempt to define every SCR semantic domain.
 
-as distinct but connected layers.
+Normative semantic definitions belong in the semantic library and associated specifications.
 
-The central rule is:
-
-> **Do not allow implementation convenience to silently redefine computational semantics.**
+> **AGENTS.md defines how an agent works on SCR. It does not define what SCR's domains mean.**
 
 ---
 
-# 2. Project Identity
+# 2. SCR Identity
 
 SCR is an:
 
 > **MLIR-based Language Runtime for Computational Semantics.**
 
-Its purpose is to provide a common semantic environment in which heterogeneous computational domains can be represented as formally specified, composable capabilities and compiled into optimized implementations across heterogeneous execution substrates.
+Its purpose is to provide a common semantic environment in which heterogeneous computational domains can be represented through explicit semantic contracts and compiled into implementations across heterogeneous execution substrates.
 
-The conceptual architecture is:
+The conceptual execution architecture is:
 
 ```text
 Application
@@ -54,7 +50,11 @@ Semantic API / Frontend
     ↓
 Semantic Library
     ↓
-Semantic MLIR
+Semantic Model
+    ↓
+Domain IR
+    ↓
+MLIR
     ↓
 Analysis / Transformation
     ↓
@@ -75,348 +75,297 @@ GPU
 Accelerator
 External Library
 Distributed System
+Specialized Hardware
 ```
+
+The implementation substrate may change.
+
+The semantic contract must not silently change with it.
 
 ---
 
-# 3. Core Principle
+# 3. Governing Principle
 
-The project follows this separation:
+SCR separates:
 
 ```text
-WHAT
-  ↓
-Semantic Definition
-  ↓
+Semantic Meaning
+      ↓
 Semantic Contract
-  ↓
-MLIR Representation
-  ↓
-Implementation
-  ↓
-Provider / Adapter
-  ↓
-Execution
+      ↓
+Representation
+      ↓
+Transformation
+      ↓
+Lowering
+      ↓
+Provider
+      ↓
+Runtime
+      ↓
+Execution Substrate
 ```
 
-The layers have different authorities.
+These are different architectural layers.
 
-| Layer               | Meaning                                              |
-| ------------------- | ---------------------------------------------------- |
-| Semantic definition | What the concept means                               |
-| Semantic contract   | What implementations must preserve                   |
-| MLIR                | Formal computational representation                  |
-| Implementation      | How the computation is performed                     |
-| Provider            | How an external implementation realizes the contract |
-| Runtime             | Where, when, and under what resources it executes    |
-| Hardware            | Physical execution substrate                         |
+Do not collapse them.
 
-An agent must not collapse these layers.
+In particular:
+
+```text
+Specification ≠ Implementation
+Status ≠ Specification
+Graph ≠ Source of Truth
+Representation ≠ Concept
+Provider ≠ Semantic Authority
+Backend ≠ Semantic Meaning
+Filesystem ≠ Semantic Architecture
+```
+
+The governing rule is:
+
+> **Never allow implementation convenience to silently redefine computational semantics.**
 
 ---
 
-# 4. Source of Truth Hierarchy
+# 4. Agent Authority Model
 
-When information conflicts, use the following authority order:
+Agents must distinguish three classes of information.
+
+## 4.1 Normative
+
+Defines what SCR means.
+
+Examples:
+
+* semantic definitions;
+* explicit contracts;
+* invariants;
+* formally specified operations;
+* architecture specifications;
+* approved interface contracts.
+
+Normative material has authority over implementation.
+
+## 4.2 Descriptive
+
+Describes current engineering reality.
+
+Examples:
+
+* implementation status;
+* known limitations;
+* blockers;
+* current provider availability;
+* build state;
+* test state.
+
+Descriptive material must not redefine semantics.
+
+## 4.3 Derived
+
+Generated from authoritative information.
+
+Examples:
+
+* relationship graphs;
+* indexes;
+* generated manifests;
+* derived metadata;
+* dependency views.
+
+Derived artifacts must not silently become independent authorities.
+
+---
+
+# 5. Source-of-Truth Hierarchy
+
+When sources conflict, resolve them in this order:
 
 ```text
 1. Normative project architecture/specification
 2. Parent semantic domain definition
 3. Child semantic domain definition
 4. Explicit interface/contract specification
-5. Tests expressing normative behavior
+5. Specification tests
 6. Current implementation
 7. Comments
 8. Documentation/examples
 9. Agent assumptions
 ```
 
-More specifically:
+For semantic-library control-plane files:
 
 ```text
 101_definition.md
-      >
-implementation
-```
+    ↓
+normative meaning
 
-and:
-
-```text
 102_status.yaml
-```
+    ↓
+current engineering state
 
-describes implementation state but does **not** redefine semantics.
-
-The semantic graph:
-
-```text
 103_library.graph.json
+    ↓
+derived relationships
 ```
 
-is derived information.
+Therefore:
 
-It is not an independent source of truth.
+> `101_definition.md` may invalidate an implementation.
+
+> `102_status.yaml` may describe an incomplete implementation.
+
+> `103_library.graph.json` may expose relationships but does not establish semantic authority.
+
+Never reverse these relationships.
 
 ---
 
-# 5. Control-Plane Documents
+# 6. Semantic Definitions Are Authoritative
 
-Every semantic library directory should, where applicable, contain:
+A semantic definition describes what a domain means.
 
-```text
-101_definition.md
-102_status.yaml
-103_library.graph.json
-```
+It may specify:
 
-Their roles are strictly separated.
+* purpose;
+* scope;
+* primitives;
+* entities;
+* values;
+* operations;
+* state;
+* transitions;
+* invariants;
+* relationships;
+* constraints;
+* errors;
+* composition;
+* interfaces;
+* representation requirements;
+* runtime semantics;
+* provider contracts;
+* validation requirements.
 
-## `101_definition.md`
+A semantic definition is not an implementation plan.
 
-Normative semantic definition.
-
-Answers:
-
-> What is this domain and what should it mean?
-
-It defines:
-
-* purpose
-* scope
-* semantic primitives
-* entities
-* values
-* abstractions
-* operations
-* invariants
-* relationships
-* state
-* transitions
-* errors
-* composition
-* MLIR representation
-* runtime semantics
-* dependencies
-* provider semantics
-* testing requirements
-* validation requirements
-
-Changes to this file are **semantic changes**.
-
----
-
-## `102_status.yaml`
-
-Mutable engineering state.
-
-Answers:
-
-> What currently exists?
-
-It records:
-
-* implementation status
-* tests
-* validation
-* MLIR status
-* runtime status
-* providers
-* dependencies
-* known limitations
-* blockers
-* risks
-* open questions
-* implementation history
-
-Do not use status to hide incomplete implementation.
-
----
-
-## `103_library.graph.json`
-
-Derived semantic graph.
-
-Answers:
-
-> How does the library relate?
-
-It may contain:
-
-* domains
-* modules
-* functions
-* operations
-* types
-* relationships
-* dependencies
-* implementations
-* providers
-* tests
-* validation
-* MLIR artifacts
-* backend mappings
-* provenance
-
-Agents should prefer generating this graph from authoritative definitions and status records rather than manually maintaining it.
-
----
-
-# 6. Semantic Development Lifecycle
-
-All substantive development should follow:
-
-```text
-DESCRIBE
-   ↓
-SPECIFY
-   ↓
-TEST
-   ↓
-IMPLEMENT
-   ↓
-VALIDATE
-```
-
-Do not routinely begin with implementation.
-
-For a new semantic capability:
-
-```text
-1. Describe the domain.
-2. Define its semantic meaning.
-3. Specify its invariants and contract.
-4. Define its representation.
-5. Define expected behavior.
-6. Design tests.
-7. Implement it.
-8. Validate implementation against the specification.
-```
-
----
-
-# 7. Inspect Before Editing
-
-Before modifying code, agents MUST inspect the relevant architecture.
-
-At minimum determine:
-
-```text
-Where am I?
-What domain does this represent?
-Who is my parent domain?
-What are my child domains?
-What interfaces do I implement?
-Who depends on me?
-What depends on me?
-What semantic definitions exist?
-What status records exist?
-What tests exist?
-What MLIR dialects/types/operations are involved?
-What providers or adapters are involved?
-```
-
-Do not assume the filesystem hierarchy is the semantic hierarchy.
-
-The project is fundamentally a graph.
-
----
-
-# 8. Repository Exploration
-
-When beginning substantial work, inspect recursively.
-
-Useful commands include:
-
-```bash
-find . -maxdepth 2 -type f | sort
-find lib -type d | sort
-find lib -type f | sort
-```
-
-Inspect:
-
-```text
-101_definition.md
-102_status.yaml
-```
-
-before modifying a semantic domain.
-
-Search for related concepts:
-
-```bash
-rg "ConceptName" .
-```
-
-Search for implementations:
-
-```bash
-rg "operation_name|type_name|interface_name" .
-```
-
-Search for tests:
-
-```bash
-find . -type f \( -name '*test*' -o -name '*lit*' \) | sort
-```
-
-The exact build/test commands should be determined from the repository's current build configuration rather than invented.
-
----
-
-# 9. Never Treat the Filesystem as the Architecture
-
-A directory tree is an implementation organization.
-
-The semantic architecture is a graph.
+Do not introduce implementation details into a semantic definition merely because they are convenient.
 
 For example:
 
 ```text
-Morphology
-    REFINES
-Geometry
-
-Morphology
-    INTERACTS_WITH
-Fields
-
 Physics
-    CONSUMES
-Geometry
-
-Dynamics
-    TRANSFORMS
-State
+    ≠
+Chrono
 ```
 
-These relationships may cross directory boundaries.
-
-Agents must therefore distinguish:
-
 ```text
-filesystem relationship
+Field
+    ≠
+Tensor
 ```
 
-from:
-
 ```text
-semantic relationship
+Position
+    ≠
+Rust struct
 ```
 
-and:
+```text
+Rendering
+    ≠
+Vulkan
+```
+
+Implementation technologies may realize semantic contracts. They do not define them.
+
+---
+
+# 7. Status Is Not Semantics
+
+`102_status.yaml` describes the current state of implementation.
+
+It may record:
+
+* planned;
+* specified;
+* designed;
+* partially implemented;
+* implemented;
+* tested;
+* validated;
+* blocked;
+* deprecated.
+
+Agents must not mark something as implemented merely because:
+
+* a directory exists;
+* a type exists;
+* a stub compiles;
+* an interface exists;
+* documentation describes it;
+* a test fixture exists;
+* an external dependency provides equivalent functionality.
+
+Implementation status requires evidence.
+
+When status and implementation disagree, investigate the discrepancy rather than silently changing the status.
+
+---
+
+# 8. The Repository Is a Graph
+
+The filesystem is an organization mechanism.
+
+The semantic architecture is a graph.
+
+Do not infer semantic relationships from directory placement.
+
+Distinguish:
 
 ```text
-implementation dependency
+Filesystem Relationship
+        ≠
+Semantic Relationship
+        ≠
+Implementation Dependency
+```
+
+For example:
+
+```text
+Morphology REFINES Geometry
+```
+
+is a semantic relationship.
+
+Whereas:
+
+```text
+morphology.rs DEPENDS_ON geometry.rs
+```
+
+is an implementation dependency.
+
+Likewise:
+
+```text
+Physics IMPLEMENTED_BY Provider
+```
+
+does not mean:
+
+```text
+Physics IS Provider
 ```
 
 ---
 
-# 10. Relationship Vocabulary
+# 9. Controlled Relationship Vocabulary
 
-Use explicit relationship types.
+Prefer explicit relationship types.
 
-Preferred vocabulary includes:
+Use existing vocabulary where possible:
 
 ```text
 CONTAINS
@@ -435,53 +384,257 @@ INTERACTS_WITH
 CONSTRAINS
 OBSERVES
 TRANSFORMS
+DERIVES_FROM
+REFERENCES
+EQUIVALENT_TO
 ```
 
-Do not invent relationships casually when an existing controlled relationship expresses the intended meaning.
+Do not invent a new relationship when an existing relationship expresses the intended meaning.
+
+If the distinction between two relationships is semantically important, document the distinction before encoding it.
 
 ---
 
-# 11. Semantic Relationships vs Implementation Dependencies
+# 10. Architecture Navigation
 
-These are different.
-
-Example:
+Before modifying a semantic domain, determine:
 
 ```text
-Morphology REFINES Geometry
+Where am I?
+What domain does this represent?
+What is its parent?
+What are its children?
+What concepts does it define?
+What interfaces does it implement?
+What interfaces does it consume?
+What semantic relationships does it have?
+What implementations exist?
+What providers exist?
+What tests exist?
+What MLIR representation exists?
+What lowering exists?
+What runtime path exists?
+What status is recorded?
 ```
 
-is a semantic relationship.
-
-Whereas:
+At minimum inspect:
 
 ```text
-morphology.rs DEPENDS_ON geometry.rs
+101_definition.md
+102_status.yaml
 ```
 
-is an implementation dependency.
-
-Do not encode implementation dependencies as semantic relationships.
-
-Similarly:
+and relevant:
 
 ```text
-Physics IMPLEMENTED_BY Chrono
+103_library.graph.json
+interfaces
+IR definitions
+implementations
+providers
+transforms
+lowering
+tests
 ```
 
-does not mean:
-
-```text
-Physics IS Chrono
-```
-
-The external implementation is subordinate to the semantic contract.
+Do not begin implementation from a filename alone.
 
 ---
 
-# 12. Implementation Independence
+# 11. Task Scoping
 
-SCR semantics must not depend on:
+Before changing anything, establish the scope of the task.
+
+Use:
+
+```text
+Task
+ ↓
+Program Increment
+ ↓
+Domain
+ ↓
+Module
+ ↓
+Capability
+ ↓
+Function / Operation
+```
+
+Determine:
+
+1. What has explicitly been requested?
+2. What semantic unit is affected?
+3. What contracts are upstream?
+4. What contracts are downstream?
+5. What implementation is currently responsible?
+6. What tests establish current behavior?
+7. What is explicitly outside scope?
+
+Do not expand a task merely because an adjacent architectural improvement is visible.
+
+Record or report discovered issues separately when they are outside scope.
+
+---
+
+# 12. Discovery Is Not Permission to Change
+
+Do not assume:
+
+```text
+I discovered a problem
+        ↓
+I should fix it
+```
+
+Instead:
+
+```text
+DISCOVER
+   ↓
+CLASSIFY
+   ↓
+ASSESS
+   ↓
+DECIDE
+   ↓
+CHANGE
+```
+
+Discovery may reveal:
+
+* ambiguity;
+* inconsistency;
+* missing specification;
+* stale implementation;
+* missing tests;
+* architectural debt;
+* incorrect status;
+* dependency problems.
+
+The discovery itself does not authorize changing the architecture.
+
+---
+
+# 13. Development Lifecycle
+
+Substantive work should follow:
+
+```text
+DISCOVER
+    ↓
+CLASSIFY
+    ↓
+DEFINE
+    ↓
+RELATE
+    ↓
+SPECIFY
+    ↓
+DESIGN TESTS
+    ↓
+IMPLEMENT
+    ↓
+TEST
+    ↓
+VALIDATE
+    ↓
+INTEGRATE
+    ↓
+OPTIMIZE
+```
+
+Not every task requires every stage.
+
+However, semantic ambiguity must be resolved before implementation is allowed to define the missing behavior.
+
+---
+
+# 14. Inspect Before Editing
+
+Before modifying code:
+
+```text
+1. Inspect the target.
+2. Inspect its semantic definition.
+3. Inspect its status.
+4. Search for related concepts.
+5. Search for existing implementations.
+6. Search for interfaces.
+7. Search for tests.
+8. Inspect callers and consumers.
+9. Inspect providers and adapters.
+10. Inspect relevant MLIR representation.
+```
+
+Useful commands include:
+
+```bash
+find . -maxdepth 2 -type f | sort
+find lib -type d | sort
+find lib -type f | sort
+rg "ConceptName" .
+rg "operation_name|type_name|interface_name" .
+find . -type f \( -name '*test*' -o -name '*lit*' \) | sort
+```
+
+Use the repository's actual build and test configuration.
+
+Do not invent commands or workflows when the repository already defines them.
+
+---
+
+# 15. Do Not Implement Around Missing Semantics
+
+If the semantic contract is incomplete, do not silently fill the gap with implementation assumptions.
+
+Classify the problem:
+
+```text
+Specified
+Partially specified
+Ambiguous
+Contradictory
+Missing
+```
+
+For:
+
+```text
+Ambiguous
+Contradictory
+Missing
+```
+
+either:
+
+1. resolve it from an authoritative source; or
+2. stop and escalate if the decision is architectural.
+
+Do not encode an architectural assumption merely because it makes the code compile.
+
+---
+
+# 16. Implementation Independence
+
+SCR semantics must remain independent of implementation technology.
+
+External technologies may be:
+
+```text
+Provider
+Adapter
+Lowering Target
+Execution Substrate
+Storage Mechanism
+Transport
+Rendering Backend
+Numerical Backend
+```
+
+They are not automatically semantic authorities.
+
+This applies to technologies including:
 
 ```text
 Rust
@@ -498,110 +651,72 @@ CGAL
 H3
 OpenVDB
 BLAS
+AMQP implementations
 ```
 
-or any other specific implementation technology.
+and any future dependency.
 
-These may be:
+The correct direction is:
 
 ```text
-providers
-adapters
-lowering targets
-execution substrates
+SCR Semantic Contract
+        ↓
+SCR Interface / Provider Contract
+        ↓
+Adapter
+        ↓
+External Technology
 ```
 
-but they are not semantic authorities.
-
-A useful mental model is:
+Never:
 
 ```text
-SCR Semantic Domain
+External API
         ↓
-SCR Contract
-        ↓
-SCR Adapter
-        ↓
-External Implementation
+SCR semantic definition
 ```
 
 ---
 
-# 13. Provider Architecture
+# 17. Semantic vs Physical Representation
 
-External libraries are implementation resources.
-
-A provider should implement one or more SCR semantic contracts.
-
-For example:
+Always distinguish:
 
 ```text
-semantic.physics.integrate
-        │
-        ├── Chrono
-        ├── Generated Solver
-        ├── GPU Solver
-        └── Custom Solver
+Semantic Object
+      ≠
+Language Representation
+      ≠
+IR Representation
+      ≠
+Memory Representation
+      ≠
+Device Representation
 ```
-
-The provider boundary must document, where applicable:
-
-* semantic coverage
-* precision
-* determinism
-* supported types
-* supported operations
-* performance characteristics
-* memory behavior
-* ownership
-* lifecycle
-* threading
-* platform restrictions
-* failure behavior
-
-Never allow an external library API to silently become the SCR semantic API.
-
----
-
-# 14. Semantic vs Physical Representation
-
-Always distinguish semantic objects from their physical representations.
 
 For example:
 
 ```text
 Semantic Position
-    ≠
+      ≠
 Rust Position Struct
-    ≠
-MLIR Position Type
-    ≠
+      ≠
+MLIR Value
+      ≠
 GPU Buffer
-    ≠
+      ≠
 Vulkan Resource
 ```
 
-Likewise:
-
-```text
-Semantic Field
-    ≠
-Tensor
-    ≠
-Dense Memory Buffer
-    ≠
-GPU Allocation
-```
-
-Representation transformations must preserve the semantic contract.
+Representation transformations must preserve the applicable semantic contract.
 
 ---
 
-# 15. MLIR Rules
+# 18. MLIR Policy
 
 SCR is built on MLIR.
 
-Agents should use MLIR's existing mechanisms whenever appropriate:
+Use MLIR's mechanisms wherever they appropriately express the required semantics:
 
 ```text
 Dialect
@@ -609,6 +724,7 @@ Operation
 Type
 Attribute
 Region
+Block
 Interface
 Trait
 Verification
@@ -620,60 +736,61 @@ Transform
 Lowering
 ```
 
-Do not create parallel infrastructure when MLIR already provides the required mechanism.
-
-Before introducing a new abstraction, ask:
+Before creating SCR-specific compiler infrastructure, ask:
 
 ```text
-Can this be represented directly by MLIR?
-Can an existing MLIR mechanism express it?
-Does SCR actually require additional semantics?
+Can MLIR express this directly?
+Can an existing MLIR mechanism express this?
+Does SCR require additional semantics?
+Would a new abstraction duplicate existing MLIR functionality?
 ```
+
+Do not build a parallel compiler framework merely because a custom abstraction is convenient.
 
 ---
 
-# 16. Semantic Dialects
+# 19. Domain IR Policy
 
-SCR may contain coordinated semantic dialects such as:
+Domain IR is a representation of semantic structures at an abstraction level suitable for:
+
+* analysis;
+* transformation;
+* verification;
+* composition;
+* lowering;
+* execution.
+
+Domain IR does not itself define domain meaning.
+
+The conceptual relationship is:
 
 ```text
-semantic.core
-semantic.math
-semantic.data
-semantic.tensor
-semantic.field
-semantic.graph
-semantic.geometry
-semantic.topology
-semantic.spatial
-semantic.morphology
-semantic.physics
-semantic.dynamics
-semantic.simulation
-semantic.agent
-semantic.neural
-semantic.learning
-semantic.optimization
-semantic.control
-semantic.perception
-semantic.render
-semantic.stream
-semantic.system
+Semantic Definition
+       ↓
+Semantic Model
+       ↓
+Domain IR
+       ↓
+MLIR Representation
+       ↓
+Transformation / Lowering
+       ↓
+Provider
 ```
 
-These boundaries are architectural hypotheses until formally established.
+Not every semantic domain requires a dedicated MLIR dialect.
 
-Do not create dialects merely because a directory exists.
+Do not create a dialect merely because a directory exists.
 
-A dialect should correspond to a coherent semantic domain.
+A new dialect requires a coherent semantic justification.
 
 ---
 
-# 17. Semantic Interfaces
+# 20. Interfaces and Capabilities
 
-Capabilities should be expressed through reusable interfaces where appropriate.
+Reusable computational capabilities should be represented through explicit interfaces where appropriate.
 
-Examples:
+Examples include:
 
 ```text
 Dynamical
@@ -692,42 +809,29 @@ Renderable
 Distributable
 Deterministic
 Stochastic
-Invertible
 Composable
-Interpolatable
-Queryable
-Mutable
-Immutable
+Serializable
+Persistable
+Observable
+Controllable
+Optimizable
+Learnable
+Morphological
 ```
 
-The goal is to enable generic reasoning.
+Interfaces should enable generic reasoning across domains.
 
-For example:
+Do not duplicate domain-specific implementations of capabilities that are already represented by an appropriate shared interface.
 
-```text
-Dynamical
-+
-Parallelizable
-+
-Vectorizable
-```
-
-may expose opportunities for:
-
-```text
-SIMD
-GPU execution
-parallel execution
-kernel fusion
-```
-
-without requiring a generic compiler pass to understand every domain dialect individually.
+Conversely, do not force unrelated concepts into a shared interface merely because their names appear similar.
 
 ---
 
-# 18. Function-Level Requirements
+# 21. Functions and Operations
 
-Every meaningful function or operation should be understood in terms of:
+Every meaningful function or operation should have an explainable semantic contract.
+
+Consider:
 
 ```text
 Purpose
@@ -738,15 +842,15 @@ Postconditions
 Invariants
 Errors
 Determinism
-Side effects
-State changes
+Side Effects
+State Changes
 Ownership
 Lifecycle
 Composition
-Performance characteristics
+Performance Characteristics
 ```
 
-For an MLIR operation, additionally consider:
+For MLIR operations additionally consider:
 
 ```text
 Operands
@@ -759,76 +863,52 @@ Interfaces
 Verification
 Canonicalization
 Lowering
+Effects
 ```
 
-Do not implement behavior that cannot be explained semantically.
+If behavior cannot be explained semantically, stop and investigate.
 
 ---
 
-# 19. Determinism
+# 22. Determinism
 
-Every meaningful computational operation should explicitly consider determinism.
+Every meaningful computational operation must explicitly consider determinism.
 
-Document whether it is:
-
-```text
-deterministic
-conditionally deterministic
-stochastic
-nondeterministic
-```
-
-If nondeterministic or stochastic, identify:
+Classify behavior as:
 
 ```text
-source of nondeterminism
-seed/control mechanism
-reproducibility expectations
-equivalence criteria
-parallelism effects
-hardware-dependent behavior
+Deterministic
+Conditionally Deterministic
+Stochastic
+Nondeterministic
 ```
 
-Do not assume that mathematically equivalent computations are necessarily bitwise equivalent.
-
-Distinguish:
+Where relevant, document:
 
 ```text
-semantic equivalence
-numerical equivalence
-bitwise equivalence
+Source of nondeterminism
+Seed/control mechanism
+Reproducibility expectations
+Equivalence criteria
+Parallelism effects
+Hardware-dependent behavior
 ```
+
+Do not assume:
+
+```text
+Mathematical equivalence
+        =
+Numerical equivalence
+        =
+Bitwise equivalence
+```
+
+They are distinct guarantees.
 
 ---
 
-# 20. Invariants
-
-Semantic domains must identify their invariants.
-
-Possible categories include:
-
-```text
-Domain invariants
-Identity invariants
-State invariants
-Type invariants
-Topological invariants
-Geometric invariants
-Physical invariants
-Conservation laws
-Ordering invariants
-Determinism invariants
-Lifecycle invariants
-Resource invariants
-```
-
-An implementation is not correct merely because it produces plausible output.
-
-It must preserve the required invariants.
-
----
-
-# 21. Semantic Equivalence
+# 23. Semantic Equivalence
 
 Do not equate:
 
@@ -842,28 +922,55 @@ with:
 semantic equivalence
 ```
 
-When considering alternative implementations, determine the applicable contract.
-
 Possible equivalence levels include:
 
 ```text
-Exact equivalence
-Numerical equivalence
-Approximate equivalence
-Distributional equivalence
-Behavioral equivalence
-Contractual equivalence
+Exact
+Numerical
+Approximate
+Distributional
+Behavioral
+Contractual
 ```
 
-Document which level applies.
+When replacing one implementation with another, determine which level the contract requires.
 
-An optimization may only replace an operation if the relevant semantic guarantees remain satisfied.
+An optimization or provider substitution is valid only if the applicable semantic guarantees remain satisfied.
 
 ---
 
-# 22. Testing Strategy
+# 24. Invariants
 
-Testing follows a progressive hierarchy:
+Semantic correctness is defined by invariants, not merely plausible output.
+
+Consider where applicable:
+
+```text
+Domain Invariants
+Identity Invariants
+Type Invariants
+State Invariants
+Temporal Invariants
+Causal Invariants
+Geometric Invariants
+Topological Invariants
+Physical Invariants
+Conservation Laws
+Ordering Invariants
+Determinism Invariants
+Lifecycle Invariants
+Resource Invariants
+```
+
+When implementing a transformation, explicitly identify which invariants it must preserve.
+
+---
+
+# 25. Testing Philosophy
+
+Tests should validate semantic contracts rather than merely implementation details.
+
+The preferred hierarchy is:
 
 ```text
 Specification Tests
@@ -883,61 +990,33 @@ Runtime Tests
 Cross-Substrate Tests
 ```
 
-Tests should cover, where applicable:
+Where applicable, test:
 
 ```text
-normal behavior
-boundary cases
-invalid inputs
-degenerate cases
-error behavior
-composition
-determinism
-invariant preservation
-serialization
+Normal behavior
+Boundary cases
+Invalid inputs
+Degenerate cases
+Error behavior
+Composition
+Determinism
+Invariant preservation
+Serialization
 MLIR verification
-canonicalization
-lowering
-runtime behavior
-provider behavior
-backend equivalence
+Canonicalization
+Lowering
+Runtime behavior
+Provider behavior
+Backend equivalence
 ```
+
+A test that only demonstrates that an implementation runs is not necessarily a semantic test.
 
 ---
 
-# 23. Specification Tests
+# 26. Specification Tests
 
-Tests should verify the semantic contract, not merely the implementation.
-
-For example, if an operation promises:
-
-```text
-output preserves topology
-```
-
-there should be a test capable of detecting topology violations.
-
-If an operation promises:
-
-```text
-deterministic for a fixed seed
-```
-
-there should be a reproducibility test.
-
-If an operation promises:
-
-```text
-provider independence
-```
-
-at least one alternate implementation path should eventually exercise the contract.
-
----
-
-# 24. Testing Implementations Against Semantics
-
-The preferred model is:
+Prefer:
 
 ```text
 Semantic Contract
@@ -946,1736 +1025,916 @@ Reference Behavior
        ↓
 Implementation
        ↓
-Conformance Tests
+Conformance Test
 ```
 
-Where practical, tests should make it possible to compare multiple providers against the same semantic expectations.
+Where practical, multiple providers should be capable of being tested against the same semantic expectations.
 
-This is particularly important for:
-
-```text
-numerical computation
-physics
-geometry
-spatial operations
-neural computation
-rendering
-distributed execution
-```
-
----
-
-# 25. Runtime Architecture
-
-SCR is not merely an MLIR interpreter.
-
-MLIR provides representation and compiler infrastructure.
-
-The runtime is responsible for execution concerns such as:
+This is especially important for:
 
 ```text
-provider discovery
-resource discovery
-hardware discovery
-scheduling
-memory management
-data movement
-stream execution
-asynchronous execution
-telemetry
-runtime specialization
-provider selection
-lifecycle management
-```
-
-A useful conceptual model is:
-
-```text
-Semantic Program
-        +
-MLIR
-        +
-Capability Requirements
-        +
-Provider Metadata
-        +
-Compiled Variants
-        +
-Runtime Configuration
-        ↓
-SCR Runtime
-        ↓
-Execution
+CPU / GPU
+Provider substitution
+Numerical implementations
+Parallel implementations
+Distributed implementations
+External-library providers
 ```
 
 ---
 
-# 26. Hardware Awareness
+# 27. Provider Requirements
 
-SCR aims to be:
-
-```text
-hardware-independent at the semantic level
-```
-
-while being:
+A provider implementing an SCR contract should document, where applicable:
 
 ```text
-hardware-aware at compilation/runtime
+Semantic Coverage
+Supported Types
+Supported Operations
+Precision
+Determinism
+Equivalence Guarantees
+Performance Characteristics
+Memory Behavior
+Ownership
+Lifecycle
+Threading
+Platform Restrictions
+Failure Behavior
 ```
 
-Agents should not hard-code semantic behavior around:
+Provider limitations must not silently become semantic limitations.
 
-```text
-CPU
-GPU
-CUDA
-Vulkan
-ROCm
-specific vector widths
-specific accelerators
-```
-
-unless those details belong explicitly to a lower layer.
-
-Hardware-specific optimization belongs in:
-
-```text
-lowering
-provider
-backend
-runtime
-specialization
-```
-
-not in the semantic contract.
+If a provider supports only a subset of a semantic domain, represent that explicitly.
 
 ---
 
-# 27. Adaptive Execution
+# 28. Fields, Streams, Messaging, Morphology and Rendering
 
-The runtime may eventually support:
+These are computational concerns, not merely implementation plumbing.
+
+Agents must preserve the following architectural distinctions.
+
+### Fields
+
+A field is a semantic computational structure.
+
+Do not automatically equate:
 
 ```text
-capability analysis
-hardware analysis
-provider selection
-scheduling
-compilation
-execution
-telemetry
-re-specialization
+Field = Tensor
+Field = Grid
+Field = Buffer
+Field = Texture
 ```
 
-Agents should preserve the architectural possibility of this model.
+Those may be representations or providers.
 
-Do not introduce abstractions that make execution permanently tied to one provider or substrate unless that restriction is explicitly part of the semantic domain.
+### Streams
 
----
+A semantic stream describes computational flow.
 
-# 28. Cross-Domain Composition
-
-SCR is specifically intended to allow domains to interact.
-
-Examples include:
+Do not equate:
 
 ```text
-Field → Morphology
-Morphology → Geometry
-Geometry → Physics
-Physics → Dynamics
-Dynamics → Agents
-Agents → Neural Computation
-Neural Computation → Control
-Control → Dynamics
-Geometry → Rendering
-Rendering → Streams
-Streams → Perception
-Perception → Agents
-```
-
-When adding a domain, consider:
-
-```text
-What does it consume?
-What does it produce?
-What concepts does it refine?
-What concepts does it constrain?
-What concepts does it observe?
-What concepts can it transform?
-```
-
-Do not treat domain boundaries as isolated packages unless the semantics genuinely require isolation.
-
----
-
-# 29. Information Is a Computational Resource
-
-SCR treats information-bearing structures as potentially active computational substrates.
-
-Relevant representations include:
-
-```text
-fields
-graphs
-streams
-tensors
-spatial structures
-semantic state
-topological structures
-```
-
-Do not assume that information is merely passive input data.
-
-A field may influence morphology.
-
-A graph may determine communication.
-
-A stream may drive perception.
-
-A spatial structure may constrain dynamics.
-
-A morphology may alter geometry and therefore physics.
-
-These relationships should be represented explicitly when semantically meaningful.
-
----
-
-# 30. Morphology
-
-Morphology is not merely:
-
-```text
-mesh generation
+Stream = Transport
 ```
 
 or:
 
 ```text
-rendering geometry
+Stream = Broker
 ```
 
-It concerns computational structure and form.
+### Messaging
 
-Morphology may derive from:
+SCR may use an AMQP-oriented messaging model where appropriate.
+
+AMQP is a messaging/protocol model or provider concern, not the semantic definition of every SCR message.
+
+### Morphology
+
+Morphology is a first-class computational domain.
+
+Preserve both directions:
 
 ```text
-patterns
-fields
-topology
-geometry
-constraints
-dynamics
-semantic relationships
+Pattern
+   ↕
+Morphological Interpretation
+   ↕
+Morphological Structure
 ```
 
-and may produce:
+Do not reduce morphology to mesh generation or rendering.
 
-```text
-geometry
-spatial structures
-patterns
-renderable representations
-computational structures
-```
+### Rendering
 
-Where appropriate, preserve the bidirectional possibility:
+Rendering is a computational domain and observation pathway.
 
-```text
-patterns ↔ morphology
-fields ↔ morphology
-morphology ↔ geometry
-morphology ↔ topology
-```
+Do not treat rendering as merely the final output stage.
 
-Do not reduce morphology to a final presentation layer.
+A rendering backend is subordinate to the rendering contract.
 
 ---
 
-# 31. Rendering
+# 29. Simulation and Dynamics
 
-Rendering is a computational domain.
-
-Do not assume rendering is necessarily:
+Keep these concepts distinct:
 
 ```text
-final output
+Dynamics
+    =
+meaning of system evolution
+
+Simulation
+    =
+computational realization of a model
 ```
 
-Rendering may participate in:
+Do not collapse simulation semantics into a particular numerical engine.
+
+Likewise:
 
 ```text
-observation
-streaming
-visual feedback
-perception
-interaction
-simulation
+Physics
+    ≠
+Dynamics
+    ≠
+Simulation
 ```
 
-A backend such as:
-
-```text
-Rust
- ↓
-C++ adapter
- ↓
-VulkanSceneGraph
- ↓
-Vulkan
- ↓
-GPU
-```
-
-is an implementation path.
-
-It does not define rendering semantics.
+They may interact strongly without becoming interchangeable.
 
 ---
 
-# 32. Messaging and Streams
+# 30. Semantic Graph vs Library Architecture Graph
 
-Communication may carry computational semantics.
+SCR contains multiple graph concepts.
 
-Where messaging is modeled, preserve distinctions between:
+Do not conflate:
+
+### Computational Semantic Graph
+
+Represents computational meaning:
 
 ```text
-message
-event
-stream
-queue
-exchange
-routing
-delivery
-acknowledgement
-ordering
-backpressure
-state
+Entities
+Relationships
+Operations
+Constraints
+Types
+Capabilities
+State
+Events
+Dataflow
+Control Flow
+Spatial Relations
+Temporal Relations
+Execution Requirements
 ```
 
-An AMQP-compatible implementation may be used as a provider or execution mechanism.
+### Library Architecture Graph
 
-Do not make a particular broker the semantic definition of messaging.
+Represents project organization:
+
+```text
+Domains
+Definitions
+Modules
+Interfaces
+Implementations
+Providers
+Tests
+Relationships
+Status
+```
+
+The second is derived from project artifacts.
+
+The first represents semantic computational structure.
+
+They may correspond, but they are not the same graph.
 
 ---
 
-# 33. Reference Workloads
+# 31. Control-Plane Files
 
-The project uses demanding cross-domain workloads to validate architecture.
-
-A simulation workload may combine:
+Where a semantic library directory uses the SCR control-plane model:
 
 ```text
-spatial topology
-+
-fields
-+
-geometry
-+
-morphology
-+
-physics
-+
-dynamics
-+
-agents
-+
-neural computation
-+
-perception
-+
-rendering
-+
-stream processing
+101_definition.md
+102_status.yaml
+103_library.graph.json
 ```
 
-The workload is a validation environment.
+agents must preserve their roles.
 
-It is not the definition of SCR.
+A future executable or golden-path specification may additionally exist, for example:
 
-Avoid allowing the current reference workload to unnecessarily constrain the general semantic architecture.
+```text
+104_golden-path.md
+```
+
+where applicable.
+
+Do not put mutable implementation status into normative definitions.
+
+Do not put normative semantics into status records.
+
+Do not manually edit generated graph artifacts unless the repository explicitly requires it.
 
 ---
 
-# 34. Language Frontends
+# 32. Generated and Derived Artifacts
 
-SCR should support multiple language frontends where practical.
-
-Potential frontends include:
+Before modifying a generated artifact, determine:
 
 ```text
-Rust
-Python
-C++
-Julia
+What generates it?
+What is its source?
+Is it committed?
+Is it reproducible?
+What validation checks it?
 ```
 
-A frontend should express semantic intent rather than expose provider-specific implementation details unnecessarily.
+Prefer changing the authoritative source and regenerating the derived artifact.
 
-Conceptually:
+Do not manually repair a generated artifact while leaving its source inconsistent.
+
+---
+
+# 33. Dependency Discipline
+
+Before adding a dependency:
+
+1. Determine whether the functionality already exists.
+2. Determine whether MLIR or an existing SCR component provides the required capability.
+3. Determine whether the dependency belongs at the semantic, compiler, provider, runtime, or tooling layer.
+4. Determine whether it introduces semantic coupling.
+5. Determine its platform and licensing implications.
+6. Determine whether the dependency is required for the current milestone.
+
+A dependency must not become part of semantic meaning merely because it provides a convenient implementation.
+
+---
+
+# 34. Performance
+
+Correctness precedes optimization.
+
+Use:
 
 ```text
-Language
+Correctness
     ↓
-Semantic API
+Semantic Validation
     ↓
-Semantic MLIR
+Measurement
+    ↓
+Optimization
+    ↓
+Equivalence Validation
 ```
 
-A language binding must not become the semantic authority merely because it is convenient to implement.
+Do not optimize based on assumptions.
+
+Do not introduce representation-specific optimizations that alter semantic behavior without an explicit contract permitting the change.
+
+Performance characteristics may themselves be part of a provider contract where required.
 
 ---
 
-# 35. API Design
+# 35. Concurrency and Parallelism
 
-Prefer APIs that expose:
+Concurrency must be explicit.
 
-```text
-semantic concepts
-capabilities
-contracts
-relationships
-```
-
-rather than:
+Consider:
 
 ```text
-implementation objects
-backend handles
-library-specific data structures
-vendor-specific assumptions
+Ordering
+Synchronization
+Ownership
+Mutability
+Race behavior
+Determinism
+Memory visibility
+Atomicity
+Failure propagation
+Cancellation
 ```
 
-Where an implementation-specific API is necessary, isolate it behind an explicit adapter/provider boundary.
+Do not assume that a sequential semantic definition automatically permits arbitrary parallelization.
+
+A transformation must establish that required semantic guarantees remain valid.
 
 ---
 
 # 36. Error Semantics
 
-Errors are part of semantics.
-
-For every meaningful operation, consider:
-
-```text
-invalid input
-unsupported capability
-invalid state
-resource exhaustion
-provider failure
-numerical failure
-convergence failure
-hardware failure
-communication failure
-timeout
-cancellation
-```
-
-Do not silently convert semantic failure into arbitrary implementation behavior.
-
-Document whether an error is:
-
-```text
-recoverable
-non-recoverable
-retryable
-provider-specific
-semantic
-```
-
----
-
-# 37. Performance Semantics
-
-Performance must not silently redefine correctness.
-
-Where performance characteristics matter, distinguish:
-
-```text
-semantic requirement
-```
-
-from:
-
-```text
-performance preference
-```
-
-For example:
-
-```text
-must preserve deterministic ordering
-```
-
-is semantic.
-
-Whereas:
-
-```text
-prefer GPU execution
-```
-
-is generally a scheduling or optimization preference.
-
-Do not encode optimization preferences as semantic requirements unless they genuinely are part of the contract.
-
----
-
-# 38. Memory and Ownership
-
-For every substantial data representation, understand:
-
-```text
-ownership
-lifetime
-mutability
-aliasing
-copy semantics
-movement
-device residency
-synchronization
-serialization
-```
-
-Do not confuse:
-
-```text
-semantic ownership
-```
-
-with:
-
-```text
-Rust ownership
-```
-
-or:
-
-```text
-GPU memory ownership
-```
-
-These are different concepts.
-
----
-
-# 39. Concurrency
-
-When implementing concurrent behavior, document:
-
-```text
-thread safety
-ordering
-synchronization
-atomicity
-race behavior
-determinism
-reentrancy
-parallel semantics
-```
-
-Do not assume that an operation is safely parallelizable because it happens to run correctly in one concurrent test.
-
-If an operation is declared:
-
-```text
-Parallelizable
-```
-
-the semantic contract must justify what parallel execution preserves.
-
----
-
-# 40. Serialization and Persistence
-
-If a semantic object can be serialized, determine:
-
-```text
-identity
-version
-schema
-compatibility
-canonical representation
-losslessness
-migration requirements
-```
-
-Serialization must not accidentally become a new semantic definition.
-
----
-
-# 41. Versioning
-
-Use Semantic Versioning where applicable:
-
-```text
-MAJOR.MINOR.PATCH
-```
-
-Normative semantic changes must be traceable.
-
-At minimum preserve:
-
-```text
-version
-created
-updated
-history
-```
-
-Do not silently overwrite historical semantic decisions.
-
-If a change modifies meaning, classify it explicitly as a semantic change.
-
----
-
-# 42. Dates
-
-Use ISO-8601 dates:
-
-```text
-YYYY-MM-DD
-```
-
-For example:
-
-```yaml
-created: 2026-09-05
-updated: 2026-09-05
-```
-
-Avoid ambiguous date formats.
-
----
-
-# 43. Status Discipline
-
-Suggested status vocabulary:
-
-```text
-not_started
-discovered
-specified
-partially_implemented
-implemented
-tested
-validated
-deprecated
-blocked
-```
-
-Do not mark something:
-
-```text
-implemented
-```
-
-without evidence.
-
-Do not mark something:
-
-```text
-tested
-```
-
-because tests merely exist.
-
-Do not mark something:
-
-```text
-validated
-```
-
-because unit tests pass.
-
-Validation should correspond to the applicable semantic and architectural requirements.
-
----
-
-# 44. Completeness
-
-A semantic domain is not complete merely because source files exist.
-
-A meaningful definition should establish:
-
-```text
-identity
-purpose
-scope
-primitives
-abstractions
-operations
-relationships
-invariants
-inputs
-outputs
-state
-errors
-composition
-MLIR representation
-runtime semantics
-dependencies
-providers
-testing requirements
-validation requirements
-```
-
----
-
-# 45. Empty or Incomplete Directories
-
-Do not automatically delete empty or apparently unused directories.
-
-Classify them as potentially:
-
-```text
-intentional domain
-placeholder
-future domain
-obsolete
-misplaced
-duplicate
-implementation artifact
-restructuring candidate
-```
-
-Record the finding before destructive action.
-
----
-
-# 46. Dependency Discipline
-
-Classify dependencies as:
-
-```text
-semantic
-implementation
-optional
-backend
-external
-```
-
-Investigate cycles.
-
-A dependency cycle may indicate:
-
-```text
-incorrect abstraction
-incorrect ownership
-incorrect domain boundary
-missing shared semantic domain
-implementation leakage
-```
-
-Do not resolve architectural cycles merely by rearranging imports.
-
----
-
-# 47. Conflict Resolution
-
-When definitions, implementation, or tests disagree:
-
-1. Identify the conflict.
-2. Identify affected domains.
-3. Identify the highest semantic authority.
-4. Determine whether the conflict is semantic or implementation-level.
-5. Record the discrepancy.
-6. Resolve explicitly.
-7. Update affected specifications.
-8. Update implementation.
-9. Add or update tests.
-10. Update status and graph.
-
-Never silently choose whichever interpretation is easiest to implement.
-
----
-
-# 48. Existing Code May Be Wrong
-
-When inspecting existing code, ask two separate questions:
-
-```text
-What does the code currently do?
-```
-
-and:
-
-```text
-What should the semantic domain mean?
-```
-
-These are not necessarily the same.
-
-If they differ:
-
-```text
-record discrepancy
-```
-
-rather than redefining the semantics to match the implementation.
-
----
-
-# 49. Do Not Over-Engineer Speculatively
-
-SCR is ambitious.
-
-Agents must not turn every architectural possibility into immediate implementation.
+Errors are part of computational semantics where they affect observable behavior.
 
 Distinguish:
 
 ```text
-current requirement
-planned capability
-research direction
-architectural possibility
+Invalid Input
+Contract Violation
+Unsupported Capability
+Provider Limitation
+Resource Exhaustion
+Execution Failure
+Numerical Failure
+Environmental Failure
 ```
 
-Implement what the current increment requires.
-
-Document future possibilities without prematurely hard-coding them.
+Do not convert semantic errors into arbitrary implementation exceptions without preserving their meaning.
 
 ---
 
-# 50. Do Not Under-Specify Foundational Concepts
+# 37. Serialization, Persistence and References
 
-The opposite failure is also prohibited.
-
-Foundational concepts such as:
+Do not confuse:
 
 ```text
-identity
-type
-field
-state
-relationship
-capability
-operation
-domain
-provider
-execution
+Semantic Identity
+Representation Identity
+Content Identity
+Storage Location
 ```
 
-should be specified rigorously before large amounts of dependent implementation are created.
+A semantic reference must remain meaningful independently of where its representation happens to be stored.
 
-Weak foundations create semantic drift.
+Persistence mechanisms must not silently redefine semantic identity.
 
 ---
 
-# 51. Avoid Premature Optimization
+# 38. Security and Isolation
 
-The preferred order is:
+When modifying runtime, provider, messaging, storage, or external-library integration, consider:
 
 ```text
-correct semantics
-        ↓
-correct representation
-        ↓
-correct implementation
-        ↓
-correct validation
-        ↓
-optimization
+Trust Boundary
+Capability Boundary
+Resource Limits
+Input Validation
+Isolation
+Credential Handling
+Data Exposure
+Provider Permissions
+Failure Containment
 ```
 
-Do not sacrifice semantic clarity to obtain early performance.
-
-When optimizing, demonstrate that the optimization preserves the relevant contract.
+Do not introduce hidden execution or network behavior merely for convenience.
 
 ---
 
-# 52. Agent Scope
+# 39. Repository Conventions
 
-Agents working on a specific domain should operate within an explicit scope.
-
-Before making changes, establish:
-
-```text
-Assigned domain
-Parent domain
-Child domains
-Relevant interfaces
-Relevant dependencies
-Relevant tests
-```
-
-Agents should avoid unrelated modifications.
-
-If an architectural issue outside the assigned scope blocks progress:
-
-```text
-record it
-```
-
-and escalate it rather than silently changing unrelated architecture.
-
----
-
-# 53. Parallel Agent Work
-
-Parallel work is encouraged when semantic boundaries are already established.
-
-Suitable parallel tasks include:
-
-```text
-domain A implementation
-domain B tests
-domain C provider
-domain D documentation
-```
-
-provided they do not independently redefine shared foundational concepts.
-
-Do not allow multiple agents to create competing definitions of:
-
-```text
-same type
-same invariant
-same capability
-same identity model
-same foundational operation
-```
-
-without coordination.
-
----
-
-# 54. Required Agent Reporting
-
-For substantive work, agents should report:
-
-```text
-Scope
-Files changed
-Semantic changes
-Implementation changes
-Tests added/changed
-Validation performed
-Known discrepancies
-Open questions
-Remaining blockers
-```
-
-Do not claim work was performed if it was not.
-
-Do not claim tests passed unless they actually ran and passed.
-
-Do not claim validation occurred unless the relevant validation was performed.
-
----
-
-# 55. Graph Integrity
-
-When a semantic domain changes, determine whether the derived graph is affected.
-
-Potentially affected entities include:
-
-```text
-domain
-operation
-type
-relationship
-dependency
-provider
-implementation
-test
-validation
-lowering
-backend
-```
-
-The graph should preserve provenance.
+Follow existing repository conventions before introducing new ones.
 
 Prefer:
 
 ```text
-definition/status
+Existing scripts
+Existing build configuration
+Existing test infrastructure
+Existing naming conventions
+Existing metadata schemas
+Existing control-plane artifacts
+Existing MLIR conventions
+```
+
+Do not introduce a competing convention without architectural justification.
+
+For environment and build setup, use the repository's documented scripts.
+
+Do not make bootstrap tooling:
+
+* launch an interactive shell unexpectedly;
+* silently modify shell startup files;
+* silently install unrelated dependencies;
+* implicitly modify the parent shell;
+* mix incompatible LLVM/MLIR installations.
+
+---
+
+# 40. Current Development Environment
+
+The preferred development environment for SCR is:
+
+> **Arch Linux**
+
+Other Linux distributions may be supported, but they are compatibility environments unless explicitly designated otherwise.
+
+The canonical environment should use a coherent LLVM/MLIR toolchain.
+
+Do not mix incompatible LLVM/MLIR installations.
+
+When environment configuration is required, prefer the repository's separation between:
+
+```text
+Bootstrap
+    ↓
+Environment Activation
+    ↓
+Environment Check
+    ↓
+Build
+    ↓
+Test
+```
+
+A bootstrap script must not unexpectedly turn into an interactive development shell.
+
+---
+
+# 41. Vertical Slices Over Broad Stubs
+
+Do not attempt to implement the entire SCR library because the directory tree contains many domains.
+
+Prefer an executable vertical slice.
+
+The current architectural direction is:
+
+```text
+Semantic Definition
        ↓
-graph generation
-```
-
-over:
-
-```text
-manual graph editing
-```
-
----
-
-# 56. Traceability
-
-Important artifacts should be traceable across:
-
-```text
-requirement
-   ↓
-definition
-   ↓
-operation
-   ↓
-implementation
-   ↓
-test
-   ↓
-validation
-   ↓
-lowering
-   ↓
-runtime
-```
-
-A useful question for any feature is:
-
-> Can we determine why this code exists, what semantic contract it implements, and what evidence demonstrates that it is correct?
-
-If not, improve traceability.
-
----
-
-# 57. Architectural Invariants
-
-The following invariants apply across SCR:
-
-## Semantic Primacy
-
-Meaning comes before implementation.
-
-## Implementation Independence
-
-Semantics do not depend on a particular implementation.
-
-## Backend Independence
-
-Semantic contracts do not depend on execution hardware.
-
-## Explicit Relationships
-
-Important semantic relationships must be represented explicitly.
-
-## Invariant Preservation
-
-Transformations must preserve applicable invariants.
-
-## No Silent Semantics
-
-Meaning must never be changed implicitly.
-
-## Testability
-
-Semantic claims must be testable where practical.
-
-## Traceability
-
-Implementation must be traceable to semantic requirements.
-
-## Version Integrity
-
-Normative changes must be versioned.
-
-## Historical Integrity
-
-Previous semantic decisions must remain recoverable.
-
-## Graph Semantics
-
-The computational architecture is a graph, not merely a directory tree.
-
-## Progressive Abstraction
-
-Concepts should be progressively refined:
-
-```text
-Concept
-  ↓
-Semantic Contract
-  ↓
-MLIR Representation
-  ↓
-Generic Implementation
-  ↓
-Provider / Adapter
-  ↓
-Hardware
-```
-
-## Status Separation
-
-Engineering state must not redefine semantics.
-
-## Derived Graph
-
-The aggregate graph is derived from authoritative sources.
-
----
-
-# 58. Common Failure Modes
-
-Agents must actively avoid:
-
-### Code-as-Authority
-
-> "The code already does this, therefore this is what the domain means."
-
-Incorrect.
-
-### Provider-as-Semantics
-
-> "Chrono represents physics, therefore physics means Chrono."
-
-Incorrect.
-
-### Directory-as-Domain
-
-> "There is a directory called `foo`, therefore `foo` is a semantic domain."
-
-Not necessarily.
-
-### Test-as-Complete
-
-> "There are tests, therefore the domain is complete."
-
-Incorrect.
-
-### Status-as-Truth
-
-> "`status: implemented`, therefore it works."
-
-Not sufficient.
-
-### Graph-as-Authority
-
-> "The graph says these domains relate, therefore they must."
-
-Incorrect.
-
-The graph is derived.
-
-### Backend-Driven Semantics
-
-> "The GPU requires this representation, therefore the semantic type should be defined that way."
-
-Incorrect.
-
-### Premature Abstraction
-
-> "We might eventually need this, therefore implement it now."
-
-Incorrect.
-
-### Silent Compatibility Break
-
-Changing an operation's meaning without changing its specification/version/history.
-
-Prohibited.
-
----
-
-# 59. Definition of Done — Function
-
-A meaningful function or operation is complete when:
-
-```text
-[ ] Purpose described
-[ ] Inputs defined
-[ ] Outputs defined
-[ ] Preconditions defined
-[ ] Postconditions defined
-[ ] Invariants defined
-[ ] Errors defined
-[ ] Determinism defined
-[ ] Side effects defined
-[ ] State behavior defined
-[ ] Composition defined
-[ ] Implementation exists
-[ ] Unit tests exist
-[ ] Boundary tests exist
-[ ] Error tests exist
-[ ] Composition tests exist where applicable
-[ ] Semantic validation performed
-[ ] MLIR verification performed where applicable
-[ ] Lowering tested where applicable
-[ ] Runtime tested where applicable
-[ ] Status updated
-[ ] Traceability established
-```
-
----
-
-# 60. Definition of Done — Domain
-
-A semantic domain is complete when:
-
-```text
-[ ] 101_definition.md exists
-[ ] 102_status.yaml exists
-[ ] Domain identity established
-[ ] Scope established
-[ ] Parent/child relationships established
-[ ] Semantic primitives defined
-[ ] Abstractions defined
-[ ] Operations defined
-[ ] Types defined
-[ ] Invariants defined
-[ ] Inputs/outputs defined
-[ ] State model defined
-[ ] Error semantics defined
-[ ] Composition defined
-[ ] MLIR representation defined
-[ ] Runtime semantics defined
-[ ] Provider boundary defined
-[ ] Dependencies classified
-[ ] Tests defined
-[ ] Validation defined
-[ ] Implementation status accurate
-[ ] Graph relationships derivable
-```
-
----
-
-# 61. Definition of Done — Module
-
-A module is complete when:
-
-```text
-semantic contract
-        +
-implementation
-        +
-tests
-        +
-validation
-        +
-MLIR integration
-        +
-lowering
-        +
-runtime behavior
-        +
-provider integration
-        +
-traceability
-```
-
-have been addressed to the degree applicable to that module.
-
-Not every module requires every category.
-
-The definition must explain why a category is:
-
-```text
-applicable
-not applicable
-planned
-blocked
-```
-
----
-
-# 62. Definition of Done — Program Increment
-
-A program increment is complete when the relevant architecture can be answered mechanically.
-
-For each domain:
-
-```text
-What is it?
-Why does it exist?
-What does it mean?
-What are its invariants?
-What does it consume?
-What does it produce?
-How does it compose?
-What does it depend on?
-What depends on it?
-How is it represented in MLIR?
-How is it implemented?
-What providers implement it?
-Where can it execute?
-How is it tested?
-How is it validated?
-What remains incomplete?
-What changed?
-```
-
-The answers must be traceable to project artifacts.
-
----
-
-# 63. Preferred Work Order
-
-For substantial features, use:
-
-```text
-DISCOVER
-   ↓
-CLASSIFY
-   ↓
-DEFINE
-   ↓
-RELATE
-   ↓
-SPECIFY
-   ↓
-DESIGN TESTS
-   ↓
-IMPLEMENT
-   ↓
-TEST
-   ↓
-VALIDATE
-   ↓
-INTEGRATE
-   ↓
-OPTIMIZE
-```
-
-Optimization belongs near the end.
-
----
-
-# 64. Minimal Change Principle
-
-Make the smallest change that correctly satisfies the semantic and engineering requirements.
-
-Avoid:
-
-```text
-unrelated refactors
-style-only rewrites
-unnecessary dependency changes
-architectural churn
-premature abstraction
-```
-
-However, do not preserve obviously incorrect architecture merely because changing it is inconvenient.
-
-Semantic correctness takes precedence over minimal textual change.
-
----
-
-# 65. Documentation Requirements
-
-When adding a meaningful capability, update documentation where appropriate.
-
-At minimum consider:
-
-```text
-101_definition.md
-102_status.yaml
-tests
-API documentation
-examples
-graph
-```
-
-If behavior changes, documentation must not remain silently stale.
-
----
-
-# 66. Examples Are Architectural Tests
-
-Examples should demonstrate semantic composition rather than provider-specific usage whenever possible.
-
-Prefer:
-
-```text
-ecosystem.simulate()
-```
-
-over an example whose primary purpose is:
-
-```text
-call Chrono API
-```
-
-unless the example specifically demonstrates a provider.
-
-Examples should help answer:
-
-> What can a developer express using SCR?
-
----
-
-# 67. Public Documentation
-
-The public documentation should maintain a clear distinction between:
-
-```text
-current implementation
-```
-
-and:
-
-```text
-architectural vision
-```
-
-Do not present planned capabilities as implemented functionality.
-
-Use language such as:
-
-```text
-provides
-```
-
-for implemented functionality and:
-
-```text
-is intended to
-may
-could
-is designed to
-```
-
-for architectural goals that are not yet implemented.
-
----
-
-# 68. Security and Isolation
-
-Where relevant, consider:
-
-```text
-provider isolation
-resource limits
-untrusted inputs
-external execution
-memory safety
-process boundaries
-network access
-code generation
-dynamic loading
-serialization
-```
-
-Do not assume that a semantic operation is safe merely because its mathematical definition is safe.
-
-The implementation and runtime boundaries can introduce security concerns.
-
----
-
-# 69. External Resources
-
-Do not introduce an external dependency simply because it provides a convenient implementation.
-
-Before adding one, consider:
-
-```text
-semantic necessity
-license
-maintenance
-portability
-performance
-build complexity
-runtime requirements
-platform restrictions
-security
-provider isolation
-```
-
-Prefer provider boundaries for optional implementations.
-
----
-
-# 70. Build and Tooling
-
-Respect the repository's established toolchain.
-
-Do not casually replace:
-
-```text
-CMake
-Ninja
-Clang/LLVM
-Rust
-Python
-Nix
-```
-
-or other project infrastructure.
-
-Before changing build architecture:
-
-```text
-inspect existing configuration
-understand why it exists
-identify affected targets
-test the proposed change
-```
-
-Do not introduce multiple incompatible ways of building the same component without a clear reason.
-
----
-
-# 71. Environment Assumptions
-
-Development environments may differ.
-
-Do not assume:
-
-```text
-specific filesystem paths
-specific LLVM installation
-specific GPU
-specific operating system
-specific compiler version
-```
-
-unless the repository explicitly requires them.
-
-When a dependency is required, fail clearly and diagnostically.
-
----
-
-# 72. Generated Files
-
-Treat generated artifacts according to their declared role.
-
-If:
-
-```text
-103_library.graph.json
-```
-
-is generated, do not hand-edit it as the primary mechanism of architecture management.
-
-Likewise, do not manually modify generated MLIR/C++/Rust artifacts when the source definition or generator should be changed instead.
-
-Always identify:
-
-```text
-source artifact
-generated artifact
-generation mechanism
-```
-
-before modifying generated output.
-
----
-
-# 73. Agent Autonomy
-
-Agents may:
-
-```text
-inspect
-analyze
-implement
-test
-document
-refactor
-```
-
-within their assigned scope.
-
-Agents must not silently:
-
-```text
-change semantic meaning
-delete architectural domains
-replace providers
-introduce major dependencies
-change public contracts
-rewrite foundational types
-```
-
-without documenting the architectural consequence.
-
----
-
-# 74. When to Stop and Ask
-
-Stop and escalate when:
-
-```text
-two semantic definitions conflict
-```
-
-and neither has clear authority.
-
-Also escalate when:
-
-```text
-a foundational type requires incompatible meanings
-```
-
-or:
-
-```text
-a requested implementation requires violating a semantic invariant
-```
-
-or:
-
-```text
-the correct architecture cannot be determined from existing specifications
-```
-
-Do not resolve foundational ambiguity by guesswork.
-
-For local implementation ambiguity, prefer the least surprising interpretation and document it.
-
----
-
-# 75. Architectural Questions
-
-When encountering an unresolved architectural question, record:
-
-```text
-Question
-Context
-Affected domains
-Current alternatives
-Semantic consequences
-Implementation consequences
-Recommendation
-Decision
-Decision authority
-Date
-```
-
-Do not bury architectural decisions inside implementation commits without documentation.
-
----
-
-# 76. The SCR Mental Model
-
-Agents should continually reason using:
-
-```text
-Semantic Meaning
+Semantic Model
        ↓
+Domain IR
+       ↓
+MLIR
+       ↓
+Transformation / Lowering
+       ↓
+CPU Execution
+       ↓
+Simulation State
+       ↓
+Render State
+       ↓
+Rendering
+       ↓
+Visible Result
+```
+
+The v0.0.1 Golden Path is authoritative for the current vertical milestone.
+
+Do not treat the existence of hundreds of semantic directories as a requirement to implement them all.
+
+---
+
+# 42. Minimal Implementation Principle
+
+When implementing a new capability:
+
+> **Implement the smallest semantically complete vertical slice that proves the contract.**
+
+Do not begin with:
+
+* speculative abstractions;
+* generalized frameworks;
+* unused providers;
+* premature optimization;
+* comprehensive backend support;
+* complete domain coverage.
+
+First establish:
+
+```text
+Meaning
+ ↓
 Contract
-       ↓
-Composition
-       ↓
+ ↓
 Representation
-       ↓
-Transformation
-       ↓
-Provider
-       ↓
+ ↓
 Execution
+ ↓
+Validation
 ```
 
-rather than:
-
-```text
-Directory
-       ↓
-Class
-       ↓
-Function
-       ↓
-Library Call
-```
-
-The second view describes implementation.
-
-The first describes SCR.
-
-Both are necessary.
-
-The first has architectural authority.
+Then generalize when evidence requires it.
 
 ---
 
-# 77. Final Rules
+# 43. Documentation Policy
 
-Before submitting substantive work, ask:
+Documentation should describe the architecture at the appropriate level.
+
+Use:
 
 ```text
-1. Did I understand the semantic domain?
-2. Did I inspect its parent and related domains?
-3. Did I distinguish semantics from implementation?
-4. Did I preserve existing invariants?
-5. Did I document new semantic behavior?
-6. Did I classify dependencies correctly?
-7. Did I add appropriate tests?
-8. Did I actually run the relevant tests?
-9. Did I validate behavior against the contract?
-10. Did I update status?
-11. Did I update affected graph information?
-12. Did I avoid unrelated changes?
-13. Did I preserve provider independence?
-14. Did I preserve backend independence?
-15. Did I record unresolved questions?
+README.md
 ```
 
-If the answer to any applicable question is **no**, the work is not complete.
+for repository-level orientation.
+
+Use:
+
+```text
+GETTING_STARTED.md
+```
+
+for practical development setup and entry into the repository.
+
+Use:
+
+```text
+AGENTS.md
+```
+
+for agent operating policy.
+
+Use semantic library definitions for domain meaning.
+
+Use status records for engineering state.
+
+Use implementation documentation for implementation-specific behavior.
+
+Do not duplicate normative domain definitions across documents.
 
 ---
 
-# 78. The Governing Principle
+# 44. When to Escalate
 
-The most important rule in this repository is:
+An agent must stop and request clarification or architectural direction when:
 
-> **The code is not the architecture.**
+* two normative specifications conflict;
+* a required semantic distinction is undefined;
+* an implementation requires inventing domain semantics;
+* a proposed change alters a foundational invariant;
+* a provider limitation would require weakening the semantic contract;
+* two architectural interpretations are materially incompatible;
+* a change affects multiple foundational domains without an established relationship;
+* a task requires changing the source of truth outside the assigned scope;
+* security, persistence, identity, or execution semantics are unclear;
+* the correct behavior cannot be established from authoritative project material.
 
-The architecture is the semantic model.
+Do not guess foundational architecture.
+
+---
+
+# 45. Definition of Done
+
+A substantive change is complete only when the applicable requirements have evidence.
+
+Consider:
+
+```text
+Semantic Contract
+    ✓
+
+Implementation
+    ✓
+
+Tests
+    ✓
+
+Validation
+    ✓
+
+Documentation
+    ✓
+
+Status
+    ✓
+
+Derived Artifacts
+    ✓
+```
+
+Additional requirements may apply:
+
+```text
+MLIR Integration
+Lowering
+Provider
+Runtime
+Serialization
+Cross-Substrate Validation
+Performance
+Security
+```
+
+These are conditional.
+
+Do not mark a requirement complete merely because an artifact exists.
+
+Completion means the requirement has been demonstrated.
+
+---
+
+# 46. Change Classification
+
+Before finalizing a change, classify it.
+
+### Semantic Change
+
+Changes what a concept means.
+
+Requires:
+
+* specification review;
+* invariant review;
+* contract review;
+* affected relationship review;
+* tests;
+* status update.
+
+### Representational Change
+
+Changes how meaning is represented.
+
+Requires:
+
+* representation correctness;
+* preservation of semantics;
+* transformation tests.
+
+### Implementation Change
+
+Changes how a contract is realized.
+
+Requires:
+
+* implementation tests;
+* conformance validation;
+* equivalence analysis where applicable.
+
+### Provider Change
+
+Changes an external implementation path.
+
+Requires:
+
+* provider capability review;
+* contract coverage;
+* provider-specific validation.
+
+### Optimization
+
+Changes execution characteristics while preserving the applicable semantic contract.
+
+Requires:
+
+* measurement;
+* equivalence validation;
+* regression testing.
+
+### Documentation Change
+
+Changes explanation without changing normative meaning.
+
+Must not accidentally introduce semantic changes.
+
+---
+
+# 47. Review Questions
+
+Before completing substantive work, ask:
+
+### Semantics
+
+```text
+What does this mean?
+What contract does it implement?
+What invariants must hold?
+```
+
+### Architecture
+
+```text
+Where does this belong?
+What relationships does it have?
+What layer owns it?
+```
+
+### Representation
+
+```text
+What is semantic?
+What is representational?
+What is implementation-specific?
+```
+
+### Execution
+
+```text
+How does this reach MLIR?
+How does it lower?
+Which provider executes it?
+What substrate runs it?
+```
+
+### Correctness
+
+```text
+What proves it works?
+What proves invariants are preserved?
+What proves equivalence?
+```
+
+### Scope
+
+```text
+Was this actually required?
+Did the change expand beyond the assigned task?
+```
+
+---
+
+# 48. Common Agent Failure Modes
+
+Avoid these patterns.
+
+## Coding from filenames
+
+```text
+directory exists
+    ↓
+therefore capability exists
+```
+
+False.
+
+## Coding from documentation alone
+
+Documentation may be stale.
+
+Check definitions, status, tests and implementation.
+
+## Treating implementation as specification
+
+```text
+current behavior
+    ↓
+therefore intended semantics
+```
+
+False.
+
+## Treating external libraries as semantic authorities
+
+```text
+library API
+    ↓
+SCR semantics
+```
+
+Incorrect direction.
+
+## Inventing semantics to make code compile
+
+Compilation is not semantic validation.
+
+## Creating abstractions prematurely
+
+Do not build generalized infrastructure before a real semantic requirement establishes the need.
+
+## Confusing representations with concepts
+
+```text
+Tensor ≠ Field
+Mesh ≠ Morphology
+GPU Buffer ≠ Data
+Vulkan Resource ≠ Render Object
+```
+
+## Treating status as proof
+
+A status label is evidence about reported state, not proof of correctness.
+
+## Treating one passing test as equivalence
+
+One output is not semantic equivalence.
+
+## Expanding task scope
+
+Do not refactor unrelated architecture merely because you discover an opportunity.
+
+## Fixing generated artifacts directly
+
+Change the authoritative source and regenerate.
+
+---
+
+# 49. Preferred Agent Mental Model
+
+An SCR agent should reason in this order:
+
+```text
+                    ┌─────────────────────┐
+                    │  What does it mean? │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ What is the contract?│
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ What relates to it? │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ How is it represented?│
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ How is it transformed?│
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ How is it lowered?  │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Which provider?     │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Where does it run?  │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ How is it validated?│
+                    └─────────────────────┘
+```
+
+Never reverse this process merely because implementation details are easier to see.
+
+---
+
+# 50. The Three Questions
+
+Before changing SCR, an agent should be able to answer:
+
+### 1. What does this mean?
+
+The semantic definition.
+
+### 2. What currently exists?
+
+The implementation and status.
+
+### 3. How do I prove the change is correct?
+
+The contract, tests and validation.
+
+If any of these cannot be answered, investigate before implementing.
+
+---
+
+# 51. Final Rules
+
+The following rules are mandatory:
+
+1. **Semantics are authoritative.**
+2. **Implementation does not define meaning.**
+3. **Status does not define meaning.**
+4. **The filesystem is not the semantic architecture.**
+5. **Relationships must be explicit.**
+6. **Providers implement contracts; they do not own them.**
+7. **Representations must preserve semantics.**
+8. **Use MLIR rather than unnecessarily duplicating MLIR infrastructure.**
+9. **Do not invent missing foundational semantics.**
+10. **Specify before implementing when semantic behavior is new.**
+11. **Test contracts, not merely implementations.**
+12. **Distinguish semantic, numerical and bitwise equivalence.**
+13. **Validate invariants explicitly.**
+14. **Prefer minimal complete vertical slices.**
+15. **Do not expand task scope without justification.**
+16. **Derived artifacts must remain derived.**
+17. **Optimization follows correctness and measurement.**
+18. **External technologies remain subordinate to SCR contracts.**
+19. **When architecture is genuinely ambiguous, stop and escalate.**
+20. **The code is not the architecture.**
+
+---
+
+# 52. Governing Principle
+
+SCR exists to make computational meaning portable across representations, implementations and execution substrates.
 
 Therefore:
 
 ```text
-Specification ≠ Implementation
-
-Status ≠ Specification
-
-Graph ≠ Source of Truth
-
-Provider ≠ Semantic Authority
-
-Backend ≠ Semantic Meaning
-
-Representation ≠ Concept
+Meaning
+  ↓
+Contract
+  ↓
+Representation
+  ↓
+Transformation
+  ↓
+Implementation
+  ↓
+Execution
 ```
 
-The intended relationship is:
+must remain traceable.
 
-```mermaid
-flowchart TD
-    CONCEPT[Semantic Concept]
-    CONTRACT[Semantic Contract]
-    MLIR[Semantic MLIR]
-    IMPL[Implementation]
-    PROVIDER[Provider / Adapter]
-    RUNTIME[Runtime]
-    HARDWARE[Execution Substrate]
+The agent's job is not merely to make the code work.
 
-    CONCEPT --> CONTRACT
-    CONTRACT --> MLIR
-    MLIR --> IMPL
-    IMPL --> PROVIDER
-    PROVIDER --> RUNTIME
-    RUNTIME --> HARDWARE
-```
+The agent's job is to make the implementation **faithfully realize the computational semantics of SCR**.
 
-And the development lifecycle is:
-
-```mermaid
-flowchart LR
-    D[Describe]
-    S[Specify]
-    T[Test Design]
-    I[Implement]
-    V[Validate]
-
-    D --> S
-    S --> T
-    T --> I
-    I --> V
-    V -->|refinement| S
-```
-
-SCR exists to make computational meaning:
-
-```text
-composable
-portable
-optimizable
-discoverable
-verifiable
-traceable
-semantically addressable
-```
-
-Agents working on SCR must preserve that objective above all implementation convenience.
+> **Do not let the implementation become the architecture.**

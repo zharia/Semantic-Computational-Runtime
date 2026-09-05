@@ -8,382 +8,132 @@ That is the fundamental question behind the **Semantic Computational Runtime (SC
 
 SCR is an experimental, open computational environment built on [MLIR](https://mlir.llvm.org/) that explores a different way of constructing software:
 
-Instead of making applications depend directly on implementation technologies, applications describe **semantic intent**.
+> **Applications describe computational meaning. The compiler and runtime determine how that meaning can be represented, transformed, implemented, and executed.**
 
-The runtime and compiler can then determine how that intent can be represented, composed, optimized, implemented, and executed.
+This is more than another abstraction layer.
 
-This seemingly simple change has profound consequences.
-
-It potentially allows physics, geometry, simulation, artificial intelligence, spatial computing, graphs, rendering, messaging, streaming, numerical computation, robotics, and other computational domains to participate in the **same computational environment**.
+SCR explores the possibility that **computational semantics itself can become a portable compilation substrate**.
 
 ---
 
-# Table of Contents
+# 1. The Problem
 
-* [1. The Idea in One Minute](#1-the-idea-in-one-minute)
-* [2. Why This Matters](#2-why-this-matters)
-* [3. Software Today: Implementation First](#3-software-today-implementation-first)
-* [4. SCR: Meaning First](#4-scr-meaning-first)
-* [5. A Simple Example](#5-a-simple-example)
-* [6. From Meaning to Machine](#6-from-meaning-to-machine)
-* [7. The Semantic Layer](#7-the-semantic-layer)
-* [8. Why MLIR Is Important](#8-why-mlir-is-important)
-* [9. Computational Domains Become Composable](#9-computational-domains-become-composable)
-* [10. Fields: Information That Can Compute](#10-fields-information-that-can-compute)
-* [11. Morphology: When Patterns Become Form](#11-morphology-when-patterns-become-form)
-* [12. Physics, Dynamics, and Simulation](#12-physics-dynamics-and-simulation)
-* [13. AI Does Not Have to Live in a Separate World](#13-ai-does-not-have-to-live-in-a-separate-world)
-* [14. Geometry Does Not Have to Mean One Representation](#14-geometry-does-not-have-to-mean-one-representation)
-* [15. Rendering Becomes Part of Computation](#15-rendering-becomes-part-of-computation)
-* [16. Streams and Messaging Become Computational Primitives](#16-streams-and-messaging-become-computational-primitives)
-* [17. The Provider Model](#17-the-provider-model)
-* [18. One Meaning, Many Implementations](#18-one-meaning-many-implementations)
-* [19. Hardware Without Hardware Lock-In](#19-hardware-without-hardware-lock-in)
-* [20. The Semantic Graph](#20-the-semantic-graph)
-* [21. A Computational Example](#21-a-computational-example)
-* [22. What This Could Enable](#22-what-this-could-enable)
-* [23. Who Could Use SCR](#23-who-could-use-scr)
-* [24. What SCR Is Not](#24-what-scr-is-not)
-* [25. The Long-Term Vision](#25-the-long-term-vision)
-* [26. Project Status](#26-project-status)
-* [27. Learn More](#27-learn-more)
+Modern software is extraordinarily capable, but much of it remains organized around implementation boundaries.
 
----
-
-# 1. The Idea in One Minute
-
-Most software works roughly like this:
+A typical computational application might look like:
 
 ```text
-Problem
-   ↓
-Choose a library
-   ↓
-Choose an API
-   ↓
-Choose a programming language
-   ↓
-Choose an execution model
-   ↓
-Choose hardware
-   ↓
-Build application
+Application
+    │
+    ├── Physics Library
+    ├── Geometry Library
+    ├── Spatial Library
+    ├── Machine Learning Framework
+    ├── Rendering Engine
+    ├── Message Broker
+    └── Database
 ```
 
-SCR explores the reverse:
+Each technology brings its own:
+
+* types;
+* representations;
+* APIs;
+* execution model;
+* memory model;
+* lifecycle;
+* assumptions;
+* optimization strategy.
+
+The application becomes responsible for connecting those worlds.
+
+Replacing one implementation can therefore require changing the application.
+
+Moving computation from CPU to GPU can expose hardware-specific assumptions.
+
+Changing a spatial indexing strategy can expose data-structure assumptions.
+
+Changing a rendering system can expose representation assumptions.
+
+Integrating a neural model with a simulation can expose completely different computational models.
+
+The problem is not that these technologies are bad.
+
+The problem is that **their implementation boundaries become application boundaries**.
+
+---
+
+# 2. The Central Idea
+
+SCR asks:
+
+> **What if the computational concepts themselves were the common language?**
+
+Instead of beginning with:
+
+```text
+Which library should I call?
+Which API should I use?
+Which data structure does it require?
+Which hardware does it target?
+```
+
+begin with:
+
+```text
+What computation do I mean?
+What entities participate?
+What relationships exist?
+What constraints apply?
+What transformations are valid?
+What capabilities are required?
+```
+
+The resulting architecture becomes:
 
 ```text
 Problem
    ↓
 Semantic Model
    ↓
-Composition
+Domain IR
    ↓
-Compilation
+MLIR
    ↓
-Implementation
+Analysis / Transformation
    ↓
-Hardware
+Lowering
+   ↓
+Provider
+   ↓
+Runtime
+   ↓
+Execution Substrate
 ```
 
-The application starts by describing **what it wants to accomplish**.
+The application expresses **what**.
 
-For example:
+The semantic model expresses **what it means**.
 
-```text
-integrate this dynamical system
-```
+The compiler determines **what transformations are valid**.
 
-rather than:
+The provider determines **how the semantics can be implemented**.
 
-```text
-call this particular physics engine's integration API
-```
-
-Or:
-
-```text
-find the spatial neighbours of these entities
-```
-
-rather than:
-
-```text
-call this particular spatial-index library
-```
-
-Or:
-
-```text
-transform this field
-```
-
-rather than:
-
-```text
-allocate this particular tensor type and invoke this particular kernel
-```
-
-The difference is subtle at first.
-
-But it becomes enormous when many different kinds of computation need to interact.
+The runtime determines **where and when execution occurs**.
 
 ---
 
-# 2. Why This Matters
+# 3. Meaning Is Not Representation
 
-Computing has become extraordinarily powerful.
+This distinction is foundational.
 
-We have:
+Consider a semantic position.
 
-* CPUs with increasingly sophisticated vector units
-* GPUs with massive parallel throughput
-* dedicated AI accelerators
-* specialized numerical hardware
-* distributed computing
-* high-speed interconnects
-* increasingly sophisticated compiler infrastructure
-* thousands of specialized open-source libraries
-
-Yet our applications are still frequently constructed around the boundaries imposed by those technologies.
-
-A physics engine has its own world.
-
-A neural network framework has its own world.
-
-A geometry library has its own world.
-
-A rendering engine has its own world.
-
-A message broker has its own world.
-
-A graph engine has its own world.
-
-Connecting them usually means writing glue code.
-
-SCR asks:
-
-> **What if the computational concepts themselves were the common language?**
-
----
-
-# 3. Software Today: Implementation First
-
-Consider a developer building a simulation.
-
-They might decide:
-
-```text
-Physics      → Physics Engine A
-Geometry     → Geometry Library B
-Spatial      → Spatial Library C
-AI           → ML Framework D
-Rendering    → Rendering Engine E
-Messaging    → Message Broker F
-```
-
-The application then becomes something like:
-
-```mermaid
-flowchart TD
-    APP[Application]
-    P[Physics Library]
-    G[Geometry Library]
-    S[Spatial Library]
-    AI[AI Framework]
-    R[Rendering Engine]
-    M[Message Broker]
-
-    APP --> P
-    APP --> G
-    APP --> S
-    APP --> AI
-    APP --> R
-    APP --> M
-```
-
-Each integration boundary introduces assumptions.
-
-Now imagine replacing the physics engine.
-
-Or moving neural inference from CPU to GPU.
-
-Or replacing the spatial indexing algorithm.
-
-Or changing the rendering backend.
-
-Or distributing part of the computation across machines.
-
-The application often has to know about those changes.
-
-The implementation has leaked into the application architecture.
-
----
-
-# 4. SCR: Meaning First
-
-SCR proposes inserting a semantic layer between the application and the implementation.
-
-```mermaid
-flowchart TD
-    A[Application]
-    S[Semantic Model]
-    M[Semantic MLIR]
-    C[Compiler]
-    P[Provider / Adapter]
-    H[Execution Substrate]
-
-    A --> S
-    S --> M
-    M --> C
-    C --> P
-    P --> H
-```
-
-The application describes:
-
-```text
-what
-```
-
-The semantic layer describes:
-
-```text
-what it means
-```
-
-The compiler determines:
-
-```text
-what transformations are valid
-```
-
-The provider determines:
-
-```text
-how the semantics can be implemented
-```
-
-The runtime determines:
-
-```text
-where and when it should execute
-```
-
----
-
-# 5. A Simple Example
-
-Imagine an application wants to propagate an agent through an environment.
-
-At a high level, it might express:
-
-```text
-agent.propagate(
-    agent,
-    environment,
-    timestep
-)
-```
-
-That operation could semantically involve:
-
-```text
-position
-velocity
-environmental field
-constraints
-neighbour relationships
-collision geometry
-decision state
-```
-
-The application does not necessarily need to know whether the resulting computation becomes:
-
-```text
-CPU code
-GPU kernels
-a physics engine call
-a generated solver
-a vectorized loop
-a distributed computation
-```
-
-The semantic representation provides the common ground.
-
----
-
-# 6. From Meaning to Machine
-
-A simplified SCR compilation path looks like:
-
-```mermaid
-flowchart LR
-    A[Semantic Intent]
-    B[Semantic Contract]
-    C[Semantic MLIR]
-    D[Analysis]
-    E[Transformation]
-    F[Provider Selection]
-    G[Lowering]
-    H[Executable]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-```
-
-For example:
-
-```text
-physics.integrate
-```
-
-could eventually become:
-
-```text
-semantic.physics.integrate
-        ↓
-verified dynamical operation
-        ↓
-optimized numerical representation
-        ↓
-provider selection
-        ↓
-solver implementation
-        ↓
-CPU / GPU / accelerator
-```
-
-The semantic identity survives the transformations.
-
-That is important.
-
-The lower-level representation can change without changing what the operation means.
-
----
-
-# 7. The Semantic Layer
-
-SCR introduces a distinction between **meaning** and **representation**.
-
-Consider a position.
-
-Semantically:
-
-```text
-Position
-```
-
-might mean:
+Its meaning might be:
 
 > A location in a specified spatial domain and coordinate system.
 
-It could then be represented as:
+That concept could be represented as:
 
 ```text
 (x, y, z)
@@ -392,151 +142,256 @@ It could then be represented as:
 or:
 
 ```text
-a geometric point
+Geometric Point
 ```
 
 or:
 
 ```text
-a SIMD vector
+SIMD Vector
 ```
 
 or:
 
 ```text
-a GPU buffer
+Tensor
 ```
 
 or:
 
 ```text
-a distributed spatial record
+GPU Buffer
 ```
 
-These are different implementations of a semantic concept.
+or:
+
+```text
+Distributed Spatial Record
+```
+
+These representations are not the concept itself.
 
 Therefore:
 
 ```text
-Semantic Position
+Semantic Meaning
+       ≠
+Language Representation
+       ≠
+IR Representation
        ≠
 Memory Representation
        ≠
-MLIR Representation
-       ≠
-Hardware Representation
+Device Representation
 ```
 
-SCR attempts to preserve that distinction throughout the computational pipeline.
+SCR attempts to preserve this distinction throughout the computational pipeline.
+
+A useful way to express the principle is:
+
+```text
+Semantic Position
+       ≠
+Rust Position Struct
+       ≠
+MLIR Value
+       ≠
+GPU Buffer
+       ≠
+Vulkan Resource
+```
+
+The representation may change.
+
+The semantic identity should remain traceable.
 
 ---
 
-# 8. Why MLIR Is Important
+# 4. From Meaning to Machine
 
-SCR does not attempt to invent another compiler infrastructure.
-
-It is built on **MLIR**.
-
-MLIR already provides a powerful extensible foundation for representing and transforming computation.
-
-It provides concepts such as:
-
-* operations
-* values
-* types
-* attributes
-* regions
-* dialects
-* interfaces
-* traits
-* verification
-* rewriting
-* canonicalization
-* transformations
-* dialect conversion
-* lowering
-
-SCR adds another layer of meaning on top of those mechanisms.
-
-Conceptually:
+A simplified SCR compilation path is:
 
 ```text
-┌─────────────────────────────┐
-│      SCR Semantics          │
-│                             │
-│ domains                     │
-│ contracts                   │
-│ relationships               │
-│ capabilities                │
-│ invariants                  │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│            MLIR             │
-│                             │
-│ operations                  │
-│ types                       │
-│ attributes                  │
-│ regions                     │
-│ interfaces                  │
-│ transformations             │
-└──────────────┬──────────────┘
-               │
-               ▼
+Semantic Intent
+      ↓
+Semantic Contract
+      ↓
+Semantic Model
+      ↓
+Domain IR
+      ↓
+MLIR
+      ↓
+Analysis
+      ↓
+Transformation
+      ↓
+Provider Selection
+      ↓
+Lowering
+      ↓
+Runtime
+      ↓
+Execution
+```
+
+For example, an application might express a semantic operation such as:
+
+```text
+physics.integrate
+```
+
+The computational system may subsequently determine:
+
+```text
+physics.integrate
+       ↓
+verified dynamical operation
+       ↓
+optimized numerical representation
+       ↓
+provider selection
+       ↓
+solver implementation
+       ↓
+CPU / GPU / accelerator
+```
+
+The lower-level representation can change without changing what the operation means.
+
+That separation is the foundation for semantic portability.
+
+---
+
+# 5. Why MLIR?
+
+SCR does not attempt to replace compiler infrastructure.
+
+It is built on MLIR.
+
+MLIR already provides a powerful extensible foundation for representing and transforming computation through mechanisms such as:
+
+* operations;
+* values;
+* types;
+* attributes;
+* regions;
+* blocks;
+* dialects;
+* interfaces;
+* traits;
+* verification;
+* rewriting;
+* canonicalization;
+* transformation;
+* dialect conversion;
+* lowering.
+
+SCR uses those capabilities as part of a larger semantic architecture.
+
+The conceptual relationship is:
+
+```text
+┌─────────────────────────────────┐
+│        SCR Semantic Model       │
+│                                 │
+│ domains                         │
+│ contracts                       │
+│ relationships                   │
+│ capabilities                    │
+│ invariants                      │
+│ semantic operations             │
+└───────────────┬─────────────────┘
+                │
+                ▼
+┌─────────────────────────────────┐
+│              Domain IR          │
+│                                 │
+│ semantic representation         │
+│ domain operations               │
+│ domain types                    │
+│ verification                    │
+└───────────────┬─────────────────┘
+                │
+                ▼
+┌─────────────────────────────────┐
+│              MLIR               │
+│                                 │
+│ operations                      │
+│ types                           │
+│ attributes                      │
+│ regions                         │
+│ interfaces                      │
+│ transformations                 │
+└───────────────┬─────────────────┘
+                │
+                ▼
         Target compilation
 ```
 
-This lets SCR concentrate on the difficult question:
+The distinction is important:
 
-> **What does this computation mean?**
+> **SCR defines computational semantics. MLIR provides compiler infrastructure for representing and transforming those semantics.**
 
-rather than rebuilding the machinery required to manipulate intermediate representations.
+Not every SCR semantic domain requires its own MLIR dialect.
+
+The appropriate representation depends on the semantic requirements.
 
 ---
 
-# 9. Computational Domains Become Composable
+# 6. Computational Domains Become Composable
 
-One of the most important consequences of this approach is that computational domains no longer need to be isolated.
+Once computational meaning is represented explicitly, domains that are normally isolated can become participants in one computational system.
 
 Consider:
 
-```mermaid
-flowchart TD
-    FIELD[Information Field]
-    MORPH[Morphology]
-    GEO[Geometry]
-    PHYS[Physics]
-    DYN[Dynamics]
-    AGENT[Agent]
-    AI[Neural Computation]
-    RENDER[Rendering]
-
-    FIELD --> MORPH
-    MORPH --> GEO
-    GEO --> PHYS
-    PHYS --> DYN
-    DYN --> AGENT
-    AGENT --> AI
-    AI --> AGENT
-    GEO --> RENDER
-    MORPH --> RENDER
-    FIELD --> RENDER
+```text
+Information Field
+       ↕
+    Pattern
+       ↕
+   Morphology
+       ↕
+ Geometry / Topology
+       ↕
+    Dynamics
+       ↕
+    Simulation
+       ↕
+     Agent
+       ↕
+ Neural Computation
+       ↕
+   Perception
+       ↕
+     Control
+       ↕
+    Dynamics
 ```
 
-This is not merely an application-level integration diagram.
+Rendering, streaming and messaging can participate across the same computational structure.
 
-The intention is for these concepts to be understandable to the compiler as semantic relationships.
+The important point is not simply that one application can call several libraries.
 
-That creates opportunities for transformations that would otherwise be hidden behind library boundaries.
+The important point is that the relationships between these concepts can become **semantically visible to the compiler and runtime**.
+
+That creates possibilities for transformations that would otherwise be hidden behind unrelated library boundaries.
 
 ---
 
-# 10. Fields: Information That Can Compute
+# 7. Information as a Computational Substrate
 
-A **field** can be thought of as information distributed across some domain.
+SCR treats information as more than passive data.
 
-Examples include:
+A field, graph, stream, pattern, state, observation or relationship may participate directly in computation.
+
+Consider a field:
+
+```text
+Field
+```
+
+It might represent:
 
 ```text
 temperature
@@ -545,15 +400,15 @@ light
 density
 probability
 velocity
-semantic influence
 distance
 potential
 environmental state
+semantic influence
 ```
 
-But fields do not need to be limited to physics.
+But a field need not be limited to physical quantities.
 
-A field could describe:
+It might describe:
 
 ```text
 where something is likely to occur
@@ -571,1065 +426,1258 @@ or:
 the intensity of a semantic property across space
 ```
 
-This becomes especially interesting when fields interact with other domains.
-
-For example:
+The important distinction is:
 
 ```text
-environmental field
-        ↓
-pattern formation
-        ↓
-morphology
-        ↓
-geometry
-        ↓
-rendering
+Data
+  ↓
+semantic structure
+  ↓
+computational participation
 ```
 
-The field becomes part of the computation rather than merely a dataset consumed by an application.
+A field can influence morphology.
+
+Morphology can influence geometry.
+
+Geometry can influence dynamics.
+
+Dynamics can modify the field.
+
+The information is therefore part of the computational process rather than merely an input file.
 
 ---
 
-# 11. Morphology: When Patterns Become Form
+# 8. Patterns and Morphology
 
-Morphology concerns **structure and form**.
+SCR treats morphology as a first-class computational domain.
 
-It is deliberately broader than mesh processing.
+Morphology concerns:
 
-A morphology might emerge from:
+* form;
+* structure;
+* organization;
+* differentiation;
+* arrangement;
+* transformation;
+* structural relationships.
 
-```text
-patterns
-fields
-topology
-constraints
-geometry
-dynamics
-relationships
-```
+It is deliberately broader than mesh processing or image morphology.
 
-For example:
+Morphological structure can emerge from:
 
 ```text
-growth field
-     ↓
-pattern
-     ↓
-morphological structure
-     ↓
-geometry
-     ↓
-renderable form
+Patterns
+Fields
+Topology
+Constraints
+Geometry
+Dynamics
+Relationships
 ```
 
-But the relationship can also operate in reverse.
+A simple direction might be:
 
-Geometry can influence morphology.
+```text
+Field
+  ↓
+Pattern
+  ↓
+Morphological Interpretation
+  ↓
+Morphological Structure
+  ↓
+Geometry
+  ↓
+Renderable Form
+```
 
-Morphology can influence patterns.
+But the relationship is not one-way.
 
-Patterns can emerge from dynamics.
+Morphological structure can itself produce information about patterns.
 
 Therefore:
 
-```mermaid
-flowchart LR
-    P[Patterns]
-    F[Fields]
-    M[Morphology]
-    G[Geometry]
-    T[Topology]
-    D[Dynamics]
-
-    P <--> M
-    F <--> M
-    M <--> G
-    M <--> T
-    D <--> M
+```text
+Pattern
+   ↕
+Morphological Interpretation
+   ↕
+Morphological Structure
 ```
 
-This opens the door to computational systems where **form is an active participant in computation** rather than merely the final output of computation.
+and:
+
+```text
+Pattern
+   ↕
+Morphology
+   ↕
+Geometry
+   ↕
+Topology
+   ↕
+Dynamics
+```
+
+This creates a computational model in which **form is not merely the final output of computation**.
+
+Form can itself participate in computation.
 
 ---
 
-# 12. Physics, Dynamics, and Simulation
+# 9. Geometry and Topology
 
-Physics is a useful example because it demonstrates why semantic abstraction matters.
+A semantic geometric concept can have many representations.
 
-Suppose an application defines:
-
-```text
-body
-+
-mass
-+
-forces
-+
-constraints
-+
-material
-+
-environment
-```
-
-The semantic system can construct a dynamical model.
-
-The model might then be integrated using:
+For example, a shape might materialize as:
 
 ```text
-numerical solver A
-```
-
-or:
-
-```text
-numerical solver B
-```
-
-or:
-
-```text
-GPU implementation
-```
-
-or:
-
-```text
-specialized analytic solution
-```
-
-provided the implementation satisfies the required semantic contract.
-
-This makes it possible to distinguish:
-
-```text
-physical meaning
-```
-
-from:
-
-```text
-numerical implementation
-```
-
-That distinction is enormously valuable in scientific computing.
-
----
-
-# 13. AI Does Not Have to Live in a Separate World
-
-Today, machine learning systems are frequently treated as a separate computational universe.
-
-SCR instead treats neural computation as another semantic domain.
-
-For example:
-
-```mermaid
-flowchart LR
-    F[Fields]
-    G[Geometry]
-    S[Simulation State]
-    N[Neural Model]
-    A[Agent]
-    C[Control]
-    D[Dynamics]
-
-    F --> N
-    G --> N
-    S --> N
-    N --> A
-    A --> C
-    C --> D
-    D --> S
-```
-
-A neural model could therefore consume:
-
-* fields
-* geometry
-* graphs
-* simulation state
-* streams
-
-and produce:
-
-* predictions
-* decisions
-* actions
-* control signals
-* transformations
-
-The important point is not that SCR provides another neural-network framework.
-
-The point is that **neural computation can become composable with other computational semantics**.
-
----
-
-# 14. Geometry Does Not Have to Mean One Representation
-
-A geometric concept can have many useful representations.
-
-For example:
-
-```text
-semantic shape
-```
-
-might materialize as:
-
-```text
-mesh
-voxel structure
-point cloud
-implicit surface
-particle representation
-finite-element structure
-collision representation
-render geometry
+Mesh
+Voxel Structure
+Point Cloud
+Implicit Surface
+Particle Representation
+Finite-Element Structure
+Collision Representation
+Render Geometry
 ```
 
 Different consumers may require different representations.
 
-A physics solver may want one.
+A physics provider may require one.
 
-A renderer may want another.
+A renderer another.
 
-A spatial index may want another.
+A spatial index another.
 
-A neural model may want yet another.
+A neural model another.
 
-SCR's semantic layer creates the possibility of treating these as **representations of related computational meaning**, rather than forcing every consumer to share one physical data structure.
+The semantic model provides a common meaning from which these representations can be derived.
+
+Similarly, topology can describe relationships such as:
+
+```text
+Connectivity
+Adjacency
+Incidence
+Neighborhood
+Continuity
+Boundary
+Containment
+```
+
+without requiring a particular storage representation.
+
+This allows geometry and topology to remain semantic concepts rather than becoming synonymous with one data structure.
 
 ---
 
-# 15. Rendering Becomes Part of Computation
+# 10. Dynamics and Simulation
 
-Rendering is often treated as the end of a pipeline:
+SCR distinguishes between **dynamics** and **simulation**.
 
 ```text
-compute
+Dynamics
+    =
+what it means for a system to evolve
+
+Simulation
+    =
+a computational realization of a model
+```
+
+A dynamical system may contain:
+
+```text
+State
+Transitions
+Trajectories
+Flows
+Events
+Feedback
+Coupling
+Stability
+Attractors
+Constraints
+```
+
+A simulation provides mechanisms for:
+
+```text
+initialization
+execution
+time advancement
+observation
+checkpointing
+replay
+experimentation
+analysis
+validation
+```
+
+These should not be collapsed into one implementation concept.
+
+Likewise:
+
+```text
+Physics
+   ≠
+Dynamics
+   ≠
+Simulation
+```
+
+They may interact strongly while retaining distinct semantic roles.
+
+For example, a physical model may define constraints on a dynamical system, while a simulation provides one computational realization of its evolution.
+
+---
+
+# 11. Agents, Neural Computation and Control
+
+SCR does not require neural computation to live in a separate computational universe.
+
+A neural model may consume:
+
+```text
+Fields
+Geometry
+Graphs
+Simulation State
+Streams
+Observations
+```
+
+and produce:
+
+```text
+Predictions
+Decisions
+Actions
+Control Signals
+Transformations
+```
+
+Those outputs can then participate in:
+
+```text
+Agent
+  ↓
+Control
+  ↓
+Dynamics
+  ↓
+Simulation State
+  ↓
+Observation
+  ↓
+Perception
+  ↓
+Neural Computation
+```
+
+This creates a computational loop rather than a disconnected AI subsystem.
+
+The important idea is not that SCR is another neural-network framework.
+
+It is that **neural computation can participate in a broader semantic computational environment**.
+
+---
+
+# 12. Rendering Becomes Part of Computation
+
+Traditional computational pipelines often treat rendering as the end:
+
+```text
+Compute
    ↓
-render
+Render
    ↓
-display
+Display
 ```
 
 SCR allows a richer model.
 
-Rendering can consume semantic state while also participating in streaming, observation, feedback, and interaction.
+Rendering can participate in:
+
+* observation;
+* streaming;
+* interaction;
+* feedback;
+* perception;
+* analysis;
+* visualization;
+* computational control loops.
 
 For example:
 
-```mermaid
-flowchart LR
-    SIM[Simulation]
-    FIELD[Field]
-    MORPH[Morphology]
-    GEO[Geometry]
-    RENDER[Rendering]
-    STREAM[Stream]
-    OBS[Observation]
-
-    SIM --> FIELD
-    FIELD --> MORPH
-    MORPH --> GEO
-    GEO --> RENDER
-    RENDER --> STREAM
-    STREAM --> OBS
-    OBS --> SIM
+```text
+Simulation
+    ↓
+Field
+    ↓
+Morphology
+    ↓
+Geometry
+    ↓
+Rendering
+    ↓
+Observation
+    ↓
+Perception
+    ↓
+Decision
+    ↓
+Simulation
 ```
 
-This creates the possibility of computational systems in which:
+Rendering therefore becomes one possible observation pathway through a computational system.
+
+A particular implementation may eventually look like:
 
 ```text
-simulation
-→ morphology
-→ rendering
-→ observation
-→ perception
-→ decision
-→ simulation
-```
-
-forms a continuous computational loop.
-
-A rendering implementation may ultimately use:
-
-```text
-Rust
-   ↓
-C++ adapter
-   ↓
+Semantic Runtime
+      ↓
+Render State
+      ↓
+Render Commands
+      ↓
+Rust Renderer API
+      ↓
+C++ Adapter
+      ↓
 VulkanSceneGraph
-   ↓
+      ↓
 Vulkan
-   ↓
+      ↓
 GPU
 ```
 
-but none of those technologies need to define what `render` means.
+None of those implementation technologies define what rendering means.
+
+They implement a rendering contract.
 
 ---
 
-# 16. Streams and Messaging Become Computational Primitives
+# 13. Streams and Messaging
 
-Large computational systems are not just collections of functions.
+Large computational systems are not merely collections of functions.
 
 They are also networks of:
 
 ```text
-events
-messages
-streams
-state
-producers
-consumers
+Events
+Messages
+Streams
+State
+Producers
+Consumers
+Signals
+Transformations
 ```
 
-SCR therefore treats messaging and stream processing as first-class computational concepts.
+SCR therefore treats stream processing and messaging as computational concerns.
 
-For example:
-
-```mermaid
-flowchart LR
-    SENSOR[Sensor]
-    MSG[Message]
-    PERCEPTION[Perception]
-    AI[Inference]
-    CONTROL[Control]
-    DYN[Dynamics]
-
-    SENSOR --> MSG
-    MSG --> PERCEPTION
-    PERCEPTION --> AI
-    AI --> CONTROL
-    CONTROL --> DYN
-    DYN --> MSG
-```
-
-An AMQP-oriented model can provide concepts such as:
+A semantic stream may connect:
 
 ```text
-exchange
-queue
-routing
-publication
-subscription
-delivery
-acknowledgement
-ordering
-backpressure
+Sensor
+   ↓
+Observation
+   ↓
+Message
+   ↓
+Perception
+   ↓
+Inference
+   ↓
+Control
+   ↓
+Dynamics
 ```
 
-while the semantic model remains independent of a particular broker.
+An implementation may use:
 
-This matters because communication itself has semantics.
+```text
+queues
+brokers
+transports
+buffers
+channels
+```
 
-It should not always be treated as plumbing hidden underneath the computational model.
+without making those mechanisms the semantic definition.
+
+An AMQP-oriented messaging model may provide useful implementation semantics for:
+
+* publication;
+* subscription;
+* routing;
+* acknowledgement;
+* delivery;
+* queueing;
+* backpressure.
+
+But:
+
+```text
+Messaging Semantics
+        ≠
+AMQP Implementation
+        ≠
+Broker
+        ≠
+Transport
+```
+
+The semantic model remains independent.
 
 ---
 
-# 17. The Provider Model
+# 14. The Provider Model
 
-SCR does not attempt to replace every excellent computational library.
+SCR separates semantic meaning from implementation.
 
-Quite the opposite.
+A semantic domain may have multiple providers:
 
-It wants to make those libraries **usable as implementation providers**.
+```text
+             Semantic Contract
+                    │
+        ┌───────────┼───────────┐
+        ↓           ↓           ↓
+    Provider A  Provider B  Provider C
+        │           │           │
+        ↓           ↓           ↓
+       CPU         GPU      External Library
+```
 
 For example:
 
 ```text
 Semantic Physics
-       │
-       ├── Provider A
-       ├── Provider B
+       ├── Numerical Provider A
+       ├── Numerical Provider B
        ├── Generated Solver
-       └── GPU Solver
-```
-
-or:
-
-```text
-Semantic Spatial Index
-       │
-       ├── H3
-       ├── R-tree
-       └── Custom Index
-```
-
-or:
-
-```text
-Semantic Rendering
-       │
-       ├── Vulkan
-       ├── VulkanSceneGraph
-       ├── GPU kernels
-       └── Future renderer
+       ├── GPU Provider
+       └── External Physics Provider
 ```
 
 The provider implements the semantic contract.
 
 The semantic domain does not become an API wrapper around the provider.
 
-That distinction is crucial.
+A provider may implement only part of a semantic domain.
+
+That limitation must remain explicit.
 
 ---
 
-# 18. One Meaning, Many Implementations
+# 15. One Meaning, Many Implementations
 
-Imagine the semantic operation:
+Implementation substitution is only valid when the required semantic contract is preserved.
 
-```text
-geometry.intersect
-```
-
-A developer should not necessarily have to decide:
+Therefore:
 
 ```text
-CGAL?
-GPU kernel?
-custom algorithm?
-spatial accelerator?
+Equivalent Implementation
 ```
 
-Instead, the semantic operation describes what intersection means.
+does not simply mean:
 
-The compiler/runtime can then consider available providers.
-
-```mermaid
-flowchart TD
-    I["geometry.intersect"]
-
-    I --> CPU["CPU implementation"]
-    I --> GPU["GPU implementation"]
-    I --> CGAL["CGAL provider"]
-    I --> CUSTOM["Custom kernel"]
-
-    CPU --> EXEC[Execution]
-    GPU --> EXEC
-    CGAL --> EXEC
-    CUSTOM --> EXEC
+```text
+Produces the same answer once.
 ```
 
-This creates a fundamentally different relationship between applications and libraries.
+Possible guarantees include:
 
-The application depends on **meaning**.
+```text
+Exact Equivalence
+Numerical Equivalence
+Approximate Equivalence
+Behavioral Equivalence
+Distributional Equivalence
+Contractual Equivalence
+```
 
-The runtime depends on **implementations**.
+The required level depends on the semantic operation.
+
+Likewise:
+
+```text
+Mathematical Equivalence
+       ≠
+Numerical Equivalence
+       ≠
+Bitwise Equivalence
+```
+
+This distinction becomes increasingly important for:
+
+* parallel execution;
+* vectorization;
+* GPU execution;
+* distributed execution;
+* numerical optimization;
+* stochastic computation;
+* provider substitution.
 
 ---
 
-# 19. Hardware Without Hardware Lock-In
+# 16. Hardware Independence Without Hardware Ignorance
 
-Hardware changes rapidly.
+SCR does not mean pretending hardware does not exist.
 
-A semantic program should ideally not become obsolete merely because the machine on which it was designed has changed.
+It means separating **semantic meaning** from **hardware commitment**.
 
-SCR therefore separates:
+The application should not have to define a computation in terms of a specific GPU.
 
-```text
-hardware independence
-```
+The compiler and runtime should absolutely know:
 
-from:
+* available CPUs;
+* vector units;
+* GPUs;
+* accelerators;
+* memory topology;
+* interconnects;
+* provider capabilities;
+* resource constraints;
+* cost models.
 
-```text
-hardware ignorance
-```
-
-Applications should not need to encode their semantics in terms of a specific GPU.
-
-But the compiler should absolutely know that the GPU exists.
-
-For example:
+The execution decision can therefore follow:
 
 ```text
 Semantic Operation
        ↓
-Workload analysis
+Workload Analysis
        ↓
-Available hardware
+Required Capabilities
        ↓
-Provider capabilities
+Available Providers
        ↓
-Cost / constraints
+Available Hardware
        ↓
-Execution strategy
+Constraints / Cost
+       ↓
+Execution Strategy
+       ↓
+Lowering
+       ↓
+Execution
 ```
 
-The compiler may consider:
+This produces:
 
-* vector width
-* cache topology
-* NUMA topology
-* memory bandwidth
-* GPU occupancy
-* transfer costs
-* accelerator availability
-* synchronization cost
-* latency requirements
-* throughput requirements
-* power constraints
-
-The objective is not:
-
-> Use the GPU because a GPU exists.
-
-It is:
-
-> Choose an execution strategy that satisfies the semantic and application requirements efficiently.
+> **Hardware independence for the application and hardware awareness for the runtime.**
 
 ---
 
-# 20. The Semantic Graph
+# 17. The Semantic Graph
 
-At the deepest level, SCR is not really about APIs.
+At a deeper level, SCR is not primarily about APIs.
 
 It is about **relationships**.
 
-A computation can be understood as a graph containing:
+A computational semantic graph may contain:
 
 ```text
-entities
-relationships
-operations
-types
-constraints
-capabilities
-data
-state
-events
-dependencies
-spatial relationships
-temporal relationships
-execution requirements
+Entities
+Relationships
+Types
+Values
+Operations
+State
+Events
+Constraints
+Capabilities
+Dataflow
+Control Flow
+Spatial Relationships
+Temporal Relationships
+Causal Relationships
+Execution Requirements
+Provenance
 ```
+
+The graph may describe not only what exists, but how computational entities relate.
 
 For example:
 
-```mermaid
-graph TD
-    Environment --> Field
-    Environment --> Geometry
-    Field --> Pattern
-    Pattern --> Morphology
-    Morphology --> Geometry
-    Geometry --> Physics
-    Physics --> Dynamics
-    Dynamics --> Agent
-    Agent --> Decision
-    Decision --> Control
-    Control --> Dynamics
-    Geometry --> Rendering
-    Field --> Rendering
-    Rendering --> Observation
-    Observation --> Perception
-    Perception --> Decision
-```
-
-This graph is more expressive than a conventional call graph.
-
-It describes **what the pieces mean and how they relate**.
-
-That is what allows SCR to reason across domain boundaries.
-
----
-
-# 21. A Computational Example
-
-Consider an artificial ecosystem.
-
-A conventional implementation might require:
-
 ```text
-physics engine
-geometry library
-spatial index
-agent framework
-machine learning framework
-renderer
-message broker
-streaming system
-```
-
-Each subsystem has its own APIs.
-
-In SCR, the conceptual model could instead be:
-
-```mermaid
-flowchart TD
-    ENV[Environment]
-
-    FIELD[Environmental Fields]
-    MORPH[Morphology]
-    GEO[Geometry]
-    PHYS[Physics]
-    DYN[Dynamics]
-    AGENTS[Agents]
-    NN[Neural Models]
-    PERCEPT[Perception]
-    RENDER[Rendering]
-    STREAM[Streams]
-    MSG[Messaging]
-
-    ENV --> FIELD
-    FIELD --> MORPH
-    MORPH --> GEO
-    GEO --> PHYS
-    PHYS --> DYN
-    DYN --> AGENTS
-    FIELD --> PERCEPT
-    GEO --> PERCEPT
-    AGENTS --> PERCEPT
-    PERCEPT --> NN
-    NN --> AGENTS
-    AGENTS --> DYN
-    GEO --> RENDER
-    MORPH --> RENDER
-    FIELD --> RENDER
-    RENDER --> STREAM
-    AGENTS --> MSG
-    MSG --> AGENTS
-```
-
-Now consider what the runtime could potentially do.
-
-It might determine that:
-
-```text
-field calculations
-        ↓
-GPU
-```
-
-while:
-
-```text
-agent decision-making
-        ↓
-CPU
-```
-
-and:
-
-```text
-rendering
-        ↓
-GPU
-```
-
-while:
-
-```text
-distributed agent communication
-        ↓
-network messaging
-```
-
-The application did not necessarily have to be designed around those decisions.
-
-The semantic model made the computation explicit enough for the system to reason about it.
-
----
-
-# 22. What This Could Enable
-
-The significance of SCR is not one particular optimization.
-
-It is the possibility of changing **where software architecture begins**.
-
-Instead of beginning with:
-
-```text
-Which framework should I use?
-```
-
-developers could begin with:
-
-```text
-What computation am I trying to express?
-```
-
-That could enable systems such as:
-
-### Scientific Computing
-
-Describe:
-
-```text
-equations
-fields
-boundary conditions
-constraints
-solvers
-```
-
-and allow different numerical implementations to realize them.
-
-### Robotics
-
-Compose:
-
-```text
-sensors
-streams
-perception
-geometry
-planning
-control
-dynamics
-```
-
-inside one semantic model.
-
-### Simulation
-
-Combine:
-
-```text
-physics
-fields
-agents
-morphology
-spatial structures
-AI
-rendering
-```
-
-without forcing them into separate computational worlds.
-
-### Computational Biology
-
-Represent:
-
-```text
-spatial structure
-morphology
-growth
-interaction
-fields
-population dynamics
-```
-
-as interacting semantic domains.
-
-### Generative Systems
-
-Construct:
-
-```text
-patterns
-fields
-constraints
-morphology
-geometry
-rendering
-```
-
-and allow structure to emerge computationally.
-
-### Scientific Visualization
-
-Connect:
-
-```text
-simulation
-→ fields
-→ geometry
-→ morphology
-→ rendering
-→ streaming
-```
-
-without making visualization merely an afterthought.
-
-### AI-Driven Simulation
-
-Connect:
-
-```text
-simulation
-→ perception
-→ neural computation
-→ decision
-→ control
-→ simulation
-```
-
-as one computational system.
-
-### Distributed Computation
-
-Represent communication and computation together:
-
-```text
-computation
-↔ messages
-↔ streams
-↔ state
-↔ computation
-```
-
-rather than treating the network as an invisible implementation detail.
-
----
-
-# 23. Who Could Use SCR
-
-SCR is intended to be useful to different communities for different reasons.
-
-## Scientists
-
-Work with computational concepts rather than being forced to design around infrastructure.
-
-## Engineers
-
-Construct high-performance systems while retaining the ability to change implementation strategies.
-
-## Software Developers
-
-Build against stable semantic abstractions rather than tightly coupling applications to individual libraries.
-
-## AI Researchers
-
-Combine neural computation with simulation, geometry, fields, graphs, perception, and control.
-
-## Robotics Researchers
-
-Compose sensing, perception, planning, control, dynamics, and physical environments.
-
-## Computational Artists
-
-Work with patterns, fields, morphology, geometry, spatial relationships, rendering, and generative processes.
-
-## Systems Researchers
-
-Explore new relationships between semantic compilation, heterogeneous execution, runtime adaptation, and computational graphs.
-
-## Educators
-
-Teach computation in terms of concepts and relationships before introducing every implementation detail.
-
----
-
-# 24. What SCR Is Not
-
-Understanding what SCR is **not** is important.
-
-### It is not a replacement for MLIR.
-
-MLIR provides the compiler infrastructure on which SCR is built.
-
-### It is not another general-purpose programming language.
-
-SCR may expose APIs to programming languages, but its central abstraction is semantic computation.
-
-### It is not a simulation engine.
-
-Simulation is an important reference workload, not the definition of the system.
-
-### It is not a wrapper around existing libraries.
-
-Providers and adapters may integrate existing libraries, but those libraries do not define SCR semantics.
-
-### It is not a hardware abstraction that ignores hardware.
-
-SCR aims for semantic hardware independence while making hardware information available to compilation and runtime decisions.
-
-### It is not a promise that every implementation can automatically be substituted.
-
-Semantic equivalence must be established under the relevant contract.
-
-### It is not an attempt to make every domain identical.
-
-The goal is interoperability without destroying domain-specific meaning.
-
----
-
-# 25. The Long-Term Vision
-
-The long-term vision can be summarized as:
-
-```mermaid
-flowchart TD
-    PROBLEM[Problem]
-    MODEL[Semantic Model]
-    COMPOSE[Composition]
-    VERIFY[Verification]
-    COMPILE[Compilation]
-    OPT[Optimization]
-    PROVIDER[Provider Selection]
-    SPECIALIZE[Hardware Specialization]
-    EXEC[Execution]
-    OBSERVE[Observation]
-    ADAPT[Adaptation]
-
-    PROBLEM --> MODEL
-    MODEL --> COMPOSE
-    COMPOSE --> VERIFY
-    VERIFY --> COMPILE
-    COMPILE --> OPT
-    OPT --> PROVIDER
-    PROVIDER --> SPECIALIZE
-    SPECIALIZE --> EXEC
-    EXEC --> OBSERVE
-    OBSERVE --> ADAPT
-    ADAPT --> OPT
-```
-
-The ultimate ambition is a computational environment where the lifetime of an application is no longer tied so tightly to the technologies that happened to exist when it was written.
-
-A semantic program could potentially survive:
-
-```text
-new algorithm
-new library
-new compiler
-new accelerator
-new GPU
-new CPU
-new runtime
-new execution strategy
-```
-
-because its primary dependency is not the implementation.
-
-Its primary dependency is the **meaning of the computation**.
-
----
-
-# 26. Project Status
-
-SCR is an architectural and research-stage project.
-
-The current work is focused on establishing the foundations required for this vision:
-
-```text
-semantic domains
-       ↓
-semantic contracts
-       ↓
-MLIR representation
-       ↓
-relationships
-       ↓
-provider interfaces
-       ↓
-compiler transformations
-       ↓
-runtime execution
-       ↓
-real implementations
-```
-
-The project is deliberately being developed specification-first.
-
-Semantic domains are being documented through explicit definitions, engineering status records, and a derived semantic library graph.
-
-The initial development increments are intended to turn an architecture that could otherwise only be inferred from source code into an architecture that is **explicit, inspectable, testable, and machine-readable**.
-
-The project is experimental.
-
-Many of the capabilities described here are architectural goals rather than completed features.
-
-That distinction is intentional.
-
----
-
-# 27. Learn More
-
-The project documentation provides progressively deeper levels of detail.
-
-Start with:
-
-```text
-INTRODUCTION.md
-```
-
-for the conceptual model.
-
-Then explore:
-
-```text
-README.md
-```
-
-for the architectural overview.
-
-The semantic library definitions provide the detailed contracts for individual domains.
-
-The development control plane uses:
-
-```text
-101_definition.md
-102_status.yaml
-103_library.graph.json
-```
-
-to distinguish:
-
-```text
-what a domain means
-what currently exists
-how the library relates
-```
-
----
-
-# The Question SCR Is Asking
-
-The deepest idea behind SCR can be expressed as a question:
-
-> **What if software did not have to choose its implementation before it had expressed its meaning?**
-
-Today, a developer often starts with:
-
-```text
-Which library?
-Which framework?
-Which API?
-Which language?
-Which runtime?
-Which hardware?
-```
-
-SCR explores starting somewhere else:
-
-```text
-What does this computation mean?
-```
-
-Then:
-
-```text
-How does it compose?
-What constraints does it have?
-What properties does it expose?
-What implementations satisfy it?
-What transformations preserve it?
-Where should it execute?
-How should it be optimized?
-```
-
-That changes the role of the runtime.
-
-It is no longer merely responsible for executing code.
-
-It becomes part of the machinery that connects:
-
-```text
-meaning
+Environment
     ↓
-representation
+Field
     ↓
-implementation
+Pattern
     ↓
-execution
+Morphology
+    ↓
+Geometry
+    ↓
+Dynamics
+    ↓
+Agent
+    ↓
+Perception
+    ↓
+Decision
+    ↓
+Control
+    ↓
+Dynamics
 ```
 
-And that is the larger idea behind the **Semantic Computational Runtime**.
+These are semantic relationships.
 
-> **Computation should be something we can describe semantically, compose across domains, transform without losing its meaning, and execute wherever the available computational substrate can realize it.**
+They are not merely function calls.
+
+---
+
+# 18. Two Graphs Must Be Distinguished
+
+SCR contains at least two important graph concepts.
+
+## Computational Semantic Graph
+
+Represents computational meaning:
+
+```text
+Entities
+Relationships
+Operations
+Constraints
+Capabilities
+State
+Events
+Dataflow
+Control Flow
+Spatial Structure
+Temporal Structure
+Execution Requirements
+```
+
+## Library Architecture Graph
+
+Represents the organization of the SCR implementation:
+
+```text
+Domains
+Definitions
+Interfaces
+Implementations
+Providers
+Tests
+Transforms
+Lowerings
+Relationships
+Status
+```
+
+These graphs may correspond.
+
+They are not identical.
+
+The library architecture graph describes how the project is built.
+
+The computational semantic graph describes what the computation means.
+
+---
+
+# 19. A Computational Universe
+
+The purpose of these relationships becomes clearer when considering a complete computational environment.
+
+Imagine a system containing:
+
+```text
+Environment
+    ↓
+Information Fields
+    ↓
+Patterns
+    ↓
+Morphology
+    ↓
+Geometry
+    ↓
+Topology
+    ↓
+Physics
+    ↓
+Dynamics
+    ↓
+Simulation
+    ↓
+Agents
+    ↕
+Neural Computation
+    ↓
+Perception
+    ↓
+Control
+    ↓
+Dynamics
+```
+
+Cross-cutting computational structures provide:
+
+```text
+Streams
+Messages
+Events
+Rendering
+Observation
+Analysis
+Optimization
+Learning
+Adaptation
+```
+
+The result is not simply a large application.
+
+It is a **computational universe in which different forms of computation share semantic structure**.
+
+A simulation can produce morphology.
+
+Morphology can influence geometry.
+
+Geometry can influence perception.
+
+Perception can influence an agent.
+
+An agent can produce control signals.
+
+Control can modify dynamics.
+
+Dynamics can modify fields.
+
+Fields can generate new patterns.
+
+Rendering can expose the resulting state to observation.
+
+Streams can carry information between all of these processes.
+
+The boundaries are still meaningful.
+
+They are simply no longer forced to become isolated implementation worlds.
+
+---
+
+# 20. A Worked Computational Example
+
+Consider an environment containing an autonomous agent.
+
+At the semantic level we may have:
+
+```text
+Environment
+    │
+    ├── Spatial Structure
+    ├── Fields
+    ├── Obstacles
+    └── Resources
+          │
+          ↓
+        Agent
+          │
+          ├── State
+          ├── Perception
+          ├── Memory
+          ├── Decision
+          └── Action
+```
+
+The computation may form a loop:
+
+```text
+Environment
+     ↓
+Observation
+     ↓
+Perception
+     ↓
+Internal State
+     ↓
+Decision
+     ↓
+Action
+     ↓
+Environment
+```
+
+Now add morphology:
+
+```text
+Field
+  ↓
+Pattern
+  ↓
+Morphology
+  ↓
+Geometry
+  ↓
+Environment
+```
+
+Add dynamics:
+
+```text
+Environment
+     ↓
+Dynamics
+     ↓
+Simulation State
+     ↓
+Observation
+```
+
+Add neural computation:
+
+```text
+Observation
+     ↓
+Neural Model
+     ↓
+Decision
+```
+
+Add rendering:
+
+```text
+Simulation State
+     ↓
+Render State
+     ↓
+Rendering
+     ↓
+Observation
+```
+
+And add streams:
+
+```text
+Events
+  ↓
+Messages
+  ↓
+Stream
+  ↓
+Perception / Analysis / Control
+```
+
+The resulting system is a connected semantic computational graph rather than a collection of unrelated libraries.
+
+---
+
+# 21. Why This Is Different From an Abstraction Layer
+
+An ordinary abstraction layer often looks like:
+
+```text
+Application
+    ↓
+Common API
+    ↓
+Library A / B / C
+```
+
+SCR is intended to go further.
+
+The semantic representation itself becomes an object of:
+
+* analysis;
+* verification;
+* transformation;
+* optimization;
+* lowering;
+* provider selection;
+* scheduling;
+* execution;
+* observation.
+
+The compiler and runtime can therefore reason about the computation before it has been committed to a particular implementation.
+
+That makes the semantic model part of the **computational substrate**, not merely an interface wrapper.
+
+---
+
+# 22. What SCR Is Not
+
+SCR is not:
+
+### A replacement for MLIR
+
+SCR is built on MLIR rather than attempting to replace it.
+
+### A simulation engine
+
+Simulation is one semantic domain within a broader computational architecture.
+
+### A physics engine
+
+Physics is one semantic domain and may have multiple providers.
+
+### A neural-network framework
+
+Neural computation is one composable computational domain.
+
+### A rendering engine
+
+Rendering is a semantic computational domain with potentially many implementations.
+
+### A wrapper around existing libraries
+
+External libraries may become providers, but they do not define SCR semantics.
+
+### A hardware abstraction that ignores hardware
+
+Hardware independence at the semantic level coexists with hardware awareness in compilation and runtime.
+
+### A universal automatic equivalence machine
+
+Different implementations are not automatically interchangeable.
+
+Equivalence must be established under the relevant semantic contract.
+
+### An attempt to make every domain identical
+
+The purpose of semantic composition is to preserve meaningful differences while making relationships explicit.
+
+---
+
+# 23. The Long-Term Vision
+
+The long-term vision is a runtime in which computational meaning can remain stable while execution strategy changes dynamically.
+
+A conceptual lifecycle is:
+
+```text
+Problem
+   ↓
+Semantic Model
+   ↓
+Composition
+   ↓
+Verification
+   ↓
+Compilation
+   ↓
+Transformation
+   ↓
+Provider Selection
+   ↓
+Hardware Specialization
+   ↓
+Execution
+   ↓
+Observation
+   ↓
+Adaptation
+   ↓
+Recompilation / Optimization
+   ↓
+Execution
+```
+
+This potentially enables systems that can respond to:
+
+```text
+changing workloads
+changing hardware
+changing resource availability
+changing data
+changing topology
+changing environmental conditions
+changing provider availability
+changing execution constraints
+```
+
+without requiring the semantic application to be rewritten around those changes.
+
+---
+
+# 24. From Static Programs Toward Computational Systems
+
+Traditional programming often begins with:
+
+```text
+Functions
+Data Structures
+Control Flow
+```
+
+SCR explores a broader model:
+
+```text
+Entities
+Relationships
+State
+Operations
+Constraints
+Capabilities
+Fields
+Patterns
+Morphology
+Dynamics
+Events
+Streams
+Observations
+Transformations
+Execution Requirements
+```
+
+This does not eliminate ordinary programming.
+
+Instead, ordinary computation becomes one representation of a richer semantic system.
+
+A function can be a semantic operation.
+
+A data structure can be a semantic representation.
+
+A process can be a semantic participant.
+
+A message can be a semantic event.
+
+A rendering frame can be an observation.
+
+A field can be a computational resource.
+
+A morphology can be both an output and an input.
+
+The result is a computational model in which **relationships are as important as operations**.
+
+---
+
+# 25. The Common Language Runtime for Computational Semantics
+
+The long-term ambition of SCR can therefore be summarized as:
+
+> **A Common Language Runtime for Computational Semantics.**
+
+The analogy is not that SCR should reproduce an existing language runtime.
+
+The analogy is architectural.
+
+A conventional runtime provides a common execution environment for programs expressed through a language.
+
+SCR seeks to provide a common computational environment for programs expressed through **semantic computational models**.
+
+The application should be able to express:
+
+```text
+what exists
+what it means
+how things relate
+what operations are valid
+what constraints apply
+what capabilities are required
+how state changes
+what observations are produced
+```
+
+without prematurely deciding:
+
+```text
+which library
+which algorithm
+which representation
+which processor
+which accelerator
+which transport
+which renderer
+which execution topology
+```
+
+Those decisions become part of compilation and runtime specialization.
+
+---
+
+# 26. Current Status
+
+SCR is an experimental, specification-first project.
+
+The architecture described in this document represents a combination of:
+
+* established design principles;
+* normative semantic definitions;
+* current implementation;
+* active development;
+* explicitly identified future architecture.
+
+Not every domain or capability described here is implemented.
+
+Implementation status must therefore be determined from the project's current status records, tests and implementation rather than from the existence of directories or architectural descriptions.
+
+The current development strategy emphasizes **vertical proof over breadth**.
+
+A small executable path that demonstrates:
+
+```text
+Semantic Definition
+       ↓
+Semantic Model
+       ↓
+Domain IR
+       ↓
+MLIR
+       ↓
+Lowering
+       ↓
+CPU Execution
+       ↓
+Simulation State
+       ↓
+Render State
+       ↓
+Rendering
+```
+
+is more valuable than hundreds of unconnected domain stubs.
+
+---
+
+# 27. How to Read the Project
+
+The repository has deliberately different documents for different purposes.
+
+### `README.md`
+
+Repository orientation.
+
+It answers:
+
+* What is SCR?
+* Why does it exist?
+* What is the architecture?
+* What is currently happening?
+* Where do I start?
+
+### `INTRODUCTION.md`
+
+Conceptual foundation.
+
+It answers:
+
+* Why is semantic computation interesting?
+* What does semantic computation mean?
+* Why separate meaning from representation?
+* Why does this produce a different computational architecture?
+
+### `AGENTS.md`
+
+Agent operating policy.
+
+It answers:
+
+* How should an agent work on SCR?
+* Which sources are authoritative?
+* How should changes be scoped?
+* How should semantic correctness be validated?
+
+### Semantic definitions
+
+The semantic library defines what individual domains mean.
+
+### Status records
+
+Status records describe what is currently implemented.
+
+### Architecture specifications
+
+Architecture documents describe how the system is constructed.
+
+These documents are complementary.
+
+They should not become competing sources of semantic authority.
+
+---
+
+# 28. The Central Idea
+
+SCR begins with a simple proposition:
+
+> **Computational meaning should not have to be sacrificed to implementation technology.**
+
+From that proposition follows a larger architecture:
+
+```text
+Meaning
+   ↓
+Semantic Contract
+   ↓
+Composition
+   ↓
+Representation
+   ↓
+Transformation
+   ↓
+Lowering
+   ↓
+Provider
+   ↓
+Runtime
+   ↓
+Execution
+```
+
+And from that architecture follows a larger possibility:
+
+```text
+Fields
+  ↕
+Patterns
+  ↕
+Morphology
+  ↕
+Geometry
+  ↕
+Topology
+  ↕
+Dynamics
+  ↕
+Simulation
+  ↕
+Agents
+  ↕
+Perception
+  ↕
+Neural Computation
+  ↕
+Control
+  ↕
+Rendering
+  ↕
+Observation
+  ↕
+Streams
+  ↕
+Messaging
+```
+
+Not as a fixed hierarchy.
+
+As a **computational graph of interacting meanings**.
+
+That is the deeper idea behind the Semantic Computational Runtime.
+
+---
+
+# 29. Final Principle
+
+The implementation may change.
+
+The representation may change.
+
+The provider may change.
+
+The hardware may change.
+
+The execution strategy may change.
+
+The semantic meaning must remain explicit.
+
+> **SCR is an attempt to make computational semantics portable across representations, implementations, and execution substrates.**
+
+Or, in one sentence:
+
+> **Express what computation means; let the runtime determine how, where, and with which implementation it executes.**
