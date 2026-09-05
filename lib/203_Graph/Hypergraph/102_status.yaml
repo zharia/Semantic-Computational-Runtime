@@ -1,0 +1,360 @@
+---
+document: 101_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-<DOMAIN-ID>
+  path: lib/<path>
+  name: <Domain Name>
+
+  version: 0.1.0
+  status: proposed
+
+  created: 2026-09-05
+  updated: 2026-09-05
+
+  specification:
+    file: 101_spec.md
+    version: 0.1.0
+    status: draft
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: null
+
+
+domain:
+  name: <Domain Name>
+
+  description: >
+    Brief description of the semantic domain represented by this directory.
+
+  purpose: >
+    What this domain exists to express, represent, compute, or provide.
+
+  maturity: experimental
+  completeness: 0.0
+
+
+hierarchy:
+  parent:
+    id: SCR-LIB-<PARENT-ID>
+    relation: REFINES
+
+  children: []
+
+  siblings: []
+
+
+relationships:
+  - target: SCR-LIB-<DOMAIN-ID>
+    relation: DEPENDS_ON
+    direction: outgoing
+    required: true
+    description: >
+      Describe why this relationship exists.
+
+
+semantic_model:
+  primitives: []
+
+  abstractions: []
+
+  entities: []
+
+  values: []
+
+  operations: []
+
+  invariants: []
+
+  composition:
+    supported: true
+    properties: []
+    notes: ""
+
+
+implementation:
+  status: not_started
+
+  language: rust
+
+  source_directories: []
+
+  source_files: []
+
+  modules: []
+
+  public_api:
+    status: not_defined
+    symbols: []
+
+  dependencies:
+    required: []
+    optional: []
+    backend: []
+    external: []
+
+  adapters: []
+
+
+mlir:
+  status: not_started
+
+  dialects: []
+
+  types: []
+
+  attributes: []
+
+  operations: []
+
+  interfaces: []
+
+  traits: []
+
+  verification:
+    status: not_started
+    requirements: []
+
+  canonicalization:
+    status: not_started
+    patterns: []
+
+  transformations:
+    status: not_started
+    passes: []
+
+  lowering:
+    status: not_started
+    targets: []
+
+
+runtime:
+  status: not_started
+
+  representations: []
+
+  execution_model: ""
+
+  scheduling:
+    required: false
+    constraints: []
+
+  state:
+    persistent: false
+    mutable: false
+
+  determinism:
+    required: true
+    guaranteed: false
+    sources_of_nondeterminism: []
+    controls: []
+
+
+backends:
+  cpu:
+    status: not_started
+    implementation: null
+
+  gpu:
+    status: not_started
+    implementation: null
+
+  accelerator:
+    status: not_started
+    implementation: null
+
+  external_library:
+    status: not_started
+    libraries: []
+
+  distributed:
+    status: not_started
+    implementation: null
+
+
+testing:
+  status: not_started
+
+  specification_tests:
+    status: not_started
+    tests: []
+
+  unit:
+    status: not_started
+    tests: []
+    coverage: 0.0
+
+  domain:
+    status: not_started
+    tests: []
+
+  composition:
+    status: not_started
+    tests: []
+
+  mlir:
+    status: not_started
+    tests: []
+
+  lowering:
+    status: not_started
+    tests: []
+
+  runtime:
+    status: not_started
+    tests: []
+
+  cross_substrate:
+    status: not_started
+    tests: []
+
+
+validation:
+  status: not_started
+
+  semantic_contract:
+    status: not_started
+    spec_version: null
+    validated_at: null
+
+  implementation:
+    status: not_started
+
+  api:
+    status: not_started
+
+  mlir:
+    status: not_started
+
+  runtime:
+    status: not_started
+
+  backend:
+    status: not_started
+
+  determinism:
+    status: not_started
+
+  performance:
+    status: not_started
+
+  interoperability:
+    status: not_started
+
+
+traceability:
+  specification:
+    - file: 101_spec.md
+      version: 0.1.0
+
+  implementation: []
+
+  tests: []
+
+  validation: []
+
+  external_references: []
+
+
+functions:
+  count: 0
+
+  items: []
+
+  # Example:
+  #
+  # - id: SCR-FN-<ID>
+  #   name: <function_name>
+  #   module: <module>
+  #   status: specified
+  #   specification:
+  #     section: "Core Operations"
+  #     version: 0.1.0
+  #   implementation:
+  #     status: not_started
+  #     file: null
+  #     symbol: null
+  #   tests:
+  #     status: not_started
+  #     files: []
+  #   validation:
+  #     status: not_started
+  #   determinism:
+  #     required: true
+  #   errors:
+  #     defined: false
+
+
+files:
+  specification:
+    - 101_spec.md
+
+  source: []
+
+  tests: []
+
+  mlir: []
+
+  bindings: []
+
+  adapters: []
+
+  generated: []
+
+
+status:
+  specification: draft
+  implementation: not_started
+  testing: not_started
+  validation: not_started
+
+  overall: specified
+
+  blockers: []
+
+  risks: []
+
+  open_questions: []
+
+
+agent:
+  assigned: null
+
+  work_started: null
+  work_completed: null
+
+  current_task: null
+
+  changes: []
+
+  notes: ""
+
+
+quality:
+  semantic_completeness: 0.0
+  implementation_completeness: 0.0
+  test_completeness: 0.0
+  validation_completeness: 0.0
+
+  specification_debt: []
+  implementation_debt: []
+  test_debt: []
+  validation_debt: []
+
+
+history:
+  - version: 0.1.0
+    date: 2026-09-05
+    status: proposed
+    author: SCR
+    change: >
+      Initial module status record.
+
+
+notes: >
+  Additional notes concerning this domain, implementation,
+  architecture, unresolved questions, or validation.
