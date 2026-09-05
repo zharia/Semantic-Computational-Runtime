@@ -15,7 +15,8 @@ updated: 2026-09-05
 parent: SCR-PI-0001
 authority: SCR
 domain: implementation
-----------------------
+
+---
 
 # SCR v0.0.1 Golden Path Specification
 
