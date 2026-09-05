@@ -2,19 +2,17 @@
 
 document: golden_path_specification
 document_type: normative_implementation_specification
-schema_version: 1.0.0
+schema_version: 2.0.0
 
 id: SCR-PI-0001-GOLDEN-PATH
 name: Semantic Computational Runtime v0.0.1 Golden Path
 
-version: 0.0.1
+version: 2.0.0
 status: draft
-
 created: 2026-09-05
 updated: 2026-09-05
 
 parent: SCR-PI-0001
-
 authority: SCR
 domain: implementation
 ----------------------
@@ -23,112 +21,200 @@ domain: implementation
 
 ## 1. Purpose
 
-This specification defines the minimum end-to-end implementation required for Semantic Computational Runtime (SCR) v0.0.1.
+The SCR Golden Path defines the minimum executable vertical slice required to demonstrate the central architectural proposition of Semantic Computational Runtime (SCR):
 
-The Golden Path is the smallest complete vertical slice through the SCR architecture that demonstrates:
+> A computation can be expressed as semantic meaning, represented as computational structure, transformed and lowered through MLIR, realized by an execution provider, executed on a concrete substrate, and observed or manifested without making the implementation the authority over semantic meaning.
+
+The Golden Path is therefore an **executable architectural conformance path**.
+
+It is not merely:
+
+* a demo application;
+* a particle simulation;
+* a rendering example;
+* an MLIR tutorial;
+* a CPU benchmark;
+* a graphics integration test.
+
+The particle simulation and renderer are witnesses used to demonstrate the architecture.
+
+---
+
+# 2. Central Proposition
+
+The minimum SCR computational path is:
+
+```text
+Semantic Meaning
+       ↓
+Semantic Contract
+       ↓
+Semantic Model
+       ↓
+Domain IR
+       ↓
+MLIR
+       ↓
+Analysis / Transformation
+       ↓
+Lowering
+       ↓
+Provider Resolution
+       ↓
+Provider
+       ↓
+Runtime
+       ↓
+Execution Substrate
+       ↓
+Semantic State
+       ↓
+Observation / Manifestation
+```
+
+The path MUST preserve semantic authority across all stages.
+
+Implementation artifacts MUST remain realizations of semantic meaning rather than becoming its definition.
+
+---
+
+# 3. Three Related Paths
+
+The Golden Path consists of three related but distinct paths.
+
+## 3.1 Semantic Path
 
 ```text
 Semantic Definition
-        ↓
+       ↓
+Semantic Contract
+       ↓
 Semantic Model
-        ↓
+       ↓
 Domain IR
-        ↓
+       ↓
 MLIR
-        ↓
-Transformation / Lowering
-        ↓
-CPU Execution
-        ↓
-Simulation State
-        ↓
-Render State
-        ↓
-Rendering
-        ↓
-Visible Result
 ```
 
-The Golden Path is intentionally narrow.
+This path establishes what the computation means.
 
-It is not intended to implement the complete SCR semantic library.
-
-Its purpose is to establish a working computational trunk from which subsequent semantic domains, providers, transformations, execution substrates, and runtime capabilities can be developed.
-
----
-
-# 2. Golden Path Principle
-
-> **v0.0.1 is complete when SCR can express, compile, execute, advance, and render a minimal semantic simulation without the application depending directly on the implementation details of the compiler, provider, or renderer.**
-
-The first successful workload is therefore not the goal in itself.
-
-The goal is proving the architectural path.
-
----
-
-# 3. Success Criterion
-
-The canonical v0.0.1 demonstration MUST be capable of performing:
+## 3.2 Execution Path
 
 ```text
-Create semantic simulation
-        ↓
-Represent simulation as SCR IR
-        ↓
-Verify IR
-        ↓
-Lower IR
-        ↓
-Execute on CPU
-        ↓
-Advance simulation state
-        ↓
-Project state into render state
-        ↓
-Submit render state to renderer
-        ↓
-Display evolving simulation
+MLIR
+       ↓
+Analysis
+       ↓
+Transformation
+       ↓
+Lowering
+       ↓
+Provider Resolution
+       ↓
+Provider
+       ↓
+Runtime
+       ↓
+Execution Substrate
 ```
 
-The final result MUST be visually observable.
+This path establishes how the semantic computation is realized.
 
-The minimum demonstration SHOULD consist of moving particles or equivalent simple geometric objects.
+## 3.3 Observation / Manifestation Path
+
+```text
+Semantic State
+       ↓
+Observation
+       │
+       ├── Analysis
+       ├── Trace
+       ├── Serialization
+       ├── Streaming
+       └── Render Projection
+                    ↓
+                Render State
+                    ↓
+                 Renderer
+```
+
+Observation and manifestation MUST NOT redefine authoritative semantic state.
 
 ---
 
-# 4. Scope
+# 4. Golden Path Principle
 
-The Golden Path includes:
+> **The Golden Path is complete when SCR can carry one semantic computation from definition through executable realization and recover its semantic result without making any implementation layer the semantic authority.**
 
-* Core semantic state;
-* basic mathematical values;
-* simple dynamics;
-* simulation lifecycle;
-* semantic IR;
-* MLIR integration;
-* minimal lowering;
+A graphical rendering is an important demonstration, but it is not itself the definition of success.
+
+The Golden Path therefore has two acceptance levels:
+
+```text
+Level A
+Headless Computational Conformance
+
+Level B
+Manifestation / Rendering Conformance
+```
+
+Level A is mandatory.
+
+Level B is mandatory for the v0.0.1 reference demonstration.
+
+---
+
+# 5. Scope
+
+The v0.0.1 Golden Path SHALL exercise:
+
+* Core semantic concepts;
+* semantic identity;
+* values;
+* entities;
+* state;
+* operations;
+* references where required;
+* explicit time;
+* semantic contracts;
+* basic mathematics;
+* dynamics;
+* simulation;
+* spatial state;
+* semantic/domain IR;
+* MLIR;
+* verification;
+* transformation;
+* lowering;
 * CPU execution;
-* simulation time;
-* render state;
+* provider boundaries;
+* runtime state;
+* observation;
+* render projection;
 * rendering abstraction;
 * rendering provider;
-* VSG/Vulkan implementation;
-* end-to-end example;
-* automated validation;
-* manual visual validation.
+* end-to-end validation;
+* provenance;
+* inspectability.
 
-The Golden Path does NOT require complete implementations of all SCR domains.
+The path SHOULD exercise:
+
+* deterministic execution;
+* semantic graph relationships;
+* capability declaration;
+* provider capability matching;
+* error provenance;
+* intermediate IR inspection.
 
 ---
 
-# 5. Explicit Non-Goals
+# 6. Explicit Non-Goals
 
 The following MUST NOT block v0.0.1:
 
 * GPU simulation;
 * CUDA;
-* distributed simulation;
+* distributed execution;
 * AMQP runtime;
 * distributed messaging;
 * neural computation;
@@ -137,8 +223,8 @@ The following MUST NOT block v0.0.1:
 * evolution;
 * ecology;
 * advanced physics;
-* collision detection;
-* complex morphology;
+* complex collision systems;
+* generalized morphology;
 * sophisticated topology;
 * H3;
 * BVH;
@@ -146,254 +232,209 @@ The following MUST NOT block v0.0.1:
 * spatial databases;
 * GQL execution;
 * persistence;
-* CRDTs;
+* CRDT semantics;
 * distributed consistency;
 * adaptive provider selection;
 * automatic hardware scheduling;
-* sophisticated optimization;
-* provider discovery;
-* heterogeneous multi-device execution.
+* heterogeneous multi-device execution;
+* generalized semantic equivalence;
+* complete semantic hypergraph execution.
 
-These remain future expansion paths.
+These may extend the Golden Path later.
+
+They MUST NOT require a second semantic or execution architecture.
 
 ---
 
-# 6. Golden Workload
+# 7. Canonical Workload
 
-The canonical workload is a minimal particle simulation.
+The canonical workload is a minimal deterministic particle simulation.
 
-Each particle MUST have, at minimum:
+Each particle MUST have:
 
 ```text
 Particle
- ├── position
- └── velocity
+├── identity
+├── position
+└── velocity
 ```
 
-An optional acceleration MAY be included.
+Acceleration MAY be included.
 
-The initial implementation SHOULD use a simple deterministic integration rule:
+The reference dynamics MAY use:
 
 ```text
 position' = position + velocity × dt
 ```
 
-If acceleration is implemented:
+The exact numerical integration method is not architecturally significant.
 
-```text
-velocity' = velocity + acceleration × dt
-position' = position + velocity' × dt
-```
+The workload exists to exercise:
 
-The exact integration algorithm is intentionally simple.
-
-The purpose is to exercise semantic state evolution rather than physics.
-
----
-
-# 7. Why Particles
-
-Particles provide a minimal workload that simultaneously exercises:
-
-* entities;
-* state;
+* identity;
+* values;
 * vectors;
 * arithmetic;
+* state;
 * time;
 * dynamics;
 * simulation;
 * spatial information;
 * transformation;
+* execution;
+* observation;
 * rendering;
-* repeated execution.
+* repeated state evolution.
 
-They also provide an immediate visual verification mechanism.
-
-The particle system MUST NOT be treated as the definition of SCR's simulation model.
-
-It is a reference workload.
+The particle model MUST NOT become the definition of the SCR simulation domain.
 
 ---
 
-# 8. Architectural Path
+# 8. Semantic Definition
 
-The complete Golden Path MUST follow this conceptual architecture:
+The Golden Path MUST begin with a semantic definition.
 
-```text
-Application
-     │
-     ▼
-Semantic Simulation
-     │
-     ▼
-Simulation State
-     │
-     ▼
-Domain IR
-     │
-     ▼
-MLIR
-     │
-     ▼
-Transform / Lowering
-     │
-     ▼
-CPU Execution
-     │
-     ▼
-Updated Simulation State
-     │
-     ▼
-Render Projection
-     │
-     ▼
-Render State
-     │
-     ▼
-Rendering API
-     │
-     ▼
-VSG Adapter
-     │
-     ▼
-Vulkan
-     │
-     ▼
-Display
-```
+The definition MUST describe:
 
-No stage may silently collapse the semantic boundaries represented by this architecture.
-
----
-
-# 9. Golden Path Layers
-
-The implementation SHALL contain the following logical layers.
-
-## 9.1 Semantic Layer
-
-Defines:
-
-* simulation;
-* state;
-* particle;
-* position;
-* velocity;
-* time;
-* step.
-
-## 9.2 IR Layer
-
-Represents those concepts computationally.
-
-## 9.3 Compiler Layer
-
-Transforms and lowers the IR.
-
-## 9.4 Execution Layer
-
-Executes the lowered computation.
-
-## 9.5 Render Projection Layer
-
-Converts simulation state into render state.
-
-## 9.6 Rendering Layer
-
-Displays render state.
-
----
-
-# 10. Core Requirements
-
-The Golden Path MUST use SCR Core concepts for:
-
-* identity;
-* values;
 * entities;
+* values;
 * state;
 * operations;
-* references;
+* relationships;
 * time;
-* provenance where applicable.
+* invariants;
+* inputs;
+* outputs;
+* errors;
+* observability;
+* determinism.
 
-The implementation MUST NOT replace semantic concepts with implementation-specific structs without an explicit semantic boundary.
+The semantic definition MUST exist independently of:
 
-For example:
-
-```text
-Semantic Particle
-       ↓
-Runtime Representation
-```
-
-is valid.
-
-Defining the particle solely as:
-
-```rust
-struct Particle { ... }
-```
-
-and treating that Rust structure as the semantic definition is not.
+* Rust;
+* C++;
+* Python;
+* MLIR;
+* LLVM;
+* CPU;
+* Vulkan;
+* VulkanSceneGraph;
+* renderer implementation.
 
 ---
 
-# 11. Mathematical Requirements
+# 9. Semantic Contract
 
-The Golden Path requires only minimal mathematical semantics.
-
-Required:
-
-* scalar values;
-* vector values;
-* addition;
-* multiplication;
-* subtraction where needed;
-* time interval;
-* position;
-* velocity.
-
-The implementation SHOULD reuse existing MLIR arithmetic facilities wherever appropriate rather than defining redundant SCR arithmetic operations.
-
-MLIR already provides arithmetic and mathematical dialects among its standard dialect ecosystem.
-
----
-
-# 12. Dynamics Requirements
-
-The Dynamics implementation MUST provide a semantic state-transition operation.
-
-Conceptually:
+The reference operation is conceptually:
 
 ```text
 advance(state, dt) → state'
 ```
 
-The operation MUST:
+Its contract MUST specify:
 
-* consume a valid simulation state;
-* consume an explicit time increment;
-* produce a new or updated semantic state;
-* preserve declared state invariants;
-* be deterministic for the v0.0.1 workload.
+### Preconditions
 
-Dynamics MUST NOT depend on rendering.
+* state is valid;
+* particle values have valid representations;
+* `dt` is valid according to the simulation contract.
+
+### Postconditions
+
+* a valid resulting state exists;
+* declared state invariants are preserved;
+* simulation time advances according to the declared temporal semantics.
+
+### Determinism
+
+Given equivalent:
+
+```text
+initial state
++
+semantic inputs
++
+timestep sequence
+```
+
+the reference implementation MUST produce semantically equivalent results.
+
+### Effects
+
+State mutation MUST be explicit in the semantic model.
+
+### Observation
+
+The resulting state MUST be observable independently of its rendering representation.
 
 ---
 
-# 13. Simulation Requirements
+# 10. Semantic Identity
 
-The Simulation domain MUST provide:
+Semantic identity MUST be distinguished from implementation identity.
+
+Conceptually:
 
 ```text
-Simulation
-SimulationState
-SimulationClock
-SimulationStep
+Semantic Particle
+       ↓
+IR Representation
+       ↓
+Runtime Representation
+       ↓
+Render Representation
 ```
 
-The simulation MUST distinguish:
+These MAY be physically different objects.
+
+They MUST remain traceable to the same semantic entity where identity preservation is required.
+
+The Golden Path MUST NOT define semantic identity as:
+
+* a Rust pointer;
+* a memory address;
+* an MLIR SSA value alone;
+* a GPU resource handle;
+* a renderer object.
+
+---
+
+# 11. Semantic State
+
+Authoritative state MUST be semantic state.
+
+Conceptually:
+
+```text
+SimulationState
+├── simulation_time
+└── particles
+    ├── identity
+    ├── position
+    └── velocity
+```
+
+The renderer MUST NOT become the authoritative owner of simulation state.
+
+The authoritative relationship is:
+
+```text
+Semantic State
+      ↓
+Runtime Representation
+      ↓
+Observation / Projection
+      ↓
+Renderer State
+```
+
+---
+
+# 12. Time
+
+Simulation time MUST be explicit.
+
+The semantic model MUST distinguish:
 
 ```text
 simulation time
@@ -402,131 +443,108 @@ simulation time
 from:
 
 ```text
-wall-clock / frame time
+wall-clock time
+frame time
+processing time
 ```
 
-The initial runtime MAY use frame duration as the simulation timestep.
+The initial implementation MAY derive a timestep from wall-clock frame duration.
 
-However, the semantic representation MUST preserve the distinction.
+However:
+
+> Wall-clock timing MUST NOT silently become simulation semantics.
+
+The simulation receives its timestep explicitly.
 
 ---
 
-# 14. Simulation Lifecycle
+# 13. Semantic Graph
 
-The Golden Path runtime MUST support:
-
-```text
-initialize
-    ↓
-instantiate
-    ↓
-step
-    ↓
-observe
-    ↓
-render
-    ↓
-repeat
-    ↓
-shutdown
-```
-
-The minimum lifecycle is:
+The Golden Path SHOULD be representable as a semantic graph containing, where applicable:
 
 ```text
-create
-step
-observe
-destroy
+Entities
+Values
+Types
+Relationships
+Operations
+State
+Events
+Constraints
+Capabilities
+Resources
+Observations
+Temporal relations
+Causal relations
+Provenance
 ```
+
+The filesystem MUST NOT be treated as the semantic graph.
+
+The Golden Path is an executable projection of semantic relationships into representations suitable for compilation and execution.
 
 ---
 
-# 15. State Model
+# 14. Domain IR
 
-Simulation state MUST be explicit.
+The Golden Path requires a minimal domain representation capable of expressing the semantic workload.
 
-Conceptually:
+The IR MUST:
 
-```text
-SimulationState
- ├── simulation_time
- └── particles
-      ├── position
-      └── velocity
-```
+* preserve semantic identity;
+* preserve semantic types;
+* represent required operations;
+* represent required state;
+* preserve declared invariants;
+* expose verification constraints;
+* retain provenance where appropriate;
+* remain independent of the final execution substrate.
 
-The runtime MUST NOT treat the renderer's state as the simulation's authoritative state.
-
-The renderer observes or receives a projection of simulation state.
-
----
-
-# 16. State Authority
-
-The authoritative state hierarchy is:
-
-```text
-Semantic Simulation State
-          │
-          ▼
-Runtime Representation
-          │
-          ▼
-Render Projection
-          │
-          ▼
-Renderer State
-```
-
-The renderer MUST NOT modify authoritative simulation state directly.
-
-If interaction is later introduced, input MUST become an explicit semantic event, operation, or control action.
+The IR MUST NOT redefine semantic meaning.
 
 ---
 
-# 17. Semantic IR Requirements
+# 15. Custom IR Discipline
 
-The Golden Path requires a minimal SCR simulation IR.
-
-The initial IR SHOULD be deliberately small.
-
-Conceptually:
-
-```text
-scr.simulation
-scr.state
-scr.step
-scr.render
-```
-
-Arithmetic SHOULD be expressed using existing MLIR facilities where practical.
-
-The SCR IR MUST represent semantic concepts that cannot be adequately expressed by existing lower-level dialects.
-
----
-
-# 18. No Premature IR Expansion
-
-The implementation MUST NOT create a large SCR dialect simply because the architecture permits one.
+SCR MUST NOT create custom IR operations merely because MLIR permits them.
 
 Every custom operation MUST answer:
 
 1. What semantic concept does it represent?
-2. Why can an existing MLIR operation not represent it?
-3. At what abstraction level does it belong?
-4. What semantic contract does it preserve?
-5. What is its intended lowering path?
+2. Why is the concept not adequately represented by existing MLIR infrastructure?
+3. What semantic contract does it preserve?
+4. What abstraction level does it belong to?
+5. What is its lowering path?
+6. What verification rules apply?
+7. What provider/runtime semantics does it require?
 
-If those questions cannot be answered, the operation SHOULD NOT be introduced.
+If these questions cannot be answered, the custom operation SHOULD NOT be introduced.
 
 ---
 
-# 19. MLIR Integration
+# 16. MLIR
 
-SCR MUST use MLIR as the compiler infrastructure.
+SCR uses MLIR as compiler infrastructure.
 
-The Golden Path SHOULD use existing MLIR dialects wherever appropriate.
+The conceptual relationship is:
+
+```text
+SCR Semantic Architecture
+        ↓
+SCR Domain IR
+        ↓
+MLIR
+        ↓
+MLIR Transformations
+        ↓
+Lowering
+        ↓
+Execution
+```
+
+MLIR is not the semantic authority.
+
+The Golden Path SHOULD reuse existing MLIR infrastructure wherever appropriate.
 
 Potential lower-level dialects include:
 
@@ -540,419 +558,584 @@ math
 llvm
 ```
 
-The exact set MUST be determined by the minimum viable lowering path.
-
-MLIR permits multiple dialects to coexist in a module and provides mechanisms for converting between them.
+The actual pipeline MUST be determined by semantic and implementation requirements.
 
 ---
 
-# 20. IR Verification
+# 17. IR Verification
 
-Every Golden Path program MUST pass IR verification before lowering.
+IR MUST be verified before execution.
 
-Verification MUST include:
+Verification MUST establish:
 
-* valid operation structure;
-* valid operands;
-* valid results;
-* valid types;
-* valid regions where applicable;
+* structural validity;
+* operand validity;
+* result validity;
+* type validity;
+* region validity where applicable;
 * semantic constraints;
-* simulation-state constraints.
+* state constraints;
+* temporal constraints;
+* required invariants.
 
-An invalid IR MUST NOT be passed silently to execution.
+Invalid IR MUST NOT silently reach execution.
 
 ---
 
-# 21. Transformation Pipeline
+# 18. Transformation
 
-The initial pipeline SHOULD be:
+The conceptual transformation path is:
 
 ```text
-SCR Simulation IR
-       │
-       ▼
+Domain IR
+    ↓
 Canonicalization
-       │
-       ▼
-SCR Lowering
-       │
-       ▼
-Existing MLIR Dialects
-       │
-       ▼
-LLVM-Compatible MLIR
-       │
-       ▼
-LLVM IR / Native Execution
+    ↓
+Semantic-preserving transformations
+    ↓
+Lowering
+    ↓
+Target-compatible MLIR
 ```
 
-MLIR's pass infrastructure provides the basic mechanism for transformation and optimization pipelines.
+Transformations MUST preserve the semantic contract.
+
+Optimization MUST NOT silently redefine semantics.
 
 ---
 
-# 22. Lowering
+# 19. Lowering
 
-The first lowering path MUST target CPU execution.
+The first execution target is CPU.
 
 Conceptually:
 
 ```text
-SCR Simulation
+SCR Semantic Computation
        ↓
-SCR Dynamics
+Domain IR
        ↓
-arith / scf / func / memref
+MLIR
        ↓
-LLVM
+arith / scf / func / memref / ...
+       ↓
+LLVM-compatible representation
        ↓
 CPU
 ```
 
-The exact intermediate sequence MAY differ.
+The exact dialect sequence MAY evolve.
 
-The architectural requirement is:
+The invariant is:
 
-> A semantic simulation MUST be lowered progressively rather than implemented directly as a renderer-specific or CPU-specific program.
-
----
-
-# 23. Dialect Conversion
-
-Where SCR-specific operations must be converted to lower-level MLIR operations, the implementation SHOULD use MLIR Dialect Conversion.
-
-MLIR provides conversion targets, rewrite patterns, optional type conversion, and full/partial conversion modes.
-
-The Golden Path SHOULD prefer full conversion at the final boundary so that no unresolved SCR execution operations remain before CPU execution.
+> Higher-level semantic meaning is progressively lowered rather than bypassed by implementing the workload directly for the target hardware.
 
 ---
 
-# 24. CPU Provider
+# 20. Capability Model
 
-v0.0.1 MUST provide a CPU execution path.
+The Golden Path SHOULD declare the capabilities required by the workload.
 
-The CPU provider is the first executable realization of SCR semantics.
+For example:
+
+```text
+Required:
+    Stateful
+    Temporal
+    Spatial
+    Deterministic
+```
+
+The available provider declares capabilities it can satisfy.
+
+Conceptually:
+
+```text
+Semantic Requirements
+        ↓
+Capability Analysis
+        ↓
+Provider Capability Match
+        ↓
+Provider
+```
+
+For v0.0.1 this selection MAY be static.
+
+Automatic provider discovery and adaptive selection are deferred.
+
+---
+
+# 21. CPU Provider
+
+The CPU provider is the first executable realization of the semantic contract.
 
 It MUST:
 
 * accept compiled computation;
 * instantiate runtime state;
-* execute simulation steps;
+* execute semantic steps;
 * expose resulting state;
-* preserve deterministic semantics for the reference workload.
+* preserve required semantics;
+* preserve reference-workload determinism.
 
 The CPU provider MUST NOT become the semantic authority.
 
 ---
 
-# 25. Execution API
+# 22. Runtime Boundary
 
-The minimum conceptual runtime API is:
+The runtime SHOULD expose the conceptual lifecycle:
 
 ```text
 compile(program)
 instantiate(compiled_program)
+initialize(instance)
 step(instance, dt)
 observe(instance)
 destroy(instance)
 ```
 
-Exact Rust naming MAY differ.
+Exact API names MAY differ.
 
 The semantic lifecycle MUST remain equivalent.
 
----
+The application MUST NOT directly depend on:
 
-# 26. Execution Independence
-
-The application MUST NOT directly invoke:
-
-* LLVM APIs;
+* LLVM internals;
 * MLIR pass internals;
 * CPU-specific kernels;
 * renderer-specific execution;
 * VSG APIs.
 
-The application interacts with the SCR runtime.
-
-The runtime chooses the execution implementation.
-
 ---
 
-# 27. Render Projection
+# 23. Runtime State Evolution
 
-Simulation state MUST be projected into render state.
-
-Conceptually:
+The runtime loop MUST conceptually implement:
 
 ```text
-SimulationState
-      │
-      ▼
-RenderProjection
-      │
-      ▼
-RenderState
+Runtime Instance
+       ↓
+Semantic State
+       ↓
+step(dt)
+       ↓
+New Semantic State
+       ↓
+Observation
 ```
 
-The projection MAY be implemented as a direct transformation in v0.0.1.
+The execution representation MAY mutate in place.
 
-The boundary MUST nevertheless exist.
+The semantic model MUST preserve the distinction between:
+
+```text
+semantic state
+```
+
+and:
+
+```text
+physical storage
+```
 
 ---
 
-# 28. Render State
+# 24. Observation
 
-The minimum RenderState SHOULD support:
+Observation MUST be treated as a first-class boundary.
+
+At minimum:
+
+```text
+Semantic State
+      ↓
+Observation
+```
+
+An observation MAY produce:
+
+* diagnostic state;
+* analytical data;
+* serialized state;
+* stream data;
+* render state.
+
+Observation MUST NOT implicitly mutate authoritative semantic state unless explicitly defined by the semantic contract.
+
+---
+
+# 25. Render Projection
+
+Rendering is one manifestation of semantic state.
+
+The boundary MUST be:
+
+```text
+Semantic Simulation State
+        ↓
+Morphological / Spatial Interpretation
+        ↓
+Render Projection
+        ↓
+Render State
+```
+
+For v0.0.1 the morphological/spatial interpretation MAY be trivial.
+
+The architectural boundary MUST nevertheless exist.
+
+---
+
+# 26. Render State
+
+The minimum render representation MAY contain:
 
 ```text
 RenderObject
- ├── transform
- ├── geometry
- └── appearance
+├── transform
+├── geometry
+└── appearance
 ```
 
-For the particle workload, geometry MAY be represented as:
+The particle workload MAY use:
 
 * points;
 * billboards;
 * simple primitives.
 
-The renderer MUST NOT require the simulation to know which representation is used.
+The simulation MUST NOT require knowledge of the selected graphical representation.
 
 ---
 
-# 29. Rendering API
+# 27. Rendering Provider
 
-The minimum rendering abstraction SHOULD support:
+The rendering subsystem MUST be independent of the semantic simulation model.
 
-```text
-initialize
-create/update render resources
-update render state
-render frame
-present
-shutdown
-```
-
-The rendering API MUST remain independent of VSG.
-
----
-
-# 30. VSG Adapter
-
-The initial rendering provider MAY use VulkanSceneGraph.
-
-The architecture MUST be:
+The reference rendering path MAY be:
 
 ```text
-SCR Render State
-       ↓
+Render State
+      ↓
 SCR Rendering API
-       ↓
+      ↓
 VSG Adapter
-       ↓
+      ↓
 VulkanSceneGraph
-       ↓
+      ↓
 Vulkan
+      ↓
+Display
 ```
 
-VSG-specific types MUST NOT leak into semantic simulation APIs.
+VSG/Vulkan are implementation choices.
+
+They MUST NOT become semantic dependencies.
+
+The architecture MUST permit another renderer to consume equivalent render state.
 
 ---
 
-# 31. Rendering Is Not Simulation
-
-Rendering MUST be treated as an observer/consumer of simulation state.
+# 28. Rendering Is Not Simulation
 
 The renderer MAY maintain:
 
-* GPU resources;
 * scene graph state;
+* GPU resources;
 * camera state;
+* frame resources;
 * render caches;
-* frame resources.
+* acceleration structures.
 
-These MUST NOT become the authoritative simulation state.
+None of these are authoritative simulation state.
+
+The renderer observes or consumes semantic state through a defined projection.
 
 ---
 
-# 32. Runtime Loop
+# 29. Runtime Control Flow
 
-The Golden Path application MUST implement the following loop:
+The reference application SHOULD implement:
 
 ```text
 initialize
-    │
-    ▼
+    ↓
 compile
-    │
-    ▼
+    ↓
 instantiate
-    │
-    ▼
-┌──────────────────────────┐
-│                          │
-│  obtain frame delta      │
-│          │               │
-│          ▼               │
-│  simulation.step(dt)     │
-│          │               │
-│          ▼               │
-│  observe state           │
-│          │               │
-│          ▼               │
-│  project render state    │
-│          │               │
-│          ▼               │
-│  renderer.update()       │
-│          │               │
-│          ▼               │
-│  renderer.render()       │
-│          │               │
-│          ▼               │
-│  present                 │
-│                          │
-└────────────┬─────────────┘
-             │
-             └──── repeat
+    ↓
+initialize renderer
+    ↓
+┌─────────────────────────────┐
+│                             │
+│ acquire / provide dt        │
+│          ↓                  │
+│ step simulation             │
+│          ↓                  │
+│ observe semantic state      │
+│          ↓                  │
+│ project render state        │
+│          ↓                  │
+│ update renderer             │
+│          ↓                  │
+│ render                      │
+│          ↓                  │
+│ present                     │
+│                             │
+└──────────────┬──────────────┘
+               ↓
+             repeat
+               ↓
+           shutdown
 ```
 
 ---
 
-# 33. Frame Timing
+# 30. Headless Execution Path
 
-The runtime MUST obtain a frame delta.
-
-The initial implementation MAY use:
+The complete computational path MUST be executable without a graphics subsystem.
 
 ```text
-dt = current_wall_time - previous_wall_time
+Semantic Program
+       ↓
+Compile
+       ↓
+Verify
+       ↓
+Lower
+       ↓
+Execute
+       ↓
+Observe
+       ↓
+Compare Semantic State
 ```
 
-The simulation MUST receive `dt` explicitly.
+This path is the primary automated architectural conformance test.
 
-The renderer MUST NOT implicitly determine simulation time.
+A graphical renderer MUST NOT be required for semantic validation.
 
 ---
 
-# 34. Determinism
+# 31. Rendering Acceptance Path
 
-The reference simulation MUST be deterministic given:
+The reference visual path extends the headless path:
 
 ```text
-initial state
-simulation inputs
-simulation timestep sequence
-implementation semantics
+Headless Computational Path
+       ↓
+Semantic State
+       ↓
+Render Projection
+       ↓
+Render State
+       ↓
+Renderer
+       ↓
+Visible Result
 ```
 
-The Golden Path MUST provide a test that executes the same initial state and timestep sequence twice and verifies equivalent resulting state.
+The graphical demonstration provides a human-observable manifestation of the computation.
+
+It is evidence of integration, not the definition of semantic correctness.
 
 ---
 
-# 35. Golden Workload Configuration
+# 32. Determinism
 
-The reference workload SHOULD use approximately:
+The reference workload MUST be deterministic given:
 
 ```text
-particle_count = 100
-initial_position = deterministic
-initial_velocity = deterministic
+initial semantic state
++
+semantic inputs
++
+timestep sequence
 ```
 
-The exact values are not architecturally significant.
+The Golden Path MUST execute the same workload twice and establish semantic equivalence of the resulting states.
 
-The workload MUST remain small enough to debug easily.
+Internal memory layouts need not be identical.
+
+Internal object identities need not be identical.
+
+The semantic result MUST be equivalent under the reference contract.
 
 ---
 
-# 36. Visual Requirement
+# 33. Semantic Equivalence
 
-The Golden Path MUST produce a visible application window.
+The Golden Path does not attempt to solve generalized semantic equivalence.
 
-The window MUST display the simulation.
+However, it MUST establish the principle that execution correctness is evaluated against semantic results rather than implementation structure.
 
-The simulation MUST visibly change over time.
-
-For the reference particle workload:
+For the reference workload:
 
 ```text
-Frame N
-   • • • •
-    • • •
+Implementation A
+       ↓
+Semantic Result
 
-Frame N+1
-    • • • •
-     • • •
-
-Frame N+2
-      • • • •
-       • • •
+Implementation B
+       ↓
+Semantic Result
 ```
 
-The visual result is a manual end-to-end acceptance test.
+may be considered equivalent where the semantic contract establishes equivalent observable state.
+
+Generalized equivalence remains a research area.
 
 ---
 
-# 37. Reference Application
+# 34. Provenance
 
-The canonical application SHOULD live under:
+The implementation SHOULD preserve traceability through:
+
+```text
+Semantic Entity / Operation
+        ↓
+Domain IR
+        ↓
+MLIR Operation
+        ↓
+Transformation
+        ↓
+Lowered Operation
+        ↓
+Provider Execution
+        ↓
+Observed Result
+```
+
+At minimum, development/debug builds SHOULD provide enough information to identify the semantic origin of significant execution artifacts.
+
+---
+
+# 35. Error Model
+
+The Golden Path MUST distinguish failures by architectural stage.
+
+At minimum:
+
+```text
+SemanticError
+IRError
+VerificationError
+TransformationError
+LoweringError
+ProviderError
+ExecutionError
+ObservationError
+RenderingError
+```
+
+Errors SHOULD preserve:
+
+* stage;
+* semantic origin;
+* operation identity where available;
+* provenance;
+* underlying cause.
+
+---
+
+# 36. Inspectability
+
+Every major stage MUST be inspectable during development.
+
+Developers SHOULD be able to inspect:
+
+```text
+Semantic Model
+      ↓
+Domain IR
+      ↓
+MLIR
+      ↓
+Transformed MLIR
+      ↓
+Lowered MLIR
+      ↓
+Execution
+      ↓
+Observed State
+```
+
+The graphical application MUST NOT be required to inspect the compiler path.
+
+---
+
+# 37. Required Developer Artifacts
+
+The implementation SHOULD provide inspectable artifacts equivalent to:
+
+```text
+golden_path.semantic
+golden_path.mlir
+golden_path.lowered.mlir
+golden_path.state
+```
+
+Exact filenames MAY differ.
+
+The purpose is to make the vertical slice inspectable independently of the renderer.
+
+---
+
+# 38. MLIR Tooling
+
+Development SHOULD support:
+
+```text
+parse
+verify
+print
+transform
+lower
+inspect
+```
+
+Existing MLIR tooling SHOULD be reused rather than duplicated.
+
+Where appropriate, `mlir-opt` or equivalent tooling SHOULD be usable to inspect intermediate representations independently of runtime execution.
+
+---
+
+# 39. Reference Application
+
+The canonical reference application SHOULD live under:
 
 ```text
 examples/
 └── golden_path/
 ```
 
-It SHOULD be executable through a simple command such as:
+The developer experience SHOULD approach:
 
 ```text
-cargo run --example golden_path
+Build
+  ↓
+Run
+  ↓
+Observe
 ```
 
-or the repository's equivalent build/run mechanism.
+The repository MAY provide separate commands for:
 
-The developer experience MUST prioritize:
+```text
+golden-path-headless
+golden-path-rendered
+golden-path-dump-ir
+```
 
-> Build → Run → Window appears.
+if practical.
 
 ---
 
-# 38. Recommended Repository Structure
+# 40. Minimal Domain Surface
 
-The Golden Path SHOULD touch the following areas:
-
-```text
-lib/
-├── 000_meta/
-├── 101_Core/
-├── 201_Data/
-├── 202_Math/
-├── 502_Dynamics/
-├── 503_Simulation/
-├── 801_Spatial/
-├── 902_Interfaces/
-├── 903_Lowering/
-├── 904_Providers/
-├── 905_Transforms/
-└── A01_Render/
-
-compiler/
-runtime/
-providers/
-examples/
-tests/
-```
-
-The exact repository structure MAY evolve.
-
-The semantic boundaries MUST remain.
-
----
-
-# 39. Minimal Domain Surface
-
-The following domains are REQUIRED for the first vertical slice:
+The first vertical slice SHOULD involve:
 
 ```text
 Core
@@ -964,38 +1147,42 @@ Spatial
 Render
 ```
 
-The following cross-cutting domains are REQUIRED:
+Cross-cutting infrastructure:
 
 ```text
 Interfaces
 Transforms
 Lowering
 Providers
+Analysis
 ```
 
-Other semantic domains MAY remain specification-only.
+The presence of a domain in this list does not imply that its complete implementation is required.
+
+Only the semantic surface needed by the reference workload is required.
 
 ---
 
-# 40. Minimal Interface Set
+# 41. Minimal Capability Surface
 
-The Golden Path SHOULD implement only the following cross-domain capabilities:
+The reference workload SHOULD require:
 
 ```text
 Stateful
 Temporal
 Spatial
-Renderable
 Deterministic
+Observable
+Renderable
 ```
 
-Additional interfaces MUST NOT be implemented merely for completeness.
+Additional capabilities MUST NOT be implemented merely for completeness.
 
 ---
 
-# 41. Minimal Transform Set
+# 42. Minimal Transformation Surface
 
-The Golden Path SHOULD require only:
+The first path SHOULD require only:
 
 ```text
 Canonicalization
@@ -1003,7 +1190,7 @@ Representation
 Lowering
 ```
 
-More advanced transformations such as:
+Advanced transformations such as:
 
 ```text
 Fusion
@@ -1012,112 +1199,122 @@ Vectorization
 Parallelization
 Distribution
 Specialization
-Hardware
+Hardware-specific optimization
 ```
 
-are deferred unless required by the actual implementation.
+are deferred unless required by the actual workload.
 
 ---
 
-# 42. Minimal Provider Set
+# 43. Minimal Provider Surface
 
-Only two providers are required:
+The first executable provider surface is:
 
 ```text
 CPU
+```
+
+The first manifestation provider is:
+
+```text
 Rendering
 ```
 
-The rendering provider MAY internally contain:
+The rendering provider MAY use:
 
 ```text
 VSG
 Vulkan
 ```
 
-but those are implementation details.
+internally.
+
+The semantic application MUST remain independent of both.
 
 ---
 
-# 43. Testing Strategy
+# 44. Testing Hierarchy
 
-Testing MUST follow the semantic abstraction hierarchy.
+Testing MUST follow the semantic architecture:
 
 ```text
-Specification Tests
-        ↓
+Semantic Specification Tests
+          ↓
 Core Unit Tests
-        ↓
+          ↓
 Domain Tests
-        ↓
+          ↓
 IR Tests
-        ↓
+          ↓
+Verification Tests
+          ↓
+Transformation Tests
+          ↓
 Lowering Tests
-        ↓
+          ↓
+Provider Tests
+          ↓
 Execution Tests
-        ↓
-Integration Test
-        ↓
+          ↓
+Headless Integration Test
+          ↓
+Rendering Integration Test
+          ↓
 Visual Smoke Test
 ```
 
+Each layer tests a different architectural claim.
+
 ---
 
-# 44. Specification Tests
+# 45. Specification Tests
 
-Tests MUST establish that the Golden Path semantics are explicitly represented.
+Specification tests MUST establish that the intended semantics are represented.
 
 Examples:
 
 ```text
+particle has semantic identity
 particle has position
 particle has velocity
-simulation has time
-step changes state
-render state derives from simulation state
+simulation has explicit time
+advance consumes dt
+advance produces valid state
+state invariants are preserved
+render state derives from semantic state
 ```
 
 ---
 
-# 45. IR Tests
+# 46. IR Tests
 
-IR tests MUST verify:
+IR tests MUST establish:
 
-* valid simulation IR parses;
-* valid simulation IR verifies;
-* invalid IR is rejected;
-* `scr.step` has valid operands/results;
-* required semantic information is present;
-* lowering inputs are legal.
-
-MLIR's tooling and pass infrastructure should be used rather than duplicating equivalent compiler functionality.
+* valid programs parse;
+* valid programs verify;
+* invalid programs fail;
+* semantic constraints are represented;
+* required operands/results exist;
+* required types exist;
+* lowering prerequisites are satisfied.
 
 ---
 
-# 46. Lowering Tests
+# 47. Lowering Tests
 
-At minimum:
+Lowering tests MUST establish:
 
-```text
-SCR Simulation IR
-        ↓
-Lowered MLIR
-```
-
-MUST be tested.
-
-The test MUST establish that:
-
-* SCR operations are converted;
-* resulting operations are legal;
+* semantic operations are transformed;
+* resulting IR is legal;
 * required types are converted;
-* no unsupported SCR execution operations remain.
+* unsupported semantic operations do not remain at the execution boundary;
+* semantic invariants are preserved where applicable.
 
 ---
 
-# 47. Execution Tests
+# 48. Provider Tests
 
-The CPU provider MUST be tested against known state transitions.
+The CPU provider MUST be tested against known semantic transitions.
 
 Example:
 
@@ -1137,16 +1334,16 @@ dt = 2
 expected position = (3, 0)
 ```
 
-The test MUST verify semantic results rather than internal implementation details.
+Tests MUST evaluate semantic results rather than internal implementation structure.
 
 ---
 
-# 48. End-to-End Test
+# 49. Headless End-to-End Test
 
-A complete automated test SHOULD perform:
+A complete automated test MUST be capable of:
 
 ```text
-construct semantic simulation
+construct semantic computation
         ↓
 compile
         ↓
@@ -1154,346 +1351,124 @@ verify
         ↓
 lower
         ↓
+resolve provider
+        ↓
 execute
         ↓
 observe
         ↓
-compare expected state
+compare semantic result
 ```
 
-The test SHOULD run without opening a graphical window.
+The test MUST NOT require a graphical window.
 
 ---
 
-# 49. Visual Smoke Test
+# 50. Visual Smoke Test
 
-A separate manual or automated graphical test MUST verify:
+A separate graphical test MUST establish:
 
 ```text
 application launches
 window opens
-simulation runs
-objects are visible
+renderer initializes
+objects become visible
 objects move
-application exits cleanly
+simulation continues
+application shuts down cleanly
 ```
 
-The visual test is not a substitute for semantic tests.
+The visual test MUST NOT substitute for semantic or execution tests.
 
 ---
 
-# 50. Error Handling
-
-The Golden Path MUST distinguish at minimum:
-
-```text
-SemanticError
-IRError
-VerificationError
-LoweringError
-ExecutionError
-RenderingError
-```
-
-Errors SHOULD preserve provenance sufficient to identify the failing stage.
-
----
-
-# 51. Provenance
-
-The runtime SHOULD be able to associate:
-
-```text
-Semantic Operation
-       ↓
-IR Operation
-       ↓
-Transformation
-       ↓
-Lowered Operation
-       ↓
-Execution
-```
-
-at least during development/debug builds.
-
-This is important because v0.0.1 is intended to validate the architecture rather than merely produce a visual result.
-
----
-
-# 52. Observability
-
-The Golden Path SHOULD expose enough information to diagnose:
-
-* semantic program construction;
-* generated IR;
-* verification;
-* transformation;
-* lowering;
-* execution;
-* simulation time;
-* frame time;
-* render state.
-
-A debug mode SHOULD allow intermediate IR to be emitted.
-
----
-
-# 53. Required Developer Artifacts
-
-The implementation SHOULD produce:
-
-```text
-golden_path.mlir
-```
-
-or an equivalent inspectable IR artifact.
-
-Developers SHOULD be able to inspect:
-
-```text
-semantic IR
-↓
-lowered IR
-↓
-LLVM-compatible representation
-```
-
-without requiring the graphical application.
-
----
-
-# 54. MLIR Tooling
-
-The implementation SHOULD integrate with standard MLIR tools where practical.
-
-At minimum, development should support:
-
-```text
-parse
-verify
-print
-run passes
-inspect IR
-```
-
-The existing `mlir-opt` workflow is particularly appropriate for this stage because it exercises parsing, verification, pass execution, and IR inspection without requiring the full runtime.
-
----
-
-# 55. Compiler Boundary
-
-The compiler MUST expose a conceptual API:
-
-```text
-Semantic Program
-       ↓
-Compiler
-       ↓
-Compiled Program
-```
-
-The compiler MAY internally use:
-
-* MLIR contexts;
-* dialect registration;
-* pass managers;
-* conversion targets;
-* rewrite patterns;
-* LLVM translation.
-
-These details MUST NOT leak into the semantic application API.
-
----
-
-# 56. Runtime Boundary
-
-The runtime MUST expose:
-
-```text
-Compiled Program
-       ↓
-Runtime Instance
-       ↓
-State Evolution
-```
-
-The runtime MAY internally select:
-
-* CPU;
-* JIT;
-* native execution;
-* future GPU;
-* future distributed providers.
-
-The v0.0.1 implementation only needs CPU.
-
----
-
-# 57. Rendering Boundary
-
-The rendering subsystem MUST expose:
-
-```text
-Render State
-       ↓
-Renderer
-```
-
-The renderer MUST NOT require the application to know:
-
-* Vulkan;
-* VSG;
-* command buffers;
-* descriptor sets;
-* pipelines;
-* GPU memory;
-* swapchains.
-
-Those belong to the rendering implementation.
-
----
-
-# 58. Golden Path Data Flow
-
-The complete data flow MUST be approximately:
-
-```text
-Semantic Program
-      │
-      ▼
-Simulation Definition
-      │
-      ▼
-Initial State
-      │
-      ▼
-Simulation IR
-      │
-      ▼
-MLIR
-      │
-      ▼
-Lowered Program
-      │
-      ▼
-CPU Execution
-      │
-      ▼
-Simulation State
-      │
-      ▼
-Render Projection
-      │
-      ▼
-Render State
-      │
-      ▼
-Renderer
-      │
-      ▼
-Frame
-```
-
----
-
-# 59. Golden Path Control Flow
-
-The complete control flow MUST be:
-
-```text
-compile
-   │
-   ▼
-instantiate
-   │
-   ▼
-initialize renderer
-   │
-   ▼
-run
-   │
-   ├── acquire dt
-   ├── step simulation
-   ├── observe state
-   ├── project render state
-   ├── update renderer
-   ├── render
-   └── present
-   │
-   ▼
-shutdown
-```
-
----
-
-# 60. Architectural Invariants
+# 51. Architectural Invariants
 
 ### GP-INV-001 — Semantic Primacy
 
 Semantic definitions remain authoritative.
 
-### GP-INV-002 — IR Representation
+### GP-INV-002 — Contract Primacy
 
-IR represents semantics but does not redefine them.
+Execution conforms to semantic contracts.
 
-### GP-INV-003 — Compiler Separation
+### GP-INV-003 — Identity Separation
 
-Compilation remains separate from application semantics.
+Semantic identity is independent of physical representation.
 
-### GP-INV-004 — Execution Separation
+### GP-INV-004 — Representation Independence
 
-Execution provider remains separate from semantic definition.
+Semantic meaning is not defined by IR representation.
 
-### GP-INV-005 — Simulation Authority
+### GP-INV-005 — Compiler Separation
 
-Simulation state is authoritative over render state.
+Application semantics remain separate from compiler implementation.
 
-### GP-INV-006 — Rendering Separation
+### GP-INV-006 — Provider Separation
+
+Providers realize semantic contracts but do not define them.
+
+### GP-INV-007 — Runtime Separation
+
+Runtime mechanisms do not redefine semantic state.
+
+### GP-INV-008 — Simulation Authority
+
+Semantic simulation state is authoritative over render state.
+
+### GP-INV-009 — Rendering Separation
 
 Rendering does not define simulation semantics.
 
-### GP-INV-007 — Explicit Time
+### GP-INV-010 — Explicit Time
 
 Simulation time is explicitly represented.
 
-### GP-INV-008 — Determinism
+### GP-INV-011 — Determinism
 
-The reference workload is deterministic.
+The reference workload is deterministic under its declared contract.
 
-### GP-INV-009 — Progressive Lowering
+### GP-INV-012 — Progressive Lowering
 
 Higher-level semantics are lowered progressively.
 
-### GP-INV-010 — Provider Independence
+### GP-INV-013 — Provider Independence
 
 The semantic workload does not depend on CPU-specific implementation.
 
-### GP-INV-011 — Renderer Independence
+### GP-INV-014 — Renderer Independence
 
-The semantic workload does not depend on VSG or Vulkan.
+Semantic computation does not depend on VSG or Vulkan.
 
-### GP-INV-012 — Domain Separation
+### GP-INV-015 — Inspectability
 
-Domains retain their semantic boundaries.
+Intermediate computational representations remain inspectable.
 
-### GP-INV-013 — Existing Infrastructure Reuse
+### GP-INV-016 — Provenance
 
-Existing MLIR infrastructure is preferred over redundant SCR implementations.
+Significant execution artifacts remain traceable to semantic origin.
 
-### GP-INV-014 — Inspectability
+### GP-INV-017 — Observation Independence
 
-Intermediate representations remain inspectable.
+Observation does not redefine authoritative state.
 
-### GP-INV-015 — End-to-End Traceability
+### GP-INV-018 — Domain Separation
 
-The major stages of the Golden Path remain traceable.
+Semantic domains retain their boundaries.
+
+### GP-INV-019 — Infrastructure Reuse
+
+Existing MLIR infrastructure is preferred over redundant SCR infrastructure.
+
+### GP-INV-020 — End-to-End Traceability
+
+The complete Golden Path remains traceable from semantic definition to observed result.
 
 ---
 
-# 61. Definition of Done
+# 52. Definition of Done
 
-SCR v0.0.1 Golden Path is COMPLETE when all of the following are true:
+The Golden Path is complete only when all of the following are satisfied.
 
 ## Semantic
 
@@ -1501,150 +1476,125 @@ SCR v0.0.1 Golden Path is COMPLETE when all of the following are true:
 * [ ] Simulation semantics are defined.
 * [ ] State semantics are explicit.
 * [ ] Time semantics are explicit.
-* [ ] Dynamics step is defined.
+* [ ] Semantic identity is explicit.
+* [ ] Dynamics contract is defined.
+* [ ] Required invariants are defined.
 
 ## IR
 
-* [ ] Simulation can be represented in SCR IR.
+* [ ] Semantic computation can be represented.
 * [ ] IR verifies.
+* [ ] Invalid IR is rejected.
 * [ ] IR can be inspected.
-* [ ] Required SCR operations are defined.
-* [ ] Existing MLIR dialects are reused where appropriate.
+* [ ] Custom operations have semantic justification.
+* [ ] Existing MLIR infrastructure is reused where appropriate.
 
 ## Compilation
 
-* [ ] SCR IR can be transformed.
-* [ ] SCR operations can be lowered.
+* [ ] Semantic IR can be transformed.
+* [ ] Required operations can be lowered.
 * [ ] Lowered IR is legal.
-* [ ] LLVM-compatible representation can be produced.
+* [ ] Execution-compatible representation can be produced.
+* [ ] Provenance can be inspected.
 
-## Execution
+## Provider / Runtime
 
-* [ ] CPU provider executes the program.
+* [ ] CPU provider realizes the contract.
+* [ ] Provider capability requirements are explicit.
+* [ ] Runtime can instantiate the computation.
 * [ ] Simulation state advances.
 * [ ] Deterministic execution test passes.
-* [ ] Runtime can observe resulting state.
+* [ ] Resulting semantic state can be observed.
+
+## Observation
+
+* [ ] Headless observation works.
+* [ ] Semantic state can be compared against expected results.
+* [ ] Observation does not become authoritative state.
 
 ## Rendering
 
-* [ ] Simulation state can become render state.
+* [ ] Semantic state can be projected into render state.
 * [ ] Renderer accepts render state.
-* [ ] VSG provider works.
-* [ ] Vulkan window opens.
-* [ ] Particles are visible.
-* [ ] Particles move.
+* [ ] Rendering provider works.
+* [ ] Reference renderer displays the workload.
+* [ ] Objects visibly change over time.
 
 ## Integration
 
 * [ ] Golden Path example runs end-to-end.
-* [ ] Automated end-to-end test passes.
+* [ ] Headless end-to-end test passes.
+* [ ] Rendering integration test passes.
 * [ ] Visual smoke test passes.
-* [ ] No semantic layer directly depends on VSG.
-* [ ] No semantic layer directly depends on LLVM.
-* [ ] No application code directly depends on MLIR internals.
+* [ ] Semantic layers do not directly depend on VSG.
+* [ ] Semantic layers do not directly depend on LLVM.
+* [ ] Application semantics do not depend on MLIR internals.
+* [ ] Major stages remain traceable.
 
 ---
 
-# 62. Golden Path Demonstration
+# 53. Golden Path Demonstrations
 
-The canonical demonstration MUST be:
+The v0.0.1 implementation SHOULD provide three demonstrations.
 
-```text
-$ cargo run --example golden_path
-```
-
-or the equivalent repository command.
-
-Expected result:
+## 53.1 Semantic / IR
 
 ```text
-SCR Golden Path
-────────────────────────────────
-
-Semantic program:
-    particle simulation
-
-Compiler:
-    SCR → MLIR → CPU
-
-Runtime:
-    simulation running
-
-Renderer:
-    VSG / Vulkan
-
-[ graphical window ]
-
-    •       •
-       •
-  •          •
-       •  •
-          •
+Semantic Program
+      ↓
+Domain IR
+      ↓
+MLIR
 ```
 
-The particles MUST move continuously until the application exits.
+Developer can inspect the representation.
+
+## 53.2 Headless Execution
+
+```text
+Semantic Program
+      ↓
+Compile
+      ↓
+Execute
+      ↓
+Observed State
+```
+
+Developer can compare the semantic result.
+
+## 53.3 Rendered Execution
+
+```text
+Semantic Program
+      ↓
+Compile
+      ↓
+Execute
+      ↓
+Semantic State
+      ↓
+Render Projection
+      ↓
+Renderer
+      ↓
+Visible Result
+```
+
+Developer can see the computation manifested.
 
 ---
 
-# 63. First Expansion After v0.0.1
+# 54. First Expansion
 
-Once the Golden Path is complete, expansion SHOULD proceed from the working trunk rather than creating parallel architectures.
-
-Recommended sequence:
-
-```text
-v0.0.1
-Simple particles
-    │
-    ▼
-v0.0.2
-Fields
-    │
-    ▼
-v0.0.3
-Geometry / topology
-    │
-    ▼
-v0.0.4
-Physics
-    │
-    ▼
-v0.0.5
-Agents
-    │
-    ▼
-v0.0.6
-GPU execution
-    │
-    ▼
-v0.0.7
-Streams / messaging
-    │
-    ▼
-v0.0.8
-Neural / perception
-    │
-    ▼
-v0.0.9
-Learning / adaptation
-    │
-    ▼
-v0.1.0
-Distributed / heterogeneous execution
-```
-
-These version numbers are planning labels, not commitments.
-
----
-
-# 64. Expansion Rule
-
-Every subsequent feature SHOULD be added by extending the existing Golden Path.
+Subsequent domains MUST extend the existing Golden Path.
 
 For example:
 
 ```text
 Field
+  ↓
+Field Semantics
   ↓
 Field IR
   ↓
@@ -1652,118 +1602,149 @@ Dynamics
   ↓
 Simulation
   ↓
-Render
+Observation
 ```
 
-rather than creating a separate execution architecture for Fields.
-
-Likewise:
+or:
 
 ```text
-GPU
+Morphology
+  ↓
+Morphological Structure
+  ↓
+Spatial / Geometric Representation
+  ↓
+Render Projection
 ```
 
-should eventually replace or supplement:
+or:
 
 ```text
-CPU Provider
+Stream
+  ↓
+Semantic Events
+  ↓
+Stream IR
+  ↓
+Provider
+  ↓
+Transport
 ```
 
-rather than requiring a separate semantic application.
+No domain should create an independent semantic-to-execution architecture merely because its implementation differs.
 
 ---
 
-# 65. Golden Path as Architectural Test
+# 55. Golden Path as Architectural Conformance Test
 
-The Golden Path is itself an architectural conformance test.
+Every new subsystem SHOULD be evaluated against the following questions:
 
-A proposed new subsystem SHOULD be evaluated by asking:
+1. Can its semantics be defined independently?
+2. Can its semantic contract be stated?
+3. Can it participate in the semantic graph?
+4. Can it be represented in an appropriate IR?
+5. Can it participate in MLIR where appropriate?
+6. Can its representation be verified?
+7. Can it be transformed?
+8. Can it be lowered?
+9. Can a provider realize it?
+10. Can its state be observed?
+11. Can its provenance be preserved?
+12. Can it participate in the runtime lifecycle?
+13. Can it interact with existing domains without bypassing semantic boundaries?
 
-1. Can it express its semantics independently?
-2. Can it enter the semantic IR?
-3. Can it participate in the existing transformation model?
-4. Can it be lowered?
-5. Can it execute through a provider?
-6. Can it participate in simulation state?
-7. Can it produce or consume render state where appropriate?
-8. Does it preserve the existing semantic boundaries?
-
-If the answer requires bypassing the Golden Path architecture, the proposed subsystem MUST be reviewed before implementation.
+If a subsystem requires bypassing these principles, the architectural exception MUST be explicitly reviewed.
 
 ---
 
-# 66. What v0.0.1 Proves
+# 56. What v0.0.1 Proves
 
-A successful Golden Path proves that SCR can:
+A successful Golden Path demonstrates that SCR can:
 
 ```text
 describe computation semantically
-            ↓
+          ↓
+define a semantic contract
+          ↓
 represent that computation
-            ↓
-compile it
-            ↓
+          ↓
+verify the representation
+          ↓
+transform it
+          ↓
+lower it
+          ↓
+realize it through a provider
+          ↓
 execute it
-            ↓
-evolve state
-            ↓
-project state
-            ↓
-render the result
+          ↓
+evolve semantic state
+          ↓
+observe the result
+          ↓
+manifest the result
 ```
 
-This establishes the first complete SCR computational loop.
+This demonstrates the existence of an executable computational trunk.
 
-It demonstrates that:
-
-> **The semantic library is not merely documentation.**
-
-It can become an executable computational language.
+It does **not** demonstrate that the complete SCR computational universe exists.
 
 ---
 
-# 67. What v0.0.1 Does Not Prove
+# 57. What v0.0.1 Does Not Prove
 
-A successful Golden Path does NOT claim that SCR already supports:
+A successful Golden Path does NOT establish:
 
-* arbitrary semantic domains;
-* automatic provider selection;
+* arbitrary semantic-domain support;
+* generalized provider selection;
+* adaptive execution;
 * hardware-independent performance;
+* heterogeneous execution;
 * distributed execution;
-* semantic equivalence across arbitrary implementations;
-* generalized adaptive execution;
+* generalized semantic equivalence;
 * complete semantic hypergraph execution;
+* generalized computational morphology;
+* automatic lowering of arbitrary semantics;
 * universal simulation;
-* automatic lowering of arbitrary semantics.
+* complete rendering abstraction;
+* complete messaging semantics.
 
-Those remain future engineering and research objectives.
+Those remain future engineering or research objectives.
 
 ---
 
-# 68. Final Principle
+# 58. Final Principle
 
-The v0.0.1 Golden Path exists to prove one proposition:
+The Golden Path exists to prove one proposition:
 
-> **A computation can begin as semantic meaning, become executable computational structure through SCR and MLIR, evolve state through a runtime, and produce a visible manifestation without the semantic model becoming coupled to its compiler, execution provider, or renderer.**
+> **A computation can begin as semantic meaning, become executable computational structure through SCR and MLIR, be realized by an execution provider, evolve authoritative semantic state, and produce an observable or visible manifestation without the semantic model becoming coupled to its compiler, provider, runtime representation, or renderer.**
 
-The particle simulation is merely the smallest useful witness of that proposition.
+The particle simulation is merely the smallest useful witness.
 
 The implementation should therefore optimize for:
 
 ```text
 semantic integrity
-+
+        +
+contract preservation
+        +
 architectural separation
-+
+        +
+identity preservation
+        +
+provenance
+        +
 inspectability
-+
-end-to-end execution
-+
-visible proof
+        +
+headless execution
+        +
+visible manifestation
+        +
+end-to-end traceability
 ```
 
 rather than breadth.
 
-**The first milestone is not a complete computational universe.**
-
-It is proving that the universe has a working trunk.
+> **The first milestone is not a complete computational universe.**
+>
+> **It is proving that the universe has a working semantic trunk.**
