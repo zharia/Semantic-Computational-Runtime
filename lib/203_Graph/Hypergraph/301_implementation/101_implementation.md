@@ -24,7 +24,7 @@ The Lean model may reveal ambiguities or missing invariants in the definition; t
 - **Formalization status:** not started
 - **Proof coverage:** 0 %
 - **Lean toolchain:** to be pinned when work begins
-- **Primary reference:** `../101_definition/001_hypergraphs.md`
+- **Primary reference:** `../101_definition.md`
 
 ---
 
