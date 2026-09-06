@@ -21,7 +21,7 @@ Deliver a minimal, usable, well-tested Semantic Hypergraph substrate that higher
    - `102_status.yaml` (initialize with realistic “specified / not_started” state)
    - `103_library.graph.json` (derived later)
 
-2. Fix the typo: rename `401_documentaion` → `401_documentation`.
+2. Fix the typo in Documentation directory name (done).
 
 3. Record explicit relationships to the parent `203_Graph` domain (REFINES / SPECIALIZES).
 
@@ -65,7 +65,7 @@ Only the absolute minimum needed for higher domains to start expressing relation
    - Invalid operations rejected
    - Delta application produces expected state
 
-3. **Implement** in idiomatic Rust under `301_implementation/`:
+3. **Implement** in idiomatic Rust under `301_Implementation/`:
    - Strongly typed IDs
    - `Arc` / interior mutability only where topology requires it
    - Explicit error types

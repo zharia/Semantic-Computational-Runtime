@@ -47,4 +47,4 @@ Should NOT contain:
 
 ## Notes
 
-This is the lowest-level IR directory for the hypergraph domain. MLIR work should begin only after the semantic definition and minimal Rust implementation are stable, per the implementation plan in `301_implementation/000_meta.md`.
+This is the lowest-level IR directory for the hypergraph domain. MLIR work should begin only after the semantic definition and minimal Rust implementation are stable, per the implementation plan in `301_Implementation/000_meta.md`.

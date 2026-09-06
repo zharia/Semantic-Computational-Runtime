@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [],
+  "agent": [
+    "./agents/scr-explorer.md",
+    "./agents/scr-domain-validator.md"
+  ],
+  "skill": [
+    "./skills/asd-ste100/SKILL.md",
+    "./skills/scr-new-domain/SKILL.md",
+    "./skills/scr-edit-domain/SKILL.md",
+    "./skills/scr-meta-edit/SKILL.md"
+  ]
+}

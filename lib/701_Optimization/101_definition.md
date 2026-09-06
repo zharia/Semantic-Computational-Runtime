@@ -17,7 +17,7 @@ parent: SCR-LIB-MATHEMATICS
 
 authority: SCR
 domain: semantic-library
-------------------------
+---
 
 # Optimization
 

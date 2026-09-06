@@ -27,7 +27,7 @@ It is a formal model of the *semantics*.
 | Directory              | Relationship                                      |
 |------------------------|---------------------------------------------------|
 | `101_definition/`      | Normative source of truth. Lean must conform to it. |
-| `301_implementation/`  | Executable realization. Must satisfy the formal model. |
-| `401_documentation/`   | Human-readable notes and rationale.               |
+| `301_Implementation/`  | Executable realization. Must satisfy the formal model. |
+| `401_Documentation/`   | Human-readable notes and rationale.               |
 
 Authority order remains:

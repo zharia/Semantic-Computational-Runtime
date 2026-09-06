@@ -42,8 +42,8 @@ Should contain:
 
 Should NOT contain:
 - Semantic definitions (belong in `101_definition.md` at Hypergraph root)
-- Rust implementation (belongs in `301_implementation/`)
-- Lean formalization (belongs in `201_lean-lang/`)
+- Rust implementation (belongs in `301_Implementation/`)
+- Lean formalization (belongs in `201_LeanLang/`)
 
 ## Notes
 

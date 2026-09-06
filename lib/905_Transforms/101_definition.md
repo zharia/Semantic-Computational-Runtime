@@ -17,7 +17,7 @@ parent: SCR-LIB-CORE
 
 authority: SCR
 domain: semantic-library
-------------------------
+---
 
 # SCR Transforms
 

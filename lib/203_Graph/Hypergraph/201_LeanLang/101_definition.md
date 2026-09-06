@@ -1,8 +1,8 @@
-# 201_lean-lang
+# 201_LeanLang
 
 > Directory documentation for the current SCR library tree.
 
-**Path:** `lib/203_Graph/Hypergraph/201_lean-lang`
+**Path:** `lib/203_Graph/Hypergraph/201_LeanLang`
 
 **Documentation role:** Repository inventory
 
@@ -24,7 +24,7 @@ Placeholder for future formal verification work. The `000_meta.md` describes the
 
 ## Relationship to Parent
 
-Parent is `lib/203_Graph/Hypergraph`. This directory provides the formal/machine-checked reference against which implementations (Rust, MLIR) can be measured. Authority flows: `101_definition.md` (semantic truth) → `201_lean-lang` (formal model) → `301_implementation` (executable realization).
+Parent is `lib/203_Graph/Hypergraph`. This directory provides the formal/machine-checked reference against which implementations (Rust, MLIR) can be measured. Authority flows: `101_definition.md` (semantic truth) → `201_LeanLang` (formal model) → `301_Implementation` (executable realization).
 
 ## Implementation Evidence
 
@@ -45,7 +45,7 @@ Should contain when populated:
 - Well-formedness predicates
 
 Should NOT contain:
-- Runtime implementation (belongs in `301_implementation/`)
+- Runtime implementation (belongs in `301_Implementation/`)
 - MLIR dialect definitions (belongs in `101_IR/`)
 - Domain-specific semantic authority (upstream in `101_definition.md`)
 

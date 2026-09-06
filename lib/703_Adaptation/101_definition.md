@@ -17,7 +17,7 @@ parent: SCR-LIB-DYNAMICS
 
 authority: SCR
 domain: semantic-library
-------------------------
+---
 
 # Adaptation
 

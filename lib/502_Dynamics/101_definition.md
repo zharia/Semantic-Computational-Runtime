@@ -17,7 +17,7 @@ parent: SCR-LIB-DATA
 
 authority: SCR
 domain: semantic-library
-------------------------
+---
 
 # Dynamics
 

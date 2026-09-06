@@ -2,7 +2,7 @@
 
 > Directory documentation for the current SCR library tree.
 
-**Path:** `lib/203_Graph/Hypergraph/301_implementation/rust`
+**Path:** `lib/203_Graph/Hypergraph/301_Implementation/rust`
 
 **Documentation role:** Repository inventory
 
@@ -24,7 +24,7 @@ Empty structural placeholder. No Rust implementation has begun.
 
 ## Relationship to Parent
 
-Parent is `lib/203_Graph/Hypergraph/301_implementation`. This is the language-specific implementation directory for Rust.
+Parent is `lib/203_Graph/Hypergraph/301_Implementation`. This is the language-specific implementation directory for Rust.
 
 ## Implementation Evidence
 
@@ -47,7 +47,7 @@ Should contain when populated:
 
 Should NOT contain:
 - MLIR bindings (belongs in `101_IR/`)
-- Lean code (belongs in `201_lean-lang/`)
+- Lean code (belongs in `201_LeanLang/`)
 - Domain-specific semantic authority
 
 ## Notes

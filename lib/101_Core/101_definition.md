@@ -17,7 +17,7 @@ parent: null
 
 authority: SCR
 domain: semantic-library
-------------------------
+---
 
 # SCR Core
 

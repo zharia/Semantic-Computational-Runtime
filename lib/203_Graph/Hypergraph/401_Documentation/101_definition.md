@@ -1,8 +1,8 @@
-# 401_documentaion
+# 401_Documentation
 
 > Directory documentation for the current SCR library tree.
 
-**Path:** `lib/203_Graph/Hypergraph/401_documentaion`
+**Path:** `lib/203_Graph/Hypergraph/401_Documentation`
 
 **Documentation role:** Repository inventory
 
@@ -10,7 +10,7 @@
 
 Domain-specific notes and documentation for the Semantic Hypergraph domain. Intended to hold human-readable rationale, architectural notes, and explanatory materials.
 
-Note: Directory name contains a typo (`documentaion` → `documentation`). The implementation plan (`301_implementation/000_meta.md`) identifies this for correction.
+Note: Directory name previously contained a typo (`documentaion` → `documentation`). The implementation plan (`301_Implementation/000_meta.md`) identified this for correction.
 
 ## Current Contents
 
@@ -47,9 +47,9 @@ Should contain when populated:
 
 Should NOT contain:
 - Normative semantic definitions (belongs in `101_definition.md`)
-- Implementation code (belongs in `301_implementation/`)
-- Formal proofs (belongs in `201_lean-lang/`)
+- Implementation code (belongs in `301_Implementation/`)
+- Formal proofs (belongs in `201_LeanLang/`)
 
 ## Notes
 
-The directory name `401_documentaion` has a typo. Per the implementation plan, this should be renamed to `401_documentation`.
+The directory name was corrected from `401_Documentation` (originally misspelled).
