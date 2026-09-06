@@ -1,956 +1,854 @@
-# Semantic Computational Runtime (SCR)
+# Semantic Computational Runtime
 
-> **An open, extensible, MLIR-based semantic computational environment for expressing heterogeneous computation in terms of computational meaning rather than implementation technology.**
+**SCR — Semantic Computational Runtime**
 
-Semantic Computational Runtime (SCR) is an experimental computational framework built on **[MLIR](https://mlir.llvm.org/)**.
-
-SCR provides a semantic architecture for representing, composing, analysing, transforming, specialising, and executing computational concepts across heterogeneous domains and execution substrates.
-
-It is designed around a simple principle:
-
-> **Applications should be expressed in terms of computational meaning rather than implementation technology.**
-
-SCR is not a simulator, physics engine, rendering engine, compiler replacement, or wrapper library. Simulation is an important reference workload, but SCR is deliberately general enough to support computational systems spanning mathematics, data, fields, graphs, geometry, morphology, physics, dynamics, simulation, agents, neural computation, optimisation, control, perception, rendering, streaming, messaging, and other domains.
+> **Engineer outward from the Semantic Field.**
 
 ---
 
-## 1. The Core Idea
+## 1. Overview
 
-Modern computational systems are often constructed directly from implementation technologies:
+The Semantic Computational Runtime (SCR) is a computational architecture in which **semantic structure is primary and physical execution is its manifestation**.
 
-```text
-Application
-    ↓
-Library APIs
-    ↓
-Runtime APIs
-    ↓
-Hardware / Platform
-```
+SCR does not fundamentally model programs as instruction sequences operating upon passive memory.
 
-This makes application semantics tightly coupled to particular libraries, runtimes, programming languages, accelerators, or execution environments.
+Instead, SCR models computation as the **transformation of semantic structure within a Semantic Field**.
 
-SCR introduces a semantic architecture between application intent and implementation:
+A program is therefore an evolving semantic computational topology consisting of:
 
-```text
-Application
-    ↓
-Semantic Model
-    ↓
-SCR Semantic MLIR
-    ↓
-MLIR Infrastructure
-    ↓
-Analysis / Verification / Transformation
-    ↓
-Lowering
-    ↓
-Provider
-    ↓
-Runtime
-    ↓
-Execution
-```
+* state,
+* entities,
+* relationships,
+* transformations,
+* context,
+* constraints,
+* signals,
+* topology,
+* resources,
+* and temporal and spatial structure.
 
-The important distinction is that **SCR does not introduce another intermediate representation between the Semantic Model and MLIR**.
-
-### There is no separate SCR IR.
-
-SCR does not define:
-
-* a Domain IR;
-* a Semantic IR;
-* an SCR IR;
-* a parallel SSA representation;
-* a second type system;
-* a proprietary operation graph;
-* a shadow compiler representation.
-
-**MLIR is the canonical compiler representation and infrastructure.**
-
-SCR expresses its semantic architecture through MLIR's extensibility mechanisms:
-
-* dialects;
-* operations;
-* types;
-* attributes;
-* interfaces;
-* traits;
-* regions;
-* symbols;
-* SSA values;
-* analyses;
-* transformations;
-* passes;
-* canonicalisation;
-* pattern rewriting;
-* verification;
-* lowering.
-
-Where existing MLIR mechanisms are sufficient, SCR uses them directly.
-
-Where domain-specific semantics are required, SCR extends MLIR through appropriate dialects, interfaces, types, attributes, operations, analyses, and transformations.
-
----
-
-## 2. What SCR Provides
-
-SCR separates **what a computation means** from **how that computation is ultimately realised**.
-
-The framework therefore provides a semantic architecture for:
-
-### Semantic representation
-
-Represent computational meaning using MLIR while preserving:
-
-* identity;
-* relationships;
-* constraints;
-* capabilities;
-* state;
-* temporal semantics;
-* spatial semantics;
-* transformations;
-* execution requirements;
-* observable behaviour.
-
-### Semantic composition
-
-Compose computational concepts across domains without requiring applications to know which implementation technology will ultimately execute them.
-
-For example:
-
-```text
-field.sample
-    ↓
-interaction
-    ↓
-dynamics.integrate
-    ↓
-state.transition
-```
-
-can form a larger semantic construct such as:
-
-```text
-agent.propagate
-```
-
-which can itself participate in:
-
-```text
-population.evolve
-```
-
-Composition is therefore based on **semantic compatibility**, not merely API compatibility.
-
-### Capability-driven execution
-
-Computational constructs can expose capabilities such as:
-
-* composable;
-* transformable;
-* decomposable;
-* stateful;
-* observable;
-* spatial;
-* temporal;
-* spatiotemporal;
-* dynamical;
-* differentiable;
-* parallelisable;
-* vectorisable;
-* tileable;
-* reducible;
-* distributable;
-* streamable;
-* renderable;
-* projectable;
-* learnable;
-* optimisable;
-* controllable;
-* morphological;
-* deformable;
-* deterministic;
-* stochastic.
-
-These capabilities allow the compiler and runtime to reason about how computational semantics can be composed and realised.
-
----
-
-## 3. Representation Independence
-
-SCR separates semantic identity from physical representation.
-
-A semantic object may be realised as:
-
-* a mesh;
-* a voxel field;
-* an implicit surface;
-* a particle system;
-* a finite-element structure;
-* a graph;
-* a tensor;
-* a sparse structure;
-* a spatial index;
-* a stream;
-* a distributed representation;
-* a GPU-native structure;
-* another provider-specific representation.
-
-The representation is selected according to the requirements of the computation and execution environment.
-
-For example, semantic morphology should not inherently mean "mesh".
-
-The same morphological semantics may be materialised differently for:
-
-```text
-Simulation
-Collision
-Physics
-Rendering
-Analysis
-Spatial indexing
-Manufacturing
-Visualisation
-```
-
-The semantic layer therefore describes **what exists and how it behaves**, while providers determine appropriate concrete realisations.
-
----
-
-## 4. Morphology Is First-Class
-
-SCR treats morphology as a computational semantic domain rather than merely a rendering or geometry concern.
-
-Morphology can emerge from patterns, while patterns can be inferred from morphology:
-
-```text
-Patterns
-   ↕
-Morphology
-   ↕
-Structure
-   ↕
-Representation
-```
-
-This bidirectional relationship allows SCR to reason about structure at multiple scales.
-
-Morphological semantics may describe:
-
-* form;
-* structure;
-* topology;
-* spatial organisation;
-* boundaries;
-* deformation;
-* emergence;
-* composition;
-* fragmentation;
-* aggregation;
-* growth;
-* transformation;
-* scale-dependent structure.
-
-The resulting representation can then be specialised for the consumer without changing the underlying semantic identity.
-
----
-
-## 5. Heterogeneous Computational Domains
-
-SCR is deliberately not organised around a single computational domain.
-
-Potential semantic domains include:
-
-```text
-Core
-Math
-Data
-Field
-Graph
-Geometry
-Topology
-Spatial
-Morphology
-Physics
-Dynamics
-Simulation
-Agent
-Control
-Neural
-Learning
-Optimisation
-Perception
-Rendering
-Stream
-Messaging
-Adaptation
-Evolution
-Ecology
-```
-
-These are not independent silos.
-
-Their semantics can be composed through shared capabilities, interfaces, types, operations, and transformations.
-
-For example:
-
-```text
-Field
-  ↓
-Interaction
-  ↓
-Dynamics
-  ↓
-Agent
-  ↓
-Population
-  ↓
-Evolution
-```
-
-The resulting architecture is therefore a **computational semantic system**, rather than a collection of unrelated domain libraries.
-
----
-
-## 6. MLIR as the Foundation
-
-SCR is built on MLIR rather than attempting to replace it.
-
-MLIR provides the canonical infrastructure for:
-
-* intermediate representation;
-* SSA;
-* types;
-* attributes;
-* regions;
-* symbols;
-* dialects;
-* interfaces;
-* verification;
-* pattern rewriting;
-* canonicalisation;
-* analyses;
-* transformations;
-* pass management;
-* lowering;
-* multi-level compilation.
-
-SCR adds domain semantics and execution architecture using those mechanisms.
-
-The architectural decision rule is:
-
-```text
-Can MLIR express it?
-        ↓
-Use MLIR directly.
-
-Does an existing MLIR dialect express it?
-        ↓
-Use the existing dialect.
-
-Does SCR require domain-specific semantics?
-        ↓
-Create an SCR dialect or extension.
-
-Is the requirement behavioural/capability-oriented?
-        ↓
-Use an MLIR interface, trait, or attribute where appropriate.
-
-Is the requirement transformational?
-        ↓
-Use an MLIR analysis, pattern, pass, or transformation.
-
-Does a proposal still require another representation?
-        ↓
-Stop and review the architecture.
-```
-
-SCR should exhaust the capabilities of MLIR before introducing new architectural mechanisms.
-
----
-
-## 7. Semantic MLIR
-
-The term **Semantic MLIR** refers to MLIR carrying SCR semantic constructs.
-
-It is not a second representation.
+The runtime provides the mechanisms through which that semantic structure becomes executable physical reality.
 
 Conceptually:
 
 ```text
-Semantic Model
-      ↓
-MLIR
-+ SCR dialects
-+ SCR types
-+ SCR attributes
-+ SCR interfaces
-+ SCR operations
-+ SCR transformations
-      ↓
-Semantic MLIR
+                         SEMANTIC FIELD
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+            State         Relationships    Transformations
+              │                │                │
+              └────────────────┼────────────────┘
+                               │
+                            Context
+                               │
+                          Constraints
+                               │
+                             Topology
+                               │
+                         Computational
+                           Evolution
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+            Memory          Compute          Network
+              │                │                │
+              └────────────────┼────────────────┘
+                               │
+                      Physical Manifestation
+                               │
+                            Hardware
 ```
 
-"Semantic MLIR" is therefore descriptive terminology, not the name of a separate IR.
-
-The canonical compiler representation remains **MLIR**.
+The Semantic Field is therefore the foundational semantic substrate of SCR.
 
 ---
 
-## 8. Providers
+# 2. Engineering Principle
 
-SCR separates semantic contracts from implementation providers.
+## Semantic Field Primacy
 
-A provider may implement a semantic capability using:
+> **The Semantic Field is the foundational substrate of SCR. All higher-level computational structures, execution mechanisms, and physical manifestations MUST be derived from, or explicitly mapped to, the Semantic Field.**
 
-* CPU code;
-* GPU code;
-* SIMD/vector execution;
-* distributed execution;
-* specialised accelerators;
-* external numerical libraries;
-* geometry libraries;
-* spatial libraries;
-* physics engines;
-* rendering systems;
-* stream processors;
-* messaging systems;
-* other execution technologies.
+Engineering decisions MUST proceed **outward from semantic structure toward physical implementation**, rather than introducing lower-level abstractions that independently redefine the semantics of the system.
 
-Conceptually:
+The canonical engineering direction is:
+
+$$
+\boxed{
+\text{Semantic Field}
+\rightarrow
+\text{Structure}
+\rightarrow
+\text{Transformation}
+\rightarrow
+\text{Execution}
+\rightarrow
+\text{Physical Manifestation}
+}
+$$
+
+This principle governs architecture, semantics, runtime implementation, optimisation, interoperability, and physical resource management.
+
+### The engineering questions
+
+When introducing a new capability into SCR, the design process should begin by asking:
+
+1. **What exists in the Semantic Field?**
+2. **What relationships exist between those entities?**
+3. **What transformations are possible?**
+4. **What constraints govern those transformations?**
+5. **How does the topology evolve?**
+6. **What execution mechanisms are required?**
+7. **How should the resulting structure be physically manifested?**
+
+The implementation MUST NOT be allowed to answer the semantic questions merely because a particular physical representation is convenient.
+
+---
+
+# 3. Foundational Computational Model
+
+SCR defines computation as:
+
+$$
+\boxed{
+\text{Transformation of semantic structure}
+}
+$$
+
+A Semantic Field may be represented as:
+
+$$
+\mathcal{F} =
+(E,R,T,C,S,K,M)
+$$
+
+where:
+
+* \(E\) — entities,
+* \(R\) — relationships,
+* \(T\) — transformations,
+* \(C\) — context,
+* \(S\) — state,
+* \(K\) — constraints,
+* \(M\) — physical manifestations.
+
+A computational transformation produces a new field state:
+
+$$
+\mathcal{F}_{t+1}
+=
+\mathcal{T}(\mathcal{F}_t,C_t)
+$$
+
+Consequently:
+
+> **Execution is the evolution of semantic topology.**
+
+---
+
+# 4. Programs
+
+A program is a semantic substructure of the Semantic Field.
+
+It is not fundamentally:
 
 ```text
-Semantic Contract
-       ↓
-Provider Interface
-       ↓
-Provider
-       ↓
-Native Implementation
-       ↓
-Execution
+source code
+    ↓
+instructions
+    ↓
+memory
+    ↓
+CPU
 ```
 
-External technologies are therefore **implementation resources rather than semantic authorities**.
-
-A provider may use a particular library internally without forcing applications to depend upon that library's semantic model.
-
----
-
-## 9. Hardware Awareness Without Hardware Dependence
-
-Hardware independence does not mean hardware ignorance.
-
-SCR may reason about:
-
-* CPU architecture;
-* vector width;
-* cache topology;
-* NUMA;
-* memory bandwidth;
-* accelerator availability;
-* GPU occupancy;
-* transfer cost;
-* interconnect topology;
-* latency;
-* throughput;
-* memory pressure;
-* power;
-* thermal constraints;
-* execution locality.
-
-This information can influence provider selection, scheduling, specialisation, representation, and transformation.
-
-The objective is not to maximise raw hardware utilisation.
-
-The objective is to maximise **useful computation subject to semantic, resource, latency, throughput, and correctness constraints**.
-
----
-
-## 10. Adaptive Execution
-
-SCR is intended to support adaptive execution.
-
-A conceptual execution cycle is:
+Instead:
 
 ```text
 Semantic Program
-      ↓
-Capability Analysis
-      ↓
-Resource / Hardware Analysis
-      ↓
-Provider Selection
-      ↓
-Scheduling
-      ↓
-Compilation / Specialisation
-      ↓
-Execution
-      ↓
-Telemetry
-      ↓
-Re-analysis
-      ↺
+      │
+      ├── State
+      ├── Entities
+      ├── Relationships
+      ├── Transformations
+      ├── Context
+      ├── Constraints
+      └── Topology
+             │
+             ▼
+       Runtime Execution
+             │
+             ▼
+      Physical Manifestation
 ```
 
-This permits computational systems to adapt to:
+The distinction between **code**, **data**, and **execution state** is therefore a semantic distinction rather than necessarily a fundamental physical one.
 
-* workload;
-* topology;
-* available hardware;
-* execution history;
-* resource constraints;
-* changing representations;
-* changing computational requirements.
+An instruction may be understood as one physical representation of a transformation.
 
-The runtime therefore need not treat execution topology as permanently fixed.
+Data may be understood as manifested state.
+
+A pointer may be understood as one physical representation of a relationship.
+
+A process may be understood as a computational region of the field.
+
+A virtual machine may be understood as a nested computational field.
 
 ---
 
-## 11. Information as a Computational Substrate
+# 5. Hypergraph and Topology
 
-SCR is designed to support computational systems in which information itself may form a fundamental substrate.
+The Semantic Field may be discretely manifested as a hypergraph.
 
-This includes the possibility of computational structures where:
+A hypergraph permits relationships involving arbitrary numbers of entities:
 
-* information has locality;
-* relationships determine accessibility;
-* topology affects computation;
-* computation modifies topology;
-* representations can be transformed according to context;
-* references can exist as semantic relationships;
-* data and computation can coexist within a common semantic space.
+$$
+e=(v_1,v_2,\ldots,v_n)
+$$
 
-This does not require a single physical representation.
+This permits transformations to express relationships between:
 
-The semantic architecture defines the meaning; MLIR and providers determine how that meaning is represented and executed.
+* multiple inputs,
+* multiple outputs,
+* resources,
+* context,
+* constraints,
+* temporal conditions,
+* spatial regions.
 
----
+The hypergraph is therefore a **structural manifestation of the Semantic Field**, rather than the definition of the field itself.
 
-## 12. Messaging and Streaming
+The topology itself may evolve:
 
-Communication is a first-class computational concern.
+$$
+G_t \rightarrow G_{t+1}
+$$
 
-SCR treats messaging and streaming as semantic capabilities rather than implementation-specific APIs.
-
-Messaging semantics are intended to follow the **AMQP model** while remaining independent of any particular broker implementation.
-
-This permits computational components to communicate through semantic contracts such as:
-
-```text
-Producer
-   ↓
-Message
-   ↓
-Exchange / Routing
-   ↓
-Queue
-   ↓
-Consumer
-```
-
-while allowing different providers to realise those semantics using different messaging infrastructure.
-
-Streaming and rendering are likewise treated as computational domains rather than external afterthoughts.
+Consequently, computational structure is not necessarily static.
 
 ---
 
-## 13. Rendering
+# 6. Spatiality
 
-Rendering is a first-class consumer of semantic state.
+The Semantic Field may possess spatial structure.
 
-A conceptual rendering path is:
+Spatial position is not inherently equivalent to physical memory address.
 
-```text
-Semantic State
-      ↓
-Render Projection
-      ↓
-Render State
-      ↓
-Rendering Provider
-      ↓
-Vulkan / VSG / Other Backend
-      ↓
-Visible Result
-```
+A spatial relationship may represent:
 
-Rendering therefore does not define the semantic model.
+* computational locality,
+* semantic proximity,
+* execution affinity,
+* data locality,
+* communication cost,
+* resource affinity,
+* rendering position,
+* abstraction level,
+* temporal locality.
 
-It consumes a semantic projection appropriate for visualisation.
+Thus:
 
-This preserves the distinction between:
-
-```text
-What exists
-```
+$$
+\text{semantic location}
+\neq
+\text{memory address}
+$$
 
 and:
 
+$$
+\text{semantic relationship}
+\neq
+\text{pointer}
+$$
+
+Physical addresses, pointers, indexes, handles, paths, coordinates and other mechanisms are possible manifestations of semantic relationships.
+
+---
+
+# 7. Representation Independence
+
+SCR separates:
+
+1. **semantic meaning**
+2. **logical structure**
+3. **runtime representation**
+4. **physical representation**
+
+A semantic entity MAY therefore change representation without changing its identity.
+
+For example:
+
 ```text
-How it is displayed.
+Semantic Value
+      │
+      ├── dense representation
+      ├── sparse representation
+      ├── compressed representation
+      ├── quantised representation
+      ├── local representation
+      ├── remote representation
+      └── device representation
+```
+
+Representation is an engineering decision constrained by semantics.
+
+It is not the definition of the semantic object.
+
+This principle applies equally to:
+
+* numeric values,
+* sequences and text,
+* graphs,
+* memory,
+* messages,
+* storage,
+* network objects,
+* rendering structures,
+* virtual machines.
+
+---
+
+# 8. Semantic and Physical Layers
+
+SCR deliberately separates semantic definition from physical manifestation.
+
+```text
+┌───────────────────────────────────────┐
+│          Semantic Definition          │
+│                                       │
+│  Meaning • Identity • Relationships   │
+│  State • Transformations • Context    │
+│  Constraints • Topology               │
+└───────────────────┬───────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────┐
+│       Runtime Interpretation          │
+│                                       │
+│  Scheduling • Allocation • Execution  │
+│  Messaging • Adaptation • Resources   │
+└───────────────────┬───────────────────┘
+                    │
+                    ▼
+┌───────────────────────────────────────┐
+│         Physical Manifestation        │
+│                                       │
+│  Memory • CPU • GPU • Network • Disk  │
+│  Devices • VMs • Hardware             │
+└───────────────────────────────────────┘
+```
+
+The upper layers define **what something means**.
+
+The lower layers determine **how that meaning is efficiently manifested**.
+
+---
+
+# 9. Whole-System Optimisation
+
+SCR is designed to optimise the computational system as a whole.
+
+Semantic choices therefore have direct implications for:
+
+* memory consumption,
+* allocation behaviour,
+* cache locality,
+* processing requirements,
+* communication,
+* storage,
+* serialization,
+* scheduling,
+* parallelism,
+* precision,
+* bandwidth,
+* device utilisation.
+
+Optimisation MUST therefore not be restricted to local implementation improvements.
+
+A representation that appears optimal for one component may be globally inefficient.
+
+SCR SHOULD prefer representations and execution strategies that minimise total system cost while preserving semantic invariants.
+
+This includes deliberate use of:
+
+* datatype normalisation,
+* quantisation,
+* compression,
+* locality,
+* structural sharing,
+* adaptive representation,
+* zero-copy movement,
+* memory reuse,
+* parallel execution,
+* topology-aware scheduling.
+
+---
+
+# 10. Documentation Architecture
+
+The repository separates **repository orientation**, **system specification**, **foundational knowledge**, and **implementation**.
+
+```text
+/
+├── README.md
+├── LICENSE
+├── CONTRIBUTING.md
+├── CHANGELOG.md
+│
+├── docs/
+│   └── System specifications
+│
+├── seed/
+│   └── Foundational semantic knowledge
+│
+├── lib/
+│   └── Semantic implementations
+│
+├── runtime/
+│   └── Runtime implementation
+│
+├── tests/
+├── examples/
+├── tools/
+└── scripts/
+```
+
+The governing distinction is:
+
+> **Root-level documentation explains the repository. `docs/` defines the system. `seed/` defines the foundational knowledge from which semantic definitions are normalised. `lib/` implements those definitions.**
+
+---
+
+# 11. `docs/`
+
+`docs/` contains the normative technical specifications of SCR.
+
+It describes:
+
+* architecture,
+* semantics,
+* runtime behaviour,
+* messaging,
+* rendering,
+* storage,
+* networking,
+* interoperability,
+* conformance.
+
+The specifications should form an explicit dependency graph.
+
+A specification SHOULD NOT silently depend upon concepts that are undefined elsewhere.
+
+The documentation is therefore itself treated as a structured semantic system.
+
+---
+
+# 12. `seed/`
+
+`seed/` contains the foundational knowledge used to normalise and ground SCR semantic definitions.
+
+The seed is **not a competing type system, ontology, or definitions system**.
+
+It provides the foundational conceptual material from which definitions in `lib/` and `docs/` can be normalised.
+
+Seed material may include:
+
+* foundational concepts,
+* domain knowledge,
+* terminology,
+* ontological relationships,
+* mathematical foundations,
+* standards references,
+* external technical documentation references.
+
+The seed exists to answer:
+
+> **What does this concept fundamentally mean?**
+
+The specifications answer:
+
+> **How does SCR define and use it?**
+
+The implementation answers:
+
+> **How is that definition executed?**
+
+---
+
+# 13. `lib/`
+
+`lib/` contains reusable semantic implementations.
+
+The library should implement concepts defined by the specifications rather than silently creating independent semantic models.
+
+The preferred dependency direction is:
+
+```text
+seed
+  ↓
+docs
+  ↓
+lib
+  ↓
+runtime
+  ↓
+physical execution
+```
+
+This is a conceptual dependency direction; specific implementation dependencies may differ where required by engineering constraints.
+
+---
+
+# 14. Runtime
+
+The runtime is the mechanism through which semantic structures become executable.
+
+It is responsible for concerns such as:
+
+* execution,
+* scheduling,
+* concurrency,
+* allocation,
+* resource management,
+* representation selection,
+* messaging,
+* persistence,
+* physical manifestation.
+
+The runtime MUST preserve the semantic invariants established above it.
+
+It MUST NOT redefine semantic meaning merely to accommodate implementation convenience.
+
+---
+
+# 15. Messaging
+
+Messaging is treated as semantic propagation rather than merely network transport.
+
+A message represents information, state, intent, event, or transformation propagated through relationships in the Semantic Field.
+
+AMQP-style messaging may provide a physical manifestation of these semantics.
+
+The architecture therefore distinguishes:
+
+```text
+Semantic Signal
+      ↓
+Message Semantics
+      ↓
+Routing / Delivery
+      ↓
+Transport
+      ↓
+Network
 ```
 
 ---
 
-## 14. Simulation as the Reference Workload
+# 16. Rendering and Observation
 
-Simulation is an important development workload for SCR because it exercises many independent computational domains simultaneously.
+Rendering is a projection of Semantic Field state.
 
-A minimal reference path is:
+$$
+P:
+\mathcal{F}
+\rightarrow
+V
+$$
 
-```text
-Core
-  ↓
-Dynamics
-  ↓
-Simulation
-  ↓
-Semantic Program
-  ↓
-SCR Semantic MLIR
-  ↓
-MLIR Verification
-  ↓
-MLIR Analysis
-  ↓
-MLIR Transformation
-  ↓
-Lowering
-  ↓
-CPU Provider
-  ↓
-Simulation State
-  ↓
-Render Projection
-  ↓
-Render State
-  ↓
-Rendering Provider
-  ↓
-Vulkan / VSG
-  ↓
-Visible Result
-```
+where \(V\) may be:
 
-The simulation is a **vertical architectural proof**, not the boundary of the project.
+* geometry,
+* pixels,
+* audio,
+* telemetry,
+* UI state,
+* streams,
+* other observable representations.
 
-If SCR succeeds only as a simulation framework, it has failed its broader architectural objective.
+Rendering does not define the semantic structure it represents.
+
+It is an observation and projection mechanism.
 
 ---
 
-## 15. Repository Architecture
+# 17. Storage
 
-The repository separates architectural authority from implementation state.
+Storage is the persistent physical manifestation of semantic state.
 
-### `003_PROJECT_MANDATE.md`
+It may represent:
 
-Defines:
+* entities,
+* relationships,
+* topology,
+* snapshots,
+* event histories,
+* transformations,
+* indexes,
+* semantic graphs.
 
-* why SCR exists;
-* project purpose;
-* foundational constraints;
-* architectural objectives;
-* project boundaries.
-
-### `004_ARCHITECTURE.md`
-
-Defines:
-
-* how SCR's architectural components relate;
-* representation architecture;
-* MLIR integration;
-* semantic domains;
-* capabilities;
-* providers;
-* execution;
-* architectural invariants.
-
-### `AGENTS.md`
-
-Defines:
-
-* implementation governance;
-* agent behaviour;
-* architectural constraints;
-* repository conventions;
-* development rules.
-
-### `docs/`
-
-Contains detailed semantic, architectural, invariant, and technical documentation.
-
-### `lib/`
-
-Contains the semantic library and domain definitions.
-
-The `lib/` hierarchy is an organisational structure. It is **not itself an execution representation or IR hierarchy**.
-
-### `program_increments/`
-
-Contains implementation planning and vertical delivery specifications.
-
-### `public-documentation/`
-
-Contains documentation intended for external users and contributors.
+Storage structures MUST preserve the semantic identity and declared consistency requirements of the structures they represent.
 
 ---
 
-## 16. Architectural Authority
+# 18. Networking and Distributed Execution
 
-SCR maintains an explicit hierarchy of authority:
+The Semantic Field is not inherently limited to one physical machine.
 
-```text
-Project Mandate
-      ↓
-Architecture
-      ↓
-Semantic Model
-      ↓
-Semantic Invariants
-      ↓
-Implementation Governance
-      ↓
-Implementation
-      ↓
-Derived Metadata
-```
+Semantic structures MAY span:
 
-The architecture documents are normative.
+* processes,
+* machines,
+* clusters,
+* networks,
+* devices,
+* virtual machines.
 
-Generated graphs, indexes, status files, implementation details, and provider-specific structures must not silently redefine the architectural model.
+Distribution is therefore a manifestation of field structure rather than a separate semantic universe.
 
-Where implementation and architecture disagree, the discrepancy must be resolved explicitly rather than allowing implementation details to become accidental architecture.
+A remote entity is still a semantic entity.
+
+A network connection is a physical manifestation of a relationship.
+
+Remote execution is a manifestation of transformation occurring across a distributed field.
 
 ---
 
-## 17. Fundamental Architectural Principles
+# 19. Virtual Machines
 
-SCR is governed by the following principles.
+Virtual machines may participate directly in the Semantic Field.
+
+A VM can be represented as a computational region containing:
+
+* state,
+* memory,
+* registers,
+* execution context,
+* transformations,
+* devices,
+* relationships.
+
+This allows heterogeneous computational environments to participate in a common semantic substrate without requiring them to share the same physical execution architecture.
+
+---
+
+# 20. Core Invariants
+
+The following principles are fundamental to SCR.
 
 ### Semantic Primacy
 
-Computational meaning comes before implementation mechanism.
-
-### MLIR Foundation
-
-MLIR is the foundational compiler and representation infrastructure.
-
-### Single Compiler Representation
-
-SCR does not maintain a second compiler IR.
-
-### No Shadow IR
-
-Rust structures, JSON/YAML structures, graphs, registries, or provider objects must not silently become alternative execution representations.
+Meaning precedes representation.
 
 ### Representation Independence
 
-Semantic identity must not depend on a particular physical representation.
+Physical representation may change without necessarily changing semantic identity.
 
-### Provider Independence
+### Relationship Primacy
 
-Semantic contracts must not be defined by implementation providers.
+Relationships are first-class semantic structures.
 
-### Hardware Independence
+### Transformation Primacy
 
-Applications should not require knowledge of the hardware on which their semantics will execute.
+Transformations are first-class semantic structures.
 
-### Capability-Driven Composition
+### Topological Mutability
 
-Composition should be based on semantic capabilities and contracts.
+Computational topology may evolve during execution.
 
-### Explicit Transformation
+### Spatial Independence
 
-Changes in representation or computational form must be explicit and semantically justified.
+Semantic spatial position is not inherently a physical address.
 
-### Verification
+### Context Dependence
 
-Semantic correctness and architectural invariants must be verifiable.
+Transformations occur within context.
 
-### Information Preservation
+### Constraint Preservation
 
-Transformations should preserve required semantic information unless information loss is explicit and justified.
+Execution MUST preserve semantic constraints.
 
-### No Implementation Leakage
+### Identity Persistence
 
-Provider and hardware details must not leak into higher semantic layers without an explicit architectural reason.
+Physical relocation MUST NOT inherently change semantic identity.
 
-### MLIR Before Reinvention
+### Execution Independence
 
-Existing MLIR mechanisms must be considered and exhausted before creating SCR-specific mechanisms.
+Machine instructions are manifestations of transformations.
 
-### Meaning Before Mechanism
+### Resource Separation
 
-The framework describes what a computation means before deciding how it is executed.
+Physical resources are distinct from semantic identity.
 
----
+### Field Primacy
 
-## 18. Current Status
-
-SCR is currently in an **architectural and foundational implementation phase**.
-
-The project is establishing:
-
-* the semantic architecture;
-* MLIR integration;
-* semantic dialect boundaries;
-* semantic contracts;
-* capability interfaces;
-* provider architecture;
-* execution architecture;
-* library definitions;
-* vertical implementation increments;
-* the minimal deterministic simulation path.
-
-The initial implementation is deliberately small.
-
-The objective is to prove the architecture through complete vertical slices rather than build a large collection of disconnected infrastructure.
+Higher-level structures and lower-level manifestations MUST remain derivable from, or explicitly mapped to, the Semantic Field.
 
 ---
 
-## 19. v0.0.1 Golden Path
+# 21. Engineering Decision Rule
 
-The first implementation milestone is a minimal deterministic particle simulation.
-
-Its purpose is to prove that a semantic computation can travel through the complete SCR architecture:
+When evaluating an architectural proposal, the following sequence SHOULD be applied:
 
 ```text
-Semantic Definition
-        ↓
-Semantic Model
-        ↓
-SCR Semantic MLIR
-        ↓
-MLIR Infrastructure
-        ↓
-Verification
-        ↓
-Analysis
-        ↓
-Transformation
-        ↓
-Lowering
-        ↓
-CPU Provider
-        ↓
-Simulation State
-        ↓
-Render Projection
-        ↓
-Render State
-        ↓
-Rendering Provider
-        ↓
-Vulkan / VSG
-        ↓
-Visible Result
+             Does it have semantic meaning?
+                       │
+                       ▼
+              Define it in the field
+                       │
+                       ▼
+             Define its relationships
+                       │
+                       ▼
+             Define its transformations
+                       │
+                       ▼
+              Define its constraints
+                       │
+                       ▼
+             Define topology/context
+                       │
+                       ▼
+          Determine execution requirements
+                       │
+                       ▼
+        Select physical representation
+                       │
+                       ▼
+             Optimise manifestation
 ```
 
-The milestone is successful when the complete path can be demonstrated while preserving semantic identity across the transformations and execution stages.
+A proposal that starts with a physical mechanism and works backwards to invent its semantics should be treated with caution.
 
 ---
 
-## 20. Development Philosophy
+# 22. What SCR Is Not
 
-SCR follows a **vertical-slice-first** development strategy.
+SCR is not fundamentally:
 
-A feature is not considered architecturally proven merely because its data structures or APIs exist.
+* an object-oriented runtime,
+* a conventional virtual machine,
+* a graph database,
+* a message broker,
+* a distributed scheduler,
+* a memory manager,
+* a programming language,
+* a rendering engine,
+* a storage engine.
 
-A meaningful vertical slice should demonstrate:
+SCR may contain or use all of these.
+
+But none of them defines SCR.
+
+They are **manifestations or specialised execution mechanisms of the underlying semantic computational model**.
+
+---
+
+# 23. Architectural Direction
+
+The architecture should evolve from the bottom outward:
 
 ```text
-Semantic Definition
-        ↓
-Representation
-        ↓
-Verification
-        ↓
-Transformation
-        ↓
-Provider Selection
-        ↓
-Execution
-        ↓
-Observable Result
+                         ┌─────────────────┐
+                         │     Domains     │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │    Programs     │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │   Computation   │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │    Topology     │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │ Semantic Field  │
+                         └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │  Manifestation  │
+                         └────────┬────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+                  Memory        Compute       Network
+                    │             │             │
+                    └─────────────┼─────────────┘
+                                  ▼
+                              Hardware
 ```
 
-This keeps the project grounded in executable semantics rather than accumulating disconnected abstractions.
+The Semantic Field is the **architectural floor**.
+
+We do not continue decomposing the architecture merely for the sake of finding another abstraction beneath it.
+
+We instead derive the rest of the system from it.
 
 ---
 
-## 21. What SCR Is Not
+# 24. Project Philosophy
 
-SCR is not:
+SCR is deliberately designed around a small number of strong principles rather than a large collection of unrelated mechanisms.
 
-* a replacement for MLIR;
-* a replacement for LLVM;
-* a general-purpose programming language;
-* a conventional application framework;
-* a simulation-only engine;
-* a physics-only framework;
-* a rendering engine;
-* a message broker;
-* a GPU programming framework;
-* a wrapper around a collection of external libraries;
-* a proprietary intermediate representation;
-* a second compiler infrastructure.
+The central principle is:
 
-SCR instead provides the **semantic architecture that allows these technologies to participate in a common computational environment without becoming the semantic definition of the application**.
+> **Engineer outward from the Semantic Field.**
 
----
+From that follow:
 
-## 22. Long-Term Objective
+> **Define semantics before representation.**
 
-The long-term objective is a computational environment in which an application can express:
+> **Define structure before execution.**
 
-```text
-What it means
-```
+> **Define transformations before instructions.**
 
-without prematurely specifying:
+> **Treat relationships as first-class.**
 
-```text
-Where it runs
-How it is represented
-Which library implements it
-Which accelerator executes it
-Which runtime schedules it
-Which renderer displays it
-Which broker transports it
-```
+> **Treat topology as potentially dynamic.**
 
-Those decisions can instead be derived, specialised, transformed, and adapted according to semantic requirements and execution conditions.
+> **Treat physical implementation as manifestation rather than meaning.**
 
-The intended result is a computational architecture in which heterogeneous technologies become **providers of capability rather than competing semantic worlds**.
+> **Optimise the whole computational system, not isolated components.**
 
 ---
 
-## 23. Repository
+# 25. Repository Status
 
-**Semantic Computational Runtime**
+SCR is an evolving architectural and engineering research project.
 
-[GitHub Repository](https://github.com/zharia/Semantic-Computational-Runtime)
+Specifications may initially exist at conceptual or normative levels before corresponding implementations are complete.
 
-The repository contains the authoritative architecture, semantic specifications, implementation governance, program increments, and evolving semantic library.
+Implementation MUST NOT be considered authoritative merely because it exists in code.
 
-For architectural questions, begin with:
+Where implementation and specification diverge:
 
-1. `003_PROJECT_MANDATE.md`
-2. `004_ARCHITECTURE.md`
-3. `AGENTS.md`
-4. `docs/`
-5. the relevant program increment
+1. determine whether the specification is correct;
+2. update the specification if the semantic model is intentionally changing;
+3. update the implementation to conform;
+4. document intentional implementation constraints where exact conformance is impossible.
+
+The semantic model remains the architectural source of truth.
 
 ---
 
-## 24. Final Definition
+# 26. Final Principle
 
-> **Semantic Computational Runtime (SCR) is an open, extensible, MLIR-based semantic computational environment in which heterogeneous computational domains are expressed through formal semantic constructs and realised across heterogeneous execution substrates.**
+The entire project can be reduced to one engineering rule:
 
-SCR's central architectural commitment is simple:
+$$
+\boxed{
+\textbf{Engineer outward from the Semantic Field.}
+}
+$$
 
-> **There is no separate SCR IR. MLIR is the canonical compiler representation. SCR extends and uses MLIR to express computational semantics rather than creating another representation system beside it.**
+Or, in operational form:
+
+> **First determine what exists, how it relates, and how it may transform. Only then determine how the machine should represent and execute it.**
+
+This is the foundational engineering principle of the Semantic Computational Runtime.
