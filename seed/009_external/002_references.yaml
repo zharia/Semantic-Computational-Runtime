@@ -1,0 +1,46 @@
+schema: scr.seed.references.v1
+references:
+  - id: REF-MLIR-INTERFACES
+    authority: LLVM
+    title: MLIR Interfaces
+    type: technical-specification
+    url: https://mlir.llvm.org/docs/Interfaces/
+    concepts: [scr:capability, scr:contract, scr:operation, scr:transformation]
+    relationship: informs
+    authority_over_scr: false
+
+  - id: REF-MLIR-LANGREF
+    authority: LLVM
+    title: MLIR Language Reference
+    type: technical-specification
+    url: https://mlir.llvm.org/docs/LangRef/
+    concepts: [scr:operation, scr:representation]
+    relationship: informs
+    authority_over_scr: false
+
+  - id: REF-LEAN
+    authority: Lean Community
+    title: Theorem Proving in Lean 4
+    type: formal-foundation
+    url: https://lean-lang.org/theorem_proving_in_lean4/
+    concepts: [scr:invariant, scr:equivalence]
+    relationship: foundational
+    authority_over_scr: false
+
+  - id: REF-MATHLIB
+    authority: Lean Community
+    title: Mathlib
+    type: mathematical-library
+    url: https://github.com/leanprover-community/mathlib4
+    concepts: [scr:geometry, scr:topology, scr:dynamics, scr:field]
+    relationship: implementation-foundation
+    authority_over_scr: false
+
+  - id: REF-W3C-SKOS
+    authority: W3C
+    title: Simple Knowledge Organization System Reference
+    type: standard
+    url: https://www.w3.org/TR/skos-reference/
+    concepts: [scr:concept, scr:relationship]
+    relationship: informs
+    authority_over_scr: false

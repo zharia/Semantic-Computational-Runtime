@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zharia.github.io/Semantic-Computational-Runtime/scr-seed.schema.json",
+  "title": "SCR Seed Concept",
+  "type": "object",
+  "required": ["id", "kind", "label", "status"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^scr:[a-z0-9-]+$"},
+    "kind": {"type": "string"},
+    "label": {"type": "string"},
+    "status": {"enum": ["established", "formalized", "proposed", "research", "illustrative"]},
+    "category": {"type": "string"},
+    "definition": {"type": "string"},
+    "broader": {"type": "array", "items": {"type": "string"}},
+    "narrower": {"type": "array", "items": {"type": "string"}},
+    "related": {"type": "array", "items": {"type": "string"}},
+    "distinguishes": {"type": "array", "items": {"type": "string"}},
+    "invariants": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

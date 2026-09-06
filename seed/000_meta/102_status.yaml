@@ -1,0 +1,20 @@
+schema: scr.seed.status.v1
+version: 0.0.1
+status: bootstrap
+generated: true
+
+formalization:
+  language: lean4
+  mathlib: true
+  kernel_status: compiling
+  complete_seed_formalization: false
+
+implementation:
+  primary_language: mojo
+  reference_executor: true
+
+authority:
+  seed: foundational-vocabulary
+  lib: normative-domain-semantics
+  lean: formal-proof-kernel
+  external: evidence-only

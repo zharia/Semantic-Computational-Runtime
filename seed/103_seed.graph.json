@@ -1,0 +1,293 @@
+{
+  "schema": "scr.seed.graph.v1",
+  "generated": true,
+  "concepts": [
+    {
+      "id": "scr:semantic-field",
+      "label": "Semantic Field",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:entity",
+      "label": "Entity",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:identity",
+      "label": "Identity",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:value",
+      "label": "Value",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:property",
+      "label": "Property",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:relationship",
+      "label": "Relationship",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:context",
+      "label": "Context",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:state",
+      "label": "State",
+      "category": "foundations"
+    },
+    {
+      "id": "scr:operation",
+      "label": "Operation",
+      "category": "computation"
+    },
+    {
+      "id": "scr:transformation",
+      "label": "Transformation",
+      "category": "computation"
+    },
+    {
+      "id": "scr:composition",
+      "label": "Composition",
+      "category": "computation"
+    },
+    {
+      "id": "scr:process",
+      "label": "Process",
+      "category": "computation"
+    },
+    {
+      "id": "scr:event",
+      "label": "Event",
+      "category": "computation"
+    },
+    {
+      "id": "scr:observation",
+      "label": "Observation",
+      "category": "computation"
+    },
+    {
+      "id": "scr:effect",
+      "label": "Effect",
+      "category": "computation"
+    },
+    {
+      "id": "scr:constraint",
+      "label": "Constraint",
+      "category": "validity"
+    },
+    {
+      "id": "scr:capability",
+      "label": "Capability",
+      "category": "validity"
+    },
+    {
+      "id": "scr:contract",
+      "label": "Contract",
+      "category": "validity"
+    },
+    {
+      "id": "scr:invariant",
+      "label": "Invariant",
+      "category": "validity"
+    },
+    {
+      "id": "scr:equivalence",
+      "label": "Equivalence",
+      "category": "validity"
+    },
+    {
+      "id": "scr:representation",
+      "label": "Representation",
+      "category": "realisation"
+    },
+    {
+      "id": "scr:manifestation",
+      "label": "Manifestation",
+      "category": "realisation"
+    },
+    {
+      "id": "scr:provider",
+      "label": "Provider",
+      "category": "realisation"
+    },
+    {
+      "id": "scr:resource",
+      "label": "Resource",
+      "category": "realisation"
+    },
+    {
+      "id": "scr:field",
+      "label": "Field",
+      "category": "structure"
+    },
+    {
+      "id": "scr:graph",
+      "label": "Graph",
+      "category": "structure"
+    },
+    {
+      "id": "scr:hypergraph",
+      "label": "Hypergraph",
+      "category": "structure"
+    },
+    {
+      "id": "scr:topology",
+      "label": "Topology",
+      "category": "structure"
+    },
+    {
+      "id": "scr:geometry",
+      "label": "Geometry",
+      "category": "structure"
+    },
+    {
+      "id": "scr:morphology",
+      "label": "Morphology",
+      "category": "structure"
+    },
+    {
+      "id": "scr:space",
+      "label": "Space",
+      "category": "space-time"
+    },
+    {
+      "id": "scr:time",
+      "label": "Time",
+      "category": "space-time"
+    },
+    {
+      "id": "scr:provenance",
+      "label": "Provenance",
+      "category": "information"
+    },
+    {
+      "id": "scr:information",
+      "label": "Information",
+      "category": "information"
+    },
+    {
+      "id": "scr:data",
+      "label": "Data",
+      "category": "information"
+    },
+    {
+      "id": "scr:signal",
+      "label": "Signal",
+      "category": "information"
+    },
+    {
+      "id": "scr:stream",
+      "label": "Stream",
+      "category": "information"
+    },
+    {
+      "id": "scr:pattern",
+      "label": "Pattern",
+      "category": "information"
+    },
+    {
+      "id": "scr:morphism",
+      "label": "Morphism",
+      "category": "computation"
+    },
+    {
+      "id": "scr:refinement",
+      "label": "Refinement",
+      "category": "computation"
+    },
+    {
+      "id": "scr:abstraction",
+      "label": "Abstraction",
+      "category": "computation"
+    },
+    {
+      "id": "scr:dynamics",
+      "label": "Dynamics",
+      "category": "computation"
+    },
+    {
+      "id": "scr:execution",
+      "label": "Execution",
+      "category": "realisation"
+    },
+    {
+      "id": "scr:learning",
+      "label": "Learning",
+      "category": "computation"
+    },
+    {
+      "id": "scr:control",
+      "label": "Control",
+      "category": "computation"
+    },
+    {
+      "id": "scr:perception",
+      "label": "Perception",
+      "category": "computation"
+    },
+    {
+      "id": "scr:rendering",
+      "label": "Rendering",
+      "category": "realisation"
+    }
+  ],
+  "relations": [
+    {
+      "source": "scr:entity",
+      "predicate": "has",
+      "target": "scr:identity"
+    },
+    {
+      "source": "scr:entity",
+      "predicate": "has",
+      "target": "scr:property"
+    },
+    {
+      "source": "scr:entity",
+      "predicate": "participates-in",
+      "target": "scr:relationship"
+    },
+    {
+      "source": "scr:state",
+      "predicate": "contains",
+      "target": "scr:entity"
+    },
+    {
+      "source": "scr:operation",
+      "predicate": "realized-by",
+      "target": "scr:execution"
+    },
+    {
+      "source": "scr:representation",
+      "predicate": "realizes",
+      "target": "scr:information"
+    },
+    {
+      "source": "scr:provider",
+      "predicate": "implements",
+      "target": "scr:contract"
+    },
+    {
+      "source": "scr:morphism",
+      "predicate": "preserves",
+      "target": "scr:invariant"
+    },
+    {
+      "source": "scr:morphology",
+      "predicate": "related-to",
+      "target": "scr:geometry"
+    },
+    {
+      "source": "scr:geometry",
+      "predicate": "distinct-from",
+      "target": "scr:topology"
+    }
+  ]
+}

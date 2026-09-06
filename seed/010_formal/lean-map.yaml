@@ -1,0 +1,53 @@
+schema: scr.seed.lean-map.v1
+version: 0.0.1
+
+entries:
+  - concept: scr:semantic-field
+    module: SCR.Field
+    declaration: SemanticField
+    status: formalized
+
+  - concept: scr:identity
+    module: SCR.Identity
+    declaration: EntityId
+    status: formalized
+
+  - concept: scr:value
+    module: SCR.Basic
+    declaration: Value
+    status: formalized
+
+  - concept: scr:entity
+    module: SCR.Basic
+    declaration: Entity
+    status: formalized
+
+  - concept: scr:relationship
+    module: SCR.Relationship
+    declaration: Relationship
+    status: formalized
+
+  - concept: scr:state
+    module: SCR.State
+    declaration: State
+    status: formalized
+
+  - concept: scr:operation
+    module: SCR.Transformation
+    declaration: OperationId
+    status: formalized
+
+  - concept: scr:transformation
+    module: SCR.Transformation
+    declaration: Transformation
+    status: formalized
+
+  - concept: scr:determinism
+    module: SCR.Invariants
+    declaration: Deterministic
+    status: formalized
+
+  - concept: scr:equivalence
+    module: SCR.Equivalence
+    declaration: Equivalent
+    status: formalized

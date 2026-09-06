@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zharia.github.io/Semantic-Computational-Runtime/scr-seed-relations.schema.json",
+  "title": "SCR Seed Relation",
+  "type": "object",
+  "required": ["source", "predicate", "target"],
+  "properties": {
+    "source": {"type": "string"},
+    "predicate": {"type": "string"},
+    "target": {"type": "string"},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "confidence": {"enum": ["normative", "established", "supported", "provisional"]}
+  }
+}
