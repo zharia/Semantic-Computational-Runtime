@@ -797,7 +797,7 @@ They do not supersede SCR semantic authority.
 
 # 24. Metadata and MLIR
 
-MLIR itself distinguishes semantic IR concepts such as operations, types, attributes, dialects, interfaces, and transformations. SCR metadata may describe how SCR concepts relate to these mechanisms, but metadata MUST NOT replace the actual semantic definition of an SCR concept.
+MLIR itself distinguishes MLIR concepts such as operations, types, attributes, dialects, interfaces, and transformations. SCR metadata may describe how SCR concepts relate to these mechanisms, but metadata MUST NOT replace the actual semantic definition of an SCR concept.
 
 For example:
 

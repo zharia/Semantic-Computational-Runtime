@@ -243,17 +243,17 @@ For example:
 503_Simulation/IR
 ```
 
-A domain IR SHOULD contain only concepts necessary to computationally represent that domain.
+A domain-specific MLIR dialect SHOULD contain only concepts necessary to computationally represent that domain.
 
-A domain IR MAY reuse:
+A domain-specific MLIR dialect MAY reuse:
 
 * Core IR concepts;
-* other domain IRs;
+* other domain-specific MLIR dialects;
 * MLIR builtin concepts;
 * established MLIR dialects;
 * shared interfaces.
 
-A domain IR MUST NOT duplicate an existing semantic concept merely because a separate implementation representation is convenient.
+A domain-specific MLIR dialect MUST NOT duplicate an existing semantic concept merely because a separate implementation representation is convenient.
 
 ---
 
@@ -261,7 +261,7 @@ A domain IR MUST NOT duplicate an existing semantic concept merely because a sep
 
 An SCR semantic domain MUST NOT be required to have exactly one MLIR dialect.
 
-A domain IR MAY be realized through:
+A domain-specific MLIR dialect MAY be realized through:
 
 1. an SCR-specific MLIR dialect;
 2. several cooperating MLIR dialects;
@@ -665,7 +665,7 @@ A transformation MUST NOT assume that an IR is legal merely because it can be pa
 
 # 26. IR Invariants
 
-Each domain IR MUST define its own domain-specific invariants.
+Each domain-specific MLIR dialect MUST define its own domain-specific invariants.
 
 The following Core IR invariants apply universally.
 
@@ -1029,7 +1029,7 @@ MLIR's dialect infrastructure supports structured documentation for dialects and
 
 # 37. Expected IR Directory Structure
 
-A domain IR directory SHOULD follow a structure similar to:
+A domain MLIR dialect directory SHOULD follow a structure similar to:
 
 ```text
 IR/
@@ -1102,7 +1102,7 @@ Attributes MUST NOT be used merely because they are convenient places to put arb
 
 # 41. Operations Directory
 
-`Operations/` defines the computational vocabulary of the domain IR.
+`Operations/` defines the computational vocabulary of the domain-specific MLIR dialect.
 
 For example:
 
@@ -1120,7 +1120,7 @@ Operations SHOULD correspond to semantic operations defined by the domain.
 
 # 42. Interfaces Directory
 
-`Interfaces/` under a domain IR SHOULD contain only IR-specific interfaces.
+`Interfaces/` under a domain MLIR dialect SHOULD contain only MLIR-specific interfaces.
 
 Shared semantic capabilities belong under:
 
@@ -1275,7 +1275,7 @@ Lowering preserves required semantics.
 
 ### Composition
 
-Cross-domain IR composition satisfies declared contracts.
+Cross-domain MLIR dialect composition satisfies declared contracts.
 
 ### Equivalence
 
@@ -1606,7 +1606,7 @@ A semantic domain MAY map to multiple MLIR dialects.
 
 ### Rule 10 — Existing Dialects Should Be Reused
 
-Custom IR constructs SHOULD only be introduced where existing abstractions are insufficient.
+Custom MLIR operations SHOULD only be introduced where existing MLIR abstractions are insufficient.
 
 ### Rule 11 — Abstraction Must Be Preserved
 

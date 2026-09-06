@@ -1462,7 +1462,7 @@ The Golden Path is complete when a developer can demonstrate:
 * a semantic simulation definition;
 * semantic state;
 * a semantic state transition;
-* a valid SCR/domain IR representation;
+* a valid SCR Semantic MLIR representation;
 * MLIR verification;
 * lowering;
 * CPU execution;

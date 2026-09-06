@@ -27,7 +27,7 @@ The equation expresses semantic meaning. It does not prescribe a memory layout o
 
 ## Representation
 
-The semantic state could be represented through a domain IR containing:
+The semantic state could be represented through SCR Semantic MLIR containing:
 
 - particle identity;
 - position;

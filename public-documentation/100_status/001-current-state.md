@@ -11,7 +11,7 @@ The repository establishes a direction around:
 - semantic primacy;
 - implementation independence;
 - semantic domains;
-- domain IR;
+- SCR Semantic MLIR;
 - MLIR-based compilation;
 - provider separation;
 - semantic equivalence;

@@ -1462,7 +1462,7 @@ The Core IR MAY represent:
 * capabilities;
 * contracts.
 
-The Core IR SHOULD be sufficiently expressive to act as the semantic foundation for higher-level domain IRs.
+The Core SCR Semantic MLIR SHOULD be sufficiently expressive to act as the semantic foundation for higher-level domain-specific MLIR dialects.
 
 ---
 

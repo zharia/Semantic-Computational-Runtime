@@ -926,7 +926,7 @@ MLIR's Transform dialect provides infrastructure for controlling and orchestrati
 Examples include:
 
 ```text
-High-level semantic IR
+High-level SCR Semantic MLIR
         ↓
 Domain-specific MLIR dialect
         ↓

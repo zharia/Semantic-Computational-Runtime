@@ -204,7 +204,7 @@ The path SHOULD exercise:
 * capability declaration;
 * provider capability matching;
 * error provenance;
-* intermediate IR inspection.
+* intermediate MLIR inspection.
 
 The Golden Path MUST remain minimal. Capabilities that are not required to demonstrate the architectural proposition MUST NOT be added merely for completeness.
 
@@ -384,7 +384,7 @@ Conceptually:
 ```text
 Semantic Particle
        ↓
-IR Representation
+MLIR Representation
        ↓
 Runtime Representation
        ↓
@@ -507,7 +507,7 @@ The Golden Path is an executable projection of semantic relationships into repre
 
 The Golden Path requires a minimal domain representation capable of expressing the semantic workload.
 
-The IR MUST:
+MLIR MUST:
 
 * preserve semantic identity;
 * preserve semantic types;
@@ -518,15 +518,15 @@ The IR MUST:
 * retain provenance where appropriate;
 * remain independent of the final execution substrate.
 
-The IR MUST NOT redefine semantic meaning.
+MLIR MUST NOT redefine semantic meaning.
 
-The IR is a representation of semantic meaning, not the source of semantic authority.
+MLIR is a representation of semantic meaning, not the source of semantic authority.
 
 ---
 
-# 15. Custom IR Discipline
+# 15. Custom MLIR Operation Discipline
 
-SCR MUST NOT create custom IR operations merely because MLIR permits them.
+SCR MUST NOT create custom MLIR operations merely because MLIR permits them.
 
 Every custom operation MUST answer:
 
@@ -586,9 +586,9 @@ The Golden Path MUST NOT require a custom SCR dialect where existing MLIR infras
 
 ---
 
-# 17. IR Verification
+# 17. MLIR Verification
 
-IR MUST be verified before execution.
+MLIR MUST be verified before execution.
 
 Verification MUST establish, as applicable:
 
@@ -602,9 +602,9 @@ Verification MUST establish, as applicable:
 * temporal constraints;
 * required invariants.
 
-Invalid IR MUST NOT silently reach execution.
+Invalid MLIR MUST NOT silently reach execution.
 
-Verification failures MUST retain sufficient provenance to identify the affected semantic or IR construct where practical.
+Verification failures MUST retain sufficient provenance to identify the affected semantic or MLIR construct where practical.
 
 ---
 
@@ -1311,7 +1311,7 @@ Core Unit Tests
           ↓
 Domain Tests
           ↓
-IR Tests
+MLIR Tests
           ↓
 Verification Tests
           ↓
@@ -1355,9 +1355,9 @@ render state derives from semantic state
 
 ---
 
-# 46. IR Tests
+# 46. MLIR Tests
 
-IR tests MUST establish:
+MLIR tests MUST establish:
 
 * valid programs parse;
 * valid programs verify;
@@ -1374,7 +1374,7 @@ IR tests MUST establish:
 Lowering tests MUST establish:
 
 * semantic operations are transformed;
-* resulting IR is legal;
+* resulting MLIR is legal;
 * required types are converted;
 * unsupported semantic operations do not remain at the execution boundary;
 * semantic invariants are preserved where applicable.
@@ -1467,7 +1467,7 @@ Semantic identity is independent of physical representation.
 
 ### GP-INV-004 — Representation Independence
 
-Semantic meaning is not defined by IR representation.
+Semantic meaning is not defined by MLIR representation.
 
 ### GP-INV-005 — Compiler Separation
 
@@ -1549,12 +1549,12 @@ The Golden Path is complete only when all of the following are satisfied.
 * [ ] Dynamics contract is defined.
 * [ ] Required invariants are defined.
 
-## IR
+## MLIR
 
 * [ ] Semantic computation can be represented.
-* [ ] IR verifies.
-* [ ] Invalid IR is rejected.
-* [ ] IR can be inspected.
+* [ ] MLIR verifies.
+* [ ] Invalid MLIR is rejected.
+* [ ] MLIR can be inspected.
 * [ ] Custom operations have semantic justification.
 * [ ] Existing MLIR infrastructure is reused where appropriate.
 
@@ -1562,7 +1562,7 @@ The Golden Path is complete only when all of the following are satisfied.
 
 * [ ] Semantic MLIR can be transformed.
 * [ ] Required operations can be lowered.
-* [ ] Lowered IR is legal.
+* [ ] Lowered MLIR is legal.
 * [ ] Execution-compatible representation can be produced.
 * [ ] Provenance can be inspected.
 
@@ -1606,7 +1606,7 @@ The Golden Path is complete only when all of the following are satisfied.
 
 The v0.0.1 implementation SHOULD provide three demonstrations.
 
-## 53.1 Semantic / IR
+## 53.1 Semantic / MLIR
 
 ```text
 Semantic Program
@@ -1665,7 +1665,7 @@ Field
   ↓
 Field Semantics
   ↓
-Field IR
+Field MLIR
   ↓
 Dynamics
   ↓
@@ -1693,7 +1693,7 @@ Stream
   ↓
 Semantic Events
   ↓
-Stream IR
+Stream MLIR
   ↓
 Provider
   ↓
@@ -1711,7 +1711,7 @@ Every new subsystem SHOULD be evaluated against the following questions:
 1. Can its semantics be defined independently?
 2. Can its semantic contract be stated?
 3. Can it participate in the semantic graph?
-4. Can it be represented in an appropriate IR?
+4. Can it be represented in appropriate MLIR?
 5. Can it participate in MLIR where appropriate?
 6. Can its representation be verified?
 7. Can it be transformed?

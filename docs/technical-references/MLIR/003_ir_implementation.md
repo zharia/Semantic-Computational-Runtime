@@ -118,7 +118,7 @@ Generic SCR passes (capability analysis, provider selection, legalization, etc.)
 **6. Progressive lowering, not big-bang lowering**  
 Follow the classic hourglass:
 
-1. High-level SCR / domain IR (close to the semantic model)
+1. High-level SCR Semantic MLIR (close to the semantic model)
 2. Mid-level structured dialects (`linalg`, `scf`, `tensor`/`memref`, custom structured SCR dialects)
 3. Low-level target dialects (`llvm`, `gpu`, `spirv`, …) or direct provider calls
 
@@ -143,7 +143,7 @@ Suggested layout that respects both SCR and MLIR conventions:
 ```
 lib/<Domain>/
 ├── 101_definition/          ← semantic authority
-├── IR/                      ← conceptual domain IR + MLIR mapping notes
+├── IR/                      ← MLIR dialect mapping notes
 │   ├── 101_definition.md
 │   └── mlir/                ← actual .td / .cpp for the dialect(s)
 ├── 301_implementation/      ← runtime / semantic library (Rust, etc.)

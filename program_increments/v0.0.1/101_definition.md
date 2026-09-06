@@ -1599,7 +1599,7 @@ The intended relationship is:
               SEMANTIC LIBRARY
                       │
                       ▼
-               SEMANTIC IR
+           SCR SEMANTIC MLIR
                       │
                       ▼
                     MLIR

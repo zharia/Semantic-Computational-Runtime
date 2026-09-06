@@ -1202,7 +1202,7 @@ A computational operation can be defined independently of its final implementati
 
 ### B. Meaning survives representation changes
 
-Semantic identity can be maintained through domain IR, MLIR, lowering, and execution.
+Semantic identity can be maintained through SCR Semantic MLIR, lowering, and execution.
 
 ### C. Implementations can be substituted
 
