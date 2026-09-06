@@ -17,12 +17,5 @@
       "./skills/scr-edit-domain",
       "./skills/scr-meta-edit"
     ]
-  },
-  "mcp": {
-    "agent-kanban": {
-      "type": "remote",
-      "url": "http://localhost:7777/mcp",
-      "enabled": true
-    }
   }
 }
