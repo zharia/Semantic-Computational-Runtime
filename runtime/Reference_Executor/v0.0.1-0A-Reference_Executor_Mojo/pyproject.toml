@@ -1,0 +1,11 @@
+[project]
+name = "scr-reference-executor-mojo"
+version = "0.0.1"
+description = "SCR v0.0.1-0A Reference Semantic Executor"
+requires-python = ">=3.11"
+dependencies = [
+    "mojo==1.0.0",
+]
+
+[tool.uv]
+package = false
