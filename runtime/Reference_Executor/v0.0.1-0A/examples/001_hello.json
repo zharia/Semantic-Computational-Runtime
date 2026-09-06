@@ -1,0 +1,16 @@
+{
+  "program": "hello",
+  "entities": [
+    {
+      "id": "greeting",
+      "type": "Text",
+      "value": "Hello, Semantic Field!"
+    }
+  ],
+  "observations": [
+    {
+      "entity": "greeting",
+      "property": "value"
+    }
+  ]
+}

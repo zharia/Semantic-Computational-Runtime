@@ -1,0 +1,38 @@
+{
+  "program": "bounded-counter",
+  "entities": [
+    {
+      "id": "counter",
+      "type": "Integer",
+      "value": 0
+    }
+  ],
+  "constraints": [
+    {
+      "entity": "counter",
+      "property": "value",
+      "operator": "<=",
+      "value": 10
+    }
+  ],
+  "transformations": [
+    {
+      "id": "increment-5",
+      "operation": "increment",
+      "target": "counter",
+      "argument": 5
+    },
+    {
+      "id": "increment-5-again",
+      "operation": "increment",
+      "target": "counter",
+      "argument": 5
+    }
+  ],
+  "observations": [
+    {
+      "entity": "counter",
+      "property": "value"
+    }
+  ]
+}

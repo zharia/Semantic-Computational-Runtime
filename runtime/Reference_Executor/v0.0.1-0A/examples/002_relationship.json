@@ -1,0 +1,28 @@
+{
+  "program": "relationship",
+  "entities": [
+    {
+      "id": "alice",
+      "type": "Person",
+      "value": "Alice"
+    },
+    {
+      "id": "bob",
+      "type": "Person",
+      "value": "Bob"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "alice",
+      "type": "knows",
+      "target": "bob"
+    }
+  ],
+  "observations": [
+    {
+      "entity": "alice",
+      "property": "value"
+    }
+  ]
+}

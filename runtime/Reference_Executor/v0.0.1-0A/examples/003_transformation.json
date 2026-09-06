@@ -1,0 +1,30 @@
+{
+  "program": "counter",
+  "entities": [
+    {
+      "id": "counter",
+      "type": "Integer",
+      "value": 0
+    }
+  ],
+  "transformations": [
+    {
+      "id": "increment-1",
+      "operation": "increment",
+      "target": "counter",
+      "argument": 1
+    },
+    {
+      "id": "increment-2",
+      "operation": "increment",
+      "target": "counter",
+      "argument": 1
+    }
+  ],
+  "observations": [
+    {
+      "entity": "counter",
+      "property": "value"
+    }
+  ]
+}
