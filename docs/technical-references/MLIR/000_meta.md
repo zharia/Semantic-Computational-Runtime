@@ -30,7 +30,7 @@ Application
     ↓
 Semantic Library / Semantic Model     ← SCR’s primary contribution
     ↓
-Domain / Semantic IR
+SCR Semantic MLIR
     ↓
 MLIR (dialects, analysis, transformation, lowering)
     ↓

@@ -520,7 +520,7 @@ For example:
                     │
              Semantic State
                     │
-              MLIR Semantic IR
+              SCR Semantic MLIR
                     │
               Lowering/Dispatch
                     │
@@ -690,7 +690,7 @@ Application
 Semantic Library
     │
     ▼
-Semantic IR
+Semantic MLIR
     │
     ▼
 MLIR

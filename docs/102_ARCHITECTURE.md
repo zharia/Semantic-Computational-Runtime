@@ -1720,7 +1720,89 @@ The semantic layer must remain the stable boundary.
 
 ---
 
-# 38. Architectural Invariants
+# 38. Canonical Terminology
+
+The following vocabulary is authoritative for the repository.
+
+| Term | Meaning |
+|------|---------|
+| Semantic Model | Conceptual specification of computational meaning |
+| Semantic MLIR | MLIR representation of SCR semantics |
+| SCR Dialect | MLIR dialect defining SCR/domain semantics |
+| SCR Interface | MLIR interface expressing a semantic capability/contract |
+| Operation | MLIR operation carrying semantic computation |
+| Type | MLIR/SCR semantic type |
+| Attribute | MLIR/SCR semantic metadata |
+| Analysis | Analysis over MLIR/SCR semantics |
+| Transformation | Semantics-preserving or explicitly semantic MLIR transformation |
+| Lowering | Progressive transformation toward concrete execution |
+| Provider | Concrete implementation of a semantic contract |
+| Runtime | Execution orchestration and resource management |
+| Representation | Concrete or MLIR representation of semantic information |
+| Semantic Graph | Conceptual relationship structure; not a second IR |
+| Library Architecture Graph | Control-plane metadata graph; not an execution IR |
+
+Avoid: "SCR IR", "Semantic IR", "Domain IR", "Custom IR", "Intermediate Representation" (when referring to anything other than MLIR itself).
+
+---
+
+# 39. Canonical Architecture Diagram
+
+```text
+                    ┌─────────────────────┐
+                    │    Application      │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │   Semantic Model    │
+                    │  Meaning / Contract │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+              ┌────────────────────────────────┐
+              │         Semantic MLIR           │
+              │                                │
+              │ SCR Dialects                   │
+              │ SCR Types                      │
+              │ SCR Operations                 │
+              │ SCR Attributes                 │
+              │ SCR Interfaces                 │
+              │ SCR Traits                     │
+              │ Semantic Verification          │
+              └───────────────┬────────────────┘
+                              │
+                              ▼
+              ┌────────────────────────────────┐
+              │       MLIR Infrastructure       │
+              │                                │
+              │ Analysis                       │
+              │ Canonicalization               │
+              │ Transformation                 │
+              │ Dialect Conversion             │
+              │ Bufferization                  │
+              │ Vectorization                  │
+              │ Parallelization                │
+              │ GPU / Async / LLVM lowering    │
+              └───────────────┬────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │      Provider       │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ Execution Substrate │
+                    │ CPU / GPU / etc.    │
+                    └─────────────────────┘
+```
+
+The absence of a second IR between Semantic Model and MLIR Infrastructure is the defining architectural property.
+
+---
+
+# 40. Architectural Invariants
 
 The following are foundational invariants.
 
@@ -1786,7 +1868,7 @@ Domains must be able to compose without bespoke integration frameworks.
 
 ---
 
-# 39. Reference Architecture
+# 41. Reference Architecture
 
 The complete architecture can be summarized as:
 
@@ -1862,7 +1944,7 @@ The complete architecture can be summarized as:
 
 ---
 
-# 40. The Fundamental Abstraction Boundary
+# 42. The Fundamental Abstraction Boundary
 
 The most important boundary in SCR is:
 
@@ -1899,7 +1981,7 @@ SCR defines the semantic boundary between them.
 
 ---
 
-# 41. What SCR Is Not
+# 43. What SCR Is Not
 
 SCR is not:
 
@@ -1920,7 +2002,7 @@ It is an abstraction layer that allows these technologies to participate in a co
 
 ---
 
-# 42. The Strategic Objective
+# 44. The Strategic Objective
 
 The long-term objective is to make the following programming model possible:
 
@@ -1954,7 +2036,7 @@ That complexity belongs below the semantic boundary.
 
 ---
 
-# 43. The Deeper Architecture
+# 45. The Deeper Architecture
 
 The architecture ultimately forms a computational hierarchy:
 
@@ -2010,7 +2092,7 @@ This creates a potentially adaptive computational system rather than a static co
 
 ---
 
-# 44. North Star
+# 46. North Star
 
 The north-star abstraction is:
 
@@ -2022,6 +2104,6 @@ SCR determines the realization.
 
 ---
 
-# 45. One-Sentence Architecture
+# 47. One-Sentence Architecture
 
 > **SCR is an MLIR-based semantic computational ecosystem that separates computational meaning from representation, implementation, and hardware, enabling heterogeneous computational domains to compose as higher-order abstractions and compile adaptively into optimized execution.**

@@ -5,7 +5,7 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-DATA-IR
-name: Data IR
+name: Data MLIR Dialect
 
 version: 0.1.0
 status: draft
@@ -20,7 +20,7 @@ domain: semantic-library
 classification: intermediate-representation
 ---
 
-# Data IR
+# Data MLIR Dialect
 
 > Directory documentation for the current SCR library tree.
 
@@ -30,7 +30,7 @@ classification: intermediate-representation
 
 ## Purpose
 
-This directory is reserved for IR (intermediate representation) material associated with the SCR Data domain.
+This directory is MLIR dialect material for the Data domain.
 
 ## Current Contents
 
@@ -38,24 +38,24 @@ The directory currently contains:
 
 - `101_definition.md`
 
-No substantive IR implementation was present when this documentation pass was performed.
+No substantive MLIR dialect implementation was present when this documentation pass was performed.
 
 ## Current Role
 
-The directory establishes the domain-specific IR location for Data.
+The directory establishes the MLIR dialect location for Data.
 
 ## Relationship to Parent
 
-`IR` is a child of `201_Data` and represents the intermediate representation scope for the Data semantic domain.
+`IR` is a child of `201_Data` and represents the MLIR dialect scope for the Data semantic domain.
 
-## Relationship to Core IR
+## Relationship to Core MLIR Dialect
 
-This directory is associated with the SCR IR infrastructure. A distinct Data-specific semantic IR contract has not yet been independently established. This directory does not redefine or duplicate the Core IR semantic contract.
+This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
 
 ## Scope Boundary
 
-This document records the current repository organization. It does not introduce additional Data IR semantics beyond those established elsewhere in SCR.
+This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
 
 ## Notes
 
-The Data IR has not yet been independently specified. This directory serves as a structural placeholder for future domain-specific IR development.
+The Data MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.

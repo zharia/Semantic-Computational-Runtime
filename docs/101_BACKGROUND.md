@@ -421,7 +421,7 @@ The Semantic Library is consequently an MLIR extension ecosystem.
 
 # 9. Semantic MLIR
 
-The project originally distinguished between a "Semantic IR" and MLIR.
+The project originally distinguished between a separate intermediate representation and MLIR. This distinction has been resolved: SCR uses MLIR directly.
 
 That distinction is no longer necessary.
 

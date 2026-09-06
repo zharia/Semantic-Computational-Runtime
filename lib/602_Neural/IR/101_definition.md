@@ -5,7 +5,7 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-NEURAL-IR
-name: Neural IR
+name: Neural MLIR Dialect
 
 version: 0.1.0
 status: draft
@@ -20,7 +20,7 @@ domain: semantic-library
 classification: intermediate-representation
 ---
 
-# Neural IR
+# Neural MLIR Dialect
 
 > Directory documentation for the current SCR library tree.
 
@@ -30,7 +30,7 @@ classification: intermediate-representation
 
 ## Purpose
 
-This directory is reserved for IR (intermediate representation) material associated with the SCR Neural domain.
+This directory is MLIR dialect material for the Neural domain.
 
 ## Current Contents
 
@@ -38,24 +38,24 @@ The directory currently contains:
 
 - `101_definition.md`
 
-No substantive IR implementation was present when this documentation pass was performed.
+No substantive MLIR dialect implementation was present when this documentation pass was performed.
 
 ## Current Role
 
-The directory establishes the domain-specific IR location for Neural.
+The directory establishes the MLIR dialect location for Neural.
 
 ## Relationship to Parent
 
-`IR` is a child of `602_Neural` and represents the intermediate representation scope for the Neural semantic domain.
+`IR` is a child of `602_Neural` and represents the MLIR dialect scope for the Neural semantic domain.
 
-## Relationship to Core IR
+## Relationship to Core MLIR Dialect
 
-This directory is associated with the SCR IR infrastructure. A distinct Neural-specific semantic IR contract has not yet been independently established. This directory does not redefine or duplicate the Core IR semantic contract.
+This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
 
 ## Scope Boundary
 
-This document records the current repository organization. It does not introduce additional Neural IR semantics beyond those established elsewhere in SCR.
+This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
 
 ## Notes
 
-The Neural IR has not yet been independently specified. This directory serves as a structural placeholder for future domain-specific IR development.
+The Neural MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.

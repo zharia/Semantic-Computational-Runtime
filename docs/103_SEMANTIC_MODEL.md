@@ -2916,29 +2916,41 @@ The mapping should exploit MLIR rather than recreate these mechanisms independen
 
 ---
 
-# 90. Semantic IR
+# 90. Semantic MLIR
 
-There is no separate SCR IR.
+SCR does not define a second intermediate representation alongside MLIR.
 
 The semantic representation is:
 
 ```text
-MLIR + SCR dialects + SCR interfaces + SCR attributes + SCR semantics
+MLIR
++ SCR Dialects
++ SCR Interfaces
++ SCR Types
++ SCR Attributes
++ SCR Semantics
++ SCR Verification
++ SCR Analyses
++ SCR Transformations
 ```
 
-Therefore:
+This is called **Semantic MLIR** — the MLIR representation of SCR computational semantics.
+
+The distinction is:
 
 ```text
 Semantic Model
-      ↓
+    = meaning / specification / contract
+
 Semantic MLIR
-      ↓
-MLIR transformations
-      ↓
-Target MLIR
+    = computational representation of that meaning in MLIR
 ```
 
-This keeps SCR aligned with the MLIR ecosystem.
+These are not two competing intermediate representations.
+
+The Semantic Model defines what computation means.
+Semantic MLIR is how that meaning is represented computationally.
+Providers determine how the computation ultimately executes.
 
 ---
 

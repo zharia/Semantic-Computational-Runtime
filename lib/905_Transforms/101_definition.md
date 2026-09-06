@@ -604,7 +604,7 @@ SCR MUST therefore treat lowering as a **specialized class of Transform**, rathe
 ```text
 Semantic Domain
       ↓
-Semantic IR
+Semantic MLIR
       ↓
 Lowering Transform
       ↓
@@ -1389,20 +1389,20 @@ This separation SHOULD be used where it improves:
 
 ---
 
-# 73. Transform and Semantic IR
+# 73. Transform and Semantic MLIR
 
-SCR Semantic IR expresses computational meaning.
+SCR Semantic MLIR expresses computational meaning.
 
-Transforms operate upon Semantic IR and its progressively lowered representations.
+Transforms operate upon Semantic MLIR and its progressively lowered representations.
 
 ```text
 Semantic Meaning
        ↓
-Semantic IR
+Semantic MLIR
        ↓
 Transform
        ↓
-Transformed Semantic IR
+Transformed Semantic MLIR
        ↓
 MLIR Dialect
        ↓
@@ -2051,7 +2051,7 @@ An implementation of SCR Transforms is semantically complete only when it can re
 * provider integration
 * MLIR integration
 * Transform IR
-* Semantic IR transformation
+* Semantic MLIR transformation
 * representation transformation
 * hardware mapping
 * adaptive transformation

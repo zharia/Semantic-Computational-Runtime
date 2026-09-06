@@ -61,8 +61,8 @@ SCR aims for:
 flowchart LR
     A["Application"]
     B["Semantic Model"]
-    C["Semantic IR"]
-    D["MLIR"]
+    C["Semantic MLIR"]
+    D["MLIR Infrastructure"]
     E["Analysis / Transformation"]
     F["Lowering"]
     G["Provider"]
@@ -92,9 +92,9 @@ flowchart TB
 
     SEM["Semantic Library"]
     MODEL["Semantic Model"]
-    IR["Domain / Semantic IR"]
+    IR["SCR Semantic MLIR"]
 
-    MLIR["MLIR"]
+    MLIR["MLIR Infrastructure"]
 
     ANALYSIS["Semantic Analysis"]
     TRANSFORM["Transformation"]
@@ -668,8 +668,8 @@ flowchart LR
     A["Core"]
     B["Dynamics"]
     C["Simulation"]
-    D["Domain IR"]
-    E["MLIR"]
+    D["Semantic MLIR"]
+    E["MLIR Transforms"]
     F["CPU Provider"]
     G["Simulation State"]
     H["Render Projection"]
@@ -692,9 +692,9 @@ semantic state
       ↓
 semantic operation
       ↓
-IR
+Semantic MLIR
       ↓
-MLIR
+MLIR analysis / transformation
       ↓
 CPU execution
       ↓
@@ -875,7 +875,7 @@ The project is currently establishing:
 * normative definitions;
 * semantic contracts and invariants;
 * the library control plane;
-* domain IR conventions;
+* MLIR dialect conventions;
 * MLIR integration;
 * interfaces and capabilities;
 * transformation and lowering boundaries;

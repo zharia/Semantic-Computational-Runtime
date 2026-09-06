@@ -87,7 +87,7 @@ flowchart TB
     APP["Application / Frontend"]
     SEM["Semantic Library"]
     MODEL["Semantic Model"]
-    IR["Domain IR"]
+    IR["SCR Semantic MLIR"]
     MLIR["MLIR"]
     TRANS["Analysis / Transformation"]
     LOWER["Lowering"]
@@ -147,7 +147,7 @@ SCR separates:
 flowchart LR
     A["Semantic Definition"]
     B["Semantic Contract"]
-    C["Semantic IR"]
+    C["Semantic MLIR"]
     D["Transformation"]
     E["Lowering"]
     F["Provider"]
@@ -737,7 +737,7 @@ SCR supplies the semantic layer.
 ```mermaid
 flowchart TB
     S["SCR Semantic Meaning"]
-    I["SCR Semantic / Domain IR"]
+    I["SCR Semantic MLIR"]
     M["MLIR Infrastructure"]
     L["Lowering / Compilation"]
     P["Provider"]
@@ -759,7 +759,7 @@ Do not make MLIR's representation the definition of the semantic concept.
 
 ---
 
-# 19. Domain IR
+# 19. SCR Semantic MLIR
 
 An `IR/` directory within a semantic domain represents the domain's **computational representation**.
 
@@ -773,7 +773,7 @@ The conceptual pipeline is:
 flowchart LR
     A["Domain Definition"]
     B["Semantic Model"]
-    C["Domain IR"]
+    C["SCR Semantic MLIR"]
     D["MLIR Representation"]
     E["Transformation"]
     F["Lowering"]
@@ -826,8 +826,8 @@ Example:
 
 ```mermaid
 flowchart LR
-    A["SCR Semantic IR"]
-    B["Domain IR"]
+    A["SCR Semantic MLIR"]
+    B["SCR Semantic MLIR"]
     C["arith / scf / linalg / memref"]
     D["LLVM IR"]
     E["Native CPU"]
@@ -892,7 +892,7 @@ flowchart LR
     A["Core"]
     B["Dynamics"]
     C["Simulation"]
-    D["Domain IR"]
+    D["SCR Semantic MLIR"]
     E["MLIR"]
     F["CPU Provider"]
     G["Simulation State"]
@@ -1426,8 +1426,8 @@ SCR can transform:
 ```mermaid
 flowchart LR
     A["Semantic Model"]
-    B["SCR IR"]
-    C["MLIR"]
+    B["Semantic MLIR"]
+    C["MLIR Infrastructure"]
     D["Executable CPU computation"]
 
     A --> B --> C --> D
@@ -1597,7 +1597,7 @@ The preferred development direction is:
 ```mermaid
 flowchart TB
     CORE["Semantic Core"]
-    IR["Executable Semantic IR"]
+    IR["Executable Semantic MLIR"]
     RT["Minimal Runtime"]
     CPU["CPU Execution"]
     RENDER["Render State"]
@@ -1632,7 +1632,7 @@ Think of SCR as a compiler/runtime stack for **meaning**.
 ├─────────────────────────────────────────────┤
 │             Semantic Model                  │
 ├─────────────────────────────────────────────┤
-│                Domain IR                   │
+│                SCR Semantic MLIR                   │
 ├─────────────────────────────────────────────┤
 │                   MLIR                     │
 ├─────────────────────────────────────────────┤

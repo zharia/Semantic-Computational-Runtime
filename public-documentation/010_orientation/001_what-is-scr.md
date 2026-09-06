@@ -15,7 +15,7 @@ Application
     ↓
 Semantic Model
     ↓
-Domain IR
+SCR Semantic MLIR
     ↓
 MLIR
     ↓

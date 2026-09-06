@@ -52,7 +52,7 @@ Semantic Contract
        ↓
 Semantic Model
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
        ↓
@@ -92,7 +92,7 @@ Semantic Contract
        ↓
 Semantic Model
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
 ```
@@ -181,7 +181,7 @@ The v0.0.1 Golden Path SHALL exercise:
 * dynamics;
 * simulation;
 * spatial state;
-* domain IR;
+* SCR Semantic MLIR;
 * MLIR;
 * verification;
 * transformation;
@@ -503,7 +503,7 @@ The Golden Path is an executable projection of semantic relationships into repre
 
 ---
 
-# 14. Domain IR
+# 14. SCR Semantic MLIR
 
 The Golden Path requires a minimal domain representation capable of expressing the semantic workload.
 
@@ -553,7 +553,7 @@ The conceptual relationship is:
 ```text
 SCR Semantic Architecture
         ↓
-SCR Domain IR
+SCR Semantic MLIR
         ↓
 MLIR
         ↓
@@ -613,7 +613,7 @@ Verification failures MUST retain sufficient provenance to identify the affected
 The conceptual transformation path is:
 
 ```text
-Domain IR
+SCR Semantic MLIR
     ↓
 Canonicalization
     ↓
@@ -641,7 +641,7 @@ Conceptually:
 ```text
 SCR Semantic Computation
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
        ↓
@@ -1054,7 +1054,7 @@ The implementation SHOULD preserve traceability through:
 ```text
 Semantic Entity / Operation
         ↓
-Domain IR
+SCR Semantic MLIR
         ↓
 MLIR Operation
         ↓
@@ -1112,7 +1112,7 @@ Developers SHOULD be able to inspect:
 ```text
 Semantic Model
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
        ↓
@@ -1560,7 +1560,7 @@ The Golden Path is complete only when all of the following are satisfied.
 
 ## Compilation
 
-* [ ] Semantic IR can be transformed.
+* [ ] Semantic MLIR can be transformed.
 * [ ] Required operations can be lowered.
 * [ ] Lowered IR is legal.
 * [ ] Execution-compatible representation can be produced.
@@ -1611,7 +1611,7 @@ The v0.0.1 implementation SHOULD provide three demonstrations.
 ```text
 Semantic Program
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
 ```

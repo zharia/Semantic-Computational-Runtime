@@ -9,7 +9,7 @@ Application
     ↓
 Semantic Model
     ↓
-Domain IR
+SCR Semantic MLIR
     ↓
 MLIR
     ↓
@@ -48,9 +48,9 @@ The semantic model expresses the meaning of the computation.
 
 It includes domain concepts, types, operations, relationships, constraints, state, capabilities, and contracts.
 
-## Domain IR
+## SCR Semantic MLIR
 
-Domain IR provides a computational representation suitable for analysis and transformation while retaining domain-level semantics.
+SCR Semantic MLIR provides a computational representation suitable for analysis and transformation while retaining domain-level semantics.
 
 It is not necessarily a single monolithic dialect.
 

@@ -304,7 +304,7 @@ SCR MUST remain semantically above LLVM.
 ```text
 SCR Semantic Meaning
         ↓
-SCR IR
+SCR Semantic MLIR
         ↓
 MLIR
         ↓

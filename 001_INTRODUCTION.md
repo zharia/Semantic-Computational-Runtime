@@ -96,7 +96,7 @@ Problem
    ↓
 Semantic Model
    ↓
-Domain IR
+SCR Semantic MLIR
    ↓
 MLIR
    ↓
@@ -218,7 +218,7 @@ Semantic Contract
       ↓
 Semantic Model
       ↓
-Domain IR
+SCR Semantic MLIR
       ↓
 MLIR
       ↓
@@ -305,7 +305,7 @@ The conceptual relationship is:
                 │
                 ▼
 ┌─────────────────────────────────┐
-│              Domain IR          │
+│              SCR Semantic MLIR          │
 │                                 │
 │ semantic representation         │
 │ domain operations               │
@@ -1517,7 +1517,7 @@ Semantic Definition
        ↓
 Semantic Model
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 MLIR
        ↓

@@ -26,7 +26,7 @@ SCR therefore does not attempt to replace .NET. .NET can potentially be one of t
 | **Primary problem**                 | Execute programs from multiple languages within a common runtime | Preserve computational meaning across representations and execution mechanisms      |
 | **Semantic boundary**               | Language → managed execution                                     | Meaning → representation → implementation → execution                               |
 | **Common contract**                 | Common Language Infrastructure / CLR                             | SCR semantic contracts                                                              |
-| **Intermediate representation**     | CIL                                                              | Semantic IR expressed through MLIR infrastructure                                   |
+| **Intermediate representation**     | CIL                                                              | SCR Semantic MLIR                                   |
 | **Runtime abstraction**             | CLR                                                              | SCR Runtime                                                                         |
 | **Type abstraction**                | Common Type System                                               | Semantic types, identities, invariants, capabilities and relationships              |
 | **Execution model**                 | Managed execution                                                | Semantic execution and realization                                                  |
@@ -137,7 +137,7 @@ Computational Meaning
 Semantic Model
       │
       ▼
-Domain IR
+SCR Semantic MLIR
       │
       ▼
 MLIR
@@ -188,7 +188,7 @@ This is perhaps the most important comparison.
 | ---------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | What should survive compilation?   | Program behaviour within the .NET execution model        | Computational meaning                                                            |
 | What is abstracted?                | Source language and machine architecture                 | Representation, implementation, provider and execution substrate                 |
-| What is the common representation? | CIL + metadata                                           | Semantic IR / MLIR                                                               |
+| What is the common representation? | CIL + metadata                                           | SCR Semantic MLIR                                                               |
 | What does the runtime preserve?    | Managed program execution semantics                      | Semantic contracts and computational meaning                                     |
 | What may change?                   | Native machine representation and runtime implementation | Algorithm, representation, provider, hardware, scheduling and execution strategy |
 | What must not silently change?     | Program/type/runtime contract                            | Semantic meaning and declared invariants                                         |
@@ -1148,7 +1148,7 @@ The two systems can finally be aligned as follows:
 | **Problem domain**          | Application programming             | General computational semantics              |
 | **Meaning**                 | Language/program semantics          | Explicit semantic model                      |
 | **Source abstraction**      | Programming language                | Semantic/domain model                        |
-| **Common representation**   | CIL                                 | Semantic IR / MLIR                           |
+| **Common representation**   | CIL                                 | SCR Semantic MLIR                           |
 | **Intermediate processing** | Compiler + CLR                      | Analysis + transformation + lowering         |
 | **Implementation**          | CLR/JIT/AOT/runtime libraries       | Provider                                     |
 | **Runtime**                 | CLR                                 | SCR Runtime                                  |

@@ -1080,7 +1080,7 @@ Therefore:
 ```text
 SCR Semantic Model
         ↓
-SCR Semantic IR
+SCR Semantic MLIR
         ↓
 MLIR
         ↓
@@ -1226,7 +1226,7 @@ Concept
    ↓
 Semantic Contract
    ↓
-Semantic IR
+Semantic MLIR
    ↓
 Generic Implementation
    ↓
@@ -1706,7 +1706,7 @@ Application
      ↓
 Semantic Model
      ↓
-Semantic IR
+Semantic MLIR
      ↓
 Analysis
      ↓

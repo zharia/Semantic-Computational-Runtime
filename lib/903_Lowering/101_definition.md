@@ -153,7 +153,7 @@ Semantic Domain
       ↓
 Semantic Operation
       ↓
-Semantic IR
+Semantic MLIR
       ↓
 MLIR Dialect
       ↓

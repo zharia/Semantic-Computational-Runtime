@@ -120,7 +120,7 @@ Domain Definition
 Domain Semantic Model
        │
        ▼
-Domain IR
+SCR Semantic MLIR
        │
        ▼
 905_Transforms
@@ -227,9 +227,9 @@ The IR MUST NOT introduce semantic behavior that is absent from the domain defin
 
 ---
 
-# 8. Relationship to Domain IR
+# 8. Relationship to Domain SCR Semantic MLIR
 
-Every semantic domain MAY define a domain-specific IR.
+Every semantic domain MAY define a domain-specific SCR Semantic MLIR.
 
 For example:
 
@@ -267,12 +267,12 @@ A domain IR MAY be realized through:
 2. several cooperating MLIR dialects;
 3. existing MLIR dialects;
 4. a combination of SCR and existing dialects;
-5. another intermediate representation where appropriate.
+5. another MLIR representation where appropriate.
 
 Conceptually:
 
 ```text
-             Domain IR
+             SCR Semantic MLIR
                 │
        ┌────────┼────────┐
        ▼        ▼        ▼
@@ -297,7 +297,7 @@ SCR SHOULD therefore use MLIR mechanisms wherever they satisfy SCR's semantic re
 The relationship is:
 
 ```text
-SCR Semantic IR
+SCR Semantic MLIR
        │
        ▼
 MLIR
@@ -719,7 +719,7 @@ The IR MUST NOT encode unnecessary assumptions about a particular provider.
 
 ### IR-INV-013 — Hardware Independence
 
-The semantic IR MUST NOT require a particular hardware substrate unless the semantic contract explicitly requires one.
+The Semantic MLIR MUST NOT require a particular hardware substrate unless the semantic contract explicitly requires one.
 
 ### IR-INV-014 — Explicit Effects
 
@@ -790,7 +790,7 @@ It SHOULD NOT contain the general transformation framework itself.
 Lowering is a specialized class of transformation that moves computation toward a lower abstraction or execution representation.
 
 ```text
-High-Level Domain IR
+High-Level SCR Semantic MLIR
         │
         ▼
     Lowering
@@ -836,7 +836,7 @@ The relationship is:
 Semantic Definition
         │
         ▼
-Domain IR
+SCR Semantic MLIR
         │
         ▼
 Lowering / Transformation
@@ -882,14 +882,14 @@ The existence of a GPU-specific lowering MUST NOT imply that the original Field 
 
 # 31. Progressive Abstraction
 
-SCR IR is explicitly multi-level.
+SCR Semantic MLIR is explicitly multi-level.
 
 A concept MAY progress through:
 
 ```text
 Semantic Concept
        ↓
-Domain IR
+SCR Semantic MLIR
        ↓
 Generic Computational IR
        ↓
@@ -1069,7 +1069,7 @@ A domain MAY instead reuse an existing MLIR dialect.
 
 # 39. Types Directory
 
-`Types/` defines domain-specific IR types.
+`Types/` defines domain-specific SCR Semantic MLIR types.
 
 Examples:
 
@@ -1192,7 +1192,7 @@ Serialization mechanisms MAY include:
 
 Serialization is not itself the IR.
 
-The semantic IR MUST remain conceptually independent of its serialization.
+The Semantic MLIR MUST remain conceptually independent of its serialization.
 
 ---
 
@@ -1204,7 +1204,7 @@ These are representation mechanisms.
 
 The parser MUST construct valid IR or reject invalid input.
 
-The printer SHOULD preserve all information required to reconstruct the semantic IR subject to declared canonicalization or normalization rules.
+The printer SHOULD preserve all information required to reconstruct the Semantic MLIR subject to declared canonicalization or normalization rules.
 
 ---
 
@@ -1452,7 +1452,7 @@ Transforms define how representations may be changed.
 `903_Lowering` defines lowering paths from higher-level representations toward lower-level representations and execution targets.
 
 ```text
-Domain IR
+SCR Semantic MLIR
     │
     ▼
 903_Lowering
@@ -1487,13 +1487,13 @@ A provider is never the semantic definition of the IR.
 
 `902_Interfaces` defines reusable semantic capabilities across domains.
 
-Domain IRs MAY implement those interfaces.
+SCR Semantic MLIRs MAY implement those interfaces.
 
 ```text
 902_Interfaces
       │
       ▼
-Domain IR
+SCR Semantic MLIR
 ```
 
 The interface contract MUST remain independent of the implementation mechanism used by the IR.
@@ -1529,11 +1529,11 @@ Analysis MAY determine:
 * semantics;
 * topology.
 
-Analysis MUST inspect semantic IR properties rather than relying solely on implementation details.
+Analysis MUST inspect Semantic MLIR properties rather than relying solely on implementation details.
 
 ---
 
-# 63. Domain IR Completeness Criteria
+# 63. SCR Semantic MLIR Completeness Criteria
 
 A domain-specific `IR/` is complete enough for implementation when it establishes:
 
@@ -1672,7 +1672,7 @@ Domain 101
     ↓
 defines meaning
 
-Domain IR 101
+SCR Semantic MLIR 101
     ↓
 defines representation
 
@@ -1693,7 +1693,7 @@ defines realization
 
 # 67. Final Principle
 
-> **An SCR IR is the computational language through which semantic meaning becomes representable, analyzable, transformable, and lowerable without becoming dependent on its eventual implementation.**
+> **SCR Semantic MLIR is the computational language through which semantic meaning becomes representable, analyzable, transformable, and lowerable without becoming dependent on its eventual implementation.**
 
 The IR is therefore neither the semantic domain itself nor the final execution representation.
 

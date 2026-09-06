@@ -137,8 +137,6 @@ Semantic Position
        ≠
 Rust Position Struct
        ≠
-Domain IR Value
-       ≠
 MLIR Value
        ≠
 Memory Buffer
@@ -199,9 +197,9 @@ The intended relationship is:
 ```text
 SCR Semantic Model
         ↓
-Domain IR
+SCR Semantic MLIR
         ↓
-MLIR
+MLIR Infrastructure
         ↓
 Analysis / Transformation
         ↓
@@ -213,6 +211,30 @@ Runtime
         ↓
 Execution Substrate
 ```
+
+---
+
+# 5a. MLIR-First Representation Policy
+
+### Architectural law
+
+> SCR is built on MLIR, not beside it.
+
+### Representation law
+
+> There is one compiler representation substrate: MLIR.
+
+### Semantic law
+
+> SCR contributes semantics, contracts, interfaces, domain meaning, verification requirements, transformations, provider contracts, and execution independence.
+
+### Anti-duplication law
+
+> SCR shall not reproduce MLIR's IR, type, SSA, region, operation, interface, pass, transformation, or lowering mechanisms where MLIR already provides suitable facilities.
+
+### Extension law
+
+> New SCR compiler abstractions should first be expressed using existing MLIR mechanisms. New SCR dialects/interfaces/passes are preferred over independent representation systems.
 
 ---
 
@@ -488,9 +510,9 @@ Concept
    ↓
 Semantic Contract
    ↓
-Domain IR
+SCR Semantic MLIR
    ↓
-MLIR Representation
+MLIR Infrastructure
    ↓
 Generic Implementation
    ↓
@@ -1106,9 +1128,9 @@ Semantic Definition
         ↓
 Semantic Model
         ↓
-Domain IR
+SCR Semantic MLIR
         ↓
-MLIR
+MLIR Infrastructure
         ↓
 Analysis / Transformation
         ↓
@@ -1145,9 +1167,9 @@ Semantic Definition
         ↓
 Semantic Model
         ↓
-Domain IR
+SCR Semantic MLIR
         ↓
-MLIR
+MLIR Infrastructure
         ↓
 Transformation / Lowering
         ↓

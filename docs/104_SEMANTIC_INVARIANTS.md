@@ -1461,9 +1461,9 @@ However, it must not change required observable semantics.
 Conceptually:
 
 ```text
-High-Level Semantic IR
+High-Level SCR Semantic MLIR
         ↓
-Lower-Level IR
+Lower-Level SCR Semantic MLIR
 ```
 
 is a change in representation.

@@ -20,7 +20,7 @@ Semantic Definition (101_definition.md)
         ↓
 Semantic Model (pure SCR concepts)
         ↓
-Domain IR (conceptual)
+SCR Semantic MLIR (conceptual)
         ↓
 MLIR Representation (dialects / existing ops)
         ↓
@@ -56,7 +56,7 @@ Semantic Domain Definition (101_definition)
         ↓
 Semantic Model
         ↓
-Domain IR (conceptual)
+SCR Semantic MLIR (conceptual)
         ↓
 MLIR Realization (one or more of the following)
    ├── SCR-specific dialect(s)
@@ -150,8 +150,8 @@ lib/<Domain>/
 └── ...
 ```
 
-The MLIR artifacts are a *realization* of the Domain IR, not a replacement for it.
+The MLIR artifacts are a *realization* of the SCR Semantic MLIR, not a replacement for it.
 
 ### Summary Method (one paragraph)
 
-Treat every SCR semantic domain as defining a **conceptual Domain IR**. Realize that Domain IR in MLIR by the lightest combination of custom SCR dialects, upstream dialects, types, attributes, and (especially) interfaces that still preserves the required semantic properties. Keep the original semantic definitions as the sole authority. Drive all generic analyses and transformations through interfaces. Lower progressively through structured mid-level dialects toward concrete providers. Verify early and canonicalize aggressively. This approach stays faithful both to SCR’s “IR represents meaning; it does not define meaning” rule and to established MLIR dialect design patterns.
+Treat every SCR semantic domain as defining a **conceptual semantic model**. Realize that semantic model in MLIR by the lightest combination of custom SCR dialects, upstream dialects, types, attributes, and (especially) interfaces that still preserves the required semantic properties. Keep the original semantic definitions as the sole authority. Drive all generic analyses and transformations through interfaces. Lower progressively through structured mid-level dialects toward concrete providers. Verify early and canonicalize aggressively. This approach stays faithful both to SCR’s “IR represents meaning; it does not define meaning” rule and to established MLIR dialect design patterns.

@@ -36,7 +36,7 @@ Semantic State
       ↓
 Semantic Dynamics
       ↓
-Domain IR
+SCR Semantic MLIR
       ↓
 MLIR
       ↓

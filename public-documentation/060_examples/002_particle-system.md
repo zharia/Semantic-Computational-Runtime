@@ -46,7 +46,7 @@ Semantic Definition
         ↓
 Semantic Model
         ↓
-Domain IR
+SCR Semantic MLIR
         ↓
 MLIR
         ↓
