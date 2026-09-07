@@ -245,6 +245,7 @@ Evidence:
 - Constraint failure is representable with scf.if/else
 - Multiple entities use separate memref allocations
 - Relationships use module attributes
+- MLIR is DERIVABLE from semantic witness (generate_canonical_mlir.sh)
 
 The 6 conditions for introducing a custom dialect (section 18 of milestone)
 are not met:
@@ -254,3 +255,29 @@ are not met:
 4. ✗ No failing concrete witness requiring custom extension
 5. ✗ No custom extension needed
 6. ✗ No custom extension specified
+
+---
+
+## End-to-End Witness Verification
+
+The complete canonical witness (Section 22) demonstrates all semantic
+properties in a single executable scenario:
+
+| Step | Operation | Result | Verification |
+|------|-----------|--------|--------------|
+| 1 | Define Counter | type_id="Counter" | Entity Definition |
+| 2 | Instantiate c1=5 | c1 state = 5 | Entity Instance |
+| 3 | Instantiate c2=10 | c2 state = 10 | Multiple Entities |
+| 4 | Add constraint | c1,c2 >= 0 | Constraint |
+| 5 | Add relationship r1 | c1 → c2 | Relationship |
+| 6 | Transform c1: +3 | c1=8 | Transformation |
+| 7 | Transform c2: -12 | CONSTRAINT FAILURE | Constraint Failure |
+| 8 | Transform c2: -2 | c2=8 | Transformation |
+| 9 | Observe c1 | 8 | Observation |
+| 10 | Observe c2 | 8 | Observation |
+| 11 | Check time | 2 | SemanticTime |
+| 12 | Check identity | c1="c1", c2="c2" | Identity |
+
+**Executable through:** Mojo Kernel, Reference Executor, MLIR-derived executable
+
+All three produce semantically equivalent results.

@@ -82,7 +82,7 @@ module attributes {
     // Initial state: value = 0
     %init = arith.constant 0 : i32
 
-    // Allocate authoritative state (memref = semantic state container)
+    // Allocate physical representation of authoritative state (memref, not semantic state itself)
     %state = memref.alloca() : memref<1xi32>
     %idx0 = arith.constant 0 : index
     memref.store %init, %state[%idx0] : memref<1xi32>

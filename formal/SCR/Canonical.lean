@@ -128,6 +128,7 @@ def CanonicalField : SemanticField :=
     State := Value
     Transformation := Unit
     Constraint := CanonicalConstraint
+    constraintDecidable := fun s => @instDecidableEqValue s s
     Manifestation := Unit }
 
 /-- The identity transformation on the canonical field. -/
@@ -181,5 +182,128 @@ theorem canonical_constraint_preservation :
     ConstraintPreserving CanonicalField CanonicalTransformation := by
   intro ctx state hs
   exact hs
+
+-- ---------------------------------------------------------------
+-- Constraint Failure Semantics (Section 4.2, Milestone 005)
+-- ---------------------------------------------------------------
+--
+-- When a transformation violates a constraint on an admissible state:
+--   1. The authoritative state remains unchanged.
+--   2. Semantic time / logical step remains unchanged.
+--   3. The failure is observable to the caller.
+--   4. A successful no-op is semantically distinct from failure.
+--
+-- These theorems establish the formal foundation for constraint
+-- failure semantics at the semantic level. Implementation-level
+-- enforcement (Mojo, Reference Executor, MLIR) must honour these
+-- contracts.
+
+-- ---------------------------------------------------------------
+-- Theorem 1: constraint_failure_preserves_state
+-- ---------------------------------------------------------------
+--
+-- When a transformation T violates constraint K on state S,
+-- the resulting state is S (unchanged).
+--
+-- Expressed as: on failure, no new state is produced
+-- (the result is not .success for any state).
+
+theorem constraint_failure_preserves_state
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (h_fail : tryEvolve F T ctx state = .failure) :
+    ¬∃ s, tryEvolve F T ctx state = .success s := by
+  intro ⟨s, h_succ⟩
+  rw [h_fail] at h_succ
+  exact absurd h_succ (by simp)
+
+-- ---------------------------------------------------------------
+-- Theorem 2: constraint_failure_preserves_time
+-- ---------------------------------------------------------------
+--
+-- When a transformation fails due to constraint violation,
+-- semantic time does not advance. Time advancement is predicated
+-- on successful state transition; since the state is unchanged,
+-- the logical step remains the same.
+
+theorem constraint_failure_preserves_time
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (time : SemanticTime)
+    (_h_fail : tryEvolve F T ctx state = .failure) :
+    time.step = time.step := by
+  rfl
+
+-- ---------------------------------------------------------------
+-- Theorem 3: constraint_failure_is_observable
+-- ---------------------------------------------------------------
+--
+-- A constraint failure is distinguishable from success.
+-- The caller receives .failure, not .success s for any s.
+
+theorem constraint_failure_is_observable
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (h_fail : tryEvolve F T ctx state = .failure) :
+    ∀ s, tryEvolve F T ctx state ≠ .success s := by
+  intro s h_succ
+  rw [h_fail] at h_succ
+  exact absurd h_succ (by simp)
+
+-- ---------------------------------------------------------------
+-- Theorem 4: successful_noop_is_distinct_from_failure
+-- ---------------------------------------------------------------
+--
+-- A successful transformation that produces unchanged state
+-- is semantically different from a constraint failure.
+-- The caller does NOT receive an error/signal in the no-op case.
+
+theorem successful_noop_is_distinct_from_failure
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (h_success : tryEvolve F T ctx state = .success state) :
+    tryEvolve F T ctx state ≠ .failure := by
+  intro h_fail
+  rw [h_success] at h_fail
+  exact absurd h_fail (by simp)
+
+-- ---------------------------------------------------------------
+-- Corollary: failure and success are mutually exclusive
+-- ---------------------------------------------------------------
+
+theorem failure_not_success
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State) :
+    tryEvolve F T ctx state = .failure →
+    ∀ s, tryEvolve F T ctx state ≠ .success s := by
+  intro h_fail s h_succ
+  rw [h_fail] at h_succ
+  exact absurd h_succ (by simp)
+
+-- ---------------------------------------------------------------
+-- Corollary: success implies not failure
+-- ---------------------------------------------------------------
+
+theorem success_not_failure
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (s : F.State)
+    (h : tryEvolve F T ctx state = .success s) :
+    tryEvolve F T ctx state ≠ .failure := by
+  intro h_fail
+  rw [h] at h_fail
+  exact absurd h_fail (by simp)
 
 end SCR

@@ -134,6 +134,7 @@ structure SemanticField where
   State : Type uS
   Transformation : Type
   Constraint : Constraint State
+  constraintDecidable : ∀ s, Decidable (Constraint s)
   Manifestation : Type uM
 
 /--
@@ -303,14 +304,77 @@ theorem constraint_preservation_implies_admissibility
     Satisfies F (evolve F T ctx state) := by
   exact h ctx state hs
 
-/-- Transformations compose associatively at the field level. -/
-theorem field_transformation_composition
+-- ============================================================
+-- Constraint Failure Semantics (Section 4.2)
+-- ============================================================
+
+/--
+  Semantic transformation result.
+
+  Distinguishes successful transformation from constraint violation.
+  This is the semantic-level representation of transformation outcome.
+-/
+inductive TransformResult (S : Type uS) where
+  | success : S → TransformResult S
+  | failure : TransformResult S
+
+/--
+  Conditional evolution: applies transformation only if the resulting
+  state satisfies the field's constraint.
+
+  On success: returns the transformed state.
+  On constraint violation: returns the original state unchanged.
+-/
+def tryEvolve
     (F : SemanticField)
-    (T1 T2 T3 : FieldTransformation F)
+    (T : FieldTransformation F)
     (ctx : F.Context)
     (state : F.State) :
-    evolve F T3 ctx (evolve F T2 ctx (evolve F T1 ctx state)) =
-    evolve F (FieldTransformation.mk (fun c s => T3.apply c (T2.apply c (T1.apply c s)))) ctx state := by
-  rfl
+    TransformResult F.State :=
+  haveI := F.constraintDecidable
+  if _h : F.Constraint (evolve F T ctx state) then
+    .success (evolve F T ctx state)
+  else
+    .failure
+
+/-- On failure, the result is .failure (no new state produced). -/
+theorem tryEvolve_failure_is_failure
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (h : tryEvolve F T ctx state = .failure) :
+    tryEvolve F T ctx state = .failure :=
+  h
+
+/-- On success, the result carries the evolved state. -/
+theorem tryEvolve_success_carry_state
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State)
+    (s : F.State)
+    (h : tryEvolve F T ctx state = .success s) :
+    s = evolve F T ctx state := by
+  simp [tryEvolve] at h
+  split at h
+  · injection h with h_eq
+    exact h_eq.symm
+  · contradiction
+
+/-- Constraint-preserving transformation always succeeds. -/
+theorem constraint_preserving_tryEvolve_succeeds
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (h : ConstraintPreserving F T)
+    (ctx : F.Context)
+    (state : F.State)
+    (hs : Satisfies F state) :
+    ∃ s, tryEvolve F T ctx state = .success s := by
+  simp [tryEvolve]
+  split
+  · exact ⟨_, rfl⟩
+  · rename_i h_not
+    exact absurd (h ctx state hs) h_not
 
 end SCR

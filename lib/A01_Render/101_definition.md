@@ -1542,7 +1542,7 @@ Validate renderer providers against SCR Render interfaces.
 
 ### Lowering Tests
 
-Validate semantic preservation through Render → Render IR → backend lowering.
+Validate structural correctness through Render → Render IR → backend lowering. Semantic preservation requires separate contract validation.
 
 ---
 
