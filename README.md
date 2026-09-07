@@ -3,9 +3,9 @@
 
 <div align="center">
 
-![Byte Money](./assets/public/images/BM-logos-20.svg)([Primary Site](https://bytemoney.co.za))
+![Byte Money](./assets/public/images/BM-logos-20.svg)(![Primary Site](https://bytemoney.co.za))
 
-![Mojo Lang](./assets/public/images/Mojo-Logo.jpg)([Mojo Lang](https://medium.com/@furcifer/mojo-e1-background-and-history-mojo-programming-language-aca2b59eb719))
+![Mojo Lang](./assets/public/images/Mojo-Logo.jpg)(![Mojo Lang](https://medium.com/@furcifer/mojo-e1-background-and-history-mojo-programming-language-aca2b59eb719))
 
 </div>
 
