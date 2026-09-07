@@ -2,9 +2,11 @@
 
 
 <div align="center">
-[![Byte Money](assets/public/images/Mojo-Logo.jpg)]([Primary Site](https://bytemoney.co.za))
 
-[![Mojo Lang](assets/public/images/Mojo-Logo.jpg)]([Mojo Lang](https://medium.com/@furcifer/mojo-e1-background-and-history-mojo-programming-language-aca2b59eb719))
+[![Byte Money](./assets/public/images/Mojo-Logo.jpg)]([Primary Site](https://bytemoney.co.za))
+
+[![Mojo Lang](./assets/public/images/Mojo-Logo.jpg)]([Mojo Lang](https://medium.com/@furcifer/mojo-e1-background-and-history-mojo-programming-language-aca2b59eb719))
+
 </div>
 
 
