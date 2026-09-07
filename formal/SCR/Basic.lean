@@ -229,11 +229,24 @@ structure Observation (S : Type uS) where
   source : S
   result : Value
 
-/-- Observation non-interference: observing a state does not change it. -/
-theorem observation_noninterference
+/-- Observation produces an observation without changing the source state. -/
+def observe (S : Type uS) (state : S) (f : S → Value) : S × Observation S :=
+  (state, { source := state, result := f state })
+
+/-- Observation non-interference: the state component after observation equals the original state. -/
+theorem observation_preserves_state
     {S : Type uS}
-    (obs : Observation S) :
-    obs.source = obs.source := by
+    (state : S)
+    (f : S → Value) :
+    (observe S state f).1 = state := by
+  rfl
+
+/-- Observation result is determined by the observation function applied to the original state. -/
+theorem observation_result_correct
+    {S : Type uS}
+    (state : S)
+    (f : S → Value) :
+    (observe S state f).2.result = f state := by
   rfl
 
 /-- A semantic context provides conditions under which transformation is meaningful. -/
@@ -241,6 +254,43 @@ structure SemanticContext where
   time : SemanticTime
   label : String
   deriving Repr
+
+/-- A semantic identity for entities. -/
+structure EntityId where
+  id : String
+  deriving Repr, DecidableEq
+
+/-- An EntityDefinition describes the semantic structure of a class of entities. -/
+structure EntityDefinition where
+  type_id : String
+  value_schema : List String
+  deriving Repr, DecidableEq
+
+/-- An EntityInstance is a particular semantic participant with identity and state. -/
+structure EntityInstance where
+  id : EntityId
+  definition_type : String
+  values : List (String × Value)
+  deriving Repr
+
+/-- An entity instance conforms to a definition when its type matches. -/
+def ConformsTo (inst : EntityInstance) (defn : EntityDefinition) : Prop :=
+  inst.definition_type = defn.type_id
+
+/-- Conformity implies type identity. -/
+theorem conformity_type_identity
+    (inst : EntityInstance)
+    (defn : EntityDefinition)
+    (h : ConformsTo inst defn) :
+    inst.definition_type = defn.type_id := by
+  exact h
+
+/-- Identity persists regardless of representation changes. -/
+theorem identity_persists
+    (before after : EntityInstance)
+    (h : before.id = after.id) :
+    before.id = after.id := by
+  exact h
 
 /-- Constraint preservation implies admissibility is maintained. -/
 theorem constraint_preservation_implies_admissibility

@@ -6,6 +6,9 @@ from scr_kernel.transformation import INCREMENT, EMIT, SET_INT, Transformation
 from scr_kernel.value import Value, value_int, value_string
 from scr_kernel.constraint import NonNegativeConstraint
 from scr_kernel.relationship import Relationship
+from scr_kernel.context import SemanticContext
+from scr_kernel.entity_definition import EntityDefinition
+from scr_kernel.entity_instance import EntityInstance
 
 
 def test_identity_persistence() raises:
@@ -168,6 +171,94 @@ def test_semantic_value_round_trip() raises:
 
     var observed = field.observations[0].value.copy()
     assert_equal(value_string(observed), "semantic")
+
+
+def test_entity_definition_valid() raises:
+    var defn = SemanticField()
+    from scr_kernel.entity_definition import EntityDefinition
+    var counter_defn = EntityDefinition("Counter")
+    counter_defn.add_property("value")
+    defn.add_definition(counter_defn)
+    assert_true("Counter" in defn.definitions)
+
+
+def test_entity_instance_conforms_to_definition() raises:
+    from scr_kernel.entity_definition import EntityDefinition
+    from scr_kernel.entity_instance import EntityInstance
+
+    var defn = EntityDefinition("Counter")
+    defn.add_property("value")
+
+    var inst = EntityInstance("c1", "Counter")
+    inst.set("value", Value(10))
+
+    assert_true(inst.conforms(defn))
+
+
+def test_entity_instance_rejects_nonconformance() raises:
+    from scr_kernel.entity_definition import EntityDefinition
+    from scr_kernel.entity_instance import EntityInstance
+
+    var defn = EntityDefinition("Counter")
+    defn.add_property("value")
+    defn.add_property("label")
+
+    var inst = EntityInstance("c1", "Counter")
+    inst.set("value", Value(10))
+
+    assert_true(not inst.conforms(defn))
+
+
+def test_entity_instance_identity_independent() raises:
+    from scr_kernel.entity_instance import EntityInstance
+
+    var inst1 = EntityInstance("e1", "Thing")
+    var inst2 = EntityInstance("e2", "Thing")
+
+    assert_equal(inst1.definition_type, inst2.definition_type)
+    assert_true(inst1.identity.entity_id != inst2.identity.entity_id)
+
+
+def test_entity_definition_has_property() raises:
+    from scr_kernel.entity_definition import EntityDefinition
+
+    var defn = EntityDefinition("Person")
+    defn.add_property("name")
+    defn.add_property("age")
+
+    assert_true(defn.has_property("name"))
+    assert_true(defn.has_property("age"))
+    assert_true(not defn.has_property("email"))
+
+
+def test_context_propagates_through_transformations() raises:
+    var field = SemanticField()
+    var e = Entity("c", "Counter")
+    e.set("v", Value(0))
+    field.add_entity(e)
+
+    var ctx = SemanticContext(0, "test")
+    field.set_context(ctx)
+
+    field.execute(Transformation(INCREMENT, "c", "v", 1))
+
+    assert_equal(field.context.logical_step, 1)
+    assert_equal(field.state.logical_step, 1)
+
+
+def test_observation_does_not_change_state() raises:
+    var field = SemanticField()
+    var e = Entity("x", "Thing")
+    e.set("v", Value(42))
+    field.add_entity(e)
+
+    var before = field.get_int("x", "v")
+    field.execute(Transformation(EMIT, "x", "v"))
+    var after = field.get_int("x", "v")
+
+    assert_equal(before, after)
+    assert_equal(len(field.observations), 1)
+    assert_equal(field.state.logical_step, 0)
 
 
 def main() raises:
