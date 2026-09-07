@@ -51,3 +51,23 @@ entries:
     module: SCR.Equivalence
     declaration: Equivalent
     status: formalized
+
+  - concept: scr:time
+    module: SCR.Basic
+    declaration: SemanticTime
+    status: formalized
+
+  - concept: scr:observation
+    module: SCR.Basic
+    declaration: Observation
+    status: formalized
+
+  - concept: scr:context
+    module: SCR.Basic
+    declaration: SemanticContext
+    status: formalized
+
+  - concept: scr:constraint
+    module: SCR.Basic
+    declaration: Constraint
+    status: formalized

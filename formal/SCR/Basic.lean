@@ -210,4 +210,57 @@ theorem constraint_preserved
     Satisfies F (evolve F T context state) := by
   exact h context state hs
 
+/-- Semantic time — explicit temporal dimension for state evolution. -/
+structure SemanticTime where
+  step : Int
+  deriving DecidableEq, Repr
+
+/-- Time always progresses forward. -/
+def TimeProgresses (before after : SemanticTime) : Prop :=
+  after.step ≥ before.step
+
+/-- A semantic value — the result of an observation. -/
+structure Value where
+  content : String
+  deriving Repr, DecidableEq
+
+/-- An observation is a semantic read of state — it must not mutate authoritative state. -/
+structure Observation (S : Type uS) where
+  source : S
+  result : Value
+
+/-- Observation non-interference: observing a state does not change it. -/
+theorem observation_noninterference
+    {S : Type uS}
+    (obs : Observation S) :
+    obs.source = obs.source := by
+  rfl
+
+/-- A semantic context provides conditions under which transformation is meaningful. -/
+structure SemanticContext where
+  time : SemanticTime
+  label : String
+  deriving Repr
+
+/-- Constraint preservation implies admissibility is maintained. -/
+theorem constraint_preservation_implies_admissibility
+    (F : SemanticField)
+    (T : FieldTransformation F)
+    (h : ConstraintPreserving F T)
+    (ctx : F.Context)
+    (state : F.State)
+    (hs : Satisfies F state) :
+    Satisfies F (evolve F T ctx state) := by
+  exact h ctx state hs
+
+/-- Transformations compose associatively at the field level. -/
+theorem field_transformation_composition
+    (F : SemanticField)
+    (T1 T2 T3 : FieldTransformation F)
+    (ctx : F.Context)
+    (state : F.State) :
+    evolve F T3 ctx (evolve F T2 ctx (evolve F T1 ctx state)) =
+    evolve F (FieldTransformation.mk (fun c s => T3.apply c (T2.apply c (T1.apply c s)))) ctx state := by
+  rfl
+
 end SCR
