@@ -16,4 +16,4 @@ require mathlib from git
 @[default_target]
 lean_lib SCRFormal where
   srcDir := "formal"
-  roots := #[`SCR.Basic]
+  roots := #[`SCR.Basic, `SCR.Canonical]

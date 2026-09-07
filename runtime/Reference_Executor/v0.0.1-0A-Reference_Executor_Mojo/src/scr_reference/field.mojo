@@ -1,24 +1,36 @@
 from std.collections import Dict, List
 
 from .constraint import NonNegativeConstraint
+from .context import SemanticContext
 from .entity import Entity
+from .entity_definition import EntityDefinition
 from .relationship import Relationship
 from .value import Value, value_int
 
 struct SemanticField(Copyable):
+    var definitions: Dict[String, EntityDefinition]
     var entities: Dict[String, Entity]
     var relationships: Dict[String, Relationship]
     var non_negative_constraints: List[NonNegativeConstraint]
+    var context: SemanticContext
 
     def __init__(out self):
+        self.definitions = Dict[String, EntityDefinition]()
         self.entities = Dict[String, Entity]()
         self.relationships = Dict[String, Relationship]()
         self.non_negative_constraints = List[NonNegativeConstraint]()
+        self.context = SemanticContext()
 
     def add_entity(mut self, entity: Entity) raises:
         if entity.id in self.entities:
             raise Error("semantic identity already exists: " + entity.id)
         self.entities[entity.id] = entity.copy()
+
+    def add_definition(mut self, definition: EntityDefinition):
+        self.definitions[definition.type_id] = definition.copy()
+
+    def set_context(mut self, ctx: SemanticContext):
+        self.context = ctx.copy()
 
     def add_relationship(
         mut self,

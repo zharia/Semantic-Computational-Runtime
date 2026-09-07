@@ -1,5 +1,6 @@
 from std.collections import List
 
+from .context import SemanticContext
 from .field import SemanticField
 from .value import Value
 
@@ -80,10 +81,12 @@ struct ExecutionState(Copyable):
 struct Executor:
     var field: SemanticField
     var state: ExecutionState
+    var context: SemanticContext
 
     def __init__(out self, field: SemanticField):
         self.field = field.copy()
         self.state = ExecutionState()
+        self.context = field.context.copy()
 
     def execute(
         mut self,
@@ -111,6 +114,7 @@ struct Executor:
 
             var next_step = self.state.logical_step + 1
             self.state.logical_step = next_step
+            self.context.logical_step = next_step
             self.state.trace.append(
                 TraceEvent(
                     next_step,
@@ -140,6 +144,7 @@ struct Executor:
 
             var next_step = self.state.logical_step + 1
             self.state.logical_step = next_step
+            self.context.logical_step = next_step
             self.state.trace.append(
                 TraceEvent(
                     next_step,

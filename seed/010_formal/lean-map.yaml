@@ -71,3 +71,18 @@ entries:
     module: SCR.Basic
     declaration: Constraint
     status: formalized
+
+  - concept: scr:canonical-program
+    module: SCR.Canonical
+    declaration: CanonicalDefinition
+    status: formalized
+
+  - concept: scr:canonical-instance
+    module: SCR.Canonical
+    declaration: CanonicalInstance
+    status: formalized
+
+  - concept: scr:canonical-pipeline
+    module: SCR.Canonical
+    declaration: canonical_pipeline_valid
+    status: formalized
