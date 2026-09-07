@@ -2028,3 +2028,11 @@ Main context remaining:   preserved for verification and coordination
 ```
 
 If a task would require reading 5+ files to understand, delegate exploration to a subagent and consume only its summary.
+
+
+## After Completing a Task
+Iterative Reviews
+
+After completing a task, perform up to twenty iterative reviews of your changes. In every iteration, look for meaningful improvements that were missed, for gaps in test coverage, and for deviations from the instructions in this file.
+
+If no meaningful improvements are found for three iterations in a row, report it and stop iterating.
