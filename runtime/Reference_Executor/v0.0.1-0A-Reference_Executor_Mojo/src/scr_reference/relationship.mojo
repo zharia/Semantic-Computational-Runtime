@@ -1,21 +1,18 @@
-
-
-
 struct Relationship(Copyable, Writable):
     var id: String
-    var relation: String
+    var kind: String
     var source: String
     var target: String
 
     def __init__(
         out self,
         id: String,
-        relation: String,
+        kind: String,
         source: String,
         target: String,
     ):
         self.id = id
-        self.relation = relation
+        self.kind = kind
         self.source = source
         self.target = target
 
@@ -26,7 +23,7 @@ struct Relationship(Copyable, Writable):
             ": ",
             self.source,
             " -",
-            self.relation,
+            self.kind,
             "-> ",
             self.target,
             ")",

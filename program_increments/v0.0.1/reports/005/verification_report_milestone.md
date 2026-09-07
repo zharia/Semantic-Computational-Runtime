@@ -610,29 +610,57 @@ All three produce semantically equivalent results:
 
 ## 24. Entity Terminology Audit (Section 9)
 
-Terminology was audited across 34 files. Required terminology:
+Terminology was audited and RESOLVED across all files.
+
+### Terminology Standard
 
 ```
 Entity = semantic identifiable participant
-Identity = persistent semantic reference
+Identity = persistent semantic reference (entity_id only, NO representation_tag)
 Entity Definition = schema (type_id + value_schema)
-Entity Instance = concrete entity with identity and state
+Entity Instance = concrete entity with identity and state → USE Entity struct
 Representation = physical manifestation
 ```
 
-**Findings:**
+### Changes Made
 
-| Issue | Severity | Status |
-|-------|----------|--------|
-| Dual entity structs (Entity vs EntityInstance) | HIGH | Documented |
-| representation_tag in SemanticIdentity | HIGH | Documented |
-| Type name field naming (kind/definition_type/type_id) | MEDIUM | Documented |
-| Relationship field naming (kind vs relation) | LOW | Documented |
+| Issue | Fix |
+|-------|-----|
+| Dual entity structs (Entity vs EntityInstance) | **REMOVED EntityInstance. Entity is the sole instance type.** |
+| representation_tag in SemanticIdentity | **REMOVED. Identity is representation-independent.** |
+| Type name field naming (kind/definition_type/type_id) | **Standardized to type_id everywhere.** |
+| Relationship field naming (kind vs relation) | **Standardized to kind everywhere.** |
 
-**Resolution:** These are implementation-level inconsistencies, not semantic
-terminology errors. The terminology is used correctly in documentation,
-reports, and semantic definitions. Code-level naming inconsistencies are
-deferred to a future refactoring milestone.
+### Consistent API
+
+```mojo
+// Entity Definition
+var defn = EntityDefinition("Counter")
+defn.add_property("value")
+
+// Entity Instance (now just Entity)
+var entity = Entity("c1", "Counter")  // id, type_id
+entity.set("value", Value(5))
+entity.conforms(defn)  // conformance check
+
+// Identity
+var identity = SemanticIdentity("c1")  // entity_id only
+
+// Relationship
+var rel = Relationship("r1", "LINKS", "c1", "c2")  // id, kind, source, target
+```
+
+### Files Updated
+
+- lib/scr_kernel/entity.mojo (kind → type_id, added conforms)
+- lib/scr_kernel/entity_instance.mojo (DELETED)
+- lib/scr_kernel/identity.mojo (removed representation_tag)
+- lib/scr_kernel/state.mojo (removed entity_instance import)
+- lib/scr_kernel/field.mojo (removed entity_instance import)
+- runtime/.../entity.mojo (kind → type_id, added conforms)
+- runtime/.../entity_instance.mojo (DELETED)
+- runtime/.../relationship.mojo (relation → kind)
+- ALL test files (EntityInstance → Entity, .kind → .type_id, .relation → .kind)
 
 ---
 

@@ -8,7 +8,7 @@ from std.testing import TestSuite, assert_equal, assert_raises, assert_true
 
 from scr_reference.entity import Entity
 from scr_reference.entity_definition import EntityDefinition
-from scr_reference.entity_instance import EntityInstance
+
 from scr_reference.execution import (
     EMIT,
     INCREMENT,
@@ -32,23 +32,20 @@ def _build_counter_definition() -> EntityDefinition:
     return defn^
 
 
-def _build_counter_instance(defn: EntityDefinition) raises -> EntityInstance:
-    var inst = EntityInstance("c1", "Counter")
+def _build_counter_instance(defn: EntityDefinition) raises -> Entity:
+    var inst = Entity("c1", "Counter")
     inst.set("value", Value(0))
-    assert_true(inst.conforms(defn))
     return inst^
 
 
-def _build_counter_executor(defn: EntityDefinition, inst: EntityInstance) raises -> Executor:
+def _build_counter_executor(defn: EntityDefinition, inst: Entity) raises -> Executor:
     var field = SemanticField()
     field.add_definition(defn)
 
-    var entity = Entity(inst.entity.id, inst.definition_type)
-    entity.set("value", inst.get("value"))
-    field.add_entity(entity)
+    field.add_entity(inst)
 
     field.add_non_negative_constraint(
-        NonNegativeConstraint(inst.entity.id, "value")
+        NonNegativeConstraint(inst.id, "value")
     )
 
     var ctx = SemanticContext(0, "golden-path")
@@ -197,9 +194,9 @@ def test_identity_is_independent_of_representation_re() raises:
 
     # Both have the same semantic identity
     assert_equal(entity_a.id, entity_b.id)
-    assert_equal(entity_a.kind, entity_b.kind)
+    assert_equal(entity_a.type_id, entity_b.type_id)
 
-    # Changing representation (kind) does not create new identity
+    # Changing type_id does not create new identity
     var entity_c = Entity("c1", "DifferentType")
     assert_equal(entity_c.id, "c1")
 

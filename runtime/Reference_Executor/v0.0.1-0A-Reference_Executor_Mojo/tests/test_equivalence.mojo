@@ -6,7 +6,7 @@ from scr_reference.execution import INCREMENT as RE_INCREMENT, EMIT as RE_EMIT, 
 from scr_reference.field import SemanticField as RE_Field
 from scr_reference.value import Value as RE_Value, value_int as re_value_int
 from scr_reference.entity_definition import EntityDefinition as RE_Defn
-from scr_reference.entity_instance import EntityInstance as RE_Instance
+from scr_reference.relationship import Relationship as RE_Relationship
 
 # Semantic Kernel imports
 from scr_kernel.entity import Entity as SK_Entity
@@ -14,7 +14,7 @@ from scr_kernel.transformation import INCREMENT as SK_INCREMENT, EMIT as SK_EMIT
 from scr_kernel.field import SemanticField as SK_Field
 from scr_kernel.value import Value as SK_Value, value_int as sk_value_int
 from scr_kernel.entity_definition import EntityDefinition as SK_Defn
-from scr_kernel.entity_instance import EntityInstance as SK_Instance
+from scr_kernel.relationship import Relationship as SK_Relationship
 
 
 def test_equivalence_increment() raises:
@@ -107,9 +107,6 @@ def test_equivalence_constraint_rollback() raises:
 
 
 def test_equivalence_multiple_entities() raises:
-    from scr_reference.relationship import Relationship as RE_Relationship
-    from scr_kernel.relationship import Relationship as SK_Relationship
-
     var re_field = RE_Field()
     re_field.add_entity(RE_Entity("a", "Thing"))
     re_field.add_entity(RE_Entity("b", "Thing"))
@@ -128,13 +125,13 @@ def test_equivalence_multiple_entities() raises:
 def test_equivalence_entity_definition() raises:
     var re_defn = RE_Defn("Counter")
     re_defn.add_property("value")
-    var re_inst = RE_Instance("c1", "Counter")
+    var re_inst = RE_Entity("c1", "Counter")
     re_inst.set("value", RE_Value(0))
     var re_conforms = re_inst.conforms(re_defn)
 
     var sk_defn = SK_Defn("Counter")
     sk_defn.add_property("value")
-    var sk_inst = SK_Instance("c1", "Counter")
+    var sk_inst = SK_Entity("c1", "Counter")
     sk_inst.set("value", SK_Value(0))
     var sk_conforms = sk_inst.conforms(sk_defn)
 
@@ -143,15 +140,13 @@ def test_equivalence_entity_definition() raises:
 
 
 def test_equivalence_entity_instance_identity() raises:
-    var re_defn = RE_Defn("Thing")
-    var re_inst1 = RE_Instance("thing-1", "Thing")
-    var re_inst2 = RE_Instance("thing-2", "Thing")
-    assert_true(re_inst1.entity.id != re_inst2.entity.id)
+    var re_inst1 = RE_Entity("thing-1", "Thing")
+    var re_inst2 = RE_Entity("thing-2", "Thing")
+    assert_true(re_inst1.id != re_inst2.id)
 
-    var sk_defn = SK_Defn("Thing")
-    var sk_inst1 = SK_Instance("thing-1", "Thing")
-    var sk_inst2 = SK_Instance("thing-2", "Thing")
-    assert_true(sk_inst1.identity.entity_id != sk_inst2.identity.entity_id)
+    var sk_inst1 = SK_Entity("thing-1", "Thing")
+    var sk_inst2 = SK_Entity("thing-2", "Thing")
+    assert_true(sk_inst1.id != sk_inst2.id)
 
 
 def main() raises:

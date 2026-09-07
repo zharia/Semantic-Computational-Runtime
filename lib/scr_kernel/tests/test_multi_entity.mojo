@@ -10,7 +10,7 @@ from std.collections import List
 
 from scr_kernel.entity import Entity
 from scr_kernel.entity_definition import EntityDefinition
-from scr_kernel.entity_instance import EntityInstance
+
 from scr_kernel.field import SemanticField
 from scr_kernel.transformation import INCREMENT, EMIT, SET_INT, Transformation
 from scr_kernel.value import Value, value_int

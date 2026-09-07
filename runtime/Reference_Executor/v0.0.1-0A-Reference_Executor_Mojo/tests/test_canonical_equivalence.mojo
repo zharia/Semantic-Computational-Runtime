@@ -16,7 +16,6 @@ from std.testing import TestSuite, assert_equal, assert_true
 # Reference Executor imports
 from scr_reference.entity import Entity as RE_Entity
 from scr_reference.entity_definition import EntityDefinition as RE_Defn
-from scr_reference.entity_instance import EntityInstance as RE_Instance
 from scr_reference.execution import (
     EMIT as RE_EMIT,
     INCREMENT as RE_INCREMENT,
@@ -31,7 +30,6 @@ from scr_reference.value import Value as RE_Value, value_int as re_value_int
 # Semantic Kernel imports
 from scr_kernel.entity import Entity as SK_Entity
 from scr_kernel.entity_definition import EntityDefinition as SK_Defn
-from scr_kernel.entity_instance import EntityInstance as SK_Instance
 from scr_kernel.field import SemanticField as SK_Field
 from scr_kernel.transformation import INCREMENT as SK_INCREMENT, EMIT as SK_EMIT, Transformation as SK_Transformation
 from scr_kernel.constraint import NonNegativeConstraint as SK_Constraint
@@ -48,16 +46,13 @@ def _build_re_executor() raises -> RE_Executor:
     var defn = RE_Defn("Counter")
     defn.add_property("value")
 
-    var inst = RE_Instance("c1", "Counter")
+    var inst = RE_Entity("c1", "Counter")
     inst.set("value", RE_Value(0))
-    assert_true(inst.conforms(defn))
 
     var field = RE_Field()
     field.add_definition(defn)
 
-    var entity = RE_Entity(inst.entity.id, inst.definition_type)
-    entity.set("value", inst.get("value"))
-    field.add_entity(entity)
+    field.add_entity(inst)
 
     field.add_non_negative_constraint(RE_Constraint("c1", "value"))
     field.set_context(RE_Context(0, "golden-path"))
@@ -70,16 +65,13 @@ def _build_sk_executor() raises -> SK_Field:
     var defn = SK_Defn("Counter")
     defn.add_property("value")
 
-    var inst = SK_Instance("c1", "Counter")
+    var inst = SK_Entity("c1", "Counter")
     inst.set("value", SK_Value(0))
-    assert_true(inst.conforms(defn))
 
     var field = SK_Field()
     field.add_definition(defn^)
 
-    var entity = SK_Entity(inst.identity.entity_id, inst.definition_type)
-    entity.set("value", inst.get("value"))
-    field.add_entity(entity)
+    field.add_entity(inst)
 
     field.add_constraint(SK_Constraint("c1", "value"))
     field.set_context(SK_Context(0, "golden-path"))

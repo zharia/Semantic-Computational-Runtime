@@ -12,7 +12,7 @@ from std.testing import TestSuite, assert_equal, assert_raises, assert_true
 
 from scr_kernel.entity import Entity
 from scr_kernel.entity_definition import EntityDefinition
-from scr_kernel.entity_instance import EntityInstance
+
 from scr_kernel.field import SemanticField
 from scr_kernel.transformation import INCREMENT, EMIT, SET_INT, Transformation
 from scr_kernel.value import Value, value_int
@@ -73,11 +73,11 @@ def test_witness_initial_state() raises:
     # Entity identity
     var e1 = field.get_entity("c1")
     assert_equal(e1.id, "c1")
-    assert_equal(e1.kind, "Counter")
+    assert_equal(e1.type_id, "Counter")
 
     var e2 = field.get_entity("c2")
     assert_equal(e2.id, "c2")
-    assert_equal(e2.kind, "Counter")
+    assert_equal(e2.type_id, "Counter")
 
     # Initial values
     assert_equal(field.get_int("c1", "value"), 5)
@@ -166,9 +166,9 @@ def test_witness_identity_preserved() raises:
     var e1 = field.get_entity("c1")
     var e2 = field.get_entity("c2")
     assert_equal(e1.id, "c1")
-    assert_equal(e1.kind, "Counter")
+    assert_equal(e1.type_id, "Counter")
     assert_equal(e2.id, "c2")
-    assert_equal(e2.kind, "Counter")
+    assert_equal(e2.type_id, "Counter")
 
 
 def test_witness_constraint_failure_distinct_from_noop() raises:

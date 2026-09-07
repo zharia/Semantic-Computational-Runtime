@@ -25,7 +25,7 @@ def test_entity_identity() raises:
     var entity = field.get_entity("e1")
 
     assert_equal(entity.id, "e1")
-    assert_equal(entity.kind, "Thing")
+    assert_equal(entity.type_id, "Thing")
 
 
 def test_duplicate_entity_identity_is_rejected() raises:

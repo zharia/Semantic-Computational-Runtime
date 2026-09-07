@@ -2,7 +2,7 @@ from std.collections import Dict, List
 from .constraint import NonNegativeConstraint
 from .entity import Entity
 from .entity_definition import EntityDefinition
-from .entity_instance import EntityInstance
+
 from .observation import Observation
 from .relationship import Relationship
 from .state import SemanticState

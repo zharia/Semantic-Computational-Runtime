@@ -1,15 +1,16 @@
 from std.collections import Dict
 
 from .value import Value
+from .entity_definition import EntityDefinition
 
-struct Entity(Copyable):
+struct Entity(Copyable, Writable):
     var id: String
-    var kind: String
+    var type_id: String
     var properties: Dict[String, Value]
 
-    def __init__(out self, id: String, kind: String):
+    def __init__(out self, id: String, type_id: String):
         self.id = id
-        self.kind = kind
+        self.type_id = type_id
         self.properties = Dict[String, Value]()
 
     def set(mut self, name: String, value: Value):
@@ -23,5 +24,10 @@ struct Entity(Copyable):
             raise Error("semantic property not found: " + name)
         return self.properties[name].copy()
 
+    def conforms(self, defn: EntityDefinition) -> Bool:
+        if self.type_id != defn.type_id:
+            return False
+        return defn.conforms(self.properties)
+
     def write_to(self, mut writer: Some[Writer]):
-        writer.write("Entity(", self.id, ", ", self.kind, ")")
+        writer.write("Entity(", self.id, ": ", self.type_id, ")")

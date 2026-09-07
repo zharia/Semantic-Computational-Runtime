@@ -10,7 +10,7 @@ from std.testing import TestSuite, assert_equal, assert_raises, assert_true
 
 from scr_reference.entity import Entity
 from scr_reference.entity_definition import EntityDefinition
-from scr_reference.entity_instance import EntityInstance
+
 from scr_reference.execution import (
     EMIT,
     INCREMENT,
@@ -75,11 +75,11 @@ def test_witness_initial_state_re() raises:
 
     var e1 = executor.field.get_entity("c1")
     assert_equal(e1.id, "c1")
-    assert_equal(e1.kind, "Counter")
+    assert_equal(e1.type_id, "Counter")
 
     var e2 = executor.field.get_entity("c2")
     assert_equal(e2.id, "c2")
-    assert_equal(e2.kind, "Counter")
+    assert_equal(e2.type_id, "Counter")
 
     assert_equal(executor.field.get_int("c1", "value"), 5)
     assert_equal(executor.field.get_int("c2", "value"), 10)
@@ -92,7 +92,7 @@ def test_witness_initial_state_re() raises:
     var rel = executor.field.get_relationship("r1")
     assert_equal(rel.source, "c1")
     assert_equal(rel.target, "c2")
-    assert_equal(rel.relation, "LINKS")
+    assert_equal(rel.kind, "LINKS")
 
 
 def test_witness_constraint_blocks_negative_re() raises:
@@ -158,9 +158,9 @@ def test_witness_identity_preserved_re() raises:
     var e1 = executor.field.get_entity("c1")
     var e2 = executor.field.get_entity("c2")
     assert_equal(e1.id, "c1")
-    assert_equal(e1.kind, "Counter")
+    assert_equal(e1.type_id, "Counter")
     assert_equal(e2.id, "c2")
-    assert_equal(e2.kind, "Counter")
+    assert_equal(e2.type_id, "Counter")
 
 
 def test_witness_constraint_failure_distinct_from_noop_re() raises:
