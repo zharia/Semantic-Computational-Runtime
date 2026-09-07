@@ -1,83 +1,60 @@
-# Benchmarking
+# Benchmarking Contract
 
-## Philosophy
+Benchmarking begins with a correct baseline.
 
-Benchmark the architecture, not marketing claims.
+## Measurement layers
 
-## Performance dimensions
+```text
+L0 protocol/codec
+L1 broker/routing
+L2 scheduling
+L3 transport
+L4 persistence
+```
 
-Measure:
+## Core measurements
 
-- throughput messages/sec
-- throughput bytes/sec
-- p50/p95/p99/p99.9 latency
-- CPU/message
-- allocations/message
-- bytes copied/message
-- memory/message
-- syscalls/message
-- context switches
-- scheduler wakeups
-- queue contention
-- routing cost
-- protocol decode/encode cost
-- persistence cost
-- recovery time
+- messages/second;
+- bytes/second;
+- p50;
+- p95;
+- p99;
+- p99.9;
+- CPU/message;
+- allocations/message;
+- bytes copied/message;
+- memory/message;
+- syscalls/message;
+- context switches;
+- scheduler wakeups;
+- routing cost;
+- codec cost;
+- persistence cost;
+- contention;
+- cache misses;
+- branch misses;
+- CPU migration;
+- NUMA effects;
+- recovery time.
 
-## Benchmark classes
+## Required benchmark discipline
 
-### Core
+- fixed workload definitions;
+- deterministic seeds where applicable;
+- warmup;
+- multiple repetitions;
+- raw results retained;
+- outliers explained rather than silently discarded;
+- benchmark environment recorded;
+- source revision recorded;
+- no comparison across materially different environments without qualification.
 
-Direct in-process publish → consume.
+## Optimization rule
 
-### Local
+An optimization is accepted only when:
 
-Hyrx-to-Hyrx over:
-
-- direct
-- Unix domain sockets
-- shared memory if implemented
-
-### Network
-
-Hyrx-native TCP/QUIC.
-
-### Compatibility
-
-AMQP 0-9-1 over TCP/TLS.
-
-### Durable
-
-Each persistence mode separately.
-
-## Methodology
-
-Record:
-
-- exact build
-- CPU
-- OS/kernel
-- runtime configuration
-- message size
-- topology
-- producer/consumer count
-- concurrency
-- persistence mode
-- transport
-- warm-up period
-- sample count
-- measurement tool/version
-
-Avoid reporting a single number as "performance".
-
-## RabbitMQ comparison
-
-Use identical hardware and comparable semantics.
-
-Report both:
-
-- throughput
-- latency distribution
-- resource consumption
-
-Never tune HyrxMQ to an artificial benchmark that removes required semantics.
+1. its target bottleneck is measured;
+2. its mechanism is understood;
+3. correctness is unchanged;
+4. benchmark results improve the intended workload;
+5. complexity is justified by the improvement.

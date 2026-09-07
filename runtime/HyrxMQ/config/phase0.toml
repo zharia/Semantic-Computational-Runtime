@@ -1,0 +1,21 @@
+# Phase 0 configuration seed.
+# This is not a broker configuration.
+
+[project]
+name = "hyrx"
+product = "hyrxmq"
+version = "0.1.0-dev"
+
+[execution]
+deterministic = true
+seed = 0
+
+[logging]
+level = "info"
+
+[benchmarks]
+warmup_iterations = 1000
+measurement_iterations = 10000
+
+[limits]
+max_message_size_bytes = 1048576

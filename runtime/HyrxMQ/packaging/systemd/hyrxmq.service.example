@@ -1,0 +1,25 @@
+# Example only — NOT production-ready.
+# Do not install until the runtime binary, user/group, directories, limits,
+# capabilities and hardening profile have been validated.
+
+[Unit]
+Description=HyrxMQ Native Mojo Messaging Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=hyrx
+Group=hyrx
+ExecStart=/usr/bin/hyrxmq --config /etc/hyrxmq/hyrxmq.toml
+Restart=on-failure
+RestartSec=1s
+
+# Hardening must be validated against actual runtime requirements before use.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

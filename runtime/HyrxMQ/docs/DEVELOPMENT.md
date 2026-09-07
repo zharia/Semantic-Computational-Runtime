@@ -1,60 +1,46 @@
-# Development Guide
+# Development Workflow
 
-## Development order
+## Before coding
 
-Work from:
+1. Read architecture invariants.
+2. Read the current phase specification.
+3. Inspect actual toolchain versions.
+4. Inspect current repository state.
+5. Identify unknowns.
+6. Design the smallest experiment that can resolve each important unknown.
+
+## During coding
+
+- prefer small logical commits;
+- keep hot-path assumptions explicit;
+- avoid speculative abstractions;
+- write tests with implementation;
+- record measurements rather than anecdotes.
+
+## After coding
+
+Run:
 
 ```text
-core semantics
-→ ownership
-→ routing
-→ direct delivery
-→ transports
-→ protocol
-→ product
+tests
+format
+integration checks
+benchmark where relevant
+documentation update
+self-assessment
 ```
 
-## Code review requirements
+## Commit style
 
-Reviewers must examine:
+Examples:
 
-- ownership correctness
-- lifetime correctness
-- concurrency
-- error paths
-- resource limits
-- semantic compatibility
-- benchmark evidence
-- documentation impact
-
-## Generated protocol code
-
-Where protocol metadata can be generated from authoritative machine-readable definitions, prefer generation over manually duplicated constants.
-
-Generated artifacts must be reproducible and reviewed at the source-definition level.
-
-## Unsafe/native interfaces
-
-Unsafe code is permitted where required for systems-level functionality, but each use must document:
-
-- why it is necessary
-- lifetime assumptions
-- aliasing assumptions
-- failure behavior
-- benchmark justification
-
-## Dependencies
-
-Prefer the smallest dependency surface compatible with the product.
-
-A dependency must have:
-
-- clear license
-- maintenance rationale
-- security rationale
-- performance impact assessment
-- build/release implications
-
-## Documentation rule
-
-A behavior change is incomplete until affected documentation and tests are updated.
+```text
+core: add message ownership model
+routing: add direct exchange matcher
+transport: add unix domain transport
+amqp: implement connection negotiation
+hyrxmq: add systemd service
+perf: add direct-path benchmark
+test: add RabbitMQ differential suite
+docs: document transport semantics
+```

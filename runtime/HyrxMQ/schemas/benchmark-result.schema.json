@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hyrx Benchmark Result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "benchmark",
+    "environment",
+    "workload",
+    "measurements"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "benchmark": {"type": "string"},
+    "environment": {
+      "type": "object",
+      "required": ["os", "architecture"],
+      "properties": {
+        "os": {"type": "string"},
+        "architecture": {"type": "string"},
+        "kernel": {"type": "string"},
+        "mojo": {"type": "string"}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "required": ["messages", "payload_bytes"],
+      "properties": {
+        "messages": {"type": "integer", "minimum": 0},
+        "payload_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "properties": {
+        "throughput_msg_s": {"type": "number", "minimum": 0},
+        "throughput_bytes_s": {"type": "number", "minimum": 0},
+        "p50_us": {"type": "number", "minimum": 0},
+        "p95_us": {"type": "number", "minimum": 0},
+        "p99_us": {"type": "number", "minimum": 0},
+        "p999_us": {"type": "number", "minimum": 0},
+        "allocations_per_message": {"type": "number", "minimum": 0},
+        "copies_per_message": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

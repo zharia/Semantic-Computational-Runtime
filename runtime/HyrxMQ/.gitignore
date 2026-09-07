@@ -1,0 +1,42 @@
+# Mojo / Python tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+
+# Build output
+build/
+dist/
+target/
+out/
+.cache/
+
+# Benchmarks/results
+benchmarks/results/
+benchmarks/raw/
+*.perf.data
+*.prof
+*.trace
+
+# Runtime
+*.pid
+*.sock
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local configuration/secrets
+.env
+.env.*
+!.env.example
+config/local/

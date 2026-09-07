@@ -1,0 +1,25 @@
+name: phase0
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python structure checks
+        run: python3 tools/check_phase0.py
+
+      # Mojo installation is intentionally not guessed here.
+      # The project should pin an approved installation mechanism after the
+      # actual development environment has been validated.
+      - name: Report Mojo availability
+        run: |
+          if command -v mojo >/dev/null 2>&1; then
+            mojo --version
+          else
+            echo "Mojo not installed in CI seed environment; toolchain CI is NOT PROVEN."
+          fi

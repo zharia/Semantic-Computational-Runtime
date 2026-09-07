@@ -1,97 +1,62 @@
 # Testing Strategy
 
-Testing is a release requirement, not a final phase.
+## Phase 0
 
-## Test layers
+Phase 0 proves repository/toolchain integrity.
 
-### Unit
+Required tests:
 
-Pure deterministic tests for:
+- repository structure;
+- deterministic seed configuration;
+- minimal Mojo executable;
+- formatting;
+- CI bootstrap;
+- script failure behavior.
 
-- message representation
-- ownership
-- buffers
-- routing
-- queue operations
-- protocol codecs
-- state machines
-- configuration
-- authorization
-- persistence records
+## Later test classes
 
-### Component
+```text
+unit
+component
+integration
+protocol conformance
+RabbitMQ differential
+fuzz
+stress
+concurrency
+fault injection
+persistence recovery
+soak
+security
+performance
+management
+systemd/operations
+```
 
-Test subsystems without the entire product.
+## Failure policy
 
-### Integration
+The following are release blockers unless explicitly accepted:
 
-Test:
+- data corruption;
+- unintended message loss;
+- incorrect acknowledgement semantics;
+- protocol-state corruption;
+- crash on malformed input;
+- uncontrolled memory growth;
+- resource exhaustion without defined behavior;
+- undocumented compatibility gap;
+- false performance claim;
+- systemd startup/recovery failure.
 
-- transport + protocol
-- protocol + broker
-- broker + persistence
-- management + broker
-- systemd + product
+## Test evidence
 
-### Compatibility
+Tests must record:
 
-Run real AMQP clients and differential tests against RabbitMQ.
-
-### Stress
-
-Test:
-
-- high connection count
-- high message rate
-- deep queues
-- many consumers
-- many bindings
-- large payloads
-- small payloads
-- connection churn
-- publish/consume concurrency
-
-### Soak
-
-Run long enough to detect:
-
-- memory leaks
-- queue corruption
-- descriptor leaks
-- scheduler starvation
-- counter overflow
-- performance drift
-
-### Fault injection
-
-Inject:
-
-- network resets
-- client crashes
-- process termination
-- disk full
-- storage failures
-- resource exhaustion
-- malformed input
-
-### Fuzzing
-
-Fuzz:
-
-- AMQP frames
-- field tables
-- protocol state transitions
-- configuration
-- management API inputs
-- persistence records
-
-## Mandatory negative testing
-
-For every protocol feature, test both:
-
-- valid behavior
-- invalid behavior
-
-## Regression rule
-
-Every production bug must become a regression test before being considered closed.
+- command;
+- source revision;
+- environment;
+- expected result;
+- actual result;
+- artifact/log location;
+- pass/fail;
+- known limitations.

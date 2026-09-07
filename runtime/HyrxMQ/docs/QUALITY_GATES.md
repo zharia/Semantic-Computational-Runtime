@@ -1,73 +1,63 @@
 # Quality Gates
 
-## Gate Q0 — Build Integrity
+Every phase follows:
 
-Required:
+```text
+IMPLEMENT
+  ↓
+UNIT TEST
+  ↓
+INTEGRATION TEST
+  ↓
+COMPATIBILITY TEST
+  ↓
+BENCHMARK
+  ↓
+DOCUMENT
+  ↓
+REVIEW
+  ↓
+EXIT GATE
+```
 
-- clean build
-- no unexplained compiler warnings
-- deterministic dependency resolution
-- CI green
+Not every stage is applicable to every phase, but the agent must explicitly mark
+non-applicable stages.
 
-## Gate Q1 — Core Correctness
+## Evidence rule
 
-Required:
+Every completion claim must distinguish:
 
-- unit tests
-- ownership/lifetime tests
-- concurrency tests
-- resource-bound tests
+- `PROVEN`
+- `PARTIALLY PROVEN`
+- `NOT PROVEN`
+- `BLOCKED`
 
-## Gate Q2 — Semantic Correctness
+## Phase 0 gate
 
-Required:
+### Architecture
+- [ ] Core/product boundary documented.
+- [ ] Transport independence documented.
+- [ ] AMQP boundary documented.
+- [ ] Simulation independence documented.
 
-- routing tests
-- delivery tests
-- acknowledgement tests
-- ordering tests
-- backpressure tests
+### Toolchain
+- [ ] GNU/Linux baseline captured.
+- [ ] Mojo version captured.
+- [ ] Minimal program compiles.
+- [ ] Minimal executable runs.
+- [ ] Formatting command verified.
 
-## Gate Q3 — Transport Conformance
+### Repository
+- [ ] Required directories exist.
+- [ ] Dependency policy exists.
+- [ ] Deterministic seed exists.
+- [ ] Benchmark schema exists.
+- [ ] CI seed exists.
+- [ ] systemd packaging seed exists.
 
-Every transport must pass the applicable semantic conformance suite.
+### Evidence
+- [ ] No unsupported claims.
+- [ ] Unknowns recorded.
+- [ ] Exit report generated.
 
-## Gate Q4 — Protocol Conformance
-
-Every implemented AMQP method/state transition has positive and negative tests.
-
-## Gate Q5 — Compatibility
-
-No compatibility claim without automated evidence and real client tests.
-
-## Gate Q6 — Persistence
-
-Crash/recovery suite passes.
-
-## Gate Q7 — Security
-
-Fuzzing and hostile-input tests pass; no known release-blocking vulnerability.
-
-## Gate Q8 — Performance
-
-Benchmark results are reproducible and show no unacceptable regression.
-
-## Gate Q9 — Operational
-
-systemd, configuration, health, management API, CLI, UI, logs, and metrics work together.
-
-## Gate Q10 — Release
-
-All mandatory requirements satisfied; all known exceptions documented; no hidden scope.
-
-## Automatic release blockers
-
-- data corruption
-- message loss contrary to documented semantics
-- incorrect acknowledgement behavior
-- protocol state corruption
-- crash from malformed input
-- uncontrolled memory growth
-- unreproducible benchmark claims
-- undocumented compatibility gaps
-- systemd startup/recovery failure
+Phase 0 must not be promoted merely because the scaffold exists.

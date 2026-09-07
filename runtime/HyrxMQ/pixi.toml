@@ -1,0 +1,14 @@
+[workspace]
+name = "hyrx"
+version = "0.1.0-dev"
+description = "Native Mojo messaging engine and HyrxMQ broker groundwork"
+channels = ["conda-forge", "https://conda.modular.com/max", "https://repo.prefix.dev/modular-community"]
+license = "Apache-2.0"
+platforms = ["linux-64"]
+
+[dependencies]
+mojo = ">=1.0.0,<2"
+
+# Phase 0 intentionally keeps dependencies minimal.
+# Add dependencies only after documenting purpose, license, maintenance,
+# security, performance, and build/deployment implications.
