@@ -47,12 +47,17 @@ dialect is required.
 |--------|--------|
 | **Semantic information** | Unique identifier, semantic identity (not pointer) |
 | **Implementation detail** | String storage, comparison strategy |
-| **MLIR representation** | Function name (`@canonical_counter`) + `scr.entity` attribute |
-| **Mechanism** | SSA naming + string attributes |
-| **Information preserved** | Identity is encoded in function metadata |
-| **Survives lowering** | Function names survive all standard lowering |
-| **Runtime visibility** | Yes |
+| **MLIR representation** | `scr.entity` attribute on function (metadata) |
+| **Mechanism** | Unregistered dialect attribute |
+| **Information preserved** | Entity identity preserved as string attribute |
+| **Survives lowering** | Yes — attribute metadata |
+| **Runtime visibility** | Available as metadata |
 | **Custom construct needed** | No |
+
+**IMPORTANT:** The function name `@canonical_counter` is NOT the semantic
+identity. The semantic identity is `"c1"`, carried as an attribute. Two
+different function symbols could represent the same semantic entity. The
+function symbol is a representation choice, not the identity itself.
 
 ### 4. Value
 
@@ -76,17 +81,21 @@ String/variant values would require additional analysis for future milestones.
 |--------|--------|
 | **Semantic information** | Authoritative state container, entity → property → value |
 | **Implementation detail** | Dict storage, copy-on-write |
-| **MLIR representation** | `memref<1xi32>` (authoritative state container) |
+| **MLIR representation** | `memref<1xi32>` (physical manifestation of state) |
 | **Mechanism** | Standard memref dialect |
 | **Information preserved** | State structure preserved as memory allocation |
 | **Survives lowering** | Yes — memref is native to LLVM |
 | **Runtime visibility** | Yes — pointer to state |
 | **Custom construct needed** | No |
 
-**Rationale:** `memref` is chosen over SSA-only representation because state
-is mutated by transformations. SSA values cannot represent mutable state
-directly. `memref` accurately represents the semantic contract: authoritative
-state that transformations read and write.
+**IMPORTANT:** `memref` is a physical representation of semantic state, not
+semantic state itself. The semantic state is defined independently as:
+```
+Semantic State = {entity → {property → Value}}
+```
+`memref<1xi32>` is one possible physical manifestation. The same semantic
+state could be represented by `i32`, `tensor<1xi32>`, or other mechanisms
+without changing semantic meaning.
 
 ### 6. Relationship
 
@@ -152,16 +161,20 @@ semantic invariant.
 |--------|--------|
 | **Semantic information** | Logical step counter, non-decreasing |
 | **Implementation detail** | Integer counter |
-| **MLIR representation** | `index` type (semantic step counter) |
+| **MLIR representation** | `index` type (physical representation of time) |
 | **Mechanism** | Standard MLIR index type |
 | **Information preserved** | Step semantics preserved |
 | **Survives lowering** | Yes — index is native |
 | **Runtime visibility** | Yes |
 | **Custom construct needed** | No |
 
-**Note:** Time is represented as `index` (MLIR's native index type), not as
-`i32`. This distinguishes semantic time from semantic values. The distinction
-is intentional: time is a structural concept, not a data concept.
+**IMPORTANT:** `index` is a physical representation of SemanticTime, not
+SemanticTime itself. SemanticTime is defined as:
+```
+SemanticTime = {step : Int, label : String}
+```
+The `index` type is one possible representation. The semantic contract
+(non-decreasing, deterministic) is independent of the representation type.
 
 ### 11. Observation
 

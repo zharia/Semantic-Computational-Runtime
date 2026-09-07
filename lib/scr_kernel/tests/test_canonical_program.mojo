@@ -236,5 +236,67 @@ def test_canonical_semantic_result() raises:
     assert_equal(field.context.label, "golden-path")
 
 
+def test_constraint_violation_is_not_noop() raises:
+    """Constraint violation is distinguishable from successful no-op."""
+    var defn = EntityDefinition("Counter")
+    defn.add_property("value")
+
+    var field = SemanticField()
+    field.add_definition(defn)
+
+    var entity = Entity("c1", "Counter")
+    entity.set("value", Value(5))
+    field.add_entity(entity)
+
+    field.add_constraint(NonNegativeConstraint("c1", "value"))
+    field.set_context(SemanticContext(0, "test"))
+
+    # Constraint violation: raises, state unchanged, time unchanged
+    var violated = False
+    try:
+        field.execute(Transformation(INCREMENT, "c1", "value", -10))
+    except:
+        violated = True
+
+    assert_true(violated)
+    assert_equal(field.get_int("c1", "value"), 5)
+    assert_equal(field.state.logical_step, 0)
+
+    # Successful no-op (set to same value): no raise, state same, time advances
+    field.execute(Transformation(SET_INT, "c1", "value", 5))
+    assert_equal(field.get_int("c1", "value"), 5)
+    assert_equal(field.state.logical_step, 1)
+
+
+def test_semantic_time_is_representation_independent() raises:
+    """SemanticTime semantics hold regardless of underlying type."""
+    var ctx1 = SemanticContext(0, "test")
+    var ctx2 = ctx1.with_step(5)
+    assert_equal(ctx2.logical_step, 5)
+    assert_equal(ctx1.logical_step, 0)
+
+    # Time always advances forward
+    var ctx3 = ctx2.with_step(10)
+    assert_true(ctx3.logical_step > ctx2.logical_step)
+
+
+def test_identity_is_independent_of_representation() raises:
+    """Semantic identity persists regardless of representation."""
+    # Same entity, different "physical" containers
+    var entity_a = Entity("c1", "Counter")
+    entity_a.set("value", Value(10))
+
+    var entity_b = Entity("c1", "Counter")
+    entity_b.set("value", Value(10))
+
+    # Both have the same semantic identity
+    assert_equal(entity_a.id, entity_b.id)
+    assert_equal(entity_a.kind, entity_b.kind)
+
+    # Changing representation (kind) does not create new identity
+    var entity_c = Entity("c1", "DifferentType")
+    assert_equal(entity_c.id, "c1")
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

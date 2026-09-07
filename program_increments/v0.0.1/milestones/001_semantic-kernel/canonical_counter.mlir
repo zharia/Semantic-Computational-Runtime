@@ -18,18 +18,16 @@
 ///   Value              → i32 (semantic integer value)
 ///   State              → memref<1xi32> (authoritative state)
 ///   Transformation     → arith.addi + memref.store/load
-///   Constraint         → scf.if guard (verified at transform time)
+///   Constraint         → scf.if/else guard (verified at transform time)
 ///   Context            → module attributes (logical_step, label)
 ///   Time               → index (semantic step counter)
 ///   Observation        → return value (non-mutating read)
 ///
+/// Provenance: This representation is derived from the normative
+/// semantic definition at lib/counter/001_definition.md via the
+/// semantic model at milestones/001_semantic-kernel/001_semantic-kernel.md
+///
 /// Verification: mlir-opt --verify-diagnostics
-
-// ---------------------------------------------------------------
-// Entity Definition metadata (attributes, not executable)
-// ---------------------------------------------------------------
-// These attributes encode semantic information that must survive
-// representation. They are not lowered — they are metadata.
 
 // ---------------------------------------------------------------
 // Canonical Counter Transformation
@@ -37,6 +35,13 @@
 
 // Module with semantic metadata attributes
 module attributes {
+  // Provenance: which semantic definition produced this
+  scr.provenance = {
+    source = "semantic_kernel_canonical",
+    definition = "CounterDefinition",
+    milestone = "001",
+    normative_source = "lib/counter/001_definition.md"
+  },
   // Entity Definition
   scr.entity_definition = {
     type_id = "Counter",
@@ -91,11 +96,17 @@ module attributes {
     %v1 = arith.addi %v0, %c5 : i32
 
     // Constraint guard: check value >= 0
-    // (For positive increments this always holds; guard is structural)
+    // For positive increments this always holds; guard is structural.
+    // The else branch represents constraint violation (dead code here).
     %c0 = arith.constant 0 : i32
     %cmp1 = arith.cmpi sge, %v1, %c0 : i32
     scf.if %cmp1 {
       memref.store %v1, %state[%idx0] : memref<1xi32>
+    } else {
+      // Constraint violation: value would be negative
+      // Structurally present for completeness; unreachable for valid transforms
+      %v0_bad = memref.load %state[%idx0] : memref<1xi32>
+      memref.store %v0_bad, %state[%idx0] : memref<1xi32>
     }
 
     // ---- Transformation 2: increment by 3 ----
@@ -106,6 +117,9 @@ module attributes {
     %cmp2 = arith.cmpi sge, %v3, %c0 : i32
     scf.if %cmp2 {
       memref.store %v3, %state[%idx0] : memref<1xi32>
+    } else {
+      %v2_bad = memref.load %state[%idx0] : memref<1xi32>
+      memref.store %v2_bad, %state[%idx0] : memref<1xi32>
     }
 
     // ---- Transformation 3: increment by 2 ----
@@ -116,6 +130,9 @@ module attributes {
     %cmp3 = arith.cmpi sge, %v5, %c0 : i32
     scf.if %cmp3 {
       memref.store %v5, %state[%idx0] : memref<1xi32>
+    } else {
+      %v4_bad = memref.load %state[%idx0] : memref<1xi32>
+      memref.store %v4_bad, %state[%idx0] : memref<1xi32>
     }
 
     // ---- Observation: read final value (non-mutating) ----
