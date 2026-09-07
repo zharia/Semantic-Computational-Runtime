@@ -1,5 +1,13 @@
 # Semantic Computational Runtime
 
+
+<div align="center">
+[![Byte Money](assets/public/images/Mojo-Logo.jpg)]([Primary Site](https://bytemoney.co.za))
+
+[![Mojo Lang](assets/public/images/Mojo-Logo.jpg)]([Mojo Lang](https://medium.com/@furcifer/mojo-e1-background-and-history-mojo-programming-language-aca2b59eb719))
+</div>
+
+
 <div align="center">
 
 ![Mojo](https://img.shields.io/badge/Mojo-1.0.0-FF6B1B?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNNCAyMEwyMCA0IiBzdHJva2Utd2lkdGg9IjMiLz48cGF0aCBkPSJNNCAyMEwxMiAyMEwyMCA0IiBmaWxsPSIjRkY2QjFCIi8+PC9zdmc+&labelColor=1a1a2e)
