@@ -319,10 +319,10 @@ def test_consumer_prefetch_limit() raises:
     check(router.read_payload(limited, fourth.value().delivery_tag())[0] == 0x83,
           "prefetch: ack frees a slot for the last pending message")
 
-def test_unregister_leaves_unacked_message_owned_by_queue() raises:
-    """REPORTED gap: unregistering a consumer does not reclaim its unacked
-    messages — they stay in the queue's unacked pool (no disconnect path in a
-    single-node engine, and no other reclaim trigger)."""
+def test_unregister_requeues_unacked_message() raises:
+    """p1b (fixes audit D8): unregistering a consumer REQUEUES its unacked
+    messages, so they are redeliverable (not stranded forever in the unacked pool).
+    """
     var names = List[String]()
     names.append("q")
     var router = _fanout("f", names^, 10)
@@ -333,7 +333,11 @@ def test_unregister_leaves_unacked_message_owned_by_queue() raises:
     check(not router.acknowledge(cid, d.value().delivery_tag()),
           "ack after unregister fails (consumer gone)")
     var other = router.register_consumer("q", 0)
-    _assert_empty(router, other, "orphaned unacked message is not redeliverable")
+    var d2 = router.consume(other)
+    check(d2.__bool__(), "unacked message requeued -> redeliverable (D8 fixed)")
+    check(router.read_payload(other, d2.value().delivery_tag())[0] == 0x88,
+          "requeued message carries the original payload")
+    check(router.acknowledge(other, d2.value().delivery_tag()), "requeued message ackable")
 
 # ---- card 6: unroutable publish ---------------------------------------
 
@@ -570,7 +574,7 @@ def main() raises:
     test_many_pub_many_queues()
     test_many_consumers_one_queue_pull_model()
     test_consumer_prefetch_limit()
-    test_unregister_leaves_unacked_message_owned_by_queue()
+    test_unregister_requeues_unacked_message()
     test_unroutable_publish()
     test_publish_to_unknown_exchange()
     test_bind_to_missing_names_returns_false()

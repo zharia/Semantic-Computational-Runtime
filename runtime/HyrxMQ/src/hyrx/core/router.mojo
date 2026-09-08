@@ -94,10 +94,21 @@ struct Router:
         return True
 
     def delete_queue(mut self, name: String) raises -> List[Message]:
-        """Delete a queue. Returns list of unacked messages for cleanup."""
+        """Delete a queue, reclaiming its live payloads into the pool.
+
+        The popped Queue would otherwise cascade-destroy its Messages on drop and
+        permanently strand any pool-acquired payload buffers (starvation). We drain
+        every owned Message and release its payload Buffer (a no-op for non-pooled
+        direct/moved buffers). Returns an empty list (messages were reclaimed).
+        """
         var result = List[Message]()
         if name in self._queues:
-            _ = self._queues.pop(name)
+            var q = self._queues.pop(name)
+            var drained = q.drain_messages()
+            while len(drained) > 0:
+                var m = drained.pop()
+                var buf = m.take_payload()
+                self._pool.release(buf^)
         return result^
 
     # ---- binding management -------------------------------------------
@@ -240,11 +251,20 @@ struct Router:
         return cid
 
     def unregister_consumer(mut self, consumer_id: UInt64) raises -> Bool:
-        """Unregister a consumer. Returns True if found and removed."""
-        if consumer_id in self._consumers:
-            _ = self._consumers.pop(consumer_id)
-            return True
-        return False
+        """Unregister a consumer and requeue its unacked messages (D8 reclaim).
+
+        A consumer that disconnects must not strand its delivered-but-unacked
+        messages; under pooling that also permanently pins their payload buffers.
+        Requeuing makes them deliverable again (the buffers stay owned, returning
+        to the pool only at a real death site). Returns True if the consumer existed.
+        """
+        if consumer_id not in self._consumers:
+            return False
+        var qname = self._consumers[consumer_id].queue_name()
+        _ = self._consumers.pop(consumer_id)
+        if qname in self._queues:
+            _ = self._queues[qname].requeue_unacked()
+        return True
 
     # ---- consuming ----------------------------------------------------
 

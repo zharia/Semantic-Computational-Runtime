@@ -55,6 +55,7 @@ struct Queue:
     var _inbox: List[Message]
     var _outbox: List[Message]
     var _unacked: Dict[UInt64, Message]
+    var _unacked_tags: List[UInt64]
     var _config: QueueConfig
     var _next_delivery_tag: UInt64
 
@@ -63,6 +64,7 @@ struct Queue:
         self._inbox = List[Message]()
         self._outbox = List[Message]()
         self._unacked = Dict[UInt64, Message]()
+        self._unacked_tags = List[UInt64]()
         self._config = config^
         self._next_delivery_tag = 0
 
@@ -121,6 +123,7 @@ struct Queue:
         var tag = self._next_delivery_tag
         self._next_delivery_tag += 1
         self._unacked[tag] = msg^
+        self._unacked_tags.append(tag)
         return Optional[Delivery](Delivery(tag))
 
     def read_payload(ref self, delivery_tag: UInt64) raises -> BufferSnapshot:
@@ -159,10 +162,20 @@ struct Queue:
             return self._unacked[delivery_tag].headers()
         return Dict[String, String]()
 
+    def _untrack_unacked(mut self, delivery_tag: UInt64):
+        """Remove a tag from the unacked-order list (find + index-pop)."""
+        var i = 0
+        while i < len(self._unacked_tags):
+            if self._unacked_tags[i] == delivery_tag:
+                _ = self._unacked_tags.pop(i)
+                return
+            i += 1
+
     def acknowledge(mut self, delivery_tag: UInt64) raises -> Bool:
         """Confirm delivery. Message is destroyed. Returns True if found."""
         if delivery_tag in self._unacked:
             var _ = self._unacked.pop(delivery_tag)
+            self._untrack_unacked(delivery_tag)
             return True
         return False
 
@@ -180,15 +193,55 @@ struct Queue:
         buffer back instead of destroying it in place.
         """
         var msg = self._unacked.pop(delivery_tag)
+        self._untrack_unacked(delivery_tag)
         return msg.take_payload()
 
     def reject(mut self, delivery_tag: UInt64) raises -> Bool:
         """Reject delivery. Message is requeued. Returns True if found."""
         if delivery_tag in self._unacked:
             var msg = self._unacked.pop(delivery_tag)
+            self._untrack_unacked(delivery_tag)
             self._inbox.append(msg^)
             return True
         return False
+
+    def drain_messages(mut self) raises -> List[Message]:
+        """Move every owned Message (outbox + inbox + unacked) out for reclaim.
+
+        Leaves the Queue empty. `Router.delete_queue` uses this to return each
+        payload Buffer to the pool; without it a deleted queue cascade-destroys its
+        Messages, permanently stranding pooled buffers (starvation). Iterates the
+        copyable `_unacked_tags` list (Dict[_, Message] is not key-iterable because
+        Message is not Copyable).
+        """
+        var out = List[Message]()
+        while len(self._outbox) > 0:
+            out.append(self._outbox.pop())
+        while len(self._inbox) > 0:
+            out.append(self._inbox.pop())
+        while len(self._unacked_tags) > 0:
+            var t = self._unacked_tags.pop()
+            var m = self._unacked.pop(t)
+            out.append(m^)
+        return out^
+
+    def requeue_unacked(mut self) raises -> Int:
+        """Move every unacked message back to the inbox (D8 orphan reclaim).
+
+        Used by `Router.unregister_consumer`: a consumer that goes away must not
+        strand its delivered-but-unacked messages (which under pooling would also
+        strand their buffers). They become deliverable again. Their payload buffers
+        stay owned by the requeued Messages (still `in_use`), returning to the pool
+        only at a real death site (ack / delete-drain / shutdown-drain).
+        Returns the number requeued.
+        """
+        var n = 0
+        while len(self._unacked_tags) > 0:
+            var t = self._unacked_tags.pop()
+            var m = self._unacked.pop(t)
+            self._inbox.append(m^)
+            n += 1
+        return n
 
     def depth(ref self) -> Int:
         """Number of pending messages (not including unacked)."""

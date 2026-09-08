@@ -80,7 +80,54 @@ def test_no_leak_balance() raises:
     check(router.pool_stats().in_use == 0, "all reclaimed to pool at ack (no leak)")
 
 
+def test_delete_queue_reclaims() raises:
+    # Deleting a queue that HOLDS pooled buffers must return them to the pool, not
+    # strand them (old delete_queue cascade-destroyed the Queue -> starvation).
+    var router = Router(1024, 32, True)
+    router.declare_exchange("ex", ExchangeType.fanout())
+    router.declare_queue("qa", 100)
+    router.declare_queue("qb", 100)
+    router.bind_queue("qa", "ex", "")
+    router.bind_queue("qb", "ex", "")
+    var m = make_msg(7, 300)
+    check(router.publish(m^, "ex") == 2, "fanned to 2, no consume/ack")
+    check(router.pool_stats().in_use == 2, "2 pooled buffers live in queues")
+    router.delete_queue("qa")
+    check(router.pool_stats().in_use == 1, "delete qa reclaimed its buffer")
+    router.delete_queue("qb")
+    check(router.pool_stats().in_use == 0, "delete qb reclaimed the last")
+
+
+def test_d8_requeue_no_leak() raises:
+    # A consumer that disconnects must not strand unacked messages (D8); the pooled
+    # buffer stays owned (not prematurely released) and the message is redeliverable.
+    var router = Router(1024, 32, True)
+    router.declare_exchange("ex", ExchangeType.fanout())
+    router.declare_queue("qa", 100)
+    router.declare_queue("qb", 100)
+    router.bind_queue("qa", "ex", "")
+    router.bind_queue("qb", "ex", "")
+    var ca = router.register_consumer("qa", 0)
+    var cb = router.register_consumer("qb", 0)
+    var m = make_msg(3, 256)
+    check(router.publish(m^, "ex") == 2, "fanned to 2")
+    check(router.pool_stats().in_use == 2, "2 pooled live")
+    var da = router.consume(ca)
+    check(da.__bool__(), "qa delivered (now unacked)")
+    router.unregister_consumer(ca)
+    check(router.pool_stats().in_use == 2, "requeue keeps buffer owned (no early release)")
+    var ca2 = router.register_consumer("qa", 0)
+    var da2 = router.consume(ca2)
+    check(da2.__bool__(), "requeued message deliverable again (D8 fixed)")
+    router.acknowledge(ca2, da2.value().delivery_tag())
+    var db = router.consume(cb)
+    router.acknowledge(cb, db.value().delivery_tag())
+    check(router.pool_stats().in_use == 0, "all reclaimed at ack")
+
+
 def main() raises:
     test_fanout_reuse_no_stale()
     test_no_leak_balance()
+    test_delete_queue_reclaims()
+    test_d8_requeue_no_leak()
     print("POOL_RECLAIM_TEST=PASS")
