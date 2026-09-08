@@ -13,7 +13,11 @@
   "lsp": {
     "mojo": {
       "command": [
-        "/home/zharia/Projects/experiments/semantic_computational_runtime/.venv/bin/mojo-lsp-server"
+        "/home/zharia/Projects/experiments/semantic_computational_runtime/.venv/bin/mojo-lsp-server",
+        "-I",
+        "/home/zharia/Projects/experiments/semantic_computational_runtime/runtime/HyrxMQ/src",
+        "-I",
+        "/home/zharia/Projects/experiments/semantic_computational_runtime/runtime/HyrxMQ/vendor/flare"
       ],
       "extensions": [".mojo"]
     }
