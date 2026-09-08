@@ -120,9 +120,12 @@ struct Buffer:
     # ---- pool origin tag (used by BufferPool; see buffer_pool.mojo) ----
 
     def clear(mut self):
-        """Reset logical length to 0, keeping allocated capacity. Never raises."""
-        while len(self._data) > 0:
-            _ = self._data.pop()
+        """Reset logical length to 0, keeping allocated capacity. Never raises.
+
+        Uses List.clear() (O(1), retains capacity) — NOT a pop-loop, which would
+        make every acquire/release an O(payload) scan and erase the pool's benefit.
+        """
+        self._data.clear()
 
     def is_pooled(self) -> Bool:
         """Whether this buffer was acquired from a BufferPool (else direct)."""
