@@ -7,6 +7,41 @@
 
 ---
 
+## Audit correction (milestone 0003, 2026-09-08) — supersedes this report's overclaims
+
+Milestone 0003 re-audited phases 4–7. The Addendum and Layer Status below
+marked the network / AMQP / broker paths **PROVEN** because our own integration
+tests round-tripped through our **own** codec driven by our **own** client. That
+evidence class is *functionally self-consistent*, not spec conformance or
+interoperability. Ground truth now (see
+`../0003_phase-1-7-audit/reports/{amqp_conformance,interop_rabbitmq,confidence_matrix}.md`):
+
+- **Real AMQP client interop = NOT PROVEN / BLOCKED.** A real client (pika 1.4.4)
+  connects at TCP but cannot complete the handshake: HyrxMQ does not consume the
+  8-octet protocol header nor send `connection.start`/`tune`. RabbitMQ
+  differential is likewise BLOCKED (reference baseline `pika_lifecycle.py`
+  passes 18/18 vs RabbitMQ 4.3.5; the HyrxMQ column stops at REACH@TCP).
+- **AMQP 0-9-1 method-ID bug (now known):** every connection-class id and
+  `channel.open` used sequential ids (…,1..6,10,11) instead of the spec decimal
+  indices (10/11/30/31/40/50/51), and the phase-6 tests asserted the wrong
+  values — so the §5 "e2e" only ever matched our own dialect.
+- **§5 "implemented method subset" is wrong:** `connection.{start,start-ok,
+  tune,tune-ok}` and `close-ok` are NOT implemented on the wire (never sent);
+  `connection.open`/`channel.open` are dispatched only at the wrong id and are
+  unreachable to a real client. Negotiation and state-transition enforcement:
+  NOT IMPLEMENTED.
+- **Transport socket I/O (TCP/UDS, real loopback): FUNCTIONALLY PROVEN** — this
+  claim stands. The AMQP-over-TCP broker e2e is FUNCTIONALLY PROVEN (in-repo,
+  self-consistent), not INTEROPERABILITY PROVEN.
+
+Replace every "PROVEN" in the body with **FUNCTIONALLY PROVEN** and read
+§5/§11 accordingly. The report body is kept unedited for history; this note is
+authoritative. Concurrency (single-threaded), persistence (unimplemented),
+auth/TLS (absent) and clean-machine systemd (syntax-validated only) remain NOT
+PROVEN. See `confidence_matrix.md` for the full state.
+
+---
+
 ## Addendum (post flare integration, 2026-09-08)
 
 The socket blocker reported below is **resolved** via ADR-0005: the vendored

@@ -25,12 +25,23 @@ non-applicable stages.
 
 ## Evidence rule
 
-Every completion claim must distinguish:
+Every completion claim must distinguish, per audit §27 (these are distinct
+states — do not collapse them):
 
-- `PROVEN`
-- `PARTIALLY PROVEN`
-- `NOT PROVEN`
-- `BLOCKED`
+- `IMPLEMENTED` — the code exists.
+- `TESTED` — a runtime-checked test exercises it (a bare `assert` that cannot
+  fail a build does **not** count).
+- `FUNCTIONALLY PROVEN` — round-trips through our own codec / our own test
+  client are self-consistent in-repo; does **not** imply wire-spec conformance.
+- `BENCHMARKED` — measured with actual runs on the recorded environment.
+- `INTEROPERABILITY PROVEN` — a real third-party client completes the protocol
+  (handshake included) against a pinned reference.
+- `NOT PROVEN` — evidence absent or the path is blocked.
+- `PARTIALLY PROVEN` / `BLOCKED` — partial evidence, or a documented stop.
+
+A round-trip through our own codec is at most `FUNCTIONALLY PROVEN`; only a
+real client reaching the methods makes it `INTEROPERABILITY PROVEN`. Do not use
+`complete`/`PROVEN` where only `IMPLEMENTED` or `FUNCTIONALLY PROVEN` holds.
 
 ## Phase 0 gate
 

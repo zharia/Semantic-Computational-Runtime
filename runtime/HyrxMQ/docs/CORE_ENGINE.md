@@ -28,6 +28,13 @@ The representation must support:
 - metadata without forcing payload copies
 - transport-independent identity where required
 
+> Current state (milestone 0003): the engine does **not** do zero-copy.
+> `Router.publish` COPIES the payload per destination (twice per byte), and fan-
+> out discards `message_id`/headers on the copy (defect D1). See
+> `MEMORY_MODEL.md` (defects D1/D2) and the §21 copy investigation in
+> `.../0003_phase-1-7-audit/reports/benchmarks.md`. Zero-copy and shared
+> references are targets, not present behavior.
+
 ### Endpoint
 
 A logical destination/source identity.

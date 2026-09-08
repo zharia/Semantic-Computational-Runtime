@@ -7,6 +7,39 @@
 
 ---
 
+## Audit correction (milestone 0003, 2026-09-08)
+
+Milestone 0003 re-ran these phase 0–3 tests and found the earlier results less
+trustworthy than reported. The body below is kept for history; this note is
+authoritative. See `../0003_phase-1-7-audit/reports/{baseline,persistence_readiness,confidence_matrix}.md`.
+
+- **"10/10 PASS" overstated validity.** Phases 0–3 used Mojo bare `assert`,
+  which is inert at runtime (`baseline.md` §B1/§B3 — 13 tests were VACUOUS).
+  The audit converted them to runtime `check()`. Post-repair the core tests do
+  exercise real behavior, and §B5 added negative proofs.
+- **Some asserted values were wrong / never executed:** `latency_histogram`
+  percentiles (§B4.1) and the "slot opens after dequeue" expectation (§B4.2)
+  were corrected against the actual helpers/design (capacity counts unacked).
+- **Open routing bug (escalated):** `_topic_match("orders","orders.#")` returns
+  `False` although the docstring and AMQP 0-9-1 require `#` = zero-or-more words
+  (§B4.3); the `exchange_test` contract assertion is left red — the fix belongs
+  in a `src/` package, not a doc.
+- **"Bounded resources ✅" is partial:** `BufferPool.max_slabs` is enforced but
+  the pool is **unwired** — no message-path call site uses it (defect D12); only
+  **queue message-count** actually bounds memory, and there is no byte bound.
+- **Metadata loss on fan-out (defect D1):** `Router.publish` rebuilds each
+  destination envelope with `MessageID(0)` and an **empty** headers dict, so
+  published id/headers are silently discarded; there is no envelope read-back to
+  observe or test it.
+- Headers exchange remains a **stub** (matches everything) — correctly noted in
+  §7/D5.
+
+Core routing/queueing/ownership remain the highest-confidence areas (MEDIUM–HIGH
+in `confidence_matrix.md`); nothing here was promoted to a completed product
+claim.
+
+---
+
 ## 1. Summary
 
 Implemented Hyrx Core (Phase 1), Routing/Delivery (Phase 2), and Embedded API + Benchmarks (Phase 3) from the HyrxMQ spec. All 10 tests pass. Direct in-process baseline benchmarks are reproducible.

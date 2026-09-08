@@ -47,6 +47,13 @@ The ranking must be measured rather than assumed.
 
 Every experimental optimization needs an A/B benchmark.
 
+> Current state (milestone 0003): nothing above is implemented. The engine is
+> **not** zero-copy — it copies the payload (twice) per destination, which the
+> §21 investigation measured as the dominant in-process cost (~150–200 MiB/s
+> scalar-copy floor; the per-byte loop in `Router.publish`). See
+> `.../0003_phase-1-7-audit/reports/benchmarks.md` (§B3/§B4). Treat "zero-copy"
+> as an experimental target only.
+
 ## I/O
 
 Evaluate epoll and io_uring rather than assuming one is universally superior.

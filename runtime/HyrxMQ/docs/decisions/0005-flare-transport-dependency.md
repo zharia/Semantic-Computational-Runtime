@@ -74,7 +74,8 @@ at which point `openssl` (>=3,<4) and `zlib` will be added to
 
 flare benchmarks claim parity-class results against mature Rust stacks
 (actix/hyper lineage) for its HTTP/TCP paths; relevant for Hyrx is the
-blocking loopback round-trip, proven by `tests/integration/flare_smoke.mojo`
+blocking loopback round-trip, FUNCTIONALLY PROVEN by
+`tests/integration/flare_smoke.mojo`
 (TCP bind→connect→accept echo on an OS-assigned ephemeral port; UDS echo
 under `/tmp`). No throughput target is adopted here (ADR-0004: measure
 before optimizing).
@@ -112,9 +113,33 @@ as any OpenSSL-linked deployment.
   `HyrxMQBroker`; the listen-mode entry point is
   `src/hyrxmq/main_listen.mojo`.
 - End-to-end AMQP-over-TCP broker drive (connect → open → declare →
-  publish → deliver → ack over real sockets) is **PROVEN** by
-  `tests/integration/broker_tcp_e2e.mojo`.
+  publish → deliver → ack over real sockets) is **FUNCTIONALLY PROVEN** only —
+  round-tripped through our own `AMQPFrameCodec` driven by our own test client
+  (`tests/integration/broker_tcp_e2e.mojo`). This is in-repo, self-consistent
+  evidence. It is **NOT** INTEROPERABILITY PROVEN: it does not certify
+  conformance to the AMQP 0-9-1 wire spec.
 - Provider containment holds: the only `flare` imports under `src/` remain
   `src/hyrx/transport/{tcp,uds}.mojo`.
 - Still pending: TLS (Phase 11, OpenSSL/zlib gating above) and validation
   of the systemd unit on a clean machine.
+
+## Audit correction (milestone 0003, 2026-09-08)
+
+Milestone 0003 supersedes the "PROVEN" wording above. A real AMQP client
+(pika 1.4.4) connects at TCP but **cannot complete the handshake**: HyrxMQ does
+not consume the 8-octet protocol header and never originates
+`connection.start`/`tune`, and the connection-class / `channel.open` method
+IDs were wrong until the §10 correction
+(`amqp_conformance.md` §1.2/§2, `interop_rabbitmq.md` STEP A/B).
+
+Corrected states:
+- Transport socket I/O (TCP + UDS, real loopback): **FUNCTIONALLY PROVEN**
+  (`tests/integration/socket_behavior.mojo`).
+- AMQP frame round-trip through our codec + our own client: **FUNCTIONALLY
+  PROVEN** (in-repo), NOT spec-conformance.
+- AMQP 0-9-1 wire conformance: **IMPLEMENTED + PARTIALLY TESTED**, not
+  conformance-proven against an independent implementation.
+- Real-client interoperability / RabbitMQ differential: **NOT PROVEN /
+  BLOCKED**. No unqualified "RabbitMQ compatible" claim may be made.
+See `confidence_matrix.md` and the two `001_initiation` progress-report
+correction notes.
