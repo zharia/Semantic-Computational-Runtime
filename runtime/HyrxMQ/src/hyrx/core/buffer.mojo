@@ -61,6 +61,19 @@ struct Buffer:
 
     # ---- copy + mutations ------------------------------------------------
 
+    @staticmethod
+    def from_buffer_copy(ref source: Buffer) -> Buffer:
+        """Return one owned, exact-length copy of ``source``.
+
+        The destination is allocated at the source's logical size and filled by
+        one append pass.  It deliberately does not call ``resize()`` first, so
+        the copy path does not zero-fill then overwrite the same bytes.
+        """
+        var result = Buffer(source.size())
+        for i in range(source.size()):
+            result._data.append(source[i])
+        return result^
+
     def snapshot(ref self) -> BufferSnapshot:
         """Return an owned COPY of the current contents.
 
