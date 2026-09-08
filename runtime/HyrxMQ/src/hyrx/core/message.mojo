@@ -115,6 +115,19 @@ struct Message:
             dst.append(self._payload[i])
         return dst^
 
+    def payload_size(ref self) -> Int:
+        """Logical payload length (no copy)."""
+        return self._payload.size()
+
+    def take_payload(mut self) -> Buffer:
+        """Detach and return the payload Buffer; leave this Message's payload empty.
+
+        Pool-reclaim primitive (p1b): the Router hands the returned Buffer to
+        BufferPool.release (a no-op if it was never pooled). The Message keeps an
+        empty buffer and drops harmlessly.
+        """
+        return self._payload.take_data()
+
     def increment_delivery_count(mut self):
         """Record one more delivery attempt."""
         self._delivery_count += 1

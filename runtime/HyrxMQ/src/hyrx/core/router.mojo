@@ -190,19 +190,38 @@ struct Router:
             self._messages_routed += 1
             return 1
 
+        var payload_len = msg.payload_size()
         for i in range(len(queue_names)):
             var qname = queue_names[i]
-            if qname in self._queues:
+            # Preflight capacity so we never acquire a pooled buffer for a
+            # destination that would drop it (a full destination is silently
+            # skipped here, matching the old enqueue-returns-False outcome).
+            if qname in self._queues and self._queues[qname].has_capacity():
                 var env = Envelope(
                     msg.message_id(), msg.routing_key(), msg.headers()
                 )
-                var payload = msg.payload_copy()
+                var payload = self._fill_destination(msg, payload_len)
                 var cloned = Message(env^, payload^)
-                if self._queues[qname].enqueue(cloned^):
-                    count += 1
+                self._queues[qname].enqueue_prechecked(cloned^)
+                count += 1
 
         self._messages_routed += count
         return count
+
+    def _fill_destination(
+        mut self, ref msg: Message, n: Int
+    ) raises -> Buffer:
+        """Produce one owned payload Buffer for a fan-out destination.
+
+        With the pool enabled, acquire a (reused) buffer from the pool and fill it
+        in a single pass via `payload_into`; otherwise fall back to the WP-B direct
+        `payload_copy`. Both paths do exactly one byte-copy pass, so enabling the
+        pool changes allocation reuse, not copy count (no regression either way).
+        """
+        if self._pool_enabled:
+            var pooled = self._pool.acquire(n)
+            return msg.payload_into(pooled^)
+        return msg.payload_copy()
 
     # ---- consumer management ------------------------------------------
 
@@ -266,10 +285,16 @@ struct Router:
         var qname = self._consumers[consumer_id].queue_name()
         if qname not in self._queues:
             return False
-        var result = self._queues[qname].acknowledge(delivery_tag)
-        if result:
-            self._consumers[consumer_id].record_ack()
-        return result
+        if not self._queues[qname].has_unacked(delivery_tag):
+            return False
+        # Reclaim the dead message's payload and return it to the pool. `release`
+        # is a no-op for non-pooled buffers (single-dest moves and direct copies),
+        # so with the pool disabled or for non-pooled payloads this matches the old
+        # "acknowledge destroys" behavior exactly (the buffer is freed on drop).
+        var reclaimed = self._queues[qname].ack_reclaim(delivery_tag)
+        self._pool.release(reclaimed^)
+        self._consumers[consumer_id].record_ack()
+        return True
 
     def reject(
         mut self, consumer_id: UInt64, delivery_tag: UInt64

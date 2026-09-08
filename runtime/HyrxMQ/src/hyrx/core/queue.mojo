@@ -166,6 +166,22 @@ struct Queue:
             return True
         return False
 
+    def has_unacked(ref self, delivery_tag: UInt64) -> Bool:
+        """Whether a delivery tag is currently unacked (non-consuming preflight)."""
+        return delivery_tag in self._unacked
+
+    def ack_reclaim(mut self, delivery_tag: UInt64) raises -> Buffer:
+        """Acknowledge and RETURN the dead message's payload Buffer (owned).
+
+        For the pool-reclaim path: the caller (Router) releases the returned
+        buffer into its BufferPool (a no-op if it was never pooled). Assumes the
+        tag is present (guard with has_unacked first); the Message's envelope is
+        dropped and its empty shell consumed. Unlike acknowledge() this hands the
+        buffer back instead of destroying it in place.
+        """
+        var msg = self._unacked.pop(delivery_tag)
+        return msg.take_payload()
+
     def reject(mut self, delivery_tag: UInt64) raises -> Bool:
         """Reject delivery. Message is requeued. Returns True if found."""
         if delivery_tag in self._unacked:

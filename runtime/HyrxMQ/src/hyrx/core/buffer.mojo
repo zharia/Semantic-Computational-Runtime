@@ -141,3 +141,18 @@ struct Buffer:
         """
         self._pooled = True
         self._pool_class = cls
+
+    def take_data(mut self) -> Buffer:
+        """Detach this buffer's contents into a fresh owned Buffer; leave self empty.
+
+        Mojo forbids moving a field out of a struct that will be dropped, so the
+        contents are SWAPPED into the returned buffer and self is left as an empty,
+        non-pooled buffer that drops harmlessly. Used by the pool-reclaim path
+        (Message.take_payload -> BufferPool.release). The returned buffer carries
+        this buffer's origin tag, so release recycles it iff it was pooled.
+        """
+        var out = Buffer(0)
+        swap(out._data, self._data)
+        swap(out._pooled, self._pooled)
+        swap(out._pool_class, self._pool_class)
+        return out^
