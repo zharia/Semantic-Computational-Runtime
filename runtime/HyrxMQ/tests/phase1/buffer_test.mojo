@@ -114,6 +114,16 @@ def test_to_bytes_copy() raises:
     check(copied[2] == 0xBE, "L69 expect: copied[2] == 0xBE")
     check(copied[3] == 0xEF, "L70 expect: copied[3] == 0xEF")
 
+def test_append() raises:
+    """append() grows logical length one byte at a time from a length-0 buffer."""
+    var b = Buffer(4)
+    check(b.size() == 0, "L: fresh buffer length 0")
+    b.append(UInt8(7))
+    b.append(UInt8(9))
+    check(b.size() == 2, "L: length is 2 after two appends")
+    check(b[0] == UInt8(7), "L: byte0 == 7")
+    check(b[1] == UInt8(9), "L: byte1 == 9")
+
 def main() raises:
     test_allocate_and_size()
     test_ownership_transfer()
@@ -124,4 +134,5 @@ def main() raises:
     test_resize_within_capacity()
     test_resize_exceeds_capacity()
     test_to_bytes_copy()
+    test_append()
     print("BUFFER_TEST=PASS")

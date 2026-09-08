@@ -58,9 +58,31 @@ def test_message_id_equality() raises:
     check(a == b, "L56 expect: a == b")
     check(not (a == c), "L57 expect: not (a == c)")
 
+def test_payload_into() raises:
+    """payload_into fills a length-0 dst in one pass; bytes match the payload."""
+    var payload = Buffer(8)
+    _ = payload.resize(5)
+    for i in range(5):
+        payload[i] = UInt8(i + 1)
+    var snap = payload.snapshot()
+    var headers = Dict[String, String]()
+    var env = Envelope(MessageID(42), "rk", headers^)
+    var msg = Message(env^, payload^)
+    var dst = Buffer(16)
+    check(dst.size() == 0, "L: dst starts empty")
+    var filled = msg.payload_into(dst^)
+    check(filled.size() == 5, "L: filled length equals payload length")
+    var same = True
+    for i in range(5):
+        if filled[i] != snap[i]:
+            same = False
+    check(same, "L: filled bytes identical to payload")
+    check(msg.payload().size() == 5, "L: message still owns its 5-byte payload")
+
 def main() raises:
     test_create_message()
     test_delivery_count()
     test_payload_view()
     test_message_id_equality()
+    test_payload_into()
     print("MESSAGE_TEST=PASS")

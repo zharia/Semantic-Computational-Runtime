@@ -101,6 +101,20 @@ struct Message:
         """
         return self._payload.snapshot()
 
+    def payload_into(ref self, var dst: Buffer) -> Buffer:
+        """Append the payload bytes into `dst` in ONE pass and return it.
+
+        P1b pooled-copy primitive: the caller supplies a length-0 buffer
+        (typically from `BufferPool.acquire(payload_size)`) and receives it
+        back filled. This lets a fan-out copy reuse a pooled buffer WITHOUT a
+        second (allocate-zero-then-overwrite) pass, preserving the WP-B win.
+        Ownership: `dst` moves in and out; the Message keeps its own payload.
+        """
+        var n = self._payload.size()
+        for i in range(n):
+            dst.append(self._payload[i])
+        return dst^
+
     def increment_delivery_count(mut self):
         """Record one more delivery attempt."""
         self._delivery_count += 1

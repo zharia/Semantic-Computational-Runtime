@@ -65,6 +65,15 @@ struct Buffer:
         """Write a single byte by index."""
         self._data[idx] = val
 
+    def append(mut self, val: UInt8):
+        """Append one byte (grows logical length by 1).
+
+        Used by the pooled copy path (`Message.payload_into`) to fill a
+        length-0 pooled buffer in a single pass. The caller sizes the buffer
+        to the payload first, so this never exceeds the intended length.
+        """
+        self._data.append(val)
+
     # ---- copy + mutations ------------------------------------------------
 
     @staticmethod
