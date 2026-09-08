@@ -16,6 +16,10 @@ out/
 # Benchmarks/results
 benchmarks/results/
 benchmarks/raw/
+# perf: results.json + the gate report are derived; baseline.json is the
+# intentionally-pinned reference run (compare.py --update-baseline).
+benchmarks/perf/results.json
+benchmarks/perf/regression_report.json
 *.perf.data
 *.prof
 *.trace

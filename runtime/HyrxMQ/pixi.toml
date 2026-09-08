@@ -27,3 +27,10 @@ bench-transport = "mojo run -I src -I vendor/flare benchmarks/transport_matrix.m
 bench-fanout = "mojo run -I src -I vendor/flare benchmarks/fanout_copy.mojo"
 bench-profile = "mojo run -I src -I vendor/flare benchmarks/profiling_probe.mojo"
 
+# Fair RabbitMQ-vs-HyrxMQ AMQP benchmark over a real pika client
+# (benchmarks/perf, audit §19/§20/§32/§48). Transport-symmetric: the headline
+# rating compares rabbit-tcp against hyrx-tcp-docker through the SAME docker
+# port-published path. Not part of scripts/test_all.sh.
+bench-fair = "bash benchmarks/perf/run_all.sh"
+bench-regress = "python benchmarks/perf/compare.py --baseline benchmarks/perf/baseline.json"
+

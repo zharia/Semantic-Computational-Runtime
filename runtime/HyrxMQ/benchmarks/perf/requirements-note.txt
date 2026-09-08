@@ -1,0 +1,29 @@
+Benchmark dependencies — deliberately zero new third-party packages.
+
+Required, already present in this environment:
+  * pika 1.4.4            -> venv at /tmp/amqp-venv (override with BENCH_PY)
+  * Python >= 3.10        -> stdlib only: argparse, json, socket, statistics,
+                             subprocess, signal, contextlib, urllib (read-only
+                             GET of the RabbitMQ management API for the version
+                             string in the host signature)
+  * docker CLI + running daemon -> the reference `node-rabbitmq` container and
+                             the throwaway `hyrx-bench` fairness container
+  * base image `alpine:latest` present locally (the throwaway image copies the
+                             built binary + its `ldd` closure, so no network
+                             pull and no apt packages are needed)
+  * Mojo toolchain via pixi -> only to build `build/hyrxmq-listen`
+
+Not used (and not needed): pytest, RabbitMQ `rabbitmqctl` writes, any
+broker-side configuration, any pip install.
+
+Reproduce the venv on another machine (same version, because the AF_UNIX
+subclass in pika_uds.py mirrors pika 1.4.4 internals):
+
+  python -m venv /tmp/amqp-venv
+  /tmp/amqp-venv/bin/pip install 'pika==1.4.4'
+
+If pika is upgraded, re-check `pika_uds.py` against
+`pika/adapters/utils/connection_workflow.py` (`AMQPConnector.start`,
+`_on_tcp_connection_done`, `AMQPConnectionWorkflow._try_next_config_async`) and
+`pika/adapters/blocking_connection.py` (`_create_connection`); the module
+docstring names the exact hooks it depends on.
