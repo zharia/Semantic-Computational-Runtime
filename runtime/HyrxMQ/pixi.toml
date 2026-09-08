@@ -19,3 +19,11 @@ mojo = ">=1.0.0,<2"
 [tasks]
 build = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx"
 test = "bash scripts/test_all.sh"
+
+# Benchmark suite (audit §19/§20/§21). Not part of scripts/test_all.sh — these
+# are long-running empirical workloads, kept out of the correctness suite.
+bench-direct = "mojo run -I src -I vendor/flare benchmarks/interleaved_direct.mojo"
+bench-transport = "mojo run -I src -I vendor/flare benchmarks/transport_matrix.mojo"
+bench-fanout = "mojo run -I src -I vendor/flare benchmarks/fanout_copy.mojo"
+bench-profile = "mojo run -I src -I vendor/flare benchmarks/profiling_probe.mojo"
+
