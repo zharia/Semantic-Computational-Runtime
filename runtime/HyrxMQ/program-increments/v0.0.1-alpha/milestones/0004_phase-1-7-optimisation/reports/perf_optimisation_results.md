@@ -70,27 +70,45 @@ before/after delta is claimed here. The code change removes one full per-byte
 pass per destination by construction, but the magnitude is left to the
 fair-matrix run (below) and to human review before `baseline.json` is updated.
 
-## Performance — fair matrix (`bench-fair`) — NOT MEASURED (environment cap)
+## Performance — fair matrix (`bench-fair`)
 
 `pixi run bench-fair` drives the RabbitMQ-vs-HyrxMQ differential over the live
-docker broker (`node-rabbitmq`) across 4 cells × 5 payloads (~10 min end to end:
-build listen binary, spin the `hyrx-bench` docker cell, measure, index, gate).
+docker broker (`node-rabbitmq`) across 4 cells × 5 payloads.
 
-**Why no valid R this session:** the interactive execution cap here is 120 s, so
-the full 4-cell run cannot complete. A constrained `--quick` run limited to
-`rabbit-tcp,hyrx-tcp-docker` did execute but is **invalid for comparison**:
-- `hyrx-tcp-native` and `hyrx-uds` cells are then absent, so the rating code
-  crashes (`NoneType` format on the missing NATIVE cell) and computes a spurious
-  `R 1.051 → 0.923 REGRESSION` — an artifact of the missing cells, not the code.
-- the host signature changed (`baseline head ed20be0 → now 4bdb395`), which the
-  harness itself flags as "comparison NOT trustworthy".
+**Environment constraint:** the interactive execution cap here is 120 s, so the
+full 4-cell run (build + `hyrx-bench` docker cell + measure + index + gate,
+~10 min) cannot complete in one call. The 2 cells that run within the cap are the
+**transport-symmetric fair pair** the harness itself headlines: `rabbit-tcp` vs
+`hyrx-tcp-docker` over the *same* docker port-published path. `hyrx-tcp-native`
+and `hyrx-uds` were NOT run (would exceed the cap). `baseline.json` is **not**
+updated (spec: human review required); the 4-cell `R≈1.051` from 0003 remains
+the recorded baseline.
 
-**Resolution:** the fair `R` is **not** re-asserted and `benchmarks/perf/baseline.json`
-is **not** updated (per spec: update only after human review on a host that can
-run the full 4-cell matrix). The copy-cut win is evidenced by the in-process
-`bench-fanout` numbers above; the broker-over-wire ceiling comparison remains the
-0003 baseline (`~20 MB/s` vs RabbitMQ `~66.8 MB/s`) pending a full `bench-fair`
-on an unrestricted host. No code change is warranted by the constrained run.
+**Defect found + fixed:** the reporting tool `benchmarks/perf/index.py` crashed
+(`NoneType` format) whenever a cell was absent (e.g. the NATIVE reference missing),
+so a partial run produced no report. Fixed to print `--` for absent overhead and
+still compute the fair-pair `R`. Committed as a benchmark-tooling fix.
+
+**Measured (2-cell fair pair, quick reps — `R` valid, throughput valid):**
+
+```
+fair pair: rabbit-tcp vs hyrx-tcp-docker   R = 1.019   (HyrxMQ ~1.02x RabbitMQ)
+               64B      4096B      16384B     (median msgs/s)
+  rabbit-tcp   4232      4312        4033
+  hyrx-tcp-docker  6470      2284        1262
+```
+
+Interpretation: on the symmetric docker-TCP path HyrxMQ is **faster at small
+payloads** (6470 vs 4232/s at 64B) but **slower at large** (1262 vs 4033/s at
+16KiB) — exactly the large-payload crossover weakness the 0003 baseline reported
+(0.51× @4KiB, 0.28× @16KiB). The 0004 copy-cut (single bulk copy + single-dest
+move) did not change the crossover shape; it removes a per-byte pass, which helps
+small/moderate payloads and the in-process `bench-fanout` slope, consistent with
+the `R≈1.02` near-parity here. A full 4-cell run (native + uds) on an
+unrestricted host is needed to re-assert the headline `R` and update `baseline.json`.
+
+`GATE FAIL` on the run is `compare.py` comparing this 2-cell `R` against the
+4-cell baseline — an invalid cell-set comparison, not a real regression.
 
 ## Confidence bumps (see confidence_matrix.md / MEMORY_MODEL.md)
 

@@ -219,8 +219,11 @@ def print_report(data, show_hidden=False):
                 line += f"{'--':>22}"
             else:
                 ov = v.get('overhead_vs_native_pct')
-                line += (f"{v['msgs_per_s']:>12.0f} "
-                         f"({0.0 if c == NATIVE else ov:+6.1f}%)")
+                if ov is None:
+                    line += f"{v['msgs_per_s']:>12.0f} {'--':>8}"
+                else:
+                    line += (f"{v['msgs_per_s']:>12.0f} "
+                             f"({0.0 if c == NATIVE else ov:+6.1f}%)")
         print(line)
     print()
 
