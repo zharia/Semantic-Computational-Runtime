@@ -13,7 +13,7 @@ from std.collections import List, Optional
 
 from flare.uds import UnixListener, UnixStream
 
-from hyrx.transport.transport import TransportConfig, TransportConnection
+from hyrx.transport.transport import TransportConfig, TransportConnection, AMQPConn
 
 
 def _zeroed(n: Int) -> List[UInt8]:
@@ -82,7 +82,7 @@ struct UDSListener:
         return Optional[UDSConnection](conn^)
 
 
-struct UDSConnection(Movable):
+struct UDSConnection(Movable, AMQPConn):
     """A Unix domain socket connection carrying Hyrx bytes."""
 
     var _base: TransportConnection

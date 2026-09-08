@@ -9,7 +9,34 @@
 # - backpressure semantics
 # - failure semantics
 
-from std.collections import Dict
+from std.collections import Dict, List
+
+# Shared byte-transport contract for a live connection (TCP or UDS).
+#
+# This is the ONLY abstraction the AMQP listener is allowed to lean on when it
+# serves bytes off a socket: `conn_id`/`recv_bytes`/`send_bytes`/`close` have
+# identical signatures on TCPConnection (tcp.mojo) and UDSConnection (uds.mojo),
+# so a single serving implementation can drive either backend. Mojo 1.0.0 needs
+# a trait (its `interface`) to resolve these calls through a `Type: Trait` bound
+# — a generic with no bound fails ("value has no attribute"). It carries no
+# behavior, only the required surface, and imposes no flare dependency.
+trait AMQPConn(Movable, Deinitable):
+    def conn_id(ref self) -> UInt64:
+        """Stable id for the broker's per-connection state."""
+        ...
+
+    def recv_bytes(mut self, max_bytes: Int) raises -> List[UInt8]:
+        """One read of up to `max_bytes`; empty result means EOF."""
+        ...
+
+    def send_bytes(mut self, var data: List[UInt8]) raises -> Int:
+        """Write every byte of `data` (consumed); returns bytes written."""
+        ...
+
+    def close(mut self):
+        """Close the connection."""
+        ...
+
 
 struct TransportConfig:
     """Configuration for a transport."""

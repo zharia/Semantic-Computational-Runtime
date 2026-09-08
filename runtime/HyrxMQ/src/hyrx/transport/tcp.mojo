@@ -14,7 +14,7 @@ from std.collections import List, Optional
 from flare.tcp import TcpListener, TcpStream
 from flare.net import IpAddr, SocketAddr
 
-from hyrx.transport.transport import TransportConfig, TransportConnection
+from hyrx.transport.transport import TransportConfig, TransportConnection, AMQPConn
 
 
 def _zeroed(n: Int) -> List[UInt8]:
@@ -95,7 +95,7 @@ struct TCPListener:
         return Optional[TCPConnection](conn^)
 
 
-struct TCPConnection(Movable):
+struct TCPConnection(Movable, AMQPConn):
     """A TCP connection carrying Hyrx messages."""
 
     var _base: TransportConnection
