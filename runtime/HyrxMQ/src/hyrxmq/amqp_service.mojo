@@ -4,6 +4,13 @@
 # takes an already-decoded AMQPFrame and returns already-encoded response
 # bytes, so the whole protocol path is unit-testable feed-bytes/get-bytes.
 #
+# Layering: this file does WIRE work only — decode a method frame's arguments,
+# hand semantic values to the broker, encode the reply. It contains no
+# AMQP→Hyrx translation and no routing: the mapping from AMQP concepts onto Hyrx
+# concepts lives in src/hyrx/amqp/adapter.mojo (the single translation surface),
+# and the single routing authority is the broker's HyrxEngine core Router.
+# Path: frame → AMQPService → HyrxMQBroker → AMQPAdapter → HyrxEngine (Router).
+#
 # The real network acceptance path is PROVEN: the flare-backed transport
 # contract (src/hyrx/transport/tcp.mojo) drives this service through
 # src/hyrxmq/listener.mojo; see tests/integration/broker_tcp_e2e.mojo.
@@ -15,6 +22,23 @@
 # not a change to publish/consume/ack semantics. Likewise, pending messages
 # are flushed as basic.deliver frames appended to the basic.consume reply
 # (pull-on-subscribe) instead of pushed asynchronously at publish time.
+#
+# NOT IMPLEMENTED (wire-level gaps, honest list):
+# - connection negotiation: the 8-octet protocol header, SASL
+#   connection.start/start-ok/secure/secure-ok and tune/tune-ok round trips,
+#   and the close/close-ok handshake (see src/hyrx/amqp/connection_state.mojo).
+# - frame_max / heartbeat enforcement.
+# - field-table (arguments, content properties) serialization on the wire:
+#   the `arguments` fields of declare methods are not parsed (see
+#   src/hyrx/amqp/field_table.mojo).
+# - consumer tags: basic.consume-ok reports the numeric engine consumer id as
+#   the consumer tag instead of a server-generated short-string tag pair.
+# - connection state enforcement: methods are served even when no connection is
+#   open (the AMQPConnectionState record is written by connection.open but never
+#   gates dispatch).
+# - required replies for unhandled synchronous methods: basic.qos must answer
+#   qos-ok, channel.flow must answer flow-ok, cancel must answer cancel-ok, etc.
+#   Unknown/unhandled methods currently return no reply at all.
 
 from std.collections import Dict, List, Optional
 
@@ -50,6 +74,18 @@ from hyrxmq.status import BrokerStatus
 # Upper bound on deliveries flushed by one basic.consume reply.
 def _CONSUME_FLUSH_MAX() -> Int:
     return 128
+
+
+# queue.declare bit-packed flags, packed low bit first in the order the spec
+# lists them (amqp0-9-1.xml): passive=1, durable=2, exclusive=4,
+# auto-delete=8, no-wait=16.
+def QUEUE_DECLARE_BIT_NO_WAIT() -> UInt8:
+    return 16
+
+
+# basic.ack bit-packed flags: `multiple` is the single (low) bit.
+def BASIC_ACK_BIT_MULTIPLE() -> UInt8:
+    return 1
 
 
 def write_u32(mut out: List[UInt8], value: UInt32):
@@ -239,9 +275,12 @@ struct AMQPService:
 
         # ---- exchange ----
         if mid == EXCHANGE_DECLARE():
-            _ = reader.read_short()  # reserved-1
+            _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
             var ex_name = reader.read_short_string()
             var ex_type = reader.read_short_string()
+            _ = reader.read_octet()  # bits: passive/durable/auto-delete/no-wait
+            # NOT IMPLEMENTED: those bits (always declares synchronously, so
+            # exchange.declare's no-wait is NOT honoured) and `arguments`.
             _ = self._broker.declare_exchange(ex_name^, ex_type^)
             return self._reply(
                 chan,
@@ -252,9 +291,16 @@ struct AMQPService:
 
         # ---- queue declare ----
         if mid == QUEUE_DECLARE():
-            _ = reader.read_short()  # reserved-1
+            _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
             var q_name = reader.read_short_string()
-            _ = self._broker.declare_queue(q_name)
+            var q_bits = reader.read_octet()
+            # NOT IMPLEMENTED: passive/durable/exclusive/auto-delete bits and
+            # the trailing `arguments` field table (field tables are not
+            # serialized on the wire).
+            _ = self._broker.declare_queue(q_name.copy())
+            if (q_bits & QUEUE_DECLARE_BIT_NO_WAIT()) != 0:
+                # no-wait set → "the server will not respond to the method"
+                return Optional[List[UInt8]]()
             return self._reply_queue_declare_ok(chan, q_name^)
 
         # ---- queue bind ----
@@ -282,8 +328,16 @@ struct AMQPService:
 
         # ---- basic consume ----
         if mid == BASIC_CONSUME():
+            # Slice wire layout (project convention, see the header): queue
+            # short-string then one bits octet. NOT IMPLEMENTED: the spec's
+            # leading reserved-1 (short) is not consumed, so a spec-exact client
+            # would mis-parse this method (unlike queue.declare, which does read
+            # reserved-1).
             var cq = reader.read_short_string()
+            _ = reader.read_octet()  # bits: no-local / no-ack / exclusive / nowait
+            # NOT IMPLEMENTED: those bits and the `arguments` field table.
             var cid = self._broker.consume_register(cq^)
+            # Slice limitation: one consumer per connection (last consume wins).
             self._consumers[conn_id] = cid
             var cargs = List[UInt8]()
             write_short_string(cargs, String(cid))
@@ -298,12 +352,26 @@ struct AMQPService:
 
         # ---- basic ack ----
         if mid == BASIC_ACK():
+            # Spec arguments: delivery-tag(long-long) + multiple(bit).
             var tag = reader.read_long_long()
-            var ack_cid = UInt64(reader.read_octet())
-            _ = self._broker.ack(ack_cid, tag)
+            var ack_bits = reader.read_octet()
+            var multiple = (ack_bits & BASIC_ACK_BIT_MULTIPLE()) != 0
+            # NOT IMPLEMENTED: multiple=true means "ack up to and including this
+            # tag" (and, with tag 0, "all outstanding"). The engine acknowledges
+            # one tag at a time, so only the addressed delivery_tag below is
+            # honoured and the batch request is NOT. This octet used to be
+            # mis-read as a consumer id, which acked nothing.
+            _ = multiple
+            # The consumer is the one this connection registered via
+            # basic.consume; its id is issued by the engine (single authority).
+            if conn_id in self._consumers:
+                _ = self._broker.ack(self._consumers[conn_id], tag)
             return Optional[List[UInt8]]()
 
         # ---- unhandled method: no reply ----
+        # NOT IMPLEMENTED: a required *_ok is not sent for unhandled synchronous
+        # methods (basic.qos, channel.flow, basic.cancel, queue.purge, ...);
+        # peers will block waiting for those replies.
         return Optional[List[UInt8]]()
 
     # ---- reply encoders ----

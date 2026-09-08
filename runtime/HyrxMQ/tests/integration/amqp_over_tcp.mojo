@@ -1,8 +1,8 @@
 # AMQP 0-9-1 frames over a REAL TCP socket — network data-path proof.
 #
 # Proves the leg that unit tests could not: socket bytes -> AMQPFrameCodec ->
-# AMQPAdapter -> Router -> delivery, and the delivered payload back out over
-# the same socket. The listener is a flare TCP listener bound in-process on an
+# AMQPAdapter -> HyrxEngine (the single Router) -> delivery, and the delivered
+# payload back out over the same socket. The listener is a flare TCP listener bound in-process on an
 # ephemeral port (port 0, real port read back from the OS).
 #
 # Single-threaded bind -> connect -> accept, so nothing can block forever:
@@ -34,13 +34,11 @@ from hyrx.amqp.constants import (
     QUEUE_DECLARE,
 )
 from hyrx.amqp.adapter import AMQPAdapter
+from hyrx.embedded.api import HyrxEngine, HyrxConfig
 from hyrxmq.amqp_service import ByteReader, write_short_string
 
 
-def check(cond: Bool, msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def bytes_of(s: String) -> List[UInt8]:
     """UTF-8 bytes of a short ASCII string."""
@@ -140,9 +138,12 @@ def client_wire(var body: List[UInt8]) -> List[UInt8]:
 
 
 def server_apply(
-    mut adapter: AMQPAdapter, frame: AMQPFrame
+    mut adapter: AMQPAdapter, mut engine: HyrxEngine, frame: AMQPFrame
 ) raises -> Int:
     """Decode one method frame and apply it through the adapter.
+
+    The adapter holds no routing substrate: every operation is executed on the
+    injected engine, which owns the one Router.
 
     Returns the number of queues the frame's publish routed to (0 otherwise)."""
     check(frame.frame_type == FRAME_METHOD(), "frame is a method frame")
@@ -153,14 +154,17 @@ def server_apply(
     if mid == QUEUE_DECLARE():
         _ = reader.read_short()
         var queue_name = reader.read_short_string()
-        check(adapter.declare_queue(queue_name^, durable=False), "queue.declare")
+        check(
+            adapter.declare_queue(engine, queue_name^, durable=False),
+            "queue.declare",
+        )
     elif mid == EXCHANGE_DECLARE():
         _ = reader.read_short()
         var exchange_name = reader.read_short_string()
         var exchange_type = reader.read_short_string()
         check(
             adapter.declare_exchange(
-                exchange_name^, exchange_type^, durable=False
+                engine, exchange_name^, exchange_type^, durable=False
             ),
             "exchange.declare",
         )
@@ -171,7 +175,7 @@ def server_apply(
         var bind_key = reader.read_short_string()
         check(
             adapter.bind_queue(
-                bind_queue^, bind_exchange^, bind_key^
+                engine, bind_queue^, bind_exchange^, bind_key^
             ),
             "queue.bind",
         )
@@ -183,7 +187,7 @@ def server_apply(
         var publish_key = reader.read_short_string()
         var publish_body = reader.read_remaining()
         return adapter.publish(
-            publish_key^, publish_body^, publish_exchange^
+            engine, publish_key^, publish_body^, publish_exchange^
         )
     return 0
 
@@ -207,6 +211,7 @@ def main() raises:
     # ---- socket -> server: 64-byte reads force codec reassembly ----
     var codec = AMQPFrameCodec()
     var adapter = AMQPAdapter()
+    var engine = HyrxEngine(HyrxConfig(1024, 4096, 64))
     var frames_seen = 0
     var routed = 0
     while frames_seen < 4:
@@ -217,16 +222,22 @@ def main() raises:
         var next_frame = codec.try_parse_frame()
         while next_frame.__bool__():
             frames_seen += 1
-            routed += server_apply(adapter, next_frame.value())
+            routed += server_apply(adapter, engine, next_frame.value())
             next_frame = codec.try_parse_frame()
     check(frames_seen == 4, "four frames parsed off the socket")
     check(routed == 1, "publish routed to exactly one queue")
 
     # ---- adapter delivery + payload identity ----
-    var consumer_id = adapter.consume("tcp.q")
-    var delivery = adapter.deliver_next(consumer_id)
+    var consumer_id = adapter.consume(engine, "tcp.q")
+    var delivery = adapter.deliver_next(engine, consumer_id)
     check(delivery.__bool__(), "message delivered to the consumer")
-    var payload = adapter.read_payload(consumer_id, delivery.value().delivery_tag())
+    var payload = adapter.read_payload(
+        engine, consumer_id, delivery.value().delivery_tag()
+    )
+    # The publish/consume ran on the injected engine: the single authority saw
+    # them (the adapter keeps no routing state for itself).
+    check(engine.stats().active_queues == 1, "engine holds the declared queue")
+    check(engine.stats().messages_published == 1, "engine counted the publish")
     check_bytes(payload, expected, "delivered payload matches published payload")
 
     # ---- server -> socket -> client: payload returns over the real wire ----

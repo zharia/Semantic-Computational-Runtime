@@ -43,10 +43,7 @@ from hyrxmq.listener import AMQPListener
 from hyrxmq.amqp_service import ByteReader, write_short_string, write_u64
 
 
-def check(cond: Bool, msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def bytes_of(s: String) -> List[UInt8]:
     var out = List[UInt8]()
@@ -165,6 +162,7 @@ def main() raises:
     var qargs = List[UInt8]()
     reserved_short(qargs)
     write_short_string(qargs, "e2e.q")
+    qargs.append(0)  # bits: passive/durable/exclusive/auto-delete/no-wait = 0
     client.send(request(UInt16(1), QUEUE_DECLARE(), qargs^))
     check(listener.serve_one_frame(slot) == 1, "queue.declare served")
     check(
@@ -218,16 +216,19 @@ def main() raises:
     check_bytes(got_body, body, "delivered payload matches published payload")
 
     # ---- basic.ack -> broker counters advance ----
+    # Spec arguments: delivery-tag(long-long) + multiple(bit). The consumer is
+    # resolved from this connection's earlier basic.consume, NOT from a wire
+    # octet (an octet here used to be mis-read as a consumer id).
     var aargs = List[UInt8]()
     write_u64(aargs, dtag)
-    aargs.append(UInt8(cid))  # consumer id (octet, slice convention)
+    aargs.append(UInt8(0))  # multiple = false (single addressed delivery)
     client.send(request(UInt16(1), BASIC_ACK(), aargs^))
     check(listener.serve_one_frame(slot) == 1, "basic.ack served")
 
     var st = listener.status()
     check(st.messages_published >= 1, "status: published")
     check(st.messages_delivered >= 1, "status: delivered")
-    check(st.messages_acked >= 1, "status: acked")
+    check(st.messages_acked == 1, "status: exactly the addressed delivery acked")
     check(st.messages_acked <= st.messages_delivered, "status: ack <= deliver")
     check(listener.health() == "ok", "health ok after full round-trip")
 

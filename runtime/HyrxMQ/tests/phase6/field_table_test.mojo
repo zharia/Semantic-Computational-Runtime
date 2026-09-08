@@ -5,10 +5,7 @@
 from hyrx.amqp.field_table import FieldTable, FieldValue
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def test_field_value_constructors() raises:
     """FieldValue static constructors tag values correctly."""

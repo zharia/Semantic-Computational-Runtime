@@ -17,10 +17,7 @@ from hyrx.amqp.connection_state import (
 )
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def test_connection_initial_state() raises:
     """Connection starts in CLOSED state."""

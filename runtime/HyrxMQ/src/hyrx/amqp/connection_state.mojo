@@ -1,4 +1,24 @@
 # AMQP 0-9-1 connection and channel state machines.
+#
+# State constants and the storage/accessor scaffolding exist; method ids used
+# with them are the normative ones from amqp0-9-1.xml (see
+# src/hyrx/amqp/constants.mojo).
+#
+# NOT IMPLEMENTED — connection-negotiation gaps (deliberate Phase 7 scope cut):
+# - 8-octet protocol header (`AMQP\x00\x00\x09\x01`) detection/rejection at the
+#   start of the stream (connection.start is only legal after it is accepted).
+# - SASL negotiation: connection.start (10,10) / start-ok (10,11) /
+#   secure (10,20) / secure-ok (10,21) round trips (mechanism + locale choice).
+# - tune (10,30) / tune-ok (10,31) round trip: negotiate() below stores values
+#   but no tune frame is ever encoded, sent or parsed, so channel_max/frame_max/
+#   heartbeat stay un-negotiated defaults.
+# - close handshake: connection.close (10,50) / close-ok (10,51) and the
+#   channel close (20,40)/(20,41) reply sequencing.
+# - frame_max enforcement in AMQPFrameCodec (a peer may request >131072 bytes or
+#   sizes the receiver never checks) and channel_max enforcement.
+# - heartbeat (frame type 8) send/receive timers.
+# The states below are therefore reachable only by direct set_state() calls from
+# the service layer, not by a negotiated handshake.
 
 # Connection states
 def CONN_STATE_CLOSED() -> Int:

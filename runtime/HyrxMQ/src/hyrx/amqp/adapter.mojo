@@ -1,56 +1,106 @@
 # AMQP-to-Hyrx translation layer.
 #
 # Translates AMQP protocol operations into Hyrx semantic operations.
-# This is the boundary between the wire protocol and the core engine.
+# This is the boundary between the wire protocol and the core engine: it is the
+# ONLY place that maps AMQP concepts (exchange-type names, method arguments)
+# onto Hyrx concepts.
+#
+# Architecture (AGENTS.md rules 5/6/14, "Providers implement contracts; they do
+# not own them"): the adapter owns NO routing substrate. It never constructs a
+# router. The single routing authority is the broker's HyrxEngine (whose core
+# Router is the one and only routing object); the adapter receives that engine
+# as an injected `mut` handle on every call and translates into engine calls.
+# Auditing `grep -n "Router(" src/` shows no construction here at all: the only
+# construction site is src/hyrx/embedded/api.mojo (the engine that owns it).
 
-from hyrx.core.router import Router
 from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import ExchangeType
 from hyrx.core.buffer import Buffer
 from hyrx.core.queue import Delivery
+from hyrx.embedded.api import HyrxEngine
+
+
+def exchange_type_from_name(var name: String) -> ExchangeType:
+    """Map an AMQP exchange-type name to a Hyrx ExchangeType.
+
+    Single mapping (was previously duplicated in the broker with a different
+    result for "headers"): "headers" maps to ExchangeType.headers(). Header
+    matching is a documented stub in core (src/hyrx/core/exchange.mojo:181 —
+    the headers branch currently matches all bindings), so a "headers" exchange
+    behaves like fanout until the stub is implemented. It is NOT silently
+    re-typed as direct anywhere.
+
+    NOT IMPLEMENTED: headers-based matching semantics.
+    """
+    if name == "fanout":
+        return ExchangeType.fanout()
+    if name == "topic":
+        return ExchangeType.topic()
+    if name == "headers":
+        return ExchangeType.headers()
+    return ExchangeType.direct()
 
 
 struct AMQPAdapter:
-    """Translates AMQP operations to Hyrx operations."""
+    """Translates AMQP operations to Hyrx operations on an injected engine.
 
-    var _router: Router
-    var _next_consumer_id: UInt64
+    Stateless with respect to routing: every operation is performed on the
+    `mut engine: HyrxEngine` handle passed in, which the broker owns.
+    """
 
     def __init__(out self):
-        self._router = Router()
-        self._next_consumer_id = 0
+        pass
 
     def declare_exchange(
-        mut self, var name: String, var exchange_type: String, durable: Bool
+        mut self,
+        mut engine: HyrxEngine,
+        var name: String,
+        var exchange_type: String,
+        durable: Bool,
     ) raises -> Bool:
-        """Translate AMQP exchange.declare to Hyrx."""
-        var et: ExchangeType
-        if exchange_type == "direct":
-            et = ExchangeType.direct()
-        elif exchange_type == "fanout":
-            et = ExchangeType.fanout()
-        elif exchange_type == "topic":
-            et = ExchangeType.topic()
-        else:
-            et = ExchangeType.direct()
-        return self._router.declare_exchange(name^, et^)
+        """Translate AMQP exchange.declare to Hyrx. True if created.
+
+        NOT IMPLEMENTED: `durable` is not represented in the core engine
+        (no persistence layer yet); the flag is accepted and ignored, never
+        used to change routing semantics.
+        """
+        _ = durable
+        return engine.declare_exchange(name^, exchange_type_from_name(exchange_type^))
 
     def declare_queue(
-        mut self, var name: String, durable: Bool
+        mut self, mut engine: HyrxEngine, var name: String, durable: Bool
     ) raises -> Bool:
-        """Translate AMQP queue.declare to Hyrx."""
-        return self._router.declare_queue(name^, 1024)
+        """Translate AMQP queue.declare to Hyrx. True if created.
+
+        NOT IMPLEMENTED: `durable` (see declare_exchange) plus exclusive /
+        auto-delete queue properties, which the engine does not model.
+        """
+        _ = durable
+        return engine.declare_queue(name^)
 
     def bind_queue(
-        mut self, var queue: String, var exchange: String, var routing_key: String
+        mut self,
+        mut engine: HyrxEngine,
+        var queue: String,
+        var exchange: String,
+        var routing_key: String,
     ) raises -> Bool:
         """Translate AMQP queue.bind to Hyrx."""
-        return self._router.bind_queue(queue^, exchange^, routing_key^)
+        return engine.bind_queue(queue^, exchange^, routing_key^)
 
     def publish(
-        mut self, var routing_key: String, var body: List[UInt8], var exchange_name: String
+        mut self,
+        mut engine: HyrxEngine,
+        var routing_key: String,
+        var body: List[UInt8],
+        var exchange_name: String,
     ) raises -> Int:
-        """Translate AMQP basic.publish to Hyrx."""
+        """Translate AMQP basic.publish to Hyrx. Returns queues routed to.
+
+        NOT IMPLEMENTED: content properties (the AMQP property table) are not
+        carried; the envelope's header map stays empty because field tables are
+        not serialized on the wire yet (see src/hyrx/amqp/field_table.mojo).
+        """
         var headers = Dict[String, String]()
         var env = Envelope(MessageID(0), routing_key^, headers^)
         var buf = Buffer(len(body))
@@ -58,38 +108,56 @@ struct AMQPAdapter:
         for i in range(len(body)):
             buf[i] = body[i]
         var msg = Message(env^, buf^)
-        return self._router.publish(msg^, exchange_name)
+        return engine.publish(msg^, exchange_name^)
 
     def consume(
-        mut self, var queue_name: String
+        mut self, mut engine: HyrxEngine, var queue_name: String
     ) raises -> UInt64:
-        """Translate AMQP basic.consume to Hyrx."""
-        var cid = self._next_consumer_id
-        self._next_consumer_id += 1
-        _ = self._router.register_consumer(queue_name, 0)
-        return cid
+        """Translate AMQP basic.consume to Hyrx. Returns the engine's consumer id.
+
+        The id is issued by the routing authority (the engine), NOT by a local
+        adapter counter, so ids observed on the wire always identify a real
+        engine consumer.
+
+        NOT IMPLEMENTED: prefetch/no Ack handling beyond the engine default,
+        consumer tags (the wire layer reports the numeric id).
+        """
+        return engine.consume(queue_name^, 0)
 
     def deliver_next(
-        mut self, consumer_id: UInt64
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64
     ) raises -> Optional[Delivery]:
         """Translate AMQP basic.deliver from Hyrx."""
-        return self._router.consume(consumer_id)
+        return engine.next_message(consumer_id)
 
     def read_payload(
-        mut self, consumer_id: UInt64, delivery_tag: UInt64
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> List[UInt8]:
         """Read a delivered message's payload bytes (message stays owned)."""
-        var view = self._router.read_payload(consumer_id, delivery_tag)
+        var view = engine.read_payload(consumer_id, delivery_tag)
         return view.to_bytes()
 
     def acknowledge(
-        mut self, consumer_id: UInt64, delivery_tag: UInt64
+        mut self,
+        mut engine: HyrxEngine,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
     ) raises -> Bool:
-        """Translate AMQP basic.ack to Hyrx."""
-        return self._router.acknowledge(consumer_id, delivery_tag)
+        """Translate AMQP basic.ack (multiple=false) to Hyrx.
+
+        NOT IMPLEMENTED: basic.ack with multiple=true ("up to and including")
+        — the engine only acknowledges one delivery tag at a time.
+        """
+        return engine.acknowledge(consumer_id, delivery_tag)
 
     def reject(
-        mut self, consumer_id: UInt64, delivery_tag: UInt64
+        mut self,
+        mut engine: HyrxEngine,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
     ) raises -> Bool:
-        """Translate AMQP basic.nack/reject to Hyrx."""
-        return self._router.reject(consumer_id, delivery_tag)
+        """Translate AMQP basic.nack/reject to Hyrx.
+
+        NOT IMPLEMENTED: the `requeue` bit — the engine always requeues.
+        """
+        return engine.reject(consumer_id, delivery_tag)
