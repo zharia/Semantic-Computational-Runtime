@@ -3,7 +3,10 @@
 # Ownership model:
 #   - A Buffer always owns its memory (list allocation).
 #   - Move transfers ownership: source is consumed, cannot be reused.
-#   - BufferView is always a snapshot; caller manages its lifetime.
+#   - Buffer.snapshot() COPIES the bytes; the returned snapshot is owned
+#     by the caller and is unaffected by later mutation or destruction
+#     of this Buffer.
+#   - There is no borrowed view type in this module.
 #
 # Mojo move semantics (^) handle ownership transfer automatically:
 #   var b = a^  →  a is consumed, b owns the memory, a.__deinit__ not called.
@@ -16,7 +19,7 @@
 
 from std.collections import List
 
-from hyrx.core.buffer_view import BufferView
+from hyrx.core.buffer_snapshot import BufferSnapshot
 
 struct Buffer:
     """A contiguous byte region with ownership semantics."""
@@ -56,18 +59,20 @@ struct Buffer:
         """Write a single byte by index."""
         self._data[idx] = val
 
-    # ---- mutations ---------------------------------------------------
+    # ---- copy + mutations ------------------------------------------------
 
-    def as_view(ref self) -> BufferView:
-        """Return a snapshot view of the current contents.
+    def snapshot(ref self) -> BufferSnapshot:
+        """Return an owned COPY of the current contents.
 
-        The BufferView holds a copy of the data; it is safe even
-        if the Buffer is later modified.
+        Ownership: every byte is copied into the returned snapshot.
+        The snapshot stays valid (and frozen at this moment's values)
+        even if this Buffer is later mutated, moved or destroyed.
+        This is not a borrowed view — see `BufferSnapshot`.
         """
         var snapshot = List[UInt8](capacity=len(self._data))
         for i in range(len(self._data)):
             snapshot.append(self._data[i])
-        return BufferView(snapshot^)
+        return BufferSnapshot(snapshot^)
 
     def resize(mut self, new_size: Int) raises:
         """Set the logical size. Fails if new_size > capacity.

@@ -5,14 +5,19 @@
 #
 # Ownership model:
 #   - Router owns all exchanges, queues, and consumers.
-#   - publish() creates new messages from the original's data for each destination.
+#   - publish() COPIES the payload per destination queue (one owned copy
+#     per queue); the original Message is consumed by the publish call.
+#   - each destination owns an independent copy of payload bytes (no sharing
+#     between queues); the per-destination envelope keeps the routing key but
+#     DROPS message_id/headers (KNOWN DEFECT, see publish() and
+#     docs/MEMORY_MODEL.md "Reported defects").
 #   - consume() returns a Delivery claim token (message stays in queue).
 #   - acknowledge() and reject() operate on the queue's message copy.
 
 from std.collections import List
 
 from hyrx.core.buffer import Buffer
-from hyrx.core.buffer_view import BufferView
+from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import Exchange, ExchangeType, Binding
 from hyrx.core.queue import Queue, QueueConfig, Delivery
@@ -96,10 +101,19 @@ struct Router:
         queue_name: String,
         exchange_name: String,
         routing_key: String,
-    ) -> Bool:
+    ) raises -> Bool:
         """Unbind a queue from an exchange.
 
         Returns True if unbound, False if not found.
+
+        Ownership: the Binding (and its routing-key/pattern strings) is
+        destroyed on removal; queue and exchange objects are untouched.
+
+        NOTE: declared `raises` because the exchange lookup can raise
+        DictKeyError. BUG FIXED HERE (audit §6): the signature omitted
+        `raises`, so the function could not compile when called at all —
+        it had no call sites and was therefore never exercised
+        (tests/phase2/routing_matrix_test.mojo now covers it).
         """
         if exchange_name not in self._exchanges:
             return False
@@ -114,11 +128,26 @@ struct Router:
     ) raises -> Int:
         """Route a message through an exchange to bound queues.
 
-        Creates new messages for each destination queue, copying the
-        routing key and payload data from the original.
-        Returns the number of queues the message was routed to.
+        Builds one owned Message per destination queue: the routing key is
+        copied and the payload bytes are COPIED per destination (no payload
+        buffer is shared between queues).
 
-        Ownership: msg is consumed (destroyed after routing).
+        KNOWN DEFECT (audit §5, reported not fixed): the per-destination
+        envelope is built with MessageID(0) and an EMPTY headers dict — the
+        published message's message_id and headers are DISCARDED on fan-out
+        (see the loop below). It is not fixed here because the core exposes
+        no accessor to read a queued message's message_id/headers (only
+        routing_key), so the behaviour cannot be pinned by a test, and
+        AMQP content properties are declared NOT IMPLEMENTED
+        (src/hyrx/amqp/adapter.mojo:100) — the loss is currently latent.
+        A fix belongs in the same package as an envelope read-back API.
+
+        Returns the number of queues the message was actually routed to,
+        i.e. the number of destinations whose enqueue() accepted the copy:
+        a destination at capacity silently drops its copy (audit §7).
+
+        Ownership: msg is consumed (destroyed after routing). Each queued
+        copy is owned by its destination Queue from enqueue() onwards.
         """
         if exchange_name not in self._exchanges:
             return 0
@@ -132,16 +161,23 @@ struct Router:
         for i in range(len(queue_names)):
             var qname = queue_names[i]
             if qname in self._queues:
-                # Create a new message for this queue, copying the data
+                # KNOWN DEFECT (audit §5): message_id and headers of the
+                # published message are dropped here — see publish() docstring.
                 var headers = Dict[String, String]()
                 var env = Envelope(
                     MessageID(0), msg.routing_key(), headers^
                 )
-                var view = msg.payload()
-                var payload = Buffer(view.size())
-                payload.resize(view.size())
-                for j in range(view.size()):
-                    payload[j] = view[j]
+                var snap = msg.payload()  # COPIES every payload byte (copy #1)
+                # TECH DEBT (audit §7): the live publish path COPIES the payload
+                # per destination queue instead of taking a BufferPool-owned
+                # buffer. Memory boundedness on this path therefore rests
+                # on queue capacity + the codec's frame_max ceiling, NOT on the
+                # pool. Changing ownership (shared claim / refcount) is a
+                # separate work package — not done here.
+                var payload = Buffer(snap.size())  # copy #2: snapshot -> owned Buffer
+                payload.resize(snap.size())
+                for j in range(snap.size()):
+                    payload[j] = snap[j]
                 var cloned = Message(env^, payload^)
                 if self._queues[qname].enqueue(cloned^):
                     count += 1
@@ -237,10 +273,12 @@ struct Router:
 
     def read_payload(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
-    ) raises -> BufferView:
-        """Read the payload of a delivered message.
+    ) raises -> BufferSnapshot:
+        """Copy out the payload of a delivered message.
 
-        The message remains owned by the queue.
+        Ownership: bytes are COPIED into the returned BufferSnapshot;
+        the Message remains owned by the queue.
+        Raises if consumer_id is unknown (Dict subscript, not Optional).
         """
         var qname = self._consumers[consumer_id].queue_name()
         return self._queues[qname].read_payload(delivery_tag)

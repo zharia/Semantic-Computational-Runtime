@@ -3,13 +3,14 @@
 # Ownership model:
 #   - Message owns its Envelope (value semantics).
 #   - Message owns its Buffer payload; ownership transfers on move.
-#   - payload_view() returns a snapshot; caller manages its lifetime.
+#   - payload() COPIES the bytes into an owned BufferSnapshot; the
+#     Message keeps owning its payload and is unchanged by the call.
 #
 # Mojo 1.0 requires explicit move semantics for non-trivial types.
 # All constructors accept owned (var) parameters and transfer with ^.
 
 from hyrx.core.buffer import Buffer
-from hyrx.core.buffer_view import BufferView
+from hyrx.core.buffer_snapshot import BufferSnapshot
 
 struct MessageID:
     """Globally unique message identifier. Opaque 64-bit value."""
@@ -78,9 +79,13 @@ struct Message:
         """Shortcut: envelope routing key."""
         return self._envelope._routing_key
 
-    def payload(ref self) -> BufferView:
-        """Return a snapshot view of the payload bytes."""
-        return self._payload.as_view()
+    def payload(ref self) -> BufferSnapshot:
+        """Return an owned COPY of the payload bytes.
+
+        Ownership: every byte is copied. The Message retains its own
+        payload; the snapshot is independent of it.
+        """
+        return self._payload.snapshot()
 
     def increment_delivery_count(mut self):
         """Record one more delivery attempt."""

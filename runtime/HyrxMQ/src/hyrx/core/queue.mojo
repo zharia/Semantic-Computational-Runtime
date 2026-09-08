@@ -4,7 +4,8 @@
 #   - Queue owns all Messages throughout their lifecycle.
 #   - Messages move between inbox, outbox, and unacked pools.
 #   - Delivery is a lightweight claim token (tag only).
-#   - Consumer reads messages through the Queue via read_payload().
+#   - Consumer reads messages through the Queue via read_payload(),
+#     which copies payload bytes out; the Message never leaves the Queue.
 #   - Acknowledge destroys the message. Reject requeues it.
 #
 # Two-stack queue for FIFO ordering:
@@ -15,7 +16,7 @@
 from std.collections import List
 
 from hyrx.core.buffer import Buffer
-from hyrx.core.buffer_view import BufferView
+from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.message import Message
 
 struct QueueConfig:
@@ -103,16 +104,21 @@ struct Queue:
         self._unacked[tag] = msg^
         return Optional[Delivery](Delivery(tag))
 
-    def read_payload(ref self, delivery_tag: UInt64) raises -> BufferView:
-        """Read the payload of an unacked message.
+    def read_payload(ref self, delivery_tag: UInt64) raises -> BufferSnapshot:
+        """Copy out the payload of an unacked message.
 
-        The message remains owned by the queue.
+        Ownership: the payload bytes are COPIED into the returned
+        BufferSnapshot. The Message itself remains owned by the queue
+        (unacked pool) and is neither moved nor consumed.
+
+        DESIGN GAP (audit §7): an unknown delivery_tag silently yields
+        an EMPTY snapshot instead of raising — see docs/MEMORY_MODEL.md.
         """
         if delivery_tag in self._unacked:
             return self._unacked[delivery_tag].payload()
-        # Return empty buffer view for missing tag
+        # DESIGN GAP: silent empty snapshot for an unknown tag (no raise).
         var empty = List[UInt8]()
-        return BufferView(empty^)
+        return BufferSnapshot(empty^)
 
     def read_routing_key(ref self, delivery_tag: UInt64) raises -> String:
         """Read the routing key of an unacked message."""
