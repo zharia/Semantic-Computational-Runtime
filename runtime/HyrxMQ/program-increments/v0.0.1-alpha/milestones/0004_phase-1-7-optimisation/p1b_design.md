@@ -184,3 +184,29 @@ and only drain/ack decrement it.
   on R and passes `compare.py`; flip only on evidence. Rollback = flag OFF (== P0).
 
 Starting P1 now.
+
+### P1 complete (committed 575fc70)
+Size-classed `BufferPool` + `Buffer` origin tag + 6 tests, negative proof (removing the
+reset in BOTH acquire and release fails `test_reset_no_stale`), full suite 38/0. Pool
+still off the message path.
+
+### P2 pre-flight — pool placement decision (probe-verified 2026-09-08)
+**Design refinement (supersedes §3.1's `ref BufferPool` arg-threading):** the pool is
+**owned by `Router`** (moved out of `EmbeddedEngine`); **`Router` performs every
+`acquire`/`release`**; **`Queue` never touches the pool.** Rationale, verified by a
+scratch compile:
+- Mojo mutation works cleanly as sequential `self._pool.*` under one `mut self`; there is
+  **no need for simultaneous disjoint-field borrows** (the risk that motivated arg-passing).
+- Death releases happen where the Router still owns the owned buffer, or the Queue hands
+  the dead `Message` back to the Router (e.g. `acknowledge` returns the popped Message;
+  `delete_queue` already returns messages) — Router calls `msg.take_payload()->Buffer`
+  then `self._pool.release(buf)`. A non-pooled buffer (single-dest moved original, direct
+  oversize) is a no-op release via the tag.
+- Owning the pool inside Router also lets the pool be declared **before** `_queues` →
+  satisfies R6 (pool outlives queues) structurally, not by luck.
+
+**P2 open detail (must solve):** fan-out fill must be ONE pass. Today `msg.payload_copy()`
+is itself a copy; a naive `pool.acquire` + copy would be **two** passes (regressing P1a).
+So P2 adds a `Message` read-accessor returning a borrowed `ref Buffer` payload + a
+`Buffer.copy_from(mut self, ref src)` that appends src bytes into the length-0 pooled
+buffer in a single pass (no `resize` zero-fill then overwrite).
