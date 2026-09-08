@@ -13,10 +13,15 @@ tools/inter_agent_com/
 │   ├── topology.py    # idempotent exchange/queue/binding bootstrap
 │   ├── bus.py         # AgentBus: send/broadcast/emit/request/recv/consume/...
 │   ├── cli.py         # command-line surface (also `python -m iac`)
+│   ├── mcp_server.py  # MCP stdio server: the bus as agent tools (`-m iac.mcp_server`)
 │   └── __main__.py
+├── agentd.py          # headless "stay online" responder + inbox mirror
 ├── examples/ping_pong.py
 ├── smoke_test.py      # offline (default) + live (--live) self-test
+├── mcp_smoke.py       # end-to-end test of the MCP server via a real client
 ├── protocol.md        # wire format + topology spec
+├── MCP.md             # MCP server: tools, identity, provisioning, coexistence
+├── JOIN.md            # runbook to onboard a new agent
 └── requirements.txt   # pika
 ```
 
@@ -63,6 +68,16 @@ with AgentBus("worker-1") as w:
 `send / broadcast / emit / request / respond / recv / consume / subscribe /
 unsubscribe / ctrl` are the codified common functions — every agent uses these, so
 the protocol is applied uniformly.
+
+## MCP server (agent tools)
+
+`python -m iac.mcp_server` runs a stdio MCP server that exposes the bus as
+first-class tools (`whoami, who, send, broadcast, emit, subscribe, poll, peek,
+respond, request, report_status`) — so agents collaborate without writing Python.
+It is registered in the workspace `.opencode/opencode.json` (`mcp.iac`) and joins
+as a **unique per-session** agent (`IAC_AGENT`, else `mcp-<host>-<pid>`). See
+[`MCP.md`](MCP.md) for provisioning, the single-owner-thread concurrency model, and
+how it coexists with `agentd.py`. Verify with `mcp_smoke.py` (real MCP client).
 
 ## Configuration (env)
 

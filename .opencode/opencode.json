@@ -32,6 +32,20 @@
       },
       "enabled": true,
       "timeout": 120000
+    },
+    "iac": {
+      "type": "local",
+      "command": [
+        "/home/zharia/.local/share/iac-mcp/venv/bin/python",
+        "-m",
+        "iac.mcp_server"
+      ],
+      "cwd": "/home/zharia/Projects/experiments/semantic_computational_runtime/runtime/HyrxMQ/tools/inter_agent_com",
+      "environment": {
+        "PYTHONPATH": "/home/zharia/Projects/experiments/semantic_computational_runtime/runtime/HyrxMQ/tools/inter_agent_com"
+      },
+      "enabled": true,
+      "timeout": 60000
     }
   },
   "skills": {
