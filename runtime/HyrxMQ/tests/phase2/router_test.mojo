@@ -9,6 +9,8 @@ from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import ExchangeType
 from hyrx.core.router import Router
 
+from hyrx.testing import check
+
 def _make_msg(key: String, val: UInt8) raises -> Message:
     """Helper: create a message with a single-byte payload."""
     var headers = Dict[String, String]()
@@ -21,15 +23,15 @@ def _make_msg(key: String, val: UInt8) raises -> Message:
 def test_declare_and_bind() raises:
     """Declare exchange, queue, and bind them."""
     var router = Router()
-    assert router.declare_exchange("amq.direct", ExchangeType.direct())
-    assert router.declare_queue("orders", 100)
-    assert router.bind_queue("orders", "amq.direct", "orders.new")
-    assert router.exchange_count() == 1
-    assert router.queue_count() == 1
+    check(router.declare_exchange("amq.direct", ExchangeType.direct()), "L24 expect: router.declare_exchange('amq.direct', ExchangeType.direct())")
+    check(router.declare_queue("orders", 100), "L25 expect: router.declare_queue('orders', 100)")
+    check(router.bind_queue("orders", "amq.direct", "orders.new"), "L26 expect: router.bind_queue('orders', 'amq.direct', 'orders.new')")
+    check(router.exchange_count() == 1, "L27 expect: router.exchange_count() == 1")
+    check(router.queue_count() == 1, "L28 expect: router.queue_count() == 1")
 
     # Duplicate declarations return False
-    assert router.declare_exchange("amq.direct", ExchangeType.direct()) == False
-    assert router.declare_queue("orders", 100) == False
+    check(router.declare_exchange("amq.direct", ExchangeType.direct()) == False, "L31 expect: router.declare_exchange('amq.direct', ExchangeType.direct()) == False")
+    check(router.declare_queue("orders", 100) == False, "L32 expect: router.declare_queue('orders', 100) == False")
 
 def test_publish_route_deliver_ack() raises:
     """Full flow: publish → route → deliver → ack."""
@@ -40,25 +42,25 @@ def test_publish_route_deliver_ack() raises:
 
     var msg = _make_msg("test.key", 0x01)
     var routed = router.publish(msg^, "ex")
-    assert routed == 1
-    assert router.messages_routed() == 1
+    check(routed == 1, "L43 expect: routed == 1")
+    check(router.messages_routed() == 1, "L44 expect: router.messages_routed() == 1")
 
     # Register consumer and consume
     var cid = router.register_consumer("q", 0)
     var delivery = router.consume(cid)
-    assert delivery.__bool__()
+    check(delivery.__bool__(), "L49 expect: delivery.__bool__()")
 
     # Read payload
     var view = router.read_payload(cid, delivery.value().delivery_tag())
-    assert view.size() == 1
-    assert view[0] == 0x01
+    check(view.size() == 1, "L53 expect: view.size() == 1")
+    check(view[0] == 0x01, "L54 expect: view[0] == 0x01")
 
     # Acknowledge
-    assert router.acknowledge(cid, delivery.value().delivery_tag())
+    check(router.acknowledge(cid, delivery.value().delivery_tag()), "L57 expect: router.acknowledge(cid, delivery.value().delivery_tag())")
 
     # Queue should be empty now
     var empty = router.consume(cid)
-    assert not empty.__bool__()
+    check(not empty.__bool__(), "L61 expect: not empty.__bool__()")
 
 def test_publish_route_reject_redeliver() raises:
     """Publish → deliver → reject → redeliver."""
@@ -74,16 +76,16 @@ def test_publish_route_reject_redeliver() raises:
 
     # First delivery
     var d1 = router.consume(cid)
-    assert d1.__bool__()
+    check(d1.__bool__(), "L77 expect: d1.__bool__()")
     var tag1 = d1.value().delivery_tag()
-    assert router.reject(cid, tag1)
+    check(router.reject(cid, tag1), "L79 expect: router.reject(cid, tag1)")
 
     # Redeliver
     var d2 = router.consume(cid)
-    assert d2.__bool__()
+    check(d2.__bool__(), "L83 expect: d2.__bool__()")
     var view = router.read_payload(cid, d2.value().delivery_tag())
-    assert view[0] == 0xAA
-    assert router.acknowledge(cid, d2.value().delivery_tag())
+    check(view[0] == 0xAA, "L85 expect: view[0] == 0xAA")
+    check(router.acknowledge(cid, d2.value().delivery_tag()), "L86 expect: router.acknowledge(cid, d2.value().delivery_tag())")
 
 def test_consumer_unregister() raises:
     """Register and unregister consumer."""
@@ -93,17 +95,17 @@ def test_consumer_unregister() raises:
     router.bind_queue("q", "ex", "")
 
     var cid = router.register_consumer("q", 0)
-    assert router.consumer_count() == 1
+    check(router.consumer_count() == 1, "L96 expect: router.consumer_count() == 1")
 
-    assert router.unregister_consumer(cid)
-    assert router.consumer_count() == 0
+    check(router.unregister_consumer(cid), "L98 expect: router.unregister_consumer(cid)")
+    check(router.consumer_count() == 0, "L99 expect: router.consumer_count() == 0")
 
     # Unregister non-existing
-    assert router.unregister_consumer(999) == False
+    check(router.unregister_consumer(999) == False, "L102 expect: router.unregister_consumer(999) == False")
 
     # Consume from non-existing consumer returns None
     var delivery = router.consume(999)
-    assert not delivery.__bool__()
+    check(not delivery.__bool__(), "L106 expect: not delivery.__bool__()")
 
 def test_backpressure() raises:
     """Queue rejects when full, router returns 0."""
@@ -115,9 +117,9 @@ def test_backpressure() raises:
     router.publish(_make_msg("key", 1)^, "ex")
     router.publish(_make_msg("key", 2)^, "ex")
     var result = router.publish(_make_msg("key", 3)^, "ex")
-    assert result == 0  # Rejected due to backpressure
+    check(result == 0, "L118 expect: result == 0")  # Rejected due to backpressure
 
-    assert router.messages_routed() == 2
+    check(router.messages_routed() == 2, "L120 expect: router.messages_routed() == 2")
 
 def test_fanout_routing() raises:
     """Fanout delivers to all bound queues."""
@@ -132,7 +134,7 @@ def test_fanout_routing() raises:
 
     var msg = _make_msg("anything", 0xFF)
     var routed = router.publish(msg^, "fan")
-    assert routed == 3
+    check(routed == 3, "L135 expect: routed == 3")
 
     # Each queue should have one message
     var c1 = router.register_consumer("q1", 0)
@@ -142,9 +144,9 @@ def test_fanout_routing() raises:
     var d1 = router.consume(c1)
     var d2 = router.consume(c2)
     var d3 = router.consume(c3)
-    assert d1.__bool__()
-    assert d2.__bool__()
-    assert d3.__bool__()
+    check(d1.__bool__(), "L145 expect: d1.__bool__()")
+    check(d2.__bool__(), "L146 expect: d2.__bool__()")
+    check(d3.__bool__(), "L147 expect: d3.__bool__()")
 
 def test_topic_routing() raises:
     """Topic exchange routes by pattern."""
@@ -165,16 +167,16 @@ def test_topic_routing() raises:
     # orders queue gets orders.new and orders.old
     var d1 = router.consume(oc)
     var d2 = router.consume(oc)
-    assert d1.__bool__()
-    assert d2.__bool__()
+    check(d1.__bool__(), "L168 expect: d1.__bool__()")
+    check(d2.__bool__(), "L169 expect: d2.__bool__()")
     var empty = router.consume(oc)
-    assert not empty.__bool__()
+    check(not empty.__bool__(), "L171 expect: not empty.__bool__()")
 
     # logs queue gets logs.error
     var d3 = router.consume(lc)
-    assert d3.__bool__()
+    check(d3.__bool__(), "L175 expect: d3.__bool__()")
     empty = router.consume(lc)
-    assert not empty.__bool__()
+    check(not empty.__bool__(), "L177 expect: not empty.__bool__()")
 
 def test_prefetch_limit() raises:
     """Consumer respects prefetch limit."""
@@ -191,34 +193,34 @@ def test_prefetch_limit() raises:
 
     var d1 = router.consume(cid)
     var d2 = router.consume(cid)
-    assert d1.__bool__()
-    assert d2.__bool__()
+    check(d1.__bool__(), "L194 expect: d1.__bool__()")
+    check(d2.__bool__(), "L195 expect: d2.__bool__()")
 
     # At prefetch limit
     var d3 = router.consume(cid)
-    assert not d3.__bool__()
+    check(not d3.__bool__(), "L199 expect: not d3.__bool__()")
 
     # Ack one, can consume again
     router.acknowledge(cid, d1.value().delivery_tag())
     d3 = router.consume(cid)
-    assert d3.__bool__()
+    check(d3.__bool__(), "L204 expect: d3.__bool__()")
 
 def test_delete_exchange() raises:
     """Delete exchange removes it."""
     var router = Router()
     router.declare_exchange("del", ExchangeType.direct())
-    assert router.exchange_count() == 1
-    assert router.delete_exchange("del")
-    assert router.exchange_count() == 0
-    assert router.delete_exchange("del") == False
+    check(router.exchange_count() == 1, "L210 expect: router.exchange_count() == 1")
+    check(router.delete_exchange("del"), "L211 expect: router.delete_exchange('del')")
+    check(router.exchange_count() == 0, "L212 expect: router.exchange_count() == 0")
+    check(router.delete_exchange("del") == False, "L213 expect: router.delete_exchange('del') == False")
 
 def test_delete_queue() raises:
     """Delete queue removes it."""
     var router = Router()
     router.declare_queue("del", 10)
-    assert router.queue_count() == 1
+    check(router.queue_count() == 1, "L219 expect: router.queue_count() == 1")
     _ = router.delete_queue("del")
-    assert router.queue_count() == 0
+    check(router.queue_count() == 0, "L221 expect: router.queue_count() == 0")
 
 def main() raises:
     test_declare_and_bind()

@@ -9,6 +9,10 @@
 # Ownership model:
 #   - Exchange owns its bindings list.
 #   - match() returns queue names by value (copied strings).
+#   - match() returns a DESTINATION SET: each matching queue appears once,
+#     even when several of its bindings match the same routing key.
+#     (audit §6 / AMQP: "each queue receives exactly one copy" — a queue
+#     bound by two matching patterns must not be double-delivered.)
 
 from std.collections import List
 
@@ -71,63 +75,55 @@ def _topic_match(routing_key: String, pattern: String) -> Bool:
     * matches exactly one word (between dots).
     # matches zero or more words.
     """
-    var klen = len(routing_key.codepoints())
-    var plen = len(pattern.codepoints())
-    return _match_cp(routing_key, 0, klen, pattern, 0, plen)
+    var key_parts = routing_key.split(".")
+    var pat_parts = pattern.split(".")
+    var key_words = List[String]()
+    var pat_words = List[String]()
+    for i in range(len(key_parts)):
+        key_words.append(String(key_parts[i]))
+    for j in range(len(pat_parts)):
+        pat_words.append(String(pat_parts[j]))
+    return _match_words(key_words, 0, pat_words, 0)
 
-def _match_cp(
-    key: String,
+def _match_words(
+    key: List[String],
     ki: Int,
-    klen: Int,
-    pat: String,
+    pat: List[String],
     pi: Int,
-    plen: Int,
 ) -> Bool:
-    """Recursive codepoint-level matching for topic patterns."""
-    if ki == klen and pi == plen:
-        return True
-    if pi >= plen:
-        return False
+    """Recursive word-level matching for topic patterns."""
+    if pi == len(pat):
+        return ki == len(key)
 
-    var pat_c = String(pat[codepoint=pi])
+    var word = pat[pi]
 
-    # Current pattern char is '#'
-    if pat_c == "#":
-        if pi + 1 >= plen:
-            return True
-        var nk = ki
-        while nk <= klen:
-            if _match_cp(key, nk, klen, pat, pi + 1, plen):
+    # '#' matches zero or more words — try every consumption length.
+    if word == "#":
+        var n = ki
+        while n <= len(key):
+            if _match_words(key, n, pat, pi + 1):
                 return True
-            # Advance past current word to next dot
-            while nk < klen:
-                var kc = String(key[codepoint=nk])
-                if kc == ".":
-                    nk += 1
-                    break
-                nk += 1
+            n += 1
         return False
 
-    # Current pattern char is '*'
-    if pat_c == "*":
-        if ki >= klen:
-            return False
-        # Skip one word in key — stop at dot (don't consume it)
-        var nk = ki
-        while nk < klen:
-            var kc = String(key[codepoint=nk])
-            if kc == ".":
-                break
-            nk += 1
-        return _match_cp(key, nk, klen, pat, pi + 1, plen)
+    if ki == len(key):
+        return False
 
-    # Literal match
-    if ki >= klen:
+    # '*' matches exactly one word.
+    if word == "*":
+        return _match_words(key, ki + 1, pat, pi + 1)
+
+    # Literal word.
+    if word != key[ki]:
         return False
-    var key_c = String(key[codepoint=ki])
-    if key_c != pat_c:
-        return False
-    return _match_cp(key, ki + 1, klen, pat, pi + 1, plen)
+    return _match_words(key, ki + 1, pat, pi + 1)
+
+def _already_present(result: List[String], queue_name: String) -> Bool:
+    """True if `queue_name` is already in the destination list."""
+    for i in range(len(result)):
+        if result[i] == queue_name:
+            return True
+    return False
 
 def _binding_exists(bindings: List[Binding], queue_name: String, routing_key: String) -> Bool:
     """Check if a binding already exists for the given queue and routing key."""
@@ -173,7 +169,10 @@ struct Exchange:
         return False
 
     def match(ref self, routing_key: String) -> List[String]:
-        """Return queue names matching the routing key for this exchange type.
+        """Return the destination SET of queue names matching the routing key.
+
+        Duplicates are removed: one queue bound by several matching
+        bindings is listed once, so publish() delivers one copy to it.
 
         Direct: exact match on routing_key.
         Fanout: all bound queues.
@@ -185,18 +184,26 @@ struct Exchange:
         if self._type == ExchangeType.direct():
             for i in range(len(self._bindings)):
                 if self._bindings[i]._routing_key == routing_key:
-                    result.append(self._bindings[i]._queue_name)
+                    var qname = self._bindings[i]._queue_name
+                    if not _already_present(result, qname):
+                        result.append(qname)
         elif self._type == ExchangeType.fanout():
             for i in range(len(self._bindings)):
-                result.append(self._bindings[i]._queue_name)
+                var qname_f = self._bindings[i]._queue_name
+                if not _already_present(result, qname_f):
+                    result.append(qname_f)
         elif self._type == ExchangeType.topic():
             for i in range(len(self._bindings)):
                 if _topic_match(routing_key, self._bindings[i]._routing_key):
-                    result.append(self._bindings[i]._queue_name)
+                    var qname_t = self._bindings[i]._queue_name
+                    if not _already_present(result, qname_t):
+                        result.append(qname_t)
         elif self._type == ExchangeType.headers():
             # Stub: return all bound queues
             for i in range(len(self._bindings)):
-                result.append(self._bindings[i]._queue_name)
+                var qname_h = self._bindings[i]._queue_name
+                if not _already_present(result, qname_h):
+                    result.append(qname_h)
 
         return result^
 
