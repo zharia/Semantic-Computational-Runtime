@@ -81,26 +81,48 @@ def main() -> int:
                 _log("max-runtime reached; exiting")
                 break
 
-            got = bus.recv(timeout=1.0)
+            try:
+                got = bus.recv(timeout=1.0)
+            except Exception as ex:
+                # Transient broker/AMQP error must not kill the coordinator.
+                _log(f"recv error ({ex!r}); reconnecting bus")
+                try:
+                    bus.close()
+                except Exception:
+                    pass
+                time.sleep(1.0)
+                try:
+                    bus = AgentBus(args.agent, event_patterns=args.patterns or None)
+                except Exception as ex2:
+                    _log(f"reconnect failed ({ex2!r}); will retry")
+                    time.sleep(2.0)
+                continue
             if got is None:
                 continue
             env, method = got
             n += 1
-            if args.inbox:
-                rec = {"ts": env.ts, "kind": env.kind, "from": env.frm,
-                       "to": env.to, "subject": env.subject, "id": env.id,
-                       "correlation_id": env.correlation_id, "body": env.body}
-                with open(args.inbox, "a") as fh:
-                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            _log(f"#{n} [{env.kind}] {env.frm} -> {env.to or '*'} {env.subject!r} {env.body}")
+            try:
+                if args.inbox:
+                    rec = {"ts": env.ts, "kind": env.kind, "from": env.frm,
+                           "to": env.to, "subject": env.subject, "id": env.id,
+                           "correlation_id": env.correlation_id, "body": env.body}
+                    with open(args.inbox, "a") as fh:
+                        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                _log(f"#{n} [{env.kind}] {env.frm} -> {env.to or '*'} {env.subject!r} {env.body}")
 
-            if env.kind == P.KIND_REQUEST and env.reply_to:
-                bus.respond(env, body={"ok": True, "agent": args.agent,
-                                       "status": args.status, "re": env.subject,
-                                       "echo": env.body})
-                answered += 1
-                _log(f"  answered request for {env.reply_to} (id {env.id[:8]})")
-            bus.ack(method)
+                if env.kind == P.KIND_REQUEST and env.reply_to:
+                    bus.respond(env, body={"ok": True, "agent": args.agent,
+                                           "status": args.status, "re": env.subject,
+                                           "echo": env.body})
+                    answered += 1
+                    _log(f"  answered request for {env.reply_to} (id {env.id[:8]})")
+                bus.ack(method)
+            except Exception as ex:
+                _log(f"handle error ({ex!r}); attempting nack+continue")
+                try:
+                    bus.nack(method, requeue=True)
+                except Exception:
+                    pass
     finally:
         if args.announce:
             try:
