@@ -7,10 +7,9 @@
 #   - Router owns all exchanges, queues, and consumers.
 #   - publish() COPIES the payload per destination queue (one owned copy
 #     per queue); the original Message is consumed by the publish call.
-#   - each destination owns an independent copy of payload bytes (no sharing
-#     between queues); the per-destination envelope keeps the routing key but
-#     DROPS message_id/headers (KNOWN DEFECT, see publish() and
-#     docs/MEMORY_MODEL.md "Reported defects").
+#   - each fan-out destination owns an independent copy of payload bytes (no
+#     sharing between queues); message_id, routing_key, and headers are
+#     preserved in every per-destination envelope.
 #   - consume() returns a Delivery claim token (message stays in queue).
 #   - acknowledge() and reject() operate on the queue's message copy.
 
@@ -132,16 +131,6 @@ struct Router:
         copied and the payload bytes are COPIED per destination (no payload
         buffer is shared between queues).
 
-        KNOWN DEFECT (audit §5, reported not fixed): the per-destination
-        envelope is built with MessageID(0) and an EMPTY headers dict — the
-        published message's message_id and headers are DISCARDED on fan-out
-        (see the loop below). It is not fixed here because the core exposes
-        no accessor to read a queued message's message_id/headers (only
-        routing_key), so the behaviour cannot be pinned by a test, and
-        AMQP content properties are declared NOT IMPLEMENTED
-        (src/hyrx/amqp/adapter.mojo:100) — the loss is currently latent.
-        A fix belongs in the same package as an envelope read-back API.
-
         Returns the number of queues the message was actually routed to,
         i.e. the number of destinations whose enqueue() accepted the copy:
         a destination at capacity silently drops its copy (audit §7).
@@ -152,32 +141,36 @@ struct Router:
         if exchange_name not in self._exchanges:
             return 0
 
-        # Get routing key (borrows from msg, does not consume)
+        # Get routing key (borrows from msg, does not consume).
         var queue_names = self._exchanges[exchange_name].match(
             msg.routing_key()
         )
         var count = 0
 
+        # A single eligible queue can receive the consumed source Message
+        # directly. Preflight is non-consuming; Queue and Router are
+        # single-threaded, so this immediate enqueue cannot be displaced.
+        var eligible_count = 0
+        var only_queue = String("")
+        for i in range(len(queue_names)):
+            if queue_names[i] in self._queues:
+                eligible_count += 1
+                only_queue = queue_names[i]
+        if (
+            eligible_count == 1
+            and self._queues[only_queue].has_capacity()
+        ):
+            self._queues[only_queue].enqueue_prechecked(msg^)
+            self._messages_routed += 1
+            return 1
+
         for i in range(len(queue_names)):
             var qname = queue_names[i]
             if qname in self._queues:
-                # KNOWN DEFECT (audit §5): message_id and headers of the
-                # published message are dropped here — see publish() docstring.
-                var headers = Dict[String, String]()
                 var env = Envelope(
-                    MessageID(0), msg.routing_key(), headers^
+                    msg.message_id(), msg.routing_key(), msg.headers()
                 )
-                var snap = msg.payload()  # COPIES every payload byte (copy #1)
-                # TECH DEBT (audit §7): the live publish path COPIES the payload
-                # per destination queue instead of taking a BufferPool-owned
-                # buffer. Memory boundedness on this path therefore rests
-                # on queue capacity + the codec's frame_max ceiling, NOT on the
-                # pool. Changing ownership (shared claim / refcount) is a
-                # separate work package — not done here.
-                var payload = Buffer(snap.size())  # copy #2: snapshot -> owned Buffer
-                payload.resize(snap.size())
-                for j in range(snap.size()):
-                    payload[j] = snap[j]
+                var payload = msg.payload_copy()
                 var cloned = Message(env^, payload^)
                 if self._queues[qname].enqueue(cloned^):
                     count += 1
@@ -282,6 +275,42 @@ struct Router:
         """
         var qname = self._consumers[consumer_id].queue_name()
         return self._queues[qname].read_payload(delivery_tag)
+
+    def queue_routing_key(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> String:
+        """Read the routing key associated with an unacked delivery.
+
+        Delivery tags are scoped to queues, so the consumer id is required to
+        resolve the owning queue. The queue remains the semantic authority for
+        the envelope field.
+        """
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].read_routing_key(delivery_tag)
+
+    def queue_message_count(self, consumer_id: UInt64) raises -> Int:
+        """Return this consumer queue's pending (ready) message count.
+
+        This deliberately exposes Queue.depth(), whose established meaning is
+        pending-only. It is therefore the post-pop AMQP get-ok message-count,
+        not the queue's pending-plus-unacked management/backpressure count.
+        """
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].depth()
+
+    def read_message_id(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> MessageID:
+        """Read an unacked message's preserved identifier."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].read_message_id(delivery_tag)
+
+    def read_headers(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Dict[String, String]:
+        """Read an owned copy of an unacked message's preserved headers."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].read_headers(delivery_tag)
 
     # ---- stats --------------------------------------------------------
 

@@ -43,14 +43,16 @@ struct Envelope:
         self._routing_key = routing_key^
         self._headers = headers^
 
-    def message_id(self) -> MessageID:
-        return self._message_id^
+    def message_id(ref self) -> MessageID:
+        """Return an independent value of this envelope's identifier."""
+        return MessageID(self._message_id.to_uint64())
 
     def routing_key(self) -> String:
         return self._routing_key
 
-    def headers(self) -> Dict[String, String]:
-        return self._headers^
+    def headers(ref self) -> Dict[String, String]:
+        """Return an independent owned copy of this envelope's header map."""
+        return self._headers.copy()
 
 struct Message:
     """A complete message: envelope (metadata) + payload (bytes).
@@ -78,6 +80,18 @@ struct Message:
     def routing_key(self) -> String:
         """Shortcut: envelope routing key."""
         return self._envelope._routing_key
+
+    def message_id(ref self) -> MessageID:
+        """Return the published message identifier."""
+        return self._envelope.message_id()
+
+    def headers(ref self) -> Dict[String, String]:
+        """Return an owned copy of the published header map."""
+        return self._envelope.headers()
+
+    def payload_copy(ref self) -> Buffer:
+        """Return one owned, exact-length copy of the payload bytes."""
+        return Buffer.from_buffer_copy(self._payload)
 
     def payload(ref self) -> BufferSnapshot:
         """Return an owned COPY of the payload bytes.

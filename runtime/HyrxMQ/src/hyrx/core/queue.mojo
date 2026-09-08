@@ -17,7 +17,7 @@ from std.collections import List
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
-from hyrx.core.message import Message
+from hyrx.core.message import Message, MessageID
 
 struct QueueConfig:
     """Configuration for a message queue."""
@@ -88,6 +88,25 @@ struct Queue:
         self._inbox.append(msg^)
         return True
 
+    def has_capacity(ref self) -> Bool:
+        """Whether enqueue would accept one message at this instant.
+
+        This is a non-consuming preflight for the router's single-destination
+        move path. The core is single-threaded, so no concurrent enqueue can
+        invalidate the result between this check and the immediate transfer.
+        """
+        return self._total_count() < self._config._capacity
+
+    def enqueue_prechecked(mut self, var msg: Message):
+        """Move a message into a Queue proven available by ``has_capacity()``.
+
+        Router invokes this immediately after its capacity preflight in the
+        single-threaded core. Keeping the transfer separate from ``enqueue``
+        preserves the source message when an ordinary capacity-reject needs to
+        use the fan-out copy path.
+        """
+        self._inbox.append(msg^)
+
     def dequeue(mut self) -> Optional[Delivery]:
         """Move next message to unacked, return delivery token.
 
@@ -125,6 +144,20 @@ struct Queue:
         if delivery_tag in self._unacked:
             return self._unacked[delivery_tag].routing_key()
         return ""
+
+    def read_message_id(ref self, delivery_tag: UInt64) raises -> MessageID:
+        """Read the identifier of an unacked message claim."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].message_id()
+        return MessageID(0)
+
+    def read_headers(
+        ref self, delivery_tag: UInt64
+    ) raises -> Dict[String, String]:
+        """Read an owned header-map copy of an unacked message claim."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].headers()
+        return Dict[String, String]()
 
     def acknowledge(mut self, delivery_tag: UInt64) raises -> Bool:
         """Confirm delivery. Message is destroyed. Returns True if found."""

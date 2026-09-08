@@ -84,15 +84,18 @@ def test_one_pub_one_queue() raises:
 
 def test_publish_consumes_the_source_message() raises:
     """The published Message is consumed by publish(); the queue's copy is a
-    separate allocation (proved: source id/headers are not visible on the
-    queued copy — REPORTED defect, docs/MEMORY_MODEL.md)."""
+    separate allocation (proved: payload bytes are copied), and the metadata
+    the publisher set (message_id + headers) is preserved on the queued copy
+    (WP-A of increment 0004 — the previous "REPORTED defect" is now fixed via
+    the queue read-back API)."""
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 10)
     router.bind_queue("q", "ex", "k")
     var headers = Dict[String, String]()
     headers["prio"] = "high"
-    var env = Envelope(MessageID(UInt64(0xBEEF)), "k", headers^)
+    var rk = "k"
+    var env = Envelope(MessageID(UInt64(0xBEEF)), rk, headers^)
     var buf = Buffer(8)
     buf.resize(1)
     buf[0] = 0x77
@@ -102,10 +105,73 @@ def test_publish_consumes_the_source_message() raises:
     var d = router.consume(cid)
     check(router.read_payload(cid, d.value().delivery_tag())[0] == 0x77,
           "payload COPIED into the queued message")
-    # ROUTER API NOTE: message_id/headers of a queued message are not
-    # readable through the core public API (only routing_key + payload),
-    # which is why the metadata loss in router.mojo cannot be pinned by an
-    # assertion. Reported, not guessed.
+    check(router.read_message_id(cid, d.value().delivery_tag()) == MessageID(UInt64(0xBEEF)),
+          "WP-A: published message_id preserved on the queued copy")
+    var got_headers = router.read_headers(cid, d.value().delivery_tag())
+    check(got_headers["prio"] == "high", "WP-A: published header preserved")
+
+def test_metadata_fidelity_preserved_on_fanout() raises:
+    """WP-A (increment 0004, Sprint 01): a publish carrying a non-zero
+    message_id and ≥1 header must deliver the SAME id and headers to EVERY
+    accepted fan-out destination; each queued envelope owns an independent
+    header map.
+
+    Negative proof: against the old router (MessageID(0) + empty headers) the
+    checks below fail — this is the regression guard for the fix."""
+    var router = Router()
+    router.declare_exchange("f", ExchangeType.fanout())
+    for n in ["a", "b", "c"]:
+        router.declare_queue(n, 100)
+        router.bind_queue(n, "f", "")
+
+    var mid_val = UInt64(0xCAFE)
+    var headers = Dict[String, String]()
+    headers["prio"] = "high"
+    headers["trace"] = "abc"
+    var rk = "k"
+    var env = Envelope(MessageID(mid_val), rk, headers^)
+    var buf = Buffer(8)
+    buf.resize(1)
+    buf[0] = 0x2A
+    var msg = Message(env^, buf^)
+    check(router.publish(msg^, "f") == 3, "WP-A: fanned out to all three queues")
+
+    for n in ["a", "b", "c"]:
+        var cid = router.register_consumer(n, 0)
+        var d = router.consume(cid)
+        check(d.__bool__(), "WP-A: " + n + " received a delivery")
+        var tag = d.value().delivery_tag()
+        check(router.read_message_id(cid, tag) == MessageID(mid_val),
+              "WP-A: " + n + " keeps the published message_id")
+        var got = router.read_headers(cid, tag)
+        check(got["prio"] == "high", "WP-A: " + n + " keeps header prio")
+        check(got["trace"] == "abc", "WP-A: " + n + " keeps header trace")
+        check(len(got) == 2, "WP-A: " + n + " owns an independent header map")
+
+def test_metadata_fidelity_single_destination_move() raises:
+    """WP-A + single-destination move path: when exactly one queue is eligible,
+    publish transfers the source Message directly (no per-destination clone);
+    the move must still preserve message_id and headers."""
+    var router = Router()
+    router.declare_exchange("ex", ExchangeType.direct())
+    router.declare_queue("only", 10)
+    router.bind_queue("only", "ex", "k")
+    var mid_val = UInt64(0x1234)
+    var headers = Dict[String, String]()
+    headers["x"] = "one"
+    var rk = "k"
+    var env = Envelope(MessageID(mid_val), rk, headers^)
+    var buf = Buffer(8)
+    buf.resize(1)
+    buf[0] = 0x5
+    var msg = Message(env^, buf^)
+    check(router.publish(msg^, "ex") == 1, "single eligible queue takes the move")
+    var cid = router.register_consumer("only", 0)
+    var d = router.consume(cid)
+    check(router.read_message_id(cid, d.value().delivery_tag()) == MessageID(mid_val),
+          "WP-A: moved message keeps message_id")
+    check(router.read_headers(cid, d.value().delivery_tag())["x"] == "one",
+          "WP-A: moved message keeps header x")
 
 # ---- card 2: one publisher -> many queues -----------------------------
 
@@ -513,6 +579,8 @@ def main() raises:
     test_direct_same_queue_multiple_keys()
     test_duplicate_binding_is_idempotent()
     test_unbind_removes_destination()
+    test_metadata_fidelity_preserved_on_fanout()
+    test_metadata_fidelity_single_destination_move()
     test_match_sets_by_type()
     test_headers_exchange_is_a_stub()
     test_reject_requeues_same_owned_message()
