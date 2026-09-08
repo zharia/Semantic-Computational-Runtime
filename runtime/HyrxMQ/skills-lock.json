@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "mojo-syntax": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "mojo-syntax/SKILL.md",
+      "computedHash": "5a7b0a9c37d39a0f0c9ed6bfbda2f86a57dabb5ff55f2b1009116d2adcd36c37"
+    }
+  }
+}
