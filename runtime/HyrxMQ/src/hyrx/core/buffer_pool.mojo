@@ -1,99 +1,131 @@
-# Fixed-size slab allocator for Buffer reuse.
+# Bounded, size-classed allocator for Buffer reuse.
 #
-# The pool manages a bounded number of slabs. Each slab holds buffers
-# of a uniform size. Releasing a buffer returns it to the pool for
-# reuse, avoiding repeated allocation/deallocation overhead.
+# The pool keeps per-size-class free lists. `acquire(min_bytes)` returns a usable,
+# owned Buffer whose logical length is 0; on reuse it is RESET (stale bytes cleared)
+# and tagged with its class. `release(buf)` returns a POOL-OWNED buffer to its own
+# class; a non-pooled (directly-allocated) buffer is simply dropped.
+#
+# Design contracts (see p1b_design.md §3/§8):
+#   - acquire NEVER raises and NEVER rejects. Oversize (> largest class) or pool
+#     exhaustion => it returns a plain, non-pooled Buffer (caller direct path), so
+#     publish semantics are unchanged by allocation state (decision D2).
+#   - release is origin-tagged: only buffers this pool handed out are recycled
+#     (R3), and each returns to its own size class.
+#   - Total pooled buffers is bounded by max_pooled; total pooled bytes by
+#     sum(class_bytes). Neither is affected by the direct-alloc fallback.
 #
 # Ownership model:
-#   - acquire() returns an owned Buffer to the caller.
-#   - release() takes ownership back into the pool.
-#   - Pool slabs own their buffers; the pool owns the slabs.
+#   - acquire() returns an owned Buffer (pooled or direct).
+#   - release() takes ownership back into the pool (only if it was pooled).
 #
-# Implementation note: List[Buffer] requires move-only access.
-# All element extraction uses pop() to get owned values.
+# Implementation note: List[Buffer] is move-only; extraction uses pop() for owned
+# values. The origin tag lives on Buffer (`is_pooled`/`pool_class`/`mark_pooled`).
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.pool_stats import PoolStats
 
+# Smallest size class (bytes). Payloads below this still get a 128-byte buffer.
+def _MIN_CLASS() -> Int:
+    return 128
+
 struct BufferPool:
-    """Bounded slab allocator for fixed-size Buffers."""
+    """Bounded, size-classed allocator for fixed-capacity Buffers."""
 
-    var _slabs: List[List[Buffer]]
-    var _slab_size: Int
-    var _max_slabs: Int
-    var _alloc_count: Int
-    var _reuse_count: Int
-    var _in_use: Int
+    var _class_bytes: List[Int]       # capacity per class (ascending powers of two)
+    var _free: List[List[Buffer]]     # per-class free list
+    var _max_pooled: Int              # cap on total pooled buffers created
+    var _created: Int                 # pooled buffers created so far
+    var _in_use: Int                  # pooled buffers currently checked out
+    var _alloc_count: Int             # cumulative new creations
+    var _reuse_count: Int             # cumulative reuses from a free list
+    var _pooled_bytes: Int            # total bytes across pooled buffers (capacity)
 
-    def __init__(out self, slab_size: Int, max_slabs: Int):
-        """Initialise an empty pool.
+    def __init__(out self, max_class_bytes: Int, max_pooled: Int):
+        """Initialise an empty, bounded, size-classed pool.
 
         Arguments:
-            slab_size: capacity of each buffer in bytes.
-            max_slabs: upper bound on total slab count (resource limit).
+            max_class_bytes: largest size class; bigger requests get a direct
+                (non-pooled) buffer instead.
+            max_pooled: upper bound on the number of pooled buffers (resource limit).
         """
-        self._slabs = List[List[Buffer]]()
-        self._slab_size = slab_size
-        self._max_slabs = max_slabs
+        self._class_bytes = List[Int]()
+        var cap = _MIN_CLASS()
+        while cap < max_class_bytes:
+            self._class_bytes.append(cap)
+            cap = cap * 2
+        self._class_bytes.append(cap)  # largest class >= max_class_bytes
+
+        self._free = List[List[Buffer]]()
+        for _ in range(len(self._class_bytes)):
+            self._free.append(List[Buffer]())
+
+        self._max_pooled = max_pooled
+        self._created = 0
+        self._in_use = 0
         self._alloc_count = 0
         self._reuse_count = 0
-        self._in_use = 0
+        self._pooled_bytes = 0
+
+    def _class_index(self, min_bytes: Int) -> Int:
+        """Smallest class index with capacity >= min_bytes, or -1 if oversize."""
+        if min_bytes <= 0:
+            return 0
+        for i in range(len(self._class_bytes)):
+            if self._class_bytes[i] >= min_bytes:
+                return i
+        return -1
 
     # ---- lifecycle ---------------------------------------------------
 
-    def acquire(mut self) raises -> Buffer:
-        """Return an owned Buffer, reusing a released one if available.
+    def acquire(mut self, min_bytes: Int) -> Buffer:
+        """Return an owned, length-0 Buffer sized to hold at least `min_bytes`.
 
-        Ownership: the returned Buffer is fully owned by the caller.
-        Raises when the pool is exhausted (all slabs full, max reached).
+        Reuses a pooled buffer when one of an adequate class is free; otherwise
+        creates a pooled buffer while under `max_pooled`; otherwise (oversize or
+        exhausted) returns a plain NON-pooled buffer. Never raises.
         """
-        # Try to pop from the most recent slab first.
-        if len(self._slabs) > 0:
-            var last_idx = len(self._slabs) - 1
-            if len(self._slabs[last_idx]) > 0:
-                var buf = self._slabs[last_idx].pop()
-                self._reuse_count += 1
-                self._in_use += 1
+        var idx = self._class_index(min_bytes)
+        if idx >= 0:
+            if len(self._free[idx]) > 0:
+                var buf = self._free[idx].pop()
+                buf.clear()                 # reset logical length -> no stale bytes
+                buf.mark_pooled(idx)
+                self._in_use = self._in_use + 1
+                self._reuse_count = self._reuse_count + 1
                 return buf^
-
-        # No recycled buffers — allocate a new slab if permitted.
-        if len(self._slabs) >= self._max_slabs:
-            raise "BufferPool: exhausted — max slabs reached"
-
-        var new_slab = List[Buffer]()
-        # Pre-allocate 16 buffers for batch allocation.
-        for _ in range(16):
-            new_slab.append(Buffer(self._slab_size))
-        self._slabs.append(new_slab^)
-
-        # Pop one from the newly created slab.
-        var slab_len = len(self._slabs) - 1
-        var buf = self._slabs[slab_len].pop()
-        self._alloc_count += 1
-        self._in_use += 1
-        return buf^
+            if self._created < self._max_pooled:
+                var fresh = Buffer(self._class_bytes[idx])
+                fresh.mark_pooled(idx)
+                self._created = self._created + 1
+                self._pooled_bytes = self._pooled_bytes + self._class_bytes[idx]
+                self._in_use = self._in_use + 1
+                self._alloc_count = self._alloc_count + 1
+                return fresh^
+        # Oversize or pool-exhausted: direct allocation, NOT pool-owned.
+        var direct = Buffer(min_bytes)
+        return direct^
 
     def release(mut self, var buf: Buffer):
-        """Return a Buffer to the pool for reuse.
+        """Return a Buffer to the pool for reuse if it is pool-owned.
 
-        Ownership: the pool takes ownership of the buffer's memory.
-        The caller must not use the buffer after release.
+        A non-pooled (direct) buffer is dropped here (freed by its destructor);
+        it is never added to a free list. `in_use` only decrements for pooled
+        buffers, so it can never underflow via a stray release.
         """
-        self._in_use -= 1
-        # Return to the most recent slab.
-        if len(self._slabs) > 0:
-            self._slabs[len(self._slabs) - 1].append(buf^)
-        else:
-            var slab = List[Buffer]()
-            slab.append(buf^)
-            self._slabs.append(slab^)
+        if not buf.is_pooled():
+            return
+        var idx = buf.pool_class()
+        if idx < 0 or idx >= len(self._class_bytes):
+            return  # defensive: a bogus tag must not corrupt bookkeeping
+        buf.clear()
+        self._in_use = self._in_use - 1
+        self._free[idx].append(buf^)
 
     def stats(self) -> PoolStats:
-        """Snapshot of pool allocation statistics."""
-        var total_capacity = len(self._slabs) * 16 * self._slab_size
+        """Snapshot of pool allocation statistics (capacity = pooled bytes)."""
         return PoolStats(
             allocations=self._alloc_count,
             reuses=self._reuse_count,
-            capacity=total_capacity,
+            capacity=self._pooled_bytes,
             in_use=self._in_use,
         )

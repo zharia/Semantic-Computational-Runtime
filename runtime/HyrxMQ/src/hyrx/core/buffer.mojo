@@ -25,13 +25,19 @@ struct Buffer:
     """A contiguous byte region with ownership semantics."""
 
     var _data: List[UInt8]
+    var _pooled: Bool
+    var _pool_class: Int
 
     def __init__(out self, capacity: Int):
         """Allocate a new owned buffer of `capacity` bytes.
 
         Ownership: memory is allocated and owned by this Buffer.
+        A directly-constructed Buffer is NOT pool-owned (`_pooled=false`);
+        only `BufferPool.acquire` marks a buffer pooled (see `mark_pooled`).
         """
         self._data = List[UInt8](capacity=capacity)
+        self._pooled = False
+        self._pool_class = -1
 
     def __deinit__(deinit self):
         """Release memory. Called only when this Buffer is consumed/destroyed.
@@ -101,3 +107,28 @@ struct Buffer:
         # Shrink: remove trailing bytes.
         while len(self._data) > new_size:
             _ = self._data.pop()
+
+    # ---- pool origin tag (used by BufferPool; see buffer_pool.mojo) ----
+
+    def clear(mut self):
+        """Reset logical length to 0, keeping allocated capacity. Never raises."""
+        while len(self._data) > 0:
+            _ = self._data.pop()
+
+    def is_pooled(self) -> Bool:
+        """Whether this buffer was acquired from a BufferPool (else direct)."""
+        return self._pooled
+
+    def pool_class(self) -> Int:
+        """The pool size-class index this buffer belongs to, or -1 if not pooled."""
+        return self._pool_class
+
+    def mark_pooled(mut self, cls: Int):
+        """Pool-internal: record that this buffer belongs to size-class `cls`.
+
+        Called only by BufferPool.acquire. Sets the origin tag so that release
+        at a message-death site returns exactly this buffer to its own class and
+        never pools a directly-allocated (non-pooled) buffer.
+        """
+        self._pooled = True
+        self._pool_class = cls
