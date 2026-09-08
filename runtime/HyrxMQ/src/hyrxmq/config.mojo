@@ -3,9 +3,11 @@
 # Product-layer configuration surface. Parsing is pure (no file I/O), so it
 # is unit-testable without any filesystem or socket dependency.
 #
-# Policy (docs/CONFIGURATION.md): explicit, typed, validated before startup,
-# safe defaults, deterministic. `from_lines`/`from_key_values` apply typed
-# coercion; a non-integer value for an integer key raises.
+# Policy (docs/CONFIGURATION.md, audit §17): explicit, typed, validated before
+# startup, safe defaults, deterministic. `from_lines`/`from_key_values` apply
+# typed coercion in source order (later lines win for duplicate keys).
+# Unknown keys are REJECTED, empty values are REJECTED, and a malformed value
+# for an integer key raises a key-named error (never panics the process).
 
 from std.collections import List, Optional
 
@@ -49,6 +51,26 @@ def _is_comment(var line: String) -> Bool:
     return String(t[codepoint=0]) == "#"
 
 
+def _require_text(var key: String, var value: String) raises -> String:
+    """Trim a required text value; reject empty (audit §17: missing value)."""
+    var t = String(value.strip())
+    if len(t.bytes()) == 0:
+        raise "config: empty value for '" + key + "'"
+    return t
+
+
+def _require_int(var key: String, var value: String) raises -> Int:
+    """Coerce an integer value; reject empty and non-integer with a key-named
+    error so the process never panics on a malformed config (audit §17)."""
+    var t = value.strip()
+    if len(t.bytes()) == 0:
+        raise "config: empty value for '" + key + "'"
+    try:
+        return Int(t)
+    except:
+        raise "config: invalid integer for '" + key + "' (got '" + value + "')"
+
+
 struct HyrxMQConfig:
     """Standalone broker configuration with safe defaults."""
 
@@ -82,63 +104,87 @@ struct HyrxMQConfig:
         self.node_name = existing.node_name
 
     def apply(mut self, var key: String, var value: String) raises:
-        """Assign one recognized key. Unknown keys are ignored (forward compat).
+        """Assign one recognized key. Unknown keys are REJECTED (audit §17).
 
-        Integer keys coerce via Int(); malformed values raise.
+        Empty values are rejected. Integer keys coerce via `_require_int`,
+        which raises a key-named error on malformed input rather than
+        panicking the process.
         """
         if key == "listen_host":
-            self.listen_host = value
+            self.listen_host = _require_text(key, value)
         elif key == "port":
-            self.port = Int(value)
+            self.port = _require_int(key, value)
         elif key == "max_connections":
-            self.max_connections = Int(value)
+            self.max_connections = _require_int(key, value)
         elif key == "frame_max":
-            self.frame_max = Int(value)
+            self.frame_max = _require_int(key, value)
         elif key == "heartbeat_secs":
-            self.heartbeat_secs = Int(value)
+            self.heartbeat_secs = _require_int(key, value)
         elif key == "default_queue_capacity":
-            self.default_queue_capacity = Int(value)
+            self.default_queue_capacity = _require_int(key, value)
         elif key == "vhost":
-            self.vhost = value
+            self.vhost = _require_text(key, value)
         elif key == "node_name":
-            self.node_name = value
-        # unknown keys intentionally ignored
+            self.node_name = _require_text(key, value)
+        else:
+            raise "config: unknown field '" + key + "'"
 
     @staticmethod
     def from_key_values(var entries: List[KeyValuePair]) raises -> HyrxMQConfig:
         """Build a config by applying ordered key/value entries over defaults.
 
-        Ownership: `entries` is consumed.
+        Source order is preserved, so a later entry overrides an earlier
+        duplicate (last-wins). Ownership: `entries` is consumed.
         """
         var cfg = HyrxMQConfig()
+        var n = len(entries)
+        for i in range(n):
+            cfg.apply(entries[i].key, entries[i].value)
         while len(entries) > 0:
-            var kv = entries.pop()
-            cfg.apply(kv.key, kv.value)
+            _ = entries.pop()
         return cfg^
 
     @staticmethod
     def from_lines(var lines: List[String]) raises -> HyrxMQConfig:
         """Build a config from raw `key = value` text lines.
 
-        Blank and '#' comment lines are skipped. Ownership: `lines` consumed.
+        Blank and '#' comment lines are skipped. Lines are applied in source
+        order, so a later duplicate line wins (last-wins, deterministic).
+        Ownership: `lines` consumed.
         """
         var cfg = HyrxMQConfig()
-        while len(lines) > 0:
-            var raw = lines.pop()
+        var n = len(lines)
+        for i in range(n):
+            var raw = String(lines[i])
             if _is_comment(raw):
                 continue
-            var pair = parse_config_line(raw^)
+            var pair = parse_config_line(raw)
             cfg.apply(pair.key, pair.value)
+        while len(lines) > 0:
+            _ = lines.pop()
         return cfg^
 
-    # NOTE: load_from_file(path) is intentionally NOT provided. Mojo 1.0 does
-    # not expose a portable `os`/`File` module in this environment, so a real
-    # file read is not available; config loading is exercised from in-memory
-    # lines instead. When the stdlib lands, `load_from_file` should read bytes
-    # and delegate to `from_lines`.
+    # NOTE: load_from_file(path) is intentionally NOT provided. A probe of this
+    # environment's Mojo 1.0.0 stdlib found NO `os` (or `sys`) module resolvable
+    # (`from os import Dir` -> "unable to locate module 'os'"), so a real disk
+    # read is NOT AVAILABLE. Config is therefore exercised from in-memory lines;
+    # env vars / CLI args are the override path at the entry-point layer. When
+    # the stdlib lands, `load_from_file` should read bytes and delegate to
+    # `from_lines`.
 
     def validate(ref self) raises:
-        """Validate physical constraints. Raises if configuration is unsafe."""
+        """Validate physical constraints. Raises if configuration is unsafe.
+
+        Type/unknown-field/empty-value checks happen earlier, in `apply`
+        (via `_require_int`/`_require_text`); this pass covers value ranges and
+        defends against fields mutated directly (bypassing `apply`).
+        """
+        if len(self.listen_host.strip().bytes()) == 0:
+            raise "config: listen_host must not be empty"
+        if len(self.vhost.strip().bytes()) == 0:
+            raise "config: vhost must not be empty"
+        if len(self.node_name.strip().bytes()) == 0:
+            raise "config: node_name must not be empty"
         if self.port < 0 or self.port > 65535:
             raise "config: port out of range"
         if self.max_connections <= 0:

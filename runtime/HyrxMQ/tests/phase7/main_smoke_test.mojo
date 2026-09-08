@@ -5,10 +5,7 @@
 from hyrxmq.main import run_selfcheck
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def main() raises:
     var ok = run_selfcheck()

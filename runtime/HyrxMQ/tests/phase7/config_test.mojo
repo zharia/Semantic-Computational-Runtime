@@ -5,10 +5,7 @@ from std.collections import List
 from hyrxmq.config import HyrxMQConfig, KeyValuePair, parse_config_line
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def test_defaults() raises:
     var cfg = HyrxMQConfig()

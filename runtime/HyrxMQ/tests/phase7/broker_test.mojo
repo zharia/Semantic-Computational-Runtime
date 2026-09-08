@@ -9,10 +9,7 @@ from hyrxmq.config import HyrxMQConfig
 from hyrxmq.broker import HyrxMQBroker
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def test_health_transition() raises:
     var cfg = HyrxMQConfig()
@@ -100,6 +97,35 @@ def test_protocol_path_composed() raises:
     check(broker.protocol_selfcheck(), "AMQPAdapter protocol path round-trips")
 
 
+def test_adapter_and_broker_share_one_routing_authority() raises:
+    """The adapter must route INTO the broker's engine, never beside it.
+
+    If AMQPAdapter owned a second Router, protocol_selfcheck() would succeed
+    while status() still reported an empty engine (two authorities, invisible
+    to each other). One authority means the adapter's topology and publish are
+    counted by the same engine the broker reports.
+    """
+    var cfg = HyrxMQConfig()
+    var broker = HyrxMQBroker(cfg^)
+    broker.start()
+
+    var before = broker.status()
+    check((before.queues == 0), "engine starts with no queues")
+    check((before.messages_published == 0), "engine starts with no publishes")
+
+    check(broker.protocol_selfcheck(), "adapter path succeeded")
+
+    var after = broker.status()
+    check((after.queues == 1), "adapter's queue is visible in the engine")
+    check((after.messages_published == 1), "adapter's publish is counted")
+    check((after.messages_acked == 1), "adapter's ack is counted")
+    check((after.consumers == 1), "adapter's consumer is registered")
+
+    # And the broker surface sees the same topology through the engine:
+    # re-declaring "ps-q" the normal way reports "already exists".
+    check(not broker.declare_queue("ps-q"), "single table decides duplicates")
+
+
 def main() raises:
     test_health_transition()
     test_publish_routes_to_bound_queue()
@@ -107,4 +133,5 @@ def main() raises:
     test_empty_queue_deliver_none()
     test_duplicate_topology_returns_false()
     test_protocol_path_composed()
+    test_adapter_and_broker_share_one_routing_authority()
     print("PHASE7_BROKER_TEST=PASS")

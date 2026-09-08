@@ -7,10 +7,7 @@ from hyrxmq.broker import HyrxMQBroker
 from std.collections import List
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def test_status_defaults() raises:
     var s = BrokerStatus()

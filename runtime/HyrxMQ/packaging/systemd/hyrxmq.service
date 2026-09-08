@@ -11,6 +11,11 @@
 [Unit]
 Description=HyrxMQ message broker
 After=network.target
+# Restart rate limiting (audit §18 hardening): restart quickly after a crash,
+# but stop flapping if the broker dies repeatedly in a short window. systemd
+# refuses further restarts until the interval window rolls over.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -25,6 +30,20 @@ ProtectHome=true
 PrivateTmp=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 Restart=on-failure
+# Back off 1 s before each restart so a crash loop cannot spin the CPU.
+RestartSec=1s
+# Hard memory ceiling: the broker is fail-closed per connection, but a leaked
+# process is killed + restarted rather than eating the host (tune per deploy).
+MemoryMax=512M
+# Socket budget: one fd per connection plus listener/log fds. Keep >= the
+# broker's configured max_connections (default 1024) with headroom.
+LimitNOFILE=65536
+# Only these trees stay writable under ProtectSystem=strict: the runtime
+# socket/pid location, the durable state directory and the log directory.
+RuntimeDirectory=hyrxmq
+StateDirectory=hyrxmq
+LogsDirectory=hyrxmq
+ReadWritePaths=/run/hyrxmq /var/lib/hyrxmq /var/log/hyrxmq
 
 [Install]
 WantedBy=multi-user.target
