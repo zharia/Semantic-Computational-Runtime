@@ -45,3 +45,9 @@ This file records decisions that should not be casually reversed.
 ## ADR-008 — Optimization requires measurement
 
 **Decision:** no performance optimization is accepted without A/B or equivalent evidence and semantic regression testing.
+
+## ADR-009 — Flare is a pinned transport provider (decisions/0005)
+
+**Decision:** vendor flare v0.10.0 (submodule, `-I` source build) for TCP/UDS; only `src/hyrx/transport/*` may import it, never `src/hyrx/core`.
+
+**Reason:** real sockets without ABI lock or build-backend; provider stays subordinate to the transport contract.

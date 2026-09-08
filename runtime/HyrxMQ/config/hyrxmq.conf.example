@@ -1,0 +1,17 @@
+# HyrxMQ configuration example (key = value).
+#
+# Loaded by the product once a file reader exists; the Phase 7 tests parse the
+# same grammar from in-memory lines (hyrxmq.config). Values below are the safe
+# defaults. Unknown keys are ignored for forward compatibility.
+#
+# NOT PROVEN: reading this file from disk is not wired (Mojo 1.0 exposes no
+# portable `os`/`File` in this environment). See src/hyrxmq/config.mojo.
+
+listen_host = 0.0.0.0
+port = 5672
+max_connections = 1024
+frame_max = 131072
+heartbeat_secs = 60
+default_queue_capacity = 1024
+vhost = /
+node_name = hyrxmq@localhost

@@ -8,6 +8,7 @@
 # No duplicate routing logic. No duplicate queue/exchange structs.
 
 from hyrx.core.buffer_pool import BufferPool
+from hyrx.core.buffer_view import BufferView
 from hyrx.core.pool_stats import PoolStats
 from hyrx.core.message import Message
 from hyrx.core.exchange import ExchangeType
@@ -148,6 +149,15 @@ struct HyrxEngine:
         if result:
             self._messages_delivered += 1
         return result^
+
+    def read_payload(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> BufferView:
+        """Read the payload of a delivered message.
+
+        Delegates to the core Router; the message stays owned by the queue.
+        """
+        return self._router.read_payload(consumer_id, delivery_tag)
 
     def acknowledge(
         mut self, consumer_id: UInt64, delivery_tag: UInt64

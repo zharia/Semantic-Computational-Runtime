@@ -1,0 +1,30 @@
+# HyrxMQ systemd unit (Phase 7 deliverable).
+#
+# NOT PROVEN on a clean machine: this unit expects /usr/local/bin/hyrxmq-listen
+# (built from src/hyrxmq/main_listen.mojo; see pixi build note) to bind the
+# AMQP-over-TCP listener at start-up. The TCP/UDS path itself is proven
+# in-process (tests/integration/broker_tcp_e2e.mojo); what is NOT proven is
+# this unit's lifecycle on a clean systemd host (docs/SYSTEMD.md acceptance
+# list) and TLS. Keep in-tree as the packaging contract; do not enable in
+# production until the unit is validated on a clean machine.
+
+[Unit]
+Description=HyrxMQ message broker
+After=network.target
+
+[Service]
+Type=simple
+# listen-mode binary: the real AMQP-over-TCP accept loop.
+# (build/hyrxmq without -listen is the non-hanging self-check binary.)
+ExecStart=/usr/local/bin/hyrxmq-listen
+User=hyrxmq
+Group=hyrxmq
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
