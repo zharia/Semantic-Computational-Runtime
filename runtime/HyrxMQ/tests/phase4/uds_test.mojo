@@ -11,10 +11,7 @@ from hyrx.transport.transport import TransportConfig
 from hyrx.transport.uds import UDSListener, UDSConnection
 
 
-def check(cond: Bool, var msg: String) raises:
-    if not cond:
-        raise "FAIL: " + msg
-
+from hyrx.testing import check
 
 def bytes_of(s: String) -> List[UInt8]:
     """UTF-8 bytes of a short ASCII string."""

@@ -1,9 +1,11 @@
 # Tests for Message ownership and envelope semantics.
 #
-# Covers: construction, delivery count, payload view.
+# Covers: construction, delivery count, payload snapshot (owned copy).
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
+
+from hyrx.testing import check
 
 def test_create_message() raises:
     """Message stores envelope and owns the payload buffer."""
@@ -16,8 +18,8 @@ def test_create_message() raises:
     payload[1] = 0xFE
 
     var msg = Message(env^, payload^)
-    assert msg.routing_key() == "orders.new"
-    assert msg.delivery_count() == 0
+    check(msg.routing_key() == "orders.new", "L19 expect: msg.routing_key() == 'orders.new'")
+    check(msg.delivery_count() == 0, "L20 expect: msg.delivery_count() == 0")
 
 def test_delivery_count() raises:
     """Increment delivery count monotonically increases."""
@@ -28,10 +30,10 @@ def test_delivery_count() raises:
     msg.increment_delivery_count()
     msg.increment_delivery_count()
     msg.increment_delivery_count()
-    assert msg.delivery_count() == 3
+    check(msg.delivery_count() == 3, "L31 expect: msg.delivery_count() == 3")
 
 def test_payload_view() raises:
-    """Payload view returns data matching the buffer."""
+    """An owned copy returned by payload() matching the buffer."""
     var headers = Dict[String, String]()
     var env = Envelope(MessageID(7), "data", headers^)
     var buf = Buffer(32)
@@ -44,17 +46,17 @@ def test_payload_view() raises:
 
     var msg = Message(env^, buf^)
     var view = msg.payload()
-    assert view.size() == 5
-    assert view[0] == 0x01
-    assert view[4] == 0x05
+    check(view.size() == 5, "L47 expect: view.size() == 5")
+    check(view[0] == 0x01, "L48 expect: view[0] == 0x01")
+    check(view[4] == 0x05, "L49 expect: view[4] == 0x05")
 
 def test_message_id_equality() raises:
     """MessageID equality compares underlying value."""
     var a = MessageID(100)
     var b = MessageID(100)
     var c = MessageID(200)
-    assert a == b
-    assert not (a == c)
+    check(a == b, "L56 expect: a == b")
+    check(not (a == c), "L57 expect: not (a == c)")
 
 def main() raises:
     test_create_message()

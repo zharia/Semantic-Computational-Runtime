@@ -6,25 +6,27 @@ from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import ExchangeType
 from hyrx.embedded.api import HyrxEngine, HyrxConfig
 
+from hyrx.testing import check
+
 def test_engine_creation() raises:
     var config = HyrxConfig()
     var engine = HyrxEngine(config^)
     var stats = engine.stats()
-    assert stats.messages_published == 0
-    assert stats.messages_delivered == 0
-    assert stats.messages_acknowledged == 0
-    assert stats.messages_rejected == 0
+    check(stats.messages_published == 0, "L13 expect: stats.messages_published == 0")
+    check(stats.messages_delivered == 0, "L14 expect: stats.messages_delivered == 0")
+    check(stats.messages_acknowledged == 0, "L15 expect: stats.messages_acknowledged == 0")
+    check(stats.messages_rejected == 0, "L16 expect: stats.messages_rejected == 0")
     print("  engine creation: OK")
 
 def test_topology() raises:
     var config = HyrxConfig()
     var engine = HyrxEngine(config^)
     var ok = engine.declare_exchange("orders", ExchangeType.direct())
-    assert ok
+    check(ok, "L23 expect: ok")
     ok = engine.declare_queue("order_queue")
-    assert ok
+    check(ok, "L25 expect: ok")
     ok = engine.bind_queue("order_queue", "orders", "order.new")
-    assert ok
+    check(ok, "L27 expect: ok")
     print("  topology: OK")
 
 def test_publish_consume() raises:
@@ -46,14 +48,14 @@ def test_publish_consume() raises:
     var msg = Message(env^, buf^)
 
     var count = engine.publish(msg^, "ex")
-    assert count == 1
+    check(count == 1, "L49 expect: count == 1")
 
     var cid = engine.consume("q1", 1)
     var delivery = engine.next_message(cid)
-    assert delivery.__bool__()
+    check(delivery.__bool__(), "L53 expect: delivery.__bool__()")
     var tag = delivery.value().delivery_tag()
     var ok = engine.acknowledge(cid, tag)
-    assert ok
+    check(ok, "L56 expect: ok")
     print("  publish/consume: OK")
 
 def test_ack_reject() raises:
@@ -70,10 +72,10 @@ def test_ack_reject() raises:
 
     var cid = engine.consume("q1", 1)
     var delivery = engine.next_message(cid)
-    assert delivery.__bool__()
+    check(delivery.__bool__(), "L73 expect: delivery.__bool__()")
     var tag = delivery.value().delivery_tag()
     var ok = engine.acknowledge(cid, tag)
-    assert ok
+    check(ok, "L76 expect: ok")
     print("  ack: OK")
 
     var headers2 = Dict[String, String]()
@@ -81,10 +83,10 @@ def test_ack_reject() raises:
     var msg2 = Message(env2^, Buffer(16))
     _ = engine.publish(msg2^, "ex")
     var delivery2 = engine.next_message(cid)
-    assert delivery2.__bool__()
+    check(delivery2.__bool__(), "L84 expect: delivery2.__bool__()")
     var tag2 = delivery2.value().delivery_tag()
     ok = engine.reject(cid, tag2)
-    assert ok
+    check(ok, "L87 expect: ok")
     print("  reject: OK")
 
 def test_stats_tracking() raises:
@@ -101,8 +103,8 @@ def test_stats_tracking() raises:
         _ = engine.publish(msg^, "ex")
 
     var stats = engine.stats()
-    assert stats.messages_published == 5
-    assert stats.active_queues == 1
+    check(stats.messages_published == 5, "L104 expect: stats.messages_published == 5")
+    check(stats.active_queues == 1, "L105 expect: stats.active_queues == 1")
     print("  stats: OK")
 
 def test_fanout_exchange() raises:
@@ -118,10 +120,10 @@ def test_fanout_exchange() raises:
     var env = Envelope(MessageID(1), "", headers^)
     var msg = Message(env^, Buffer(16))
     var count = engine.publish(msg^, "fan")
-    assert count == 2
+    check(count == 2, "L121 expect: count == 2")
 
     var stats = engine.stats()
-    assert stats.messages_published == 1
+    check(stats.messages_published == 1, "L124 expect: stats.messages_published == 1")
     print("  fanout: OK")
 
 def test_exchange_not_found() raises:
@@ -131,7 +133,7 @@ def test_exchange_not_found() raises:
     var env = Envelope(MessageID(1), "k", headers^)
     var msg = Message(env^, Buffer(16))
     var count = engine.publish(msg^, "nonexistent")
-    assert count == 0
+    check(count == 0, "L134 expect: count == 0")
     print("  exchange not found: OK (returned 0)")
 
 def test_queue_empty() raises:
@@ -143,7 +145,7 @@ def test_queue_empty() raises:
 
     var cid = engine.consume("q1", 1)
     var delivery = engine.next_message(cid)
-    assert not delivery.__bool__()
+    check(not delivery.__bool__(), "L146 expect: not delivery.__bool__()")
     print("  queue empty: OK (returned None)")
 
 def test_multiple_messages() raises:
@@ -165,12 +167,12 @@ def test_multiple_messages() raises:
     var cid = engine.consume("q1", 10)
     for i in range(10):
         var delivery = engine.next_message(cid)
-        assert delivery.__bool__()
+        check(delivery.__bool__(), "L168 expect: delivery.__bool__()")
         var tag = delivery.value().delivery_tag()
         _ = engine.acknowledge(cid, tag)
 
     var stats = engine.stats()
-    assert stats.messages_acknowledged == 10
+    check(stats.messages_acknowledged == 10, "L173 expect: stats.messages_acknowledged == 10")
     print("  multiple messages: OK")
 
 def main() raises:

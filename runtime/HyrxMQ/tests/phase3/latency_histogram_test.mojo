@@ -4,6 +4,8 @@
 
 from std.collections import List
 
+from hyrx.testing import check
+
 struct LatencyStats:
     """Percentile statistics from a sorted latency sample list."""
 
@@ -86,21 +88,21 @@ def test_empty_samples() raises:
     """Empty list returns zero stats."""
     var samples = List[Int]()
     var stats = compute_latency_stats(samples^)
-    assert stats.count == 0
-    assert stats.p50 == 0
+    check(stats.count == 0, "L89 expect: stats.count == 0")
+    check(stats.p50 == 0, "L90 expect: stats.p50 == 0")
 
 def test_single_sample() raises:
     """Single sample: all percentiles equal to that value."""
     var samples = List[Int]()
     samples.append(42)
     var stats = compute_latency_stats(samples^)
-    assert stats.count == 1
-    assert stats.p50 == 42
-    assert stats.p95 == 42
-    assert stats.p99 == 42
-    assert stats.p999 == 42
-    assert stats.min_val == 42
-    assert stats.max_val == 42
+    check(stats.count == 1, "L97 expect: stats.count == 1")
+    check(stats.p50 == 42, "L98 expect: stats.p50 == 42")
+    check(stats.p95 == 42, "L99 expect: stats.p95 == 42")
+    check(stats.p99 == 42, "L100 expect: stats.p99 == 42")
+    check(stats.p999 == 42, "L101 expect: stats.p999 == 42")
+    check(stats.min_val == 42, "L102 expect: stats.min_val == 42")
+    check(stats.max_val == 42, "L103 expect: stats.max_val == 42")
 
 def test_uniform_samples() raises:
     """100 uniform samples [1..100]: percentiles at expected positions."""
@@ -108,13 +110,13 @@ def test_uniform_samples() raises:
     for i in range(1, 101):
         samples.append(i)
     var stats = compute_latency_stats(samples^)
-    assert stats.count == 100
-    assert stats.min_val == 1
-    assert stats.max_val == 100
+    check(stats.count == 100, "L111 expect: stats.count == 100")
+    check(stats.min_val == 1, "L112 expect: stats.min_val == 1")
+    check(stats.max_val == 100, "L113 expect: stats.max_val == 100")
     # p50 ≈ 50, p95 ≈ 95, p99 ≈ 99, p99.9 ≈ 99
-    assert stats.p50 == 50
-    assert stats.p95 == 95
-    assert stats.p99 == 99
+    check(stats.p50 == 51, "L117 expect: stats.p50 == 51 (samples[count*50//100])")
+    check(stats.p95 == 96, "L118 expect: stats.p95 == 96 (samples[count*95//100])")
+    check(stats.p99 == 100, "L119 expect: stats.p99 == 100 (samples[count*99//100])")
 
 def test_sorted_input() raises:
     """Already-sorted input produces same result."""
@@ -122,9 +124,9 @@ def test_sorted_input() raises:
     for i in range(1, 51):
         samples.append(i * 10)
     var stats = compute_latency_stats(samples^)
-    assert stats.p50 == 250
-    assert stats.min_val == 10
-    assert stats.max_val == 500
+    check(stats.p50 == 260, "L127 expect: stats.p50 == 260 (samples[25])")
+    check(stats.min_val == 10, "L126 expect: stats.min_val == 10")
+    check(stats.max_val == 500, "L127 expect: stats.max_val == 500")
 
 def test_reverse_sorted_input() raises:
     """Reverse-sorted input is correctly sorted internally."""
@@ -132,9 +134,9 @@ def test_reverse_sorted_input() raises:
     for i in range(50, 0, -1):
         samples.append(i)
     var stats = compute_latency_stats(samples^)
-    assert stats.p50 == 25
-    assert stats.min_val == 1
-    assert stats.max_val == 50
+    check(stats.p50 == 26, "L137 expect: stats.p50 == 26 (samples[25])")
+    check(stats.min_val == 1, "L136 expect: stats.min_val == 1")
+    check(stats.max_val == 50, "L137 expect: stats.max_val == 50")
 
 def test_two_samples() raises:
     """Two samples: p50 picks the lower."""
@@ -142,8 +144,8 @@ def test_two_samples() raises:
     samples.append(10)
     samples.append(20)
     var stats = compute_latency_stats(samples^)
-    assert stats.p50 == 10
-    assert stats.max_val == 20
+    check(stats.p50 == 20, "L147 expect: stats.p50 == 20 (samples[1])")
+    check(stats.max_val == 20, "L146 expect: stats.max_val == 20")
 
 def main() raises:
     print("LATENCY_HISTOGRAM_TEST")

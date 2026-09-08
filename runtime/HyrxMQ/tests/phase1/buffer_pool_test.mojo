@@ -5,14 +5,16 @@
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_pool import BufferPool
 
+from hyrx.testing import check
+
 def test_acquire_release() raises:
     """Acquire returns a buffer; release returns it to pool."""
     var pool = BufferPool(slab_size=1024, max_slabs=2)
     var buf = pool.acquire()
-    assert buf.capacity() == 1024
+    check(buf.capacity() == 1024, "L12 expect: buf.capacity() == 1024")
     pool.release(buf^)
     var stats = pool.stats()
-    assert stats.in_use == 0
+    check(stats.in_use == 0, "L15 expect: stats.in_use == 0")
 
 def test_reuse_tracking() raises:
     """Released buffers are reused; reuse counter increments."""
@@ -20,9 +22,9 @@ def test_reuse_tracking() raises:
     var buf1 = pool.acquire()
     pool.release(buf1^)
     var buf2 = pool.acquire()
-    assert buf2.capacity() == 512
+    check(buf2.capacity() == 512, "L23 expect: buf2.capacity() == 512")
     var stats = pool.stats()
-    assert stats.reuses == 1
+    check(stats.reuses == 1, "L25 expect: stats.reuses == 1")
     pool.release(buf2^)
 
 def test_exhaustion() raises:
@@ -41,7 +43,7 @@ def test_exhaustion() raises:
         pool.release(extra^)
     except:
         caught = True
-    assert caught
+    check(caught, "L44 expect: caught")
 
 def test_stats_after_activity() raises:
     """Stats reflect cumulative allocations and reuses."""
@@ -51,9 +53,9 @@ def test_stats_after_activity() raises:
     pool.release(a^)
     var c = pool.acquire()  # reuse from a
     var stats = pool.stats()
-    assert stats.allocations >= 1
-    assert stats.reuses >= 1
-    assert stats.in_use == 2
+    check(stats.allocations >= 1, "L54 expect: stats.allocations >= 1")
+    check(stats.reuses >= 1, "L55 expect: stats.reuses >= 1")
+    check(stats.in_use == 2, "L56 expect: stats.in_use == 2")
     pool.release(b^)
     pool.release(c^)
 

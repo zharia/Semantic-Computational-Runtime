@@ -7,52 +7,54 @@ from hyrx.transport.framing import (
     FRAME_TYPE_HEARTBEAT, FRAME_TYPE_FLOW_CONTROL
 )
 
+from hyrx.testing import check
+
 def test_frame_type_constants() raises:
-    assert FRAME_TYPE_MESSAGE() == 0x01
-    assert FRAME_TYPE_ACK() == 0x02
-    assert FRAME_TYPE_REJECT() == 0x03
-    assert FRAME_TYPE_HEARTBEAT() == 0x04
-    assert FRAME_TYPE_FLOW_CONTROL() == 0x05
+    check(FRAME_TYPE_MESSAGE() == 0x01, "L11 expect: FRAME_TYPE_MESSAGE() == 0x01")
+    check(FRAME_TYPE_ACK() == 0x02, "L12 expect: FRAME_TYPE_ACK() == 0x02")
+    check(FRAME_TYPE_REJECT() == 0x03, "L13 expect: FRAME_TYPE_REJECT() == 0x03")
+    check(FRAME_TYPE_HEARTBEAT() == 0x04, "L14 expect: FRAME_TYPE_HEARTBEAT() == 0x04")
+    check(FRAME_TYPE_FLOW_CONTROL() == 0x05, "L15 expect: FRAME_TYPE_FLOW_CONTROL() == 0x05")
     print("  frame type constants: OK")
 
 def test_header_roundtrip() raises:
     var header = FrameHeader(0x01, 100)
-    assert header.frame_type == 0x01
-    assert header.payload_length == 100
+    check(header.frame_type == 0x01, "L20 expect: header.frame_type == 0x01")
+    check(header.payload_length == 100, "L21 expect: header.payload_length == 100")
 
     var encoded = header.to_bytes()
-    assert len(encoded) == 8
+    check(len(encoded) == 8, "L24 expect: len(encoded) == 8")
 
     # Verify big-endian encoding
-    assert encoded[0] == 0x00  # type byte 0
-    assert encoded[1] == 0x00  # type byte 1
-    assert encoded[2] == 0x00  # type byte 2
-    assert encoded[3] == 0x01  # type byte 3
-    assert encoded[4] == 0x00  # length byte 0
-    assert encoded[5] == 0x00  # length byte 1
-    assert encoded[6] == 0x00  # length byte 2
-    assert encoded[7] == 100   # length byte 3
+    check(encoded[0] == 0x00, "L27 expect: encoded[0] == 0x00")  # type byte 0
+    check(encoded[1] == 0x00, "L28 expect: encoded[1] == 0x00")  # type byte 1
+    check(encoded[2] == 0x00, "L29 expect: encoded[2] == 0x00")  # type byte 2
+    check(encoded[3] == 0x01, "L30 expect: encoded[3] == 0x01")  # type byte 3
+    check(encoded[4] == 0x00, "L31 expect: encoded[4] == 0x00")  # length byte 0
+    check(encoded[5] == 0x00, "L32 expect: encoded[5] == 0x00")  # length byte 1
+    check(encoded[6] == 0x00, "L33 expect: encoded[6] == 0x00")  # length byte 2
+    check(encoded[7] == 100, "L34 expect: encoded[7] == 100")  # length byte 3
 
     var decoded = FrameHeader.from_bytes(encoded^)
-    assert decoded.frame_type == 0x01
-    assert decoded.payload_length == 100
+    check(decoded.frame_type == 0x01, "L37 expect: decoded.frame_type == 0x01")
+    check(decoded.payload_length == 100, "L38 expect: decoded.payload_length == 100")
     print("  header roundtrip: OK")
 
 def test_header_large_values() raises:
     var header = FrameHeader(0xFF, 0x00010000)  # type=255, length=65536
     var encoded = header.to_bytes()
-    assert len(encoded) == 8
+    check(len(encoded) == 8, "L44 expect: len(encoded) == 8")
 
     # type: 0x00 0x00 0x00 0xFF
-    assert encoded[3] == 0xFF
+    check(encoded[3] == 0xFF, "L47 expect: encoded[3] == 0xFF")
     # length: 0x00 0x01 0x00 0x00
-    assert encoded[5] == 0x01
-    assert encoded[6] == 0x00
-    assert encoded[7] == 0x00
+    check(encoded[5] == 0x01, "L49 expect: encoded[5] == 0x01")
+    check(encoded[6] == 0x00, "L50 expect: encoded[6] == 0x00")
+    check(encoded[7] == 0x00, "L51 expect: encoded[7] == 0x00")
 
     var decoded = FrameHeader.from_bytes(encoded^)
-    assert decoded.frame_type == 0xFF
-    assert decoded.payload_length == 0x00010000
+    check(decoded.frame_type == 0xFF, "L54 expect: decoded.frame_type == 0xFF")
+    check(decoded.payload_length == 0x00010000, "L55 expect: decoded.payload_length == 0x00010000")
     print("  header large values: OK")
 
 def test_header_too_short() raises:
@@ -64,7 +66,7 @@ def test_header_too_short() raises:
         _ = FrameHeader.from_bytes(bad^)
     except:
         threw = True
-    assert threw
+    check(threw, "L67 expect: threw")
     print("  header too short: OK")
 
 def test_frame_roundtrip() raises:
@@ -75,35 +77,35 @@ def test_frame_roundtrip() raises:
     payload.append(0xEF)
 
     var frame = Frame.from_raw(FRAME_TYPE_MESSAGE(), payload^)
-    assert frame.header.frame_type == 0x01
-    assert frame.header.payload_length == 4
-    assert len(frame.payload) == 4
+    check(frame.header.frame_type == 0x01, "L78 expect: frame.header.frame_type == 0x01")
+    check(frame.header.payload_length == 4, "L79 expect: frame.header.payload_length == 4")
+    check(len(frame.payload) == 4, "L80 expect: len(frame.payload) == 4")
 
     var encoded = frame.to_bytes()
-    assert len(encoded) == 12  # 8 header + 4 payload
+    check(len(encoded) == 12, "L83 expect: len(encoded) == 12")  # 8 header + 4 payload
 
     var decoded = Frame.from_bytes(encoded^)
-    assert decoded.header.frame_type == 0x01
-    assert decoded.header.payload_length == 4
-    assert len(decoded.payload) == 4
-    assert decoded.payload[0] == 0xDE
-    assert decoded.payload[1] == 0xAD
-    assert decoded.payload[2] == 0xBE
-    assert decoded.payload[3] == 0xEF
+    check(decoded.header.frame_type == 0x01, "L86 expect: decoded.header.frame_type == 0x01")
+    check(decoded.header.payload_length == 4, "L87 expect: decoded.header.payload_length == 4")
+    check(len(decoded.payload) == 4, "L88 expect: len(decoded.payload) == 4")
+    check(decoded.payload[0] == 0xDE, "L89 expect: decoded.payload[0] == 0xDE")
+    check(decoded.payload[1] == 0xAD, "L90 expect: decoded.payload[1] == 0xAD")
+    check(decoded.payload[2] == 0xBE, "L91 expect: decoded.payload[2] == 0xBE")
+    check(decoded.payload[3] == 0xEF, "L92 expect: decoded.payload[3] == 0xEF")
     print("  frame roundtrip: OK")
 
 def test_frame_empty_payload() raises:
     var frame = Frame.from_raw(FRAME_TYPE_HEARTBEAT(), List[UInt8]())
-    assert frame.header.frame_type == 0x04
-    assert frame.header.payload_length == 0
+    check(frame.header.frame_type == 0x04, "L97 expect: frame.header.frame_type == 0x04")
+    check(frame.header.payload_length == 0, "L98 expect: frame.header.payload_length == 0")
 
     var encoded = frame.to_bytes()
-    assert len(encoded) == 8
+    check(len(encoded) == 8, "L101 expect: len(encoded) == 8")
 
     var decoded = Frame.from_bytes(encoded^)
-    assert decoded.header.frame_type == 0x04
-    assert decoded.header.payload_length == 0
-    assert len(decoded.payload) == 0
+    check(decoded.header.frame_type == 0x04, "L104 expect: decoded.header.frame_type == 0x04")
+    check(decoded.header.payload_length == 0, "L105 expect: decoded.header.payload_length == 0")
+    check(len(decoded.payload) == 0, "L106 expect: len(decoded.payload) == 0")
     print("  frame empty payload: OK")
 
 def test_frame_types_roundtrip() raises:
@@ -114,8 +116,8 @@ def test_frame_types_roundtrip() raises:
     var ack = Frame.from_raw(FRAME_TYPE_ACK(), ack_payload^)
     var ack_encoded = ack.to_bytes()
     var ack_decoded = Frame.from_bytes(ack_encoded^)
-    assert ack_decoded.header.frame_type == 0x02
-    assert len(ack_decoded.payload) == 2
+    check(ack_decoded.header.frame_type == 0x02, "L117 expect: ack_decoded.header.frame_type == 0x02")
+    check(len(ack_decoded.payload) == 2, "L118 expect: len(ack_decoded.payload) == 2")
 
     # REJECT frame
     var rej_payload = List[UInt8]()
@@ -124,7 +126,7 @@ def test_frame_types_roundtrip() raises:
     var rej = Frame.from_raw(FRAME_TYPE_REJECT(), rej_payload^)
     var rej_encoded = rej.to_bytes()
     var rej_decoded = Frame.from_bytes(rej_encoded^)
-    assert rej_decoded.header.frame_type == 0x03
+    check(rej_decoded.header.frame_type == 0x03, "L127 expect: rej_decoded.header.frame_type == 0x03")
 
     # FLOW_CONTROL frame
     var fc_payload = List[UInt8]()
@@ -135,8 +137,8 @@ def test_frame_types_roundtrip() raises:
     var fc = Frame.from_raw(FRAME_TYPE_FLOW_CONTROL(), fc_payload^)
     var fc_encoded = fc.to_bytes()
     var fc_decoded = Frame.from_bytes(fc_encoded^)
-    assert fc_decoded.header.frame_type == 0x05
-    assert fc_decoded.header.payload_length == 4
+    check(fc_decoded.header.frame_type == 0x05, "L138 expect: fc_decoded.header.frame_type == 0x05")
+    check(fc_decoded.header.payload_length == 4, "L139 expect: fc_decoded.header.payload_length == 4")
     print("  all frame types roundtrip: OK")
 
 def test_frame_truncated_payload() raises:
@@ -161,7 +163,7 @@ def test_frame_truncated_payload() raises:
         _ = Frame.from_bytes(data^)
     except:
         threw = True
-    assert threw
+    check(threw, "L164 expect: threw")
     print("  frame truncated payload: OK")
 
 def test_frame_too_short() raises:
@@ -175,7 +177,7 @@ def test_frame_too_short() raises:
         _ = Frame.from_bytes(data^)
     except:
         threw = True
-    assert threw
+    check(threw, "L178 expect: threw")
     print("  frame too short: OK")
 
 def test_large_payload() raises:
@@ -184,16 +186,16 @@ def test_large_payload() raises:
         payload.append(UInt8(i & 0xFF))
 
     var frame = Frame.from_raw(FRAME_TYPE_MESSAGE(), payload^)
-    assert frame.header.payload_length == 1000
+    check(frame.header.payload_length == 1000, "L187 expect: frame.header.payload_length == 1000")
 
     var encoded = frame.to_bytes()
-    assert len(encoded) == 1008  # 8 + 1000
+    check(len(encoded) == 1008, "L190 expect: len(encoded) == 1008")  # 8 + 1000
 
     var decoded = Frame.from_bytes(encoded^)
-    assert decoded.header.payload_length == 1000
-    assert len(decoded.payload) == 1000
-    assert decoded.payload[0] == 0x00
-    assert decoded.payload[999] == (999 & 0xFF)
+    check(decoded.header.payload_length == 1000, "L193 expect: decoded.header.payload_length == 1000")
+    check(len(decoded.payload) == 1000, "L194 expect: len(decoded.payload) == 1000")
+    check(decoded.payload[0] == 0x00, "L195 expect: decoded.payload[0] == 0x00")
+    check(decoded.payload[999] == (999 & 0xFF), "L196 expect: decoded.payload[999] == (999 & 0xFF)")
     print("  large payload: OK")
 
 def main() raises:
