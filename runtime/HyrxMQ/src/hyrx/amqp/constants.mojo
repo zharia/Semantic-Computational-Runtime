@@ -145,6 +145,13 @@ def QUEUE_UNBIND_OK() -> MethodID:
     return MethodID(50, 51)
 
 # Basic class (60)
+
+# The basic class id; every content-bearing method on the wire (publish,
+# deliver, get-ok) is class 60, and its content HEADER frame MUST carry the
+# same class-id (amqp0-9-1.xml §2.3.5.2).
+def BASIC_CLASS_ID() -> UInt16:
+    return 60
+
 def BASIC_QOS() -> MethodID:
     return MethodID(60, 10)
 
@@ -159,6 +166,15 @@ def BASIC_RETURN() -> MethodID:
 
 def BASIC_DELIVER() -> MethodID:
     return MethodID(60, 60)
+
+def BASIC_GET() -> MethodID:
+    return MethodID(60, 70)
+
+def BASIC_GET_OK() -> MethodID:
+    return MethodID(60, 71)
+
+def BASIC_GET_EMPTY() -> MethodID:
+    return MethodID(60, 72)
 
 def BASIC_ACK() -> MethodID:
     return MethodID(60, 80)

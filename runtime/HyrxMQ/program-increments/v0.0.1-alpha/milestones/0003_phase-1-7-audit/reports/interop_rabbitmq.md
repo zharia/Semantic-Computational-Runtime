@@ -244,3 +244,52 @@ After items 1–4 a real pika client completes connect→auth→tune→open→ch
 - `bash scripts/test_all.sh` (via `pixi run`): **35 PASS / 0 FAIL**, exit 0. The suite traverses only `tests/phase0..phase7/**/*.mojo` + `tests/integration/*.mojo` — it does **not** traverse `scripts/interop/` or `tests/interop/` (verified: `find … | grep interop` → none). No hanging test was added to the gate; all new interop code is out-of-band Python harnesses. (Current tree reports 35, one more than the 34 mentioned in the brief — a pre-existing/parallel-package test file; none of the delta is from this package.)
 - Docker: untouched — `docker ps` shows `node-rabbitmq Up 6 hours` (no restart within session); `scripts/run_rabbit.sh` unmodified.
 - File ownership respected: only `src/hyrxmq/main_listen.mojo` changed (+30), and only `scripts/interop/pika_lifecycle.py`, `scripts/interop/hyrx_probe.py` created. No subprocess left bound to a port (post-kill check `port released (OK)` every run).
+
+---
+
+## Update (2026-09-08, post negotiation+content): REAL-CLIENT INTEROP ACHIEVED (basic path)
+
+**Supersedes §3 / §5 / §6 of this report for the basic path ONLY.** Everything above
+(the `hyrx_probe.py` BLOCKED-at-header evidence, the `IncompatibleProtocolError:
+StreamLostError` failure, the "EXPLICITLY BLOCKED" §11/§12 gate status, and the §6
+unblock list) is retained verbatim as **history** of the pre-negotiation state — it is
+now **SUPERSEDED**: connection negotiation and content-frame reassembly have since been
+implemented and measured with a real client. See `negotiation_impl.md` Update.
+
+**Measured (pika 1.4.4 — an independent AMQP client, not our test client):**
+
+| Target | Command | Result |
+|--------|---------|--------|
+| Reference LIVE RabbitMQ 4.3.5 (`127.0.0.1:5672`, never touched) | `/tmp/amqp-venv/bin/python scripts/interop/pika_content.py rabbit` | **9/9 PASS** (harness sanity) |
+| OUR broker (`build/hyrxmq-listen`, `HYRXMQ_PORT=5699`) | `HYRXMQ_PORT=5699 /tmp/amqp-venv/bin/python scripts/interop/pika_content.py hyrx` | **9/9 PASS** — `PIKA_CONTENT(hyrx) VERDICT: PASS` |
+
+pika now **completes the full handshake** (header echo → start/start-ok → tune/tune-ok →
+open/open-ok → channel.open) and drives `basic.publish`, `basic.consume`+delivery,
+`basic.get` (and honored `get-empty`), and `basic.ack`, including a **9000-byte body
+reassembled across multiple content-body frames** (`frame_max=4096`) byte-equal, and
+`basic_consume`/`basic_get` delivery bodies byte-exact (`b'hello-hyrx'`). Our broker binds
+only 5699 and is torn down after each run; RabbitMQ `:5672` untouched.
+
+**Gate restatement (§27 discipline, no overclaim):**
+- **§11 Real-client interop — PASS (basic path).** INTEROPERABILITY PROVEN for the narrow
+  basic publish/consume/get/ack path via an independent pika client. **Not** a general
+  interop PASS, and never an unqualified "RabbitMQ compatible" / "AMQP compatible".
+- **§12 RabbitMQ differential — still NOT PROVEN.** Only the *same-client narrow basic pass*
+  was captured against both brokers. The broader error/edge/nack/cancel/close/confirmation
+  differential vs HyrxMQ was **NOT RUN** — the §4 matrix above remains valid for that broad
+  surface (qos enforcement, nack requeue+redelivery, cancel-ok, close-ok, auth 403 all still
+  unexercised against a real client).
+
+**Fidelity gaps OBSERVED inside the passing run (explicit NOT PROVEN — do not hide):**
+- Outgoing `basic.deliver`/`basic.get-ok` carry `exchange=''`, `routing-key=''`,
+  `delivery_tag=0` (start-at-0, single value observed) whereas RabbitMQ populated
+  `exchange='hyrx.content.a.x'`, `rk='hyrx.key.a'` and an incrementing delivery-tag — root
+  cause: core `Delivery` has no envelope read-back accessor (audit finding **D1**).
+- Outbound content-header property-flags=0 (no delivery_mode/content_type fidelity) and
+  `message_count=0`.
+- Auth: SASL PLAIN parsed but **any credential accepted** (no 403-on-bad-auth). TLS, field
+  tables/properties on the wire, publisher confirms, consumer cancellation, async
+  push-to-idle-subscriber, and true fuzzing all remain NOT PROVEN.
+
+**Regression:** `bash scripts/test_all.sh` → **37 / 0** (added
+`tests/phase7/content_reassembly_test.mojo` + interop harness).

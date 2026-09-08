@@ -4,21 +4,29 @@
 # with them are the normative ones from amqp0-9-1.xml (see
 # src/hyrx/amqp/constants.mojo).
 #
-# NOT IMPLEMENTED — connection-negotiation gaps (deliberate Phase 7 scope cut):
-# - 8-octet protocol header (`AMQP\x00\x00\x09\x01`) detection/rejection at the
-#   start of the stream (connection.start is only legal after it is accepted).
-# - SASL negotiation: connection.start (10,10) / start-ok (10,11) /
-#   secure (10,20) / secure-ok (10,21) round trips (mechanism + locale choice).
-# - tune (10,30) / tune-ok (10,31) round trip: negotiate() below stores values
-#   but no tune frame is ever encoded, sent or parsed, so channel_max/frame_max/
-#   heartbeat stay un-negotiated defaults.
+# IMPLEMENTED (negotiation, wired end-to-end over the real socket path):
+# - 8-octet protocol header detection/echo + rejection (listener PHASE_HEADER);
+#   connection.start is only sent after the header is accepted.
+# - connection.start (10,10) server→client, start-ok (10,11) client→server with
+#   SASL PLAIN parsing (mechanism / response / locale), tune (10,30) and tune-ok
+#   (10,31), and open (10,40) / open-ok (10,41). States START_SENT (via the
+#   listener sending start) → TUNE_SENT (after start-ok) → TUNE_RECEIVED (after
+#   tune-ok) → OPEN (after open) are reached by the real handshake now, not only
+#   by a direct set_state().
+#
+# NOT IMPLEMENTED — remaining connection-negotiation gaps:
+# - SASL secure (10,20) / secure-ok (10,21) challenge round trip.
 # - close handshake: connection.close (10,50) / close-ok (10,51) and the
 #   channel close (20,40)/(20,41) reply sequencing.
-# - frame_max enforcement in AMQPFrameCodec (a peer may request >131072 bytes or
-#   sizes the receiver never checks) and channel_max enforcement.
-# - heartbeat (frame type 8) send/receive timers.
-# The states below are therefore reachable only by direct set_state() calls from
-# the service layer, not by a negotiated handshake.
+# - frame_max / channel_max NEGOTIATION: tune advertises the configured ceiling
+#   and the codec keeps it; a client tune-ok that requests a smaller value is
+#   recorded but not re-enforced, and an oversized request is not clamped here.
+# - heartbeat (frame type 8) send/receive timers: tune advertises heartbeat=0
+#   (no heartbeats), so the synchronous path never waits on one.
+# - authentication: credentials are parsed from the SASL PLAIN response but NOT
+#   validated (no auth backend).
+# The states below are therefore reachable by the negotiated handshake as well
+# as by direct set_state() calls from the service layer.
 
 # Connection states
 def CONN_STATE_CLOSED() -> Int:

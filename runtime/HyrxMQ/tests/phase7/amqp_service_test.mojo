@@ -54,6 +54,66 @@ def reserved() -> List[UInt8]:
     return a^
 
 
+def publish_frames(
+    var svc: AMQPService,
+    conn_id: UInt64,
+    chan: UInt16,
+    var ex: String,
+    var rk: String,
+    var body: List[UInt8],
+) raises -> AMQPService:
+    """Feed a REAL basic.publish over the wire: METHOD + HEADER + BODY frames.
+
+    amqp0-9-1.xml §2.3.5: the method frame carries reserved-1 + exchange +
+    routing-key + the mandatory/immediate bits octet; the content HEADER frame
+    declares class 60 and the body size (property-flags 0, empty property
+    list); the body follows as BODY frames.
+    """
+    var pargs = reserved()
+    write_short_string(pargs, ex^)
+    write_short_string(pargs, rk^)
+    pargs.append(0)  # bits: mandatory / immediate
+    var mf = build_frame(
+        chan, UInt16(60), UInt16(40), pargs^
+    )
+    _ = svc.handle_frame(conn_id, mf^)
+
+    var hdr = AMQPFrameCodec.encode_header_frame(
+        chan, UInt16(60), UInt64(len(body)), UInt16(0), List[UInt8]()
+    )
+    var hcodec = AMQPFrameCodec()
+    hcodec.feed_bytes(hdr^)
+    var hf = hcodec.try_parse_frame()
+    if not hf.__bool__():
+        raise "publish_frames: header frame did not decode"
+    _ = svc.handle_frame(conn_id, hf.value())
+
+    var bargs = List[UInt8]()
+    for i in range(len(body)):
+        bargs.append(body[i])
+    var bwire = AMQPFrameCodec.encode_body_frame(chan, bargs^)
+    var bcodec = AMQPFrameCodec()
+    bcodec.feed_bytes(bwire^)
+    var bf = bcodec.try_parse_frame()
+    if not bf.__bool__():
+        raise "publish_frames: body frame did not decode"
+    _ = svc.handle_frame(conn_id, bf.value())
+    return svc^
+
+
+def consume_args(var queue: String, var ctag: String) -> List[UInt8]:
+    """Spec basic.consume args: reserved-1 + queue + consumer-tag + bits + table."""
+    var a = reserved()
+    write_short_string(a, queue^)
+    write_short_string(a, ctag^)
+    a.append(0)  # bits: no-local/no-ack/exclusive/no-wait all clear
+    a.append(0)  # arguments: empty field table (U32 0)
+    a.append(0)
+    a.append(0)
+    a.append(0)
+    return a^
+
+
 def reply_method_id(var resp: List[UInt8]) raises -> MethodID:
     """Return the (class_id, method_id) pair of an encoded method frame.
 
@@ -219,16 +279,14 @@ def test_publish_reaches_broker() raises:
     var bframe = build_frame(UInt16(1), UInt16(50), UInt16(20), bargs^)
     _ = svc.handle_frame(UInt64(5), bframe^)
 
-    # basic.publish ex/k with inline body (60,40)
-    var pargs = reserved()
-    write_short_string(pargs, "ex")
-    write_short_string(pargs, "k")
-    pargs.append(0x48)
-    pargs.append(0x69)
-    pargs.append(0x21)
-    var pframe = build_frame(UInt16(1), UInt16(60), UInt16(40), pargs^)
-    var presp = svc.handle_frame(UInt64(5), pframe^)
-    check(not presp.__bool__(), "basic.publish returns no sync response")
+    # basic.publish ex/k with a 3-byte body: METHOD + HEADER + BODY frames.
+    var want = List[UInt8]()
+    want.append(0x48)
+    want.append(0x69)
+    want.append(0x21)
+    svc = publish_frames(svc^, UInt64(5), UInt16(1), "ex", "k", want^)
+    check((svc.content_errors() == 0), "content frames reassembled without error")
+    check((svc.pending_body_len(UInt64(5)) == 0), "pending state cleared at completion")
 
     # broker received it: deliver + payload bytes match
     var cid = svc.consume_register("q")
@@ -272,19 +330,15 @@ def test_basic_ack_uses_the_addressed_delivery_tag() raises:
     var bframe = build_frame(UInt16(1), UInt16(50), UInt16(20), bargs^)
     _ = svc.handle_frame(UInt64(7), bframe^)
 
-    var pargs = reserved()
-    write_short_string(pargs, "ax")
-    write_short_string(pargs, "ak")
-    pargs.append(0x5A)
-    var pframe = build_frame(UInt16(1), UInt16(60), UInt16(40), pargs^)
-    _ = svc.handle_frame(UInt64(7), pframe^)
+    var pbody = List[UInt8]()
+    pbody.append(0x5A)
+    svc = publish_frames(svc^, UInt64(7), UInt16(1), "ax", "ak", pbody^)
 
     # basic.consume (60,20) registers the connection's consumer and flushes the
     # queued message as a basic.deliver frame.
-    var cargs = List[UInt8]()
-    write_short_string(cargs, "aq")
-    cargs.append(0)  # bits
-    var cframe = build_frame(UInt16(1), UInt16(60), UInt16(20), cargs^)
+    var cframe = build_frame(
+        UInt16(1), UInt16(60), UInt16(20), consume_args("aq", "tag-aq")^
+    )
     var cresp = svc.handle_frame(UInt64(7), cframe^)
     check(cresp.__bool__(), "consume-ok returned")
     check(
@@ -339,17 +393,13 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
     write_short_string(bargs, "bk")
     var bframe = build_frame(UInt16(1), UInt16(50), UInt16(20), bargs^)
     _ = svc.handle_frame(UInt64(8), bframe^)
-    var pargs = reserved()
-    write_short_string(pargs, "bx")
-    write_short_string(pargs, "bk")
-    pargs.append(0x11)
-    var pframe = build_frame(UInt16(1), UInt16(60), UInt16(40), pargs^)
-    _ = svc.handle_frame(UInt64(8), pframe^)
+    var pbody = List[UInt8]()
+    pbody.append(0x11)
+    svc = publish_frames(svc^, UInt64(8), UInt16(1), "bx", "bk", pbody^)
 
-    var cargs = List[UInt8]()
-    write_short_string(cargs, "bq")
-    cargs.append(0)
-    var cframe = build_frame(UInt16(1), UInt16(60), UInt16(20), cargs^)
+    var cframe = build_frame(
+        UInt16(1), UInt16(60), UInt16(20), consume_args("bq", "tag-bq")^
+    )
     var cresp = svc.handle_frame(UInt64(8), cframe^)
     var tag = _tag_from_consume_reply(cresp.value().copy())
     check((tag == 0), "delivery tag available from the flushed deliver")
@@ -368,10 +418,11 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
 def _tag_from_consume_reply(var wire: List[UInt8]) raises -> Int:
     """Extract the delivery tag from the first flushed basic.deliver frame.
 
-    Slice layout of the deliver frame payload
-    (src/hyrxmq/amqp_service.mojo): class(2) method(2) consumer-tag
-    short-string delivery-tag(8) redelivered(1) exchange short-string
-    key short-string body.
+    Real content layout (amqp0-9-1.xml §2.3.5): METHOD frame payload =
+    class(2) method(2) consumer-tag short-string delivery-tag(8)
+    redelivered(1) exchange short-string routing-key short-string; the method
+    frame is followed by one HEADER frame (class 60, body-size) and the BODY
+    frames.
     """
     var codec = AMQPFrameCodec()
     codec.feed_bytes(wire^)
@@ -389,6 +440,13 @@ def _tag_from_consume_reply(var wire: List[UInt8]) raises -> Int:
     var tag = 0
     for i in range(8):
         tag = (tag << 8) + Int(p[off + i])
+    # And the §2.3.5 trailer must be a real HEADER frame for class 60.
+    var hfr = codec.try_parse_frame()
+    check(hfr.__bool__(), "a HEADER frame follows basic.deliver")
+    check(hfr.value().frame_type == 2, "trailer frame is a content header (2)")
+    var hp = hfr.value().payload_copy()
+    var hclass = (UInt16(hp[0]) << 8) | UInt16(hp[1])
+    check(hclass == 60, "content header class-id is basic (60)")
     return tag
 
 

@@ -20,7 +20,7 @@ does not prove it.
 
 | Fact | Value | Citation |
 |---|---|---|
-| Full suite | **35 pass / 0 fail** (`bash scripts/test_all.sh`) | orchestrator run; baseline was 27 with 1 red |
+| Full suite | **37 pass / 0 fail** (`bash scripts/test_all.sh`) — added `tests/phase7/content_reassembly_test.mojo` + interop harness | orchestrator run |
 | Assertion quality | all checks are real runtime assertions; no vacuous asserts | `baseline.md` §B1–B5 |
 | Topic matcher | fixed — `#` = zero-or-more (word-recursive) | `src/hyrx/core/exchange.mojo:72-76` |
 | AMQP method ids | corrected to spec decimal (e.g. `CONNECTION_OPEN = MethodID(10,40)`) | verified vs fetched `amqp0-9-1.xml`; `amqp_conformance.md` §1.2 |
@@ -29,7 +29,7 @@ does not prove it.
 | Codec | bounded — `max_frame_size` enforced, oversized rejected (independently proven) | `security_audit.md` §2/§7 fix-1; `tests/phase6/frame_codec_bounds.mojo` |
 | Listener | fail-closed — Malformed → connection closed, broker survives | `security_audit.md` §7 fix-2; `tests/integration/listener_hostile.mojo` |
 | BufferView | renamed **BufferSnapshot** (it copies — proven by experiment) | `persistence_readiness.md` §1.3 |
-| Real client | pika 1.4.4 vs RabbitMQ 4.3.5 = **18/18 PASS**; vs HyrxMQ = **BLOCKED at 8-octet header** (no connection.start) | `interop_rabbitmq.md` §2/§3 |
+| Real client (basic path) | pika 1.4.4 vs our broker (5699) = **9/9 PASS** (handshake + basic publish/consume/get/ack + 9000-byte multi-frame body byte-equal); vs LIVE RabbitMQ 4.3.5 = 9/9 (harness) + 18/18 (full lifecycle reference) | `negotiation_impl.md` Update, `interop_rabbitmq.md` Update |
 | Perf (direct) | ~280k msg/s interleaved (256 B single run 276k–340k band) | `benchmarks.md` B1/B2 |
 | Perf (transport) | UDS ~2.4×, TCP ~4.3×, AMQP/TCP ~7× vs direct | `benchmarks.md` B2 |
 | Perf (fan-out) | copy slope +2.38 µs/dest (256 B) | `benchmarks.md` B3 |
@@ -38,8 +38,10 @@ does not prove it.
 | Mojo file API | NO os/file → config-from-disk NOT AVAILABLE | `config_systemd.md` Part A |
 
 Divergence note: individual reports quote the suite count at the moment they ran
-(27→34→35). **35 pass / 0 fail** is the final, authoritative figure; earlier
-counts are historical, not contradictions.
+(27→34→35→36→37). **37 pass / 0 fail** is the final, authoritative figure (35→36
+added the connection-negotiation test; 36→37 added
+`tests/phase7/content_reassembly_test.mojo` + the interop harness); earlier counts
+are historical, not contradictions.
 
 ---
 
@@ -55,23 +57,31 @@ against a spec-mandated confidence gate.
    `assert` was proven inert (a false assert did not fail a test); 13 print-only
    / vacuous test files were migrated to real runtime `check()`, exposing two
    latent test-expectation bugs and one genuine source bug (topic `#`). The
-   suite is now 35/0 with proven-failing negatives.
-2. **Several prior "PROVEN" claims were downgraded, honestly.** "AMQP /
-   network / broker e2e PROVEN" is now *functionally proven against our own
-   codec and our own test client only*. A real client (pika) cannot complete the
-   AMQP handshake. Concurrency, persistence, systemd clean-machine lifecycle,
-   management, auth/TLS and true fuzzing are recorded NOT PROVEN.
+   suite is now 37/0 with proven-failing negatives.
+2. **Several prior "PROVEN" claims were downgraded, honestly — then the narrow
+   basic path was re-proven with a real client.** "AMQP / network / broker e2e
+   PROVEN" was first corrected to *functionally proven against our own codec and
+   our own test client only* (a real pika client could not complete the
+   handshake). After connection negotiation + content-frame reassembly landed
+   this session, pika 1.4.4 completes the handshake and drives
+   publish/consume/get/ack with multi-frame bodies (9/9 vs our broker AND 9/9 vs
+   the RabbitMQ reference), so that **narrow basic path is now INTEROPERABILITY
+   PROVEN** — not the broad surface. Concurrency, persistence, systemd
+   clean-machine lifecycle, management, auth/TLS and true fuzzing remain NOT
+   PROVEN.
 3. **Real security defects were found and fixed** at the byte/framing layer:
    unbounded codec accumulation (a genuine AMQP header alone parsed as a
    ~1.3 GiB frame) and an uncaught `raise` that let one ~9-byte frame kill the
    broker. Both are now bounded / fail-closed and negative-tested.
 
 The architecture is clean (single routing authority, no upward deps, flare
-confined, management off the hot path). The AMQP layer is self-consistent but
-incomplete: it speaks its own dialect to its own tests, not to real clients. The
-**single prerequisite that unblocks interop, real-client performance and the
-systemd end-to-end claim is AMQP connection negotiation** — see Decisions and
-Recommended Next Phase.
+confined, management off the hot path). The AMQP layer was self-consistent but
+incomplete; **connection negotiation + content-frame reassembly have since
+landed this session**, so a real pika client reaches the basic methods
+(INTEROPERABILITY PROVEN, basic path). It does not yet speak the *broad* AMQP
+surface to real clients: auth/TLS, error/edge/confirmation differential, field
+tables/properties, async push and the deliver envelope fidelity gap remain — see
+Decisions and Recommended Next Phase.
 
 ---
 
@@ -127,9 +137,14 @@ truth); **DEFECT(open)** = real, unremediated, carried forward.
   `tests/integration/listener_hostile.mojo`).
 - **C-3 AMQP handshake absent → no real client can connect.** No 8-octet header
   consumption, server never originates `connection.start`/`tune`, SASL absent.
-  **DEFECT(open, root blocker).** Confirmed by pika: TCP `REACHED`, header sent,
-  broker replies nothing → `IncompatibleProtocolError: StreamLostError`
-  (`interop_rabbitmq.md` §3). Unblocks §11/§12, real-client perf and systemd e2e.
+  Was **DEFECT(open, root blocker)**; confirmed by pika: TCP `REACHED`, header
+  sent, broker replies nothing → `IncompatibleProtocolError: StreamLostError`
+  (`interop_rabbitmq.md` §3, history). **NOW IMPLEMENTED + REAL-CLIENT VERIFIED
+  (basic path):** header echo + start/start-ok + tune/tune-ok + open/open-ok +
+  content-frame reassembly; pika 1.4.4 9/9 vs our broker and 9/9 vs RabbitMQ
+  (`negotiation_impl.md` Update). Remaining handshake surface —
+  `connection.close`/`secure`, non-zero heartbeats, field tables, auth
+  enforcement, TLS — is still NOT PROVEN (see C-4, M-4).
 - **C-4 No authentication / authorization / TLS.** No SASL, no credential store,
   vhost is a cosmetic display string, no TLS. **DEFECT(open, out of audit scope —
   documented absence; `security_audit.md` §5).** Any byte source is implicitly
@@ -172,8 +187,13 @@ truth); **DEFECT(open)** = real, unremediated, carried forward.
   reject requeues to the tail (D9). **DEFECT(open)** (`persistence_readiness.md` §1.2).
 - **M-3 `basic.ack` conflates the `multiple` bit with a consumer id**;
   `basic.consume` does not skip `reserved-1` (queue-name misparse);
-  `basic.publish`/`deliver` inline bodies (bits-as-body). **PARTIALLY FIXED**
-  (single-authority refactor + spec ids); wire deviations remain
+  `basic.publish`/`deliver` inline bodies (bits-as-body). **PARTIALLY FIXED** —
+  single-authority refactor + spec ids, and content-frame (HEADER/BODY)
+  reassembly now IMPLEMENTED + pika-verified for the basic path (multi-frame
+  body byte-equal). Wire deviations that remain NOT PROVEN: `ack` multiple-bit,
+  `consume` reserved-1, and the deliver/get-ok **envelope fidelity gap**
+  (empty `exchange`/`routing-key`, `delivery_tag=0`, content-header
+  property-flags=0) — see "Remaining NOT PROVEN" item 13.
   (`amqp_conformance.md` L3).
 - **M-4 Field tables dead / 3 types only.** `field_table.mojo` never imported on
   the wire path; supports only `'S'`,`'I'`,`'t'`; unknown type octet silently
@@ -276,7 +296,9 @@ bash scripts/test_all.sh
 pixi run mojo run -I src -I vendor/flare <file>     # per-file runner used by the suite
 ```
 
-**Result:** `bash scripts/test_all.sh` → **35 pass / 0 fail** (exit 0).
+**Result:** `bash scripts/test_all.sh` → **37 pass / 0 fail** (exit 0; was 35 —
+the connection-negotiation test then `tests/phase7/content_reassembly_test.mojo`
+were added).
 Suite traverses only `tests/phase0..7/**/*.mojo` + `tests/integration/*.mojo`;
 `tests/_selftest` and `scripts/interop` are excluded (verified in `test_all.sh`).
 
@@ -297,7 +319,7 @@ Suite traverses only `tests/phase0..7/**/*.mojo` + `tests/integration/*.mojo`;
   `raise` (try/except asserted); clean exit 0 + PASS line proves no invalid path
   panics.
 
-Interpretation: 35/0 is meaningful precisely because the assertion mechanism was
+Interpretation: 37/0 is meaningful precisely because the assertion mechanism was
 itself proven to fail closed, then the vacuous files were converted to use it.
 
 ---
@@ -316,62 +338,95 @@ memory (`amqp_conformance.md` §0).
   byte-correct vs spec §2.3.5.1 (`amqp_conformance.md` §1.1). Frame size now
   bounded and oversized-rejected (`tests/phase6/frame_codec_bounds.mojo`,
   ceiling 131072 + bad frame-type). `frame-end=0xCE(=206)` correct.
-- **State machine: PARTIAL.** Type/shape exists; enforcement does not. Server
-  never originates `connection.start`/`tune`; `negotiate()` never called;
-  `set_state()` accepts any transition (no gate on dispatch); `close-ok` never
-  emitted; `frame_max`/`heartbeat`/`channel_max` stored but never consulted
-  (`amqp_conformance.md` §2). **A real client therefore cannot reach the methods
-  the broker does dispatch.**
-- **Content-header / field tables:** header path aligned; field tables remain
-  3-type and dead-code on the wire (M-4).
+- **State machine: ADVANCING (basic path real-client verified).** Header
+  consumption + `connection.start`/start-ok + `tune`/tune-ok + gated
+  `open`/open-ok now originate and are driven by a real pika client
+  (`negotiation_impl.md`); content-frame reassembly IMPLEMENTED. Still open:
+  `set_state()` accepts any transition (no gate on dispatch), `close`/`close-ok`
+  and `secure` never emitted, `frame_max`/`heartbeat` renegotiation not honored,
+  non-zero heartbeats absent, field tables not serialized
+  (`amqp_conformance.md` §2). A real client now **does** reach the basic methods.
+- **Content-header / field tables:** inbound/outbound content HEADER+BODY frames
+  reassembled/emitted for the basic path (pika-verified); but wire
+  **property-flags=0** observed on outbound (no delivery_mode/content_type/etc.
+  fidelity), `message_count=0`, and field tables remain 3-type and dead-code on
+  the wire (M-4). Property/field-table fidelity **NOT PROVEN**.
 - **Compatibility matrix counts** (`amqp_conformance.md` §10):
   **SUPPORTED 0 · PARTIALLY SUPPORTED 15 · NOT IMPLEMENTED 30** (+ RabbitMQ-interop
-  layer NOT TESTED). Zero method is simultaneously wire-ID-correct,
-  state-machined **and** semantically correct until negotiation lands.
+  layer NOT TESTED). These §10 numbers **predate** this session's
+  negotiation+content work and are the report's own method-level classification;
+  do **not** restate them as current without re-deriving §10. What is measured
+  now (this session, `negotiation_impl.md` Update): header +
+  start/start-ok + tune/tune-ok + open/open-ok + channel.open + basic
+  publish/consume/get/ack + multi-frame content are **INTEROPERABILITY PROVEN**
+  for the basic path via pika 1.4.4.
 
-Gate §33 "AMQP PROTOCOL VALIDATION PASS": **NOT fully satisfied** — self-consistent
-codec + spec ids, but no real-client conformance (see Interoperability).
+Gate §33 "AMQP PROTOCOL VALIDATION PASS": **PARTIALLY satisfied** — self-consistent
+codec + spec ids, and a **narrow basic path now real-client verified** (pika);
+the **broad** surface (close/secure/heartbeat/field-tables/error-edge/
+auth-enforcement/TLS) has no real-client conformance (see Interoperability,
+RabbitMQ Differential).
 
 ---
 
 ## RabbitMQ Differential (§12)
 
-**Status: EXPLICITLY BLOCKED** (permitted gate branch "PASS OR EXPLICITLY BLOCKED").
+**Status: NOT PROVEN (broad differential) — narrow same-client basic pass captured.**
 
 - The reference column is real: `pika_lifecycle.py` runs the §11 lifecycle against
   RabbitMQ 4.3.5 and passes **18/18** (connect→auth(negative)→vhost→channel.open→
   declare→bind→publish→consume→deliver→ack→prefetch→nack/requeue→redelivery→
   channel.close→connection.close→reconnect), including genuine `redelivered=True`
   (`interop_rabbitmq.md` §2). Docker untouched.
-- The HyrxMQ column cannot be filled by a *real client* past `REACH@TCP` because
-  negotiation is absent. Frame-level handlers exist (proven by
-  `tests/integration/broker_tcp_e2e.mojo`) but are unreachable to pika.
-- Requirement gaps HyrxMQ fails: header recognition, SASL start/start-ok, tune
-  round-trip, `basic.qos→qos-ok`, `basic.nack`, `basic.cancel→cancel-ok`,
-  `channel.close`/`connection.close→close-ok`. Non-gaps: publisher confirms
-  (RabbitMQ extension), transient-non-exclusive 541 (RabbitMQ policy).
-- **Differential captured as reference, not as PASS.** See §4 matrix in
-  `interop_rabbitmq.md`.
+- **New (this session):** the *same independent client* (pika 1.4.4) runs a narrow
+  basic-path check (`pika_content.py`) against **both** brokers at 9/9 — our broker
+  (5699) and the RabbitMQ reference (5672) — for handshake + publish/consume/get/ack
+  + 9000-byte multi-frame body byte-equal (`interop_rabbitmq.md` Update,
+  `negotiation_impl.md` Update). This is a **same-client pass captured on both
+  sides**, NOT a full HyrxMQ-vs-RabbitMQ differential.
+- **What is still NOT PROVEN:** the true **error/edge differential** — bad-auth 403,
+  `basic.nack` requeue+redelivery, `basic.cancel→cancel-ok`,
+  `channel.close`/`connection.close→close-ok`, qos enforcement, confirmations — was
+  **NOT RUN** against HyrxMQ by a real client. The §4 matrix in `interop_rabbitmq.md`
+  (pre-negotiation) remains the record for that broad surface.
+- Envelope/property fidelity **differs and is NOT PROVEN**: our broker emits
+  `exchange=''`, `routing-key=''`, `delivery_tag=0` and property-flags=0 where
+  RabbitMQ populated exchange/rk, an incrementing tag and properties (root cause:
+  core `Delivery` has no envelope read-back — D1).
+- **Gate branch:** recorded as **NOT PROVEN**, not fabricated as PASS. Do not claim a
+  RabbitMQ differential until the error/edge cases are actually run against HyrxMQ.
 
 ---
 
 ## Interoperability (§11)
 
-**Status: EXPLICITLY BLOCKED** (permitted gate branch).
+**Status: PASS (basic path) — INTEROPERABILITY PROVEN for the narrow basic path
+via an independent client. Broader surface NOT PROVEN.**
 
-- Real client: **pika 1.4.4** (Python 3.14 venv).
-- vs **RabbitMQ 4.3.5**: full lifecycle **PASS (18/18)** — harness validated.
-- vs **HyrxMQ**: `hyrx_probe.py` — TCP `REACHED` (`tcp_connect: OK`), client sends
-  `AMQP\x00\x00\x09\x01`, broker `broker_preheader_bytes: b''`, then
-  `after_header: closed (EOF)`; pika raises
-  **`IncompatibleProtocolError: StreamLostError ('Transport indicated EOF')`** at
-  stage *method (header sent, no connection.start reply)*. Probe exit code 4
-  (blocked-as-expected). Broker stays alive (stderr empty); no port left bound
-  (post-kill `port released (OK)`).
-- **Exact failure:** HyrxMQ never consumes the 8-octet header, hands it to
-  `try_parse_frame`, cannot parse it as a method, fail-closes the socket — and
-  never originates `connection.start`. This is now a *safe, bounded, documented*
-  block (post-fix), not a crash.
+- Real client: **pika 1.4.4** (Python 3.14 venv) — an independent AMQP client, not
+  our test client.
+- vs **RabbitMQ 4.3.5**: full lifecycle **PASS (18/18)** and the narrow basic path
+  **9/9** — harness validated.
+- vs **our broker** (`build/hyrxmq-listen`, `HYRXMQ_PORT=5699`): basic path
+  **9/9 PASS** (`PIKA_CONTENT(hyrx) VERDICT: PASS`) — pika completes the full
+  handshake (header echo → start/start-ok → tune/tune-ok → open/open-ok →
+  channel.open → exchange/queue declare → bind), then `basic.publish` +
+  `basic.consume` delivery body byte-exact (`b'hello-hyrx'`), `basic_get`
+  byte-exact, `get-empty` honored, `basic.ack` accepted, and a **9000-byte body
+  reassembled across multiple content-body frames** (`frame_max=4096`) byte-equal.
+  Command: `HYRXMQ_PORT=5699 /tmp/amqp-venv/bin/python
+  scripts/interop/pika_content.py hyrx` (and `... rabbit`). RabbitMQ `:5672`
+  untouched. Evidence: `negotiation_impl.md` Update, `interop_rabbitmq.md` Update.
+- **Prior state (history, now SUPERSEDED):** `hyrx_probe.py` §3 — TCP `REACHED`,
+  header sent, broker replied nothing → `IncompatibleProtocolError:
+  StreamLostError`. That was the pre-negotiation blocker; negotiation + content
+  reassembly have since landed and the basic path is real-client verified.
+- **Scope discipline:** this is **INTEROPERABILITY PROVEN for the basic path only**,
+  not a general interoperability claim and never an unqualified "RabbitMQ
+  compatible". The gaps recorded in "Remaining NOT PROVEN" (auth enforcement, TLS,
+  error/edge differential, field tables/properties, async push, deliver envelope
+  fidelity) are **not** covered by the 9/9 result and are observed *inside* the
+  passing run.
 
 ---
 
@@ -474,7 +529,8 @@ Gate §33 "SYSTEMD CLEAN-MACHINE VALIDATED": **NOT MET.** No overclaim.
 
 All numbers are **actual single runs** in this environment (no averaging; variance
 band stated). `bash scripts/test_all.sh` = 34/0 was unchanged by benchmark
-addition (final tree 35/0 after config test) — no benchmark entered the suite.
+addition (the interop/negotiation/content tests are in-repo, not benchmarks; the
+current authoritative tree is **37/0**) — no benchmark entered the suite.
 
 ### Measured (BENCHMARKED)
 
@@ -571,55 +627,83 @@ with the D1/D2 copy-not-share caveats logged under MEDIUM findings).
 Reference: **`confidence_matrix.md`** (this directory) is the authoritative §28
 matrix — reproduced here as summary; link it, do not duplicate every cell.
 
-Tally across 20 areas: **HIGH 4 · MEDIUM 8 · LOW 1 · NOT PROVEN 7.**
+Tally across 20 areas: **HIGH 4 · MEDIUM 10 · LOW 0 · NOT PROVEN 6.**
 - **HIGH:** Core, Queueing, UDS, TCP (runtime-checked tests / real loopback).
 - **MEDIUM:** Ownership, Routing, Backpressure, Hyrx framing, AMQP codec, Failure
-  semantics, Security, Performance.
-- **LOW:** AMQP state machine (type exists, transitions inert).
-- **NOT PROVEN:** Real AMQP clients, RabbitMQ differential, Concurrency,
-  Persistence, Systemd, Management, Fuzzing.
+  semantics, Security, Performance — **plus AMQP state machine (LOW→MEDIUM: header/
+  start/tune/open + basic dispatch implemented and driven by a real client;
+  close/secure/heartbeats/field-tables still missing)** and **Real AMQP clients
+  (NOT PROVEN→MEDIUM: INTEROPERABILITY PROVEN for the basic path via pika 9/9,
+  but only that narrow path — broad surface unproven)**.
+- **NOT PROVEN (6):** RabbitMQ differential, Concurrency, Persistence, Systemd,
+  Management, Fuzzing.
 
-Post-fix AMQP §10 method classification: **SUPPORTED 0 / PARTIALLY SUPPORTED 15 /
-NOT IMPLEMENTED 30** (`amqp_conformance.md` §10). §34-Q33 answer: **yes, the matrix
-has been updated** — `confidence_matrix.md` and `amqp_conformance.md` §10 reflect
-the current state; no "RabbitMQ compatible" / "AMQP PROVEN" claim is recorded.
+Post-fix AMQP §10 method classification (`amqp_conformance.md` §10, pre-dates this
+session — do not restate as current without re-deriving): SUPPORTED 0 / PARTIAL 15
+/ NOT-IMPL 30. **Measured this session** (`negotiation_impl.md` Update): the basic
+path is real-client verified; this is recorded as **INTEROPERABILITY PROVEN (basic
+path)**, and **no** "RabbitMQ compatible" / "AMQP PROVEN" / HIGH upgrade is made.
+§34-Q33 answer: **yes, the matrix has been updated** — see `confidence_matrix.md`.
 
 ---
 
 ## Remaining NOT PROVEN Items (explicit list)
 
-1. **AMQP connection negotiation** — header consumption, `connection.start/start-ok`
-   (SASL PLAIN), `tune/tune-ok`, gated `open/open-ok`, `channel.open`; bad-auth 403
-   observability. (Root blocker for §11/§12.)
-2. **Real-client interoperability** (pika and any other genuine client) — blocked at header.
-3. **RabbitMQ differential, HyrxMQ column** — cannot be filled past `REACH@TCP`.
+1. **AMQP connection negotiation** — header/start/start-ok/tune/tune-ok/open/open-ok +
+   basic dispatch now IMPLEMENTED + real-client verified (basic path,
+   `negotiation_impl.md` Update). Still NOT PROVEN: bad-auth 403 observability
+   (SASL parsed, not validated), `connection.close`/`secure`, non-zero heartbeats,
+   frame_max/heartbeat renegotiation.
+2. **Real-client interoperability — broad surface.** The narrow basic path is now
+   INTEROPERABILITY PROVEN (pika 9/9 vs our broker AND 9/9 vs RabbitMQ); error/edge,
+   nack/cancel/close, qos enforcement and confirmations remain NOT PROVEN (never run
+   against HyrxMQ by a real client).
+3. **RabbitMQ differential, HyrxMQ column** — only the same-client basic pass was
+   captured on both brokers; the true error/edge/nack/cancel/close/confirm
+   differential vs HyrxMQ was **NOT RUN** → NOT PROVEN.
 4. **Concurrency correctness** — deferred; no threads/mutex/CAS in Mojo 1.0 std.
 5. **Persistence / durable recovery** — not implemented; no file/fsync surface in toolchain.
 6. **Systemd clean-machine lifecycle** — install→user/group→start→bind→journal→
    stop/restart→sandbox→resource limits.
 7. **Management API** — none exists (read-only projection only); §26 non-authority
    constraint not yet in docs (F-15).
-8. **Auth / SASL / authorization / TLS** — absent.
+8. **Auth / SASL / authorization / TLS** — SASL PLAIN is now *parsed* on the
+   negotiation path but **no credential is validated** (any PLAIN accepted);
+   authorization and TLS remain absent.
 9. **True fuzzing / coverage-guided harness** — only hand-written negative cases;
    state-machine fuzz (§13.7) outstanding.
 10. **syscalls/msg, cache misses/IPC, off-CPU cost, allocations/msg, live crash-vs-
-    graceful-exit, process-kill under systemd, connection-storm under real load.**
-11. **Field tables on the wire** (dead code, 3 types), content-header full spec
-    framing, `basic.qos`/`nack`/`cancel`/`close-ok` replies.
+     graceful-exit, process-kill under systemd, connection-storm under real load.**
+11. **Field tables / content properties on the wire** (field tables dead code,
+    3 types; outbound content-header property-flags=0, message_count=0);
+    `basic.cancel→cancel-ok`, `basic.nack` requeue+redelivery,
+    `channel.close`/`connection.close→close-ok` replies remain NOT PROVEN
+    (`basic.qos→qos-ok`, `basic.get-empty` are now implemented).
 12. **Config file-load from disk** — no os/file in Mojo 1.0 std (env/argv override
-    is the only current path).
+     is the only current path).
+13. **Deliver/get-ok envelope fidelity (next small correctness item).** On the
+     passing pika run our broker emits `basic.deliver`/`basic.get-ok` with
+     `exchange=''`, `routing-key=''`, `delivery_tag=0` (start-at-0) where RabbitMQ
+     populated exchange/rk and an incrementing tag. Root cause: the core `Delivery`
+     carries **no envelope (exchange/routing-key/message-id) read-back accessor** —
+     consistent with audit finding **D1** (router zeroes message_id/headers on
+     fan-out). Fix = add an envelope read-back on `Delivery`, then populate the
+     deliver/get-ok envelope, delivery-tag and content-header property flags.
 
 ---
 
 ## Risks (ranked by severity)
 
-1. **No real-client path (C-3).** Every "AMQP/broker/interop" claim is
-   self-consistent-only until negotiation lands. Highest business risk: the product
-   cannot be shown to talk to the ecosystem it targets.
-2. **No auth/TLS (C-4) once the listen binary is deployed.** Byte layer is
-   reachable by any peer; fixing C-3 without adding auth exposes a fully-privileged
-   unauthenticated broker. Pair negotiation with at least SASL-PLAIN + loopback
-   default.
+1. **No auth/TLS (C-4) — now LIVE, top risk.** Negotiation + content landed (C-3
+   resolved for the basic path), so a real client can connect to a broker that
+   accepts **any PLAIN credential** (SASL parsed, not validated) with **no TLS**.
+   Pair the reachable path with at least SASL-PLAIN validation + loopback default
+   before any external deployment.
+2. **Interop is proven only for the narrow basic path.** The broad surface
+   (error/edge differential, nack/cancel/close, qos enforcement, field
+   tables/properties, async push, deliver envelope fidelity) is self-consistent /
+   NOT PROVEN. Highest residual business risk: generalizing the pika basic-path
+   PASS into an unqualified "RabbitMQ compatible" claim.
 3. **Residual resource gaps (M-1, H-5).** Queue-full silent drop (undocumented
    message loss) + systemd crash-restart flap risk if limits/RestartSec unenforced.
 4. **Persistence is architecturally blocked on identity/semantics (H-6, M-1, M-2).**
@@ -648,14 +732,17 @@ the current state; no "RabbitMQ compatible" / "AMQP PROVEN" claim is recorded.
   hotspot is *measured* but not yet refactored (memcpy/Candidate plan recorded, not
   applied).
 - **New decision this audit implies (recommend recording as ADR-0010):**
-  > **"AMQP connection negotiation is the single prerequisite that unblocks
-  > real-client interop, real-client performance claims, and systemd end-to-end
-  > validation."** Header consumption + start/start-ok (SASL PLAIN) +
-  > tune/tune-ok + open/open-ok + channel.open converts §11/§12 from BLOCKED toward
-  > PASS. Until it exists, no "AMQP compatible" / "RabbitMQ compatible" /
-  > "real-client PROVEN" / "systemd lifecycle VALIDATED" claim may be made. This
-  > must be paired with the §13 fuzzer once the path is reachable, and with a
-  > documented auth posture before any external deployment.
+  > **"AMQP connection negotiation was the single prerequisite gating real-client
+  > interop."** Header consumption + start/start-ok (SASL PLAIN parsed) +
+  > tune/tune-ok + open/open-ok + channel.open + **content-frame reassembly** have
+  > now landed and are **real-client verified for the basic path** (pika 1.4.4, 9/9
+  > vs our broker and 9/9 vs RabbitMQ — `negotiation_impl.md` Update). This converts
+  > §11 from BLOCKED to **PASS (basic path)**. What ADR-0010 still forbids: an
+  > unqualified "AMQP compatible" / "RabbitMQ compatible" / broad "real-client
+  > PROVEN" / "systemd lifecycle VALIDATED" claim — the broad error/edge differential,
+  > auth **enforcement**, TLS, field tables/properties, async push and the deliver
+  > envelope fidelity gap are NOT PROVEN. This must be paired with the §13 fuzzer
+  > (now reachable) and a documented auth posture before any external deployment.
 
 ---
 
@@ -763,23 +850,38 @@ the current state; no "RabbitMQ compatible" / "AMQP PROVEN" claim is recorded.
 
 28. **AMQP features genuinely tested?** Frame envelope (byte-correct vs spec),
     bounded codec + frame-type/end validation (negative-tested), field_table subset
-    (3 types, unit-tested but dead on wire). Self-tested only.
-29. **AMQP features only implemented (not genuinely tested against a client)?** All
-    15 PARTIALLY SUPPORTED methods (connection.open/-ok/close, channel.open/-ok,
-    exchange/queue declare/bind, basic consume/publish/deliver/ack) — dispatched in
-    synthetic-frame tests, unreachable by a real client.
-30. **RabbitMQ behaviors demonstrated?** Only against RabbitMQ itself (the reference
-    baseline: auth refused→403, transient-non-exclusive→541, redelivery flag,
-    nack/requeue) — these are RabbitMQ facts, not HyrxMQ demonstrations.
-31. **RabbitMQ behaviors inferred?** The expected HyrxMQ-vs-RabbitMQ differential
-    beyond `REACH@TCP` is inferred from code, **NOT** observed (HyrxMQ column blocked).
-32. **Features intentionally different?** YES, documented: inline-body publish/
-    deliver (no multi-frame content), pull-on-subscribe flush, numeric consumer tags,
-    unparsed field tables, single static vhost. Labelled Hyrx-deliberate-gap, not
-    hidden failures.
-33. **Compatibility matrix updated?** YES — `confidence_matrix.md` (§28) +
-    `amqp_conformance.md` §10; counts SUPPORTED 0 / PARTIAL 15 / NOT-IMPL 30; no
-    "compatible" claim.
+    (3 types, unit-tested but dead on wire), and — **new this session** — the
+    connection-negotiation bytes (start/tune/open-ok exact) plus a **real pika 1.4.4
+    client driving the basic path (9/9 vs our broker, 9/9 vs RabbitMQ)**.
+29. **AMQP features only implemented (not genuinely tested against a client)?** The
+    basic path (header, start/start-ok, tune/tune-ok, open/open-ok, channel.open,
+    exchange/queue declare, bind, basic publish/consume/get/ack, multi-frame content)
+    is now **real-client verified**. Still only implemented / NOT reached by a real
+    client: `connection.close`/`secure`, non-zero heartbeats, `basic.cancel→cancel-ok`,
+    `basic.nack` requeue+redelivery, qos **enforcement**, field tables/properties,
+    bad-auth 403, TLS.
+30. **RabbitMQ behaviors demonstrated?** Against RabbitMQ itself the reference
+    baseline holds (auth refused→403, transient-non-exclusive→541, redelivery flag,
+    nack/requeue) — RabbitMQ facts. **New:** pika against *our* broker demonstrates
+    handshake + basic publish/consume/get/ack + byte-exact multi-frame bodies; but
+    auth-403, nack/requeue and redelivery were **not** demonstrated on our broker.
+31. **RabbitMQ behaviors inferred?** The narrow basic path is now **observed** on both
+    brokers (same client, 9/9 each). The broader HyrxMQ-vs-RabbitMQ differential
+    (error/edge, nack/cancel/close, qos enforcement, envelope/property fidelity) is
+    still **inferred, not observed** — not run against HyrxMQ.
+32. **Features intentionally different?** YES, documented: pull-on-subscribe flush
+    (no async push-to-idle-subscriber), numeric consumer tags, unparsed field tables,
+    single static vhost, and the deliver **envelope/property fidelity gap**
+    (empty exchange/rk, delivery_tag=0, property-flags=0 — core `Delivery` has no
+    envelope read-back, D1). NOTE: "inline-body publish/deliver (no multi-frame
+    content)" is **now superseded** — content-frame reassembly is implemented and
+    pika-verified for the basic path.
+33. **Compatibility matrix updated?** YES — `confidence_matrix.md` (§28) now shows
+    AMQP state machine LOW→MEDIUM and Real AMQP clients NOT PROVEN→INTEROPERABILITY
+    PROVEN (basic path, MEDIUM); tally HIGH 4 · MEDIUM 10 · LOW 0 · NOT PROVEN 6.
+    The `amqp_conformance.md` §10 counts (SUPPORTED 0 / PARTIAL 15 / NOT-IMPL 30)
+    predate this session and must be re-derived before restating. **No**
+    "RabbitMQ compatible" / "AMQP PROVEN" claim is recorded.
 
 ### Reliability (34–39)
 
@@ -843,40 +945,56 @@ the current state; no "RabbitMQ compatible" / "AMQP PROVEN" claim is recorded.
 
 **Gate status (§33):** ARCHITECTURE PASS · CORE SEMANTICS PASS · OWNERSHIP PASS ·
 TEST VALIDITY PASS · TRANSPORT PASS · CONCURRENCY EXPLICITLY DEFERRED WITH EVIDENCE ·
-AMQP **NOT FULLY SATISFIED** (self-consistent; no client conformance) · REAL CLIENT
-INTEROP **EXPLICITLY BLOCKED** · RABBITMQ DIFFERENTIAL **EXPLICITLY BLOCKED** ·
+AMQP **PARTIALLY SATISFIED** (self-consistent codec + spec ids; **basic path now
+real-client verified**, broad surface not) · REAL CLIENT INTEROP **PASS (basic
+path)** — pika 1.4.4 9/9 vs our broker + 9/9 vs RabbitMQ, multi-frame body
+byte-equal (`negotiation_impl.md` Update); auth/TLS/error-edge/field-tables/async-
+push and deliver envelope fidelity NOT PROVEN · RABBITMQ DIFFERENTIAL **NOT PROVEN**
+(only the narrow same-client basic pass captured; true error/edge differential NOT
+RUN) ·
 FAILURE SEMANTICS **VALIDATED (in-repo containment; process/systemd NOT PROVEN)** ·
 SECURITY **BASELINE PARTIAL** (bounds+fail-closed enforced; auth/TLS/sandbox NOT
 PROVEN) · SYSTEMD **NOT MET** (syntax + self-check only) · PERFORMANCE REPRODUCIBLE
 BASELINE PASS (profiler-level NOT PROVEN) · DOCUMENTATION ACCURATE PASS ·
 SELF-ASSESSMENT COMPLETE PASS.
 
-**Recommendation — do NOT open a new major feature phase yet.** The audit gate is
-honest but not fully green: interop, systemd e2e and real-client performance are all
-gated on one missing capability.
+**Recommendation — do NOT open a new major feature phase yet.** The gate is honest
+but not fully green. Connection negotiation + content-frame reassembly landed this
+session and the **basic path is real-client verified (pika 9/9)**, so interop is no
+longer a hard BLOCKED — but auth/TLS, the error/edge differential, field
+tables/properties, async push and the deliver envelope fidelity gap remain, and
+systemd e2e + real-client performance are still gated.
 
-**Next increment = Phase 6 completion: implement AMQP connection negotiation**
-(`interop_rabbitmq.md` §6 / `confidence_matrix.md` release-blockers, in handshake
-order):
-1. spec decimal ids (already corrected); 2. consume the 8-octet `AMQP\x00\x00\x09\x01`
-   header + originate `connection.start`; 3. SASL PLAIN `start-ok` (advertise
-   mechanisms, validate creds, 403 on bad auth observable); 4. `tune`/`tune-ok` real
-   `frame_max`/`channel_max`/`heartbeat`; 5. gated `connection.open→open-ok` +
-   `channel.open→open-ok`; 6. required `*_ok` replies (`basic.qos→qos-ok`,
-   `basic.cancel→cancel-ok`, `basic.nack` requeue+redelivery, `channel.close`/
-   `connection.close→close-ok`).
+**Next increment (in priority order):**
+1. **Deliver/get-ok envelope fidelity (next small correctness item).** Core
+   `Delivery` has no envelope read-back accessor → outgoing deliver/get-ok carry
+   `exchange=''`, `routing-key=''`, `delivery_tag=0` and content-header
+   property-flags=0 (audit D1). Add an envelope read-back on `Delivery`; populate
+   exchange/rk, an incrementing delivery-tag and the property flags; re-run
+   `pika_content.py` and assert parity with the RabbitMQ reference columns.
+2. **Remaining `*_ok` / method surface:** `basic.cancel→cancel-ok`, `basic.nack`
+   requeue+redelivery, `channel.close`/`connection.close→close-ok`, and qos
+   *enforcement* (beyond the qos-ok reply).
+3. **Error/edge differential:** run the full `pika_lifecycle.py`-style matrix against
+   HyrxMQ (bad-auth 403, nack/requeue/redelivery, close handshake) — fill the §12
+   HyrxMQ column beyond the narrow basic pass.
+4. **Field tables / content properties on the wire** (currently 3-type dead code,
+   property-flags=0).
+5. **Async push-to-idle-subscriber** (only publish-before-subscribe proven).
 
 **Pairing constraints (non-negotiable):**
-- Ship with **at least SASL-PLAIN + loopback default** — do not expose the byte layer
-  to unauthenticated peers once negotiation works (risk #2).
-- Add the **§13 fuzzer / state-machine illegal-transition tests** the moment the path
-  is reachable (they were previously un-runnable without a handshake).
-- Then re-run `pika_lifecycle.py` against HyrxMQ → fill the §12 HyrxMQ column →
-  attempt the **clean-machine systemd** validation (user/group via `sysusers.d`,
-  listen entry, journal, stop/restart, sandbox+limits) → only then may "AMQP 0-9-1
-  INTEROPERABILITY PROVEN" and "SYSTEMD CLEAN-MACHINE VALIDATED" be claimed, and
-  real-client performance numbers captured — still never an unqualified "RabbitMQ
-  compatible".
+- **Auth now matters immediately** — unlike the pre-negotiation state where the byte
+  layer was the only reachable surface, a real client can now complete the handshake
+  against a broker that accepts **any PLAIN credential** (SASL parsed, not validated).
+  Ship **at least SASL-PLAIN validation + loopback default** before any external
+  deployment (risk #2).
+- Add the **§13 fuzzer / state-machine illegal-transition tests** now that the path
+  is reachable (previously un-runnable without a handshake).
+- Then attempt the **clean-machine systemd** validation (user/group via
+  `sysusers.d`, listen entry, journal, stop/restart, sandbox+limits) and capture
+  real-client performance numbers. Only the enumerated items above, once measured,
+  may move the *broad* interoperability/systemd claims — and **never** an unqualified
+  "RabbitMQ compatible".
 
 Persistence, concurrency (Phase A event loop), and the copy-optimization
 (memcpy/Candidate-C/A/B) are the *following* phases, each with its own preconditions

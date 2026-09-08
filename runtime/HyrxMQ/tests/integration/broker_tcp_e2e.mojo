@@ -12,21 +12,27 @@
 # with zero unbounded blocking (mojo 1.0 threading over non-copyable socket
 # state is not proven in this repo; a bounded ping-pong is).
 
-# Frame layout is the documented Phase 7 vertical slice (inline body on
-# basic.publish and basic.deliver; redelivered bit as one octet; consumer id as
-# a short-string) — see src/hyrxmq/amqp_service.mojo.
+# Frame layout is REAL AMQP 0-9-1 content framing (amqp0-9-1.xml §2.3.5):
+# basic.publish is METHOD + one HEADER + BODY frames; the flushed
+# basic.deliver is METHOD + HEADER + BODY; consume carries the spec field
+# order (reserved-1, queue, consumer-tag, bits, empty arguments table) and the
+# consume-ok echoes the client's consumer-tag.
 
 from std.collections import List, Optional
 
 from hyrx.transport.tcp import TCPConnection
 
-from hyrx.amqp.frame_codec import AMQPFrameCodec
+from hyrx.amqp.frame_codec import AMQPFrame, AMQPFrameCodec
 from hyrx.amqp.constants import (
     BASIC_ACK,
     BASIC_CONSUME,
     BASIC_CONSUME_OK,
     BASIC_DELIVER,
     BASIC_PUBLISH,
+    CONNECTION_START,
+    CONNECTION_START_OK,
+    CONNECTION_TUNE,
+    CONNECTION_TUNE_OK,
     CONNECTION_OPEN,
     CONNECTION_OPEN_OK,
     EXCHANGE_DECLARE,
@@ -40,7 +46,14 @@ from hyrx.amqp.constants import (
 
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.listener import AMQPListener
-from hyrxmq.amqp_service import ByteReader, write_short_string, write_u64
+from hyrxmq.amqp_service import (
+    ByteReader,
+    write_short_string,
+    write_long_string,
+    write_u16,
+    write_u32,
+    write_u64,
+)
 
 
 from hyrx.testing import check
@@ -86,20 +99,17 @@ struct ClientStream:
         var sent = self.conn.send_bytes(wire^)
         check(sent == n, "all client bytes written")
 
-    def next_method(mut self) raises -> MethodID:
-        """Parse the next method frame; bounded (32 socket reads max)."""
+    def next_frame(mut self) raises -> AMQPFrame:
+        """Parse the next frame of ANY type; bounded (32 socket reads max)."""
         var i = 0
         while i < 32:
             var f = self.codec.try_parse_frame()
             if f.__bool__():
-                var p = f.value().payload_copy()
-                check(len(p) >= 4, "method frame carries class+method")
-                var mid = MethodID(
-                    (UInt16(p[0]) << 8) | UInt16(p[1]),
-                    (UInt16(p[2]) << 8) | UInt16(p[3]),
+                return AMQPFrame(
+                    f.value().frame_type,
+                    f.value().channel,
+                    f.value().payload_copy(),
                 )
-                self.last_payload = p^
-                return mid^
             var chunk = self.conn.recv_bytes(4096)
             if len(chunk) == 0:
                 raise "client: server closed before a frame arrived"
@@ -107,8 +117,52 @@ struct ClientStream:
             i += 1
         raise "client: no complete frame after 32 reads (deadlock guard)"
 
+    def next_method(mut self) raises -> MethodID:
+        """Parse the next frame and require it to be a METHOD frame."""
+        var f = self.next_frame()
+        check(f.frame_type == 1, "expected a METHOD frame")
+        var p = f.payload_copy()
+        check(len(p) >= 4, "method frame carries class+method")
+        var mid = MethodID(
+            (UInt16(p[0]) << 8) | UInt16(p[1]),
+            (UInt16(p[2]) << 8) | UInt16(p[3]),
+        )
+        self.last_payload = p^
+        return mid^
+
+    def expect_body(mut self, want: List[UInt8]) raises:
+        """Read the HEADER (+BODY frames) following a content method frame and
+        assert the reassembled body equals `want` (§2.3.5 layout check)."""
+        var hf = self.next_frame()
+        check(hf.frame_type == 2, "a content HEADER frame follows the method")
+        var hp = hf.payload_copy()
+        var hclass = (UInt16(hp[0]) << 8) | UInt16(hp[1])
+        check(hclass == 60, "content header class-id is basic (60)")
+        var w = (UInt16(hp[2]) << 8) | UInt16(hp[3])
+        check(w == 0, "content header weight is reserved zero")
+        var size = UInt64(0)
+        for i in range(4, 12):
+            size = (size << 8) | UInt64(hp[i])
+        check(Int(size) == len(want), "declared body-size matches the payload")
+        var got = List[UInt8]()
+        while len(got) < Int(size):
+            var bf = self.next_frame()
+            check(bf.frame_type == 3, "a content BODY frame follows the header")
+            var bp = bf.payload_copy()
+            for i in range(len(bp)):
+                got.append(bp[i])
+        check_bytes(got, want, "delivered body bytes match the published body")
+
+    def read_exact(mut self, n: Int) raises -> List[UInt8]:
+        return self.conn.recv_exact(n)
+
     def close(mut self):
         self.conn.close()
+
+
+def append_all(mut dst: List[UInt8], var src: List[UInt8]):
+    for i in range(len(src)):
+        dst.append(src[i])
 
 
 def request(
@@ -116,6 +170,87 @@ def request(
 ) -> List[UInt8]:
     return AMQPFrameCodec.encode_method_frame(
         chan, mid.class_id, mid.method_id, args^
+    )
+
+
+def protocol_header() -> List[UInt8]:
+    """The 8-octet AMQP 0-9-1 header (41 4D 51 50 00 00 09 01)."""
+    var h = List[UInt8]()
+    for b in bytes_of("AMQP"):
+        h.append(b)
+    h.append(0)
+    h.append(0)
+    h.append(0x09)
+    h.append(0x01)
+    return h^
+
+
+def start_ok_args() -> List[UInt8]:
+    """client-properties(empty) + mechanism(PLAIN) + response(SASL PLAIN) + locale."""
+    var args = List[UInt8]()
+    write_u32(args, 0)  # empty client-properties table
+    write_short_string(args, "PLAIN")
+    var resp = List[UInt8]()
+    resp.append(0)  # authzid NUL
+    for b in bytes_of("admin"):
+        resp.append(b)
+    resp.append(0)  # authcid/passwd separator
+    for b in bytes_of("password"):
+        resp.append(b)
+    write_u32(args, UInt32(len(resp)))  # response is a longstr
+    for b in resp:
+        args.append(b)
+    write_short_string(args, "en_US")
+    return args^
+
+
+def tune_ok_args() -> List[UInt8]:
+    """tune-ok: channel-max(short) + frame-max(long) + heartbeat(short)."""
+    var args = List[UInt8]()
+    write_u16(args, 2047)
+    write_u32(args, UInt32(131072))
+    write_u16(args, 0)
+    return args^
+
+
+def open_args() -> List[UInt8]:
+    var args = List[UInt8]()
+    write_short_string(args, "/")
+    write_short_string(args, "")
+    args.append(0)  # reserved-2 bit
+    return args^
+
+
+def do_handshake(
+    mut client: ClientStream, mut listener: AMQPListener, var slot: Int
+) raises:
+    """Drive the header -> start -> start-ok -> tune -> tune-ok -> open ->
+    open-ok negotiation over the real socket, asserting each frame's ids."""
+    # 1. protocol header, server echoes it then sends connection.start.
+    var hdr = protocol_header()
+    client.send(hdr.copy())
+    check(
+        listener.serve_one_frame(slot) == 1, "protocol header served (start sent)"
+    )
+    var magic = client.read_exact(8)
+    check_bytes(magic, hdr, "server echoed the 8-octet header")
+    check(client.next_method() == CONNECTION_START(), "connection.start received")
+
+    # 2. start-ok -> tune.
+    client.send(
+        request(UInt16(0), CONNECTION_START_OK(), start_ok_args()^)
+    )
+    check(listener.serve_one_frame(slot) == 1, "start-ok served")
+    check(client.next_method() == CONNECTION_TUNE(), "connection.tune received")
+
+    # 3. tune-ok (no reply) then open -> open-ok.
+    client.send(request(UInt16(0), CONNECTION_TUNE_OK(), tune_ok_args()^))
+    check(listener.serve_one_frame(slot) == 1, "tune-ok served")
+    client.send(request(UInt16(0), CONNECTION_OPEN(), open_args()^))
+    check(listener.serve_one_frame(slot) == 1, "connection.open served")
+    check(
+        client.next_method() == CONNECTION_OPEN_OK(),
+        "connection.open-ok received (handshake complete)",
     )
 
 
@@ -134,17 +269,9 @@ def main() raises:
     var client = ClientStream(conn^)
     var slot = listener.accept_one()
 
-    # ---- connection.open -> open-ok ----
-    var oargs = List[UInt8]()
-    write_short_string(oargs, "/")
-    reserved_short(oargs)
-    reserved_short(oargs)
-    client.send(request(UInt16(0), CONNECTION_OPEN(), oargs^))
-    check(listener.serve_one_frame(slot) == 1, "open served")
-    check(
-        client.next_method() == CONNECTION_OPEN_OK(),
-        "connection.open-ok received over TCP",
-    )
+    # ---- connection negotiation: header -> start -> start-ok -> tune ->
+    # tune-ok -> open -> open-ok (real handshake). ----
+    do_handshake(client, listener, slot)
 
     # ---- exchange.declare -> declare-ok ----
     var eargs = List[UInt8]()
@@ -179,41 +306,69 @@ def main() raises:
     check(listener.serve_one_frame(slot) == 1, "queue.bind served")
     check(client.next_method() == QUEUE_BIND_OK(), "queue.bind-ok received")
 
-    # ---- basic.publish (inline body) -> fire-and-forget ----
+    # ---- basic.publish: METHOD + HEADER + BODY -> fire-and-forget ----
     var body = bytes_of("amqp-over-tcp-e2e-payload")
     var pargs = List[UInt8]()
     reserved_short(pargs)
     write_short_string(pargs, "e2e.ex")
     write_short_string(pargs, "e2e.key")
-    for i in range(len(body)):
-        pargs.append(body[i])
+    pargs.append(0)  # bits: mandatory / immediate
     client.send(request(UInt16(1), BASIC_PUBLISH(), pargs^))
-    check(listener.serve_one_frame(slot) == 1, "basic.publish served")
+    check(listener.serve_one_frame(slot) == 1, "basic.publish method served")
+    var hdr = AMQPFrameCodec.encode_header_frame(
+        UInt16(1), UInt16(60), UInt64(len(body)), UInt16(0), List[UInt8]()
+    )
+    client.send(hdr^)
+    check(listener.serve_one_frame(slot) == 1, "content header served")
+    var bwire = List[UInt8]()
+    var b1 = List[UInt8]()
+    for i in range(5):
+        b1.append(body[i])
+    append_all(bwire, AMQPFrameCodec.encode_body_frame(UInt16(1), b1^))
+    var b2 = List[UInt8]()
+    for i in range(5, len(body)):
+        b2.append(body[i])
+    append_all(bwire, AMQPFrameCodec.encode_body_frame(UInt16(1), b2^))
+    client.send(bwire^)
+    check(listener.serve_one_frame(slot) == 1, "first body frame served")
+    check(listener.serve_one_frame(slot) == 1, "second body frame served")
 
-    # ---- basic.consume -> consume-ok + basic.deliver(payload) ----
+    # ---- basic.consume -> consume-ok + basic.deliver(+header+body) ----
     var cargs = List[UInt8]()
+    reserved_short(cargs)
     write_short_string(cargs, "e2e.q")
-    cargs.append(0)  # no-local bit (octet-packed, slice convention)
+    write_short_string(cargs, "ctag-e2e")
+    cargs.append(0)  # bits: no-local/no-ack/exclusive/no-wait
+    cargs.append(0)  # arguments: empty table
+    cargs.append(0)
+    cargs.append(0)
+    cargs.append(0)
     client.send(request(UInt16(1), BASIC_CONSUME(), cargs^))
     check(listener.serve_one_frame(slot) == 1, "basic.consume served")
 
     var ok_mid = client.next_method()
     check(ok_mid == BASIC_CONSUME_OK(), "basic.consume-ok received")
+    # consume-ok echoes the client's consumer-tag (real clients route by it).
+    var ordr = ByteReader(client.last_payload.copy())
+    _ = ordr.read_short()  # class
+    _ = ordr.read_short()  # method
+    check(
+        ordr.read_short_string() == "ctag-e2e",
+        "consume-ok echoes the requested consumer-tag",
+    )
+
     var d_mid = client.next_method()
     check(d_mid == BASIC_DELIVER(), "basic.deliver received over TCP")
-
-    # parse the delivered frame (slice layout documented in the header)
     var dr = ByteReader(client.last_payload.copy())
     _ = dr.read_short()  # class
     _ = dr.read_short()  # method
     var ctag = dr.read_short_string()
-    var cid = Int(ctag)
+    check(ctag == "ctag-e2e", "deliver carries the registered consumer-tag")
     var dtag = dr.read_long_long()
-    _ = dr.read_octet()  # redelivered
-    _ = dr.read_short_string()  # exchange (empty in this slice)
-    _ = dr.read_short_string()  # routing key (empty in this slice)
-    var got_body = dr.read_remaining()
-    check_bytes(got_body, body, "delivered payload matches published payload")
+    _ = dr.read_octet()  # redelivered bit
+    _ = dr.read_short_string()  # exchange (not carried by Delivery)
+    _ = dr.read_short_string()  # routing key (same)
+    client.expect_body(body^)
 
     # ---- basic.ack -> broker counters advance ----
     # Spec arguments: delivery-tag(long-long) + multiple(bit). The consumer is
@@ -232,7 +387,8 @@ def main() raises:
     check(st.messages_acked <= st.messages_delivered, "status: ack <= deliver")
     check(listener.health() == "ok", "health ok after full round-trip")
 
-    # ---- teardown: frames served this session = 8 ----
+    # ---- teardown: after the handshake + 6 business frames the client closes,
+    # the server observes EOF on the next step. ----
     client.close()
     check(
         listener.serve_one_frame(slot) == -1,
