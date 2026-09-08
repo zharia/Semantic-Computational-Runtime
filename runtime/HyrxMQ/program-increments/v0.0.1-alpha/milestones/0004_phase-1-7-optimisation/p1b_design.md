@@ -210,3 +210,39 @@ is itself a copy; a naive `pool.acquire` + copy would be **two** passes (regress
 So P2 adds a `Message` read-accessor returning a borrowed `ref Buffer` payload + a
 `Buffer.copy_from(mut self, ref src)` that appends src bytes into the length-0 pooled
 buffer in a single pass (no `resize` zero-fill then overwrite).
+
+---
+
+## 9. Implementation result (2026-09-08) — built, tested, measured → default OFF
+
+All phases implemented by scr-architect (sole writer after k3 retired). Commits:
+`575fc70` P1 · `55c58df` P2a · `84606b2` P2b-i · `d59a937` P2b-ii · `f7af97b` P3 · `fd92345` P4. Suite **39/0**, every phase negative-proofed.
+
+**Design deviations, forced by the Mojo 1.0 ownership model (recorded, not hidden):**
+- `ref`-return needs an origin specifier (unavailable), so instead of
+  `Message.payload_ref()->ref Buffer` + `Buffer.copy_from(ref src)`, the fill uses a
+  **move-in/move-out** `Message.payload_into(ref self, var dst: Buffer) -> Buffer`
+  (P2a) — same one-pass property.
+- Moving a field out of a struct that will be dropped is illegal, so the reclaim path
+  uses a **swap-based** `Buffer.take_data()` / `Message.take_payload()` (P3), not a
+  direct `self._payload^`.
+- `Dict[UInt64, Message]` cannot be key-iterated (values must be `Copyable`), so
+  unacked reclaim/dequeue/D8 track a parallel `_unacked_tags: List[UInt64]`.
+
+**Death sites reclaimed (all proven, `in_use → 0`):** acknowledge (`d59a937`),
+delete_queue drain (`f7af97b`); orphans on unregister are **requeued** (D8 fix, buffers
+stay owned until a real death site), matching §8's R-DEP decision. Outlive invariant (R6)
+satisfied by declaring `_pool` before `_queues` inside `Router` (`84606b2`).
+
+**P4 measurement (`fd92345`, `benchmarks/pool_ab.mojo`), steady publish+consume+ack,
+fair (after fixing `Buffer.clear` to O(1) `List.clear`):** pooled-vs-direct speedup —
+64 B **1.00×**, 256 B **0.86×**, 4 KB **0.79×**, 16 KB **0.84×**. The size-classed pool
+gives **no throughput win** on this toolchain/workload; Mojo `List` allocation is
+already cheap and the pool adds class-scan/swap/bookkeeping.
+
+**Final decision (rule 17 — optimization follows measurement): the pool stays
+`buffer_pool_enabled = false` (default OFF).** It is fully implemented, tested, and
+leak-correct, retained as off-path infrastructure for a future allocation-heavy workload
+or allocator change to revisit. Increment 0004 performance conclusion: the WP-B copy-cut
+(large-payload throughput, fair R≈1.04 parity) is the win; P1b recycling is **not** a
+benefit here and is not enabled. No overclaim.

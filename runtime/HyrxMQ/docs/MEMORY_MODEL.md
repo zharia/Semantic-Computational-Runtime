@@ -225,3 +225,23 @@ semantics and needs its own decision record.
 |---|---|---|
 | `src/hyrx/core/exchange.mojo:171-207` (`match`), `:121` (`_already_present`) | `match()` returned a destination **LIST**, so a queue bound by several matching patterns received one copy **per matching binding** (probe: `routed == 2` for a single queue). Now returns a destination **SET** — one copy per queue (ROUTING.md:4 AMQP-compatibility goal; RabbitMQ: "each queue receives exactly one copy"). | `test_multiple_matching_bindings_same_queue_one_copy`, `test_direct_same_queue_multiple_keys` |
 | `src/hyrx/core/router.mojo:99-104` (`unbind_queue`) | Signature lacked `raises` while calling a `raises` Dict lookup → the function **could not compile when called**; it had zero call sites and was therefore never exercised. Now `raises -> Bool` and covered. | `test_unbind_removes_destination` |
+
+
+## P1b implementation record (2026-09-08, post-audit — supersedes D12/D8 "not done")
+
+- BufferPool is now size-classed and WIRED into Router (sole acquire/release owner),
+  behind `buffer_pool_enabled` (default false). Commits 575fc70..fd92345; suite 39/0,
+  each phase negative-proofed.
+- R6 "pool outlives queues": `_pool` is declared before `_queues` inside Router, so
+  Mojo's reverse-order field deinit tears the pool down last.
+- Reclaimed death sites (in_use->0 proven): `acknowledge`, `delete_queue` drain.
+  Consumer-unregister now **requeues** unacked messages (audit D8 fixed) rather than
+  stranding them; requeued buffers stay owned until a real death site.
+- Mojo-forced move-based primitives: `Buffer.take_data`/`Message.take_payload` (swap),
+  `Message.payload_into` (move-in/out); `_unacked_tags` list because
+  `Dict[UInt64, Message]` is not key-iterable (Message is not Copyable).
+- The "acknowledgement releases/reclaims resources" line is now true (reclaims to the
+  pool when enabled; frees on drop when disabled).
+- PERFORMANCE (measured, `benchmarks/pool_ab.mojo`): the pool gives NO throughput win
+  (0.79-1.00x vs direct allocation), so it is kept OFF by default per rule 17
+  (optimization follows measurement). D12 resolved: wired, tested, measured, disabled.

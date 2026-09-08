@@ -46,3 +46,11 @@ requires a real benchmark result. No dependency additions are permitted.
    consume an already-buffered frame and once after reading newly received data.
    What single-parse restructuring is intended while retaining both cases and
    the current partial-frame behavior?
+
+
+## P1b (previously deferred) — implemented + measured (2026-09-08)
+Implemented by scr-architect (k3 retired). Pool wired into Router, leak-correct across
+all death sites + D8 orphans requeued. Commits 575fc70..fd92345, suite 39/0, every
+phase negative-proofed. Measured (benchmarks/pool_ab.mojo): NO throughput win
+(0.79-1.00x) -> kept `buffer_pool_enabled=false`. See p1b_design.md §9. Increment 0004
+is now COMPLETE (WP-A/B/C/D + evidence + P1b implemented-and-evaluated).
