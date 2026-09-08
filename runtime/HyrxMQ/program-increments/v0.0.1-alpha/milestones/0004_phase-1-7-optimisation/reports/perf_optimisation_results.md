@@ -72,43 +72,40 @@ fair-matrix run (below) and to human review before `baseline.json` is updated.
 
 ## Performance — fair matrix (`bench-fair`)
 
-`pixi run bench-fair` drives the RabbitMQ-vs-HyrxMQ differential over the live
-docker broker (`node-rabbitmq`) across 4 cells × 5 payloads.
-
-**Environment constraint:** the interactive execution cap here is 120 s, so the
-full 4-cell run (build + `hyrx-bench` docker cell + measure + index + gate,
-~10 min) cannot complete in one call. The 2 cells that run within the cap are the
-**transport-symmetric fair pair** the harness itself headlines: `rabbit-tcp` vs
-`hyrx-tcp-docker` over the *same* docker port-published path. `hyrx-tcp-native`
-and `hyrx-uds` were NOT run (would exceed the cap). `baseline.json` is **not**
-updated (spec: human review required); the 4-cell `R≈1.051` from 0003 remains
-the recorded baseline.
-
-**Defect found + fixed:** the reporting tool `benchmarks/perf/index.py` crashed
-(`NoneType` format) whenever a cell was absent (e.g. the NATIVE reference missing),
-so a partial run produced no report. Fixed to print `--` for absent overhead and
-still compute the fair-pair `R`. Committed as a benchmark-tooling fix.
-
-**Measured (2-cell fair pair, quick reps — `R` valid, throughput valid):**
+A **full 4-cell fair run completed on a quiet host** (coordinator listener paused,
+default payloads/reps). Authoritative record + methodology:
+[`bench_fair_remeasure.md`](bench_fair_remeasure.md). Summary:
 
 ```
-fair pair: rabbit-tcp vs hyrx-tcp-docker   R = 1.019   (HyrxMQ ~1.02x RabbitMQ)
-               64B      4096B      16384B     (median msgs/s)
-  rabbit-tcp   4232      4312        4033
-  hyrx-tcp-docker  6470      2284        1262
+Fair-pair Rating R (rabbit-tcp vs hyrx-tcp-docker): 1.041   95% CI 1.033-1.049
+Baseline (pre-0004, git ed20be0):                   1.051
+Delta vs baseline: -0.010  ->  PARITY (inside the +-0.10 rating gate)
 ```
 
-Interpretation: on the symmetric docker-TCP path HyrxMQ is **faster at small
-payloads** (6470 vs 4232/s at 64B) but **slower at large** (1262 vs 4033/s at
-16KiB) — exactly the large-payload crossover weakness the 0003 baseline reported
-(0.51× @4KiB, 0.28× @16KiB). The 0004 copy-cut (single bulk copy + single-dest
-move) did not change the crossover shape; it removes a per-byte pass, which helps
-small/moderate payloads and the in-process `bench-fanout` slope, consistent with
-the `R≈1.02` near-parity here. A full 4-cell run (native + uds) on an
-unrestricted host is needed to re-assert the headline `R` and update `baseline.json`.
+Large-payload throughput (the copy-cut's real effect), current vs pre-0004:
 
-`GATE FAIL` on the run is `compare.py` comparing this 2-cell `R` against the
-4-cell baseline — an invalid cell-set comparison, not a real regression.
+```
+payload    hyrx-uds   hyrx-tcp-native   hyrx-tcp-docker
+ 4096B     +8.2%      +8.5%             -1.0%
+16384B    +17.2%     +15.3%             +9.0%
+```
+
+Small payloads (64-1024 B) are round-trip/docker-bound, so removing a per-byte pass
+does not move them; the gain appears where copy cost scales with size. `R` stays
+~parity because it is dominated by small-payload throughput and the docker-pair p99.
+
+The `compare.py` gate also flagged three per-cell "regressions", all at **256 B p99
+latency** (uds -27%, native -31%, docker -27%). These are **measurement noise**,
+proven by a null control: in the *same* run the **unchanged** `rabbit-tcp` reference
+cell's own 256 B p99 swung 412 -> 1137 us (-175%). RabbitMQ's code did not change,
+so that swing is environmental tail-jitter and invalidates the 256 B p99 point for
+the run (an earlier repeat also showed 196 -> 337 -> 220 us). It is not a copy-cut
+effect. (An earlier draft wrongly blamed a "2-cell vs 4-cell baseline" mismatch; R is
+always the 2-cell fair pair and the baseline holds all four cells — corrected here.)
+
+`baseline.json` is **left at 1.051**: R moved within tolerance and the run's 256 B
+p99 is noise-corrupted. A refresh needs a quiet run with stable reference p99 and a
+clean `compare.py`, deferred to human review (spec §36/§48).
 
 ## Confidence bumps (see confidence_matrix.md / MEMORY_MODEL.md)
 

@@ -140,3 +140,47 @@ before P2.
 opencode-k3 starts P1b **only after**: (a) Sprints 01–03 committed + architect
 `approve`, (b) this design reviewed by k3 for implementer risk with any
 `status:question` answered, (c) R-DEP decided. Until then, P1b is documentation.
+
+---
+
+## 8. Coordinator sign-off + implementer change (2026-09-08)
+
+**Implementer change:** `opencode-k3` was retired after completing + committing WP-A/B/C/D
+(sprints 01–04, `test_all` 38/0) and the provisional Sprint-05 docs. The coordinator
+(`scr-architect`) now implements directly and is the **sole source writer**. The
+"architect reviews k3" split collapses into self-implementation; review discipline is
+preserved by **tests + negative proofs + measured evidence**, not by a second agent.
+Sprints 01–03 are committed and were independently verified (I ran the suite). This
+document is therefore both the design and the signed-off plan.
+
+**R-DEP decision (D8 orphan-on-disconnect) — RESOLVED: requeue, do not release.**
+On `Router.unregister_consumer`, any `Message` still `_unacked` for that consumer is
+**moved back to the queue's inbox** (requeued, `redelivered`), NOT destroyed/released.
+Rationale: an unacked message has not been acknowledged, so destroying it would lose a
+publication (violates at-least-once); requeue keeps it deliverable. Crucially this
+**is not a buffer release site** — the buffer stays owned by the requeued Message and
+returns to the pool only when it finally reaches a real death site (ack / capacity-
+reject / drain-on-delete / shutdown). That keeps §4's release-site list authoritative
+and prevents a double-release. So P1b Phase P3 fixes D8 by adding the requeue; the
+leak invariant holds because requeued buffers remain counted `in_use` (still owned),
+and only drain/ack decrement it.
+
+**Phase checklist (execution order, each independently green + committed):**
+- **P1** — Size-classed `BufferPool`: `acquire(min_bytes)->Optional[Buffer]` (smallest
+  class ≥ min, **reset logical length to 0**, mark `_pooled`), `release(buf)` (only if
+  `_pooled`, return to the buffer's **own** class, guard `in_use≥0`), oversize>maxclass
+  and exhaustion ⇒ return `None` (caller direct-allocates; never raise/reject).
+  `Buffer` gains an origin tag + accessor. Unit tests only; **not wired**. Negative
+  proof: drop the reset → no-stale test fails; return-to-last-slab → balance test fails.
+- **P2** — `config.buffer_pool_enabled` (default **false**); thread `ref BufferPool`
+  into `publish` (multi-dest `acquire` else direct) and `Queue.enqueue` (capacity-reject
+  releases the dropped copy) + `Queue.acknowledge` (releases). Single-dest move path and
+  non-pooled buffers are released as no-ops via the tag.
+- **P3** — `Router.delete_queue` and real engine/broker **shutdown** drain each queue
+  (release every owned buffer); fix `api.mojo` field order (`_pool` declared **before**
+  `_router`) so the pool outlives queues; add D8 requeue. Leak invariant test:
+  `in_use == 0` after ack/all-delete/shutdown across sites 1–5.
+- **P4** — quiet re-bench with flag ON; keep default OFF unless it is neutral-or-better
+  on R and passes `compare.py`; flip only on evidence. Rollback = flag OFF (== P0).
+
+Starting P1 now.
