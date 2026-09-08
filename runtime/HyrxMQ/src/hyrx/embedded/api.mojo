@@ -160,6 +160,16 @@ struct HyrxEngine:
         """
         return self._router.read_payload(consumer_id, delivery_tag)
 
+    def queue_routing_key(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> String:
+        """Read an unacked delivery's routing key through the engine boundary."""
+        return self._router.queue_routing_key(consumer_id, delivery_tag)
+
+    def queue_message_count(self, consumer_id: UInt64) raises -> Int:
+        """Return the consumer queue's pending (ready) message count."""
+        return self._router.queue_message_count(consumer_id)
+
     def acknowledge(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> Bool:

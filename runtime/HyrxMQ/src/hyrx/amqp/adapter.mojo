@@ -137,6 +137,18 @@ struct AMQPAdapter:
         var view = engine.read_payload(consumer_id, delivery_tag)
         return view.to_bytes()
 
+    def queue_routing_key(
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> String:
+        """Read a delivery routing key from the injected routing authority."""
+        return engine.queue_routing_key(consumer_id, delivery_tag)
+
+    def queue_message_count(
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64
+    ) raises -> Int:
+        """Return the consumer queue's pending (ready) message count."""
+        return engine.queue_message_count(consumer_id)
+
     def acknowledge(
         mut self,
         mut engine: HyrxEngine,

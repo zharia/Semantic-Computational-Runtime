@@ -123,6 +123,18 @@ struct HyrxMQBroker:
         """Read a delivered message's payload bytes (message stays owned)."""
         return self._adapter.read_payload(self._engine, consumer_id, delivery_tag)
 
+    def queue_routing_key(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> String:
+        """Read a delivered message's routing key through the engine boundary."""
+        return self._adapter.queue_routing_key(
+            self._engine, consumer_id, delivery_tag
+        )
+
+    def queue_message_count(mut self, consumer_id: UInt64) raises -> Int:
+        """Return the consumer queue's pending (ready) message count."""
+        return self._adapter.queue_message_count(self._engine, consumer_id)
+
     def ack(mut self, consumer_id: UInt64, delivery_tag: UInt64) raises -> Bool:
         """Acknowledge a delivery."""
         return self._adapter.acknowledge(self._engine, consumer_id, delivery_tag)

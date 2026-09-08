@@ -931,14 +931,16 @@ struct AMQPService:
             )
         var tag = d.value().delivery_tag()
         var payload = self._broker.read_payload(cid, tag)
+        var routing_key = self._broker.queue_routing_key(cid, tag)
+        var message_count = self._broker.queue_message_count(cid)
         # get-ok args: delivery-tag long-long + redelivered bit(0) + exchange
         # shortstr + routing-key shortstr + message-count long.
         var gargs = List[UInt8]()
         write_u64(gargs, tag)
         gargs.append(0)  # redelivered bit
         write_short_string(gargs, "")  # exchange (Delivery carries none)
-        write_short_string(gargs, "")  # routing key (same)
-        write_u32(gargs, 0)  # message-count: engine has no depth read-back
+        write_short_string(gargs, routing_key^)
+        write_u32(gargs, UInt32(message_count))
         self._get_tags[conn_id] = tag
         if (bits & BASIC_GET_BIT_NO_ACK()) != 0:
             _ = self._broker.ack(cid, tag)
@@ -970,6 +972,7 @@ struct AMQPService:
                 return dst^
             var tag = d.value().delivery_tag()
             var payload = self._broker.read_payload(cid, tag)
+            var routing_key = self._broker.queue_routing_key(cid, tag)
             # deliver args: consumer-tag shortstr + delivery-tag long-long +
             # redelivered bit + exchange shortstr + routing-key shortstr.
             var args = List[UInt8]()
@@ -977,7 +980,7 @@ struct AMQPService:
             write_u64(args, tag)
             args.append(0)  # redelivered bit
             write_short_string(args, "")  # exchange (Delivery carries none)
-            write_short_string(args, "")  # routing key (same)
+            write_short_string(args, routing_key^)
             var wire = emit_message_frames(
                 chan, BASIC_DELIVER(), args^, payload^, self._frame_max
             )

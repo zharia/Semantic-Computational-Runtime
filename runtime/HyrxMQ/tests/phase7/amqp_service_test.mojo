@@ -345,7 +345,7 @@ def test_basic_ack_uses_the_addressed_delivery_tag() raises:
         (reply_method_id(cresp.value().copy()) == MethodID(60, 21)),
         "consume-ok is (60,21)",
     )
-    var tag = _tag_from_consume_reply(cresp.value().copy())
+    var tag = _tag_from_consume_reply(cresp.value().copy(), "ak")
     check((tag == 0), "first delivery tag is 0 (engine tag counter)")
 
     # basic.ack: delivery-tag(long-long) + bits octet (multiple = low bit).
@@ -401,7 +401,7 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
         UInt16(1), UInt16(60), UInt16(20), consume_args("bq", "tag-bq")^
     )
     var cresp = svc.handle_frame(UInt64(8), cframe^)
-    var tag = _tag_from_consume_reply(cresp.value().copy())
+    var tag = _tag_from_consume_reply(cresp.value().copy(), "bk")
     check((tag == 0), "delivery tag available from the flushed deliver")
 
     var aargs = List[UInt8]()
@@ -415,7 +415,9 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
     )
 
 
-def _tag_from_consume_reply(var wire: List[UInt8]) raises -> Int:
+def _tag_from_consume_reply(
+    var wire: List[UInt8], expected_routing_key: String
+) raises -> Int:
     """Extract the delivery tag from the first flushed basic.deliver frame.
 
     Real content layout (amqp0-9-1.xml §2.3.5): METHOD frame payload =
@@ -440,6 +442,23 @@ def _tag_from_consume_reply(var wire: List[UInt8]) raises -> Int:
     var tag = 0
     for i in range(8):
         tag = (tag << 8) + Int(p[off + i])
+    # The exchange is empty in this engine slice, but the routing key is an
+    # envelope property and must survive core -> AMQP delivery translation.
+    var exchange_len = Int(p[off + 9])
+    var routing_key_offset = off + 10 + exchange_len
+    var routing_key_len = Int(p[routing_key_offset])
+    check((routing_key_len > 0), "basic.deliver routing key is non-empty")
+    check(
+        (routing_key_len == len(expected_routing_key.bytes())),
+        "basic.deliver routing key length preserved",
+    )
+    var delivered_routing_key = String()
+    for i in range(routing_key_len):
+        delivered_routing_key.append(Codepoint(p[routing_key_offset + 1 + i]))
+    check(
+        (delivered_routing_key == expected_routing_key),
+        "basic.deliver routing key preserved",
+    )
     # And the §2.3.5 trailer must be a real HEADER frame for class 60.
     var hfr = codec.try_parse_frame()
     check(hfr.__bool__(), "a HEADER frame follows basic.deliver")
@@ -450,6 +469,69 @@ def _tag_from_consume_reply(var wire: List[UInt8]) raises -> Int:
     return tag
 
 
+def test_basic_get_reports_routing_key_and_ready_count() raises:
+    """get-ok carries the popped message key and remaining ready messages."""
+    var cfg = HyrxMQConfig()
+    var svc = AMQPService(cfg^)
+    svc.start()
+
+    var eargs = reserved()
+    write_short_string(eargs, "gx")
+    write_short_string(eargs, "direct")
+    _ = svc.handle_frame(
+        UInt64(10), build_frame(UInt16(1), UInt16(40), UInt16(10), eargs^)
+    )
+    var qargs = reserved()
+    write_short_string(qargs, "gq")
+    qargs.append(0)
+    _ = svc.handle_frame(
+        UInt64(10), build_frame(UInt16(1), UInt16(50), UInt16(10), qargs^)
+    )
+    var bargs = reserved()
+    write_short_string(bargs, "gq")
+    write_short_string(bargs, "gx")
+    write_short_string(bargs, "gk")
+    _ = svc.handle_frame(
+        UInt64(10), build_frame(UInt16(1), UInt16(50), UInt16(20), bargs^)
+    )
+    for i in range(3):
+        var body = List[UInt8]()
+        body.append(UInt8(i))
+        svc = publish_frames(svc^, UInt64(10), UInt16(1), "gx", "gk", body^)
+
+    var get_args = reserved()
+    write_short_string(get_args, "gq")
+    get_args.append(0)  # no-ack false
+    var response = svc.handle_frame(
+        UInt64(10), build_frame(UInt16(1), UInt16(60), UInt16(70), get_args^)
+    )
+    check(response.__bool__(), "basic.get returns get-ok for a queued message")
+    var codec = AMQPFrameCodec()
+    codec.feed_bytes(response.value().copy())
+    var frame = codec.try_parse_frame()
+    check(frame.__bool__(), "get-ok method frame decodes")
+    var p = frame.value().payload_copy()
+    check(
+        (MethodID(
+            (UInt16(p[0]) << 8) | UInt16(p[1]),
+            (UInt16(p[2]) << 8) | UInt16(p[3]),
+        ) == MethodID(60, 71)),
+        "response is basic.get-ok (60,71)",
+    )
+    # method ids (4) + delivery-tag (8) + redelivered (1) + empty exchange
+    var routing_key_offset = 14
+    var routing_key_len = Int(p[routing_key_offset])
+    check((routing_key_len > 0), "get-ok routing key is non-empty")
+    check((routing_key_len == 2), "get-ok routing key length")
+    check((p[routing_key_offset + 1] == UInt8(103)), "get-ok routing key byte 0")
+    check((p[routing_key_offset + 2] == UInt8(107)), "get-ok routing key byte 1")
+    var count_offset = routing_key_offset + 1 + routing_key_len
+    var message_count = (UInt32(p[count_offset]) << 24) | (
+        UInt32(p[count_offset + 1]) << 16
+    ) | (UInt32(p[count_offset + 2]) << 8) | UInt32(p[count_offset + 3])
+    check((message_count == UInt32(2)), "get-ok ready message-count is post-pop")
+
+
 def main() raises:
     test_queue_declare_produces_ok()
     test_queue_declare_no_wait_suppresses_ok()
@@ -457,4 +539,5 @@ def main() raises:
     test_publish_reaches_broker()
     test_basic_ack_uses_the_addressed_delivery_tag()
     test_basic_ack_bits_octet_is_not_a_consumer_id()
+    test_basic_get_reports_routing_key_and_ready_count()
     print("PHASE7_AMQP_SERVICE_TEST=PASS")
