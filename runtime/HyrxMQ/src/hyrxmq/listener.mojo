@@ -221,10 +221,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
     def _drop(mut self, var conn: Optional[Self.Conn]):
         """Close an accepted connection that will never be served."""
         if conn.__bool__():
-            try:
-                conn.value().close()
-            except:
-                pass
+            conn.value().close()
 
     def _close_slot(mut self, slot: Int):
         """Best-effort socket close for a slot; never propagates an error."""
@@ -233,10 +230,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._closed[slot] = True
         self._active -= 1
         if self._conns[slot].__bool__():
-            try:
-                self._conns[slot].value().close()
-            except:
-                pass
+            self._conns[slot].value().close()
 
     # ---- serving (the one frame/header/handshake state machine) ----
 
