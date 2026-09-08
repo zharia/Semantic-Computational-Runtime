@@ -70,14 +70,27 @@ before/after delta is claimed here. The code change removes one full per-byte
 pass per destination by construction, but the magnitude is left to the
 fair-matrix run (below) and to human review before `baseline.json` is updated.
 
-## Performance — fair matrix (`bench-fair`) — NOT RUN this session
+## Performance — fair matrix (`bench-fair`) — NOT MEASURED (environment cap)
 
 `pixi run bench-fair` drives the RabbitMQ-vs-HyrxMQ differential over the live
-docker broker (`node-rabbitmq`). It was **not executed** here to avoid mutating
-shared benchmark state and because the before/after delta requires the
-pre-0004 binary. Recorded as NOT MEASURED; the fair rating `R` is not
-re-asserted. `benchmarks/perf/baseline.json` is **not** updated (per spec:
-update only after human review).
+docker broker (`node-rabbitmq`) across 4 cells × 5 payloads (~10 min end to end:
+build listen binary, spin the `hyrx-bench` docker cell, measure, index, gate).
+
+**Why no valid R this session:** the interactive execution cap here is 120 s, so
+the full 4-cell run cannot complete. A constrained `--quick` run limited to
+`rabbit-tcp,hyrx-tcp-docker` did execute but is **invalid for comparison**:
+- `hyrx-tcp-native` and `hyrx-uds` cells are then absent, so the rating code
+  crashes (`NoneType` format on the missing NATIVE cell) and computes a spurious
+  `R 1.051 → 0.923 REGRESSION` — an artifact of the missing cells, not the code.
+- the host signature changed (`baseline head ed20be0 → now 4bdb395`), which the
+  harness itself flags as "comparison NOT trustworthy".
+
+**Resolution:** the fair `R` is **not** re-asserted and `benchmarks/perf/baseline.json`
+is **not** updated (per spec: update only after human review on a host that can
+run the full 4-cell matrix). The copy-cut win is evidenced by the in-process
+`bench-fanout` numbers above; the broker-over-wire ceiling comparison remains the
+0003 baseline (`~20 MB/s` vs RabbitMQ `~66.8 MB/s`) pending a full `bench-fair`
+on an unrestricted host. No code change is warranted by the constrained run.
 
 ## Confidence bumps (see confidence_matrix.md / MEMORY_MODEL.md)
 
