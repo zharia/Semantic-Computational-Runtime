@@ -46,8 +46,8 @@ costs; syscall- and cache-level attribution is NOT PROVEN (no profiler).
 | Area | Implementation | Tests | Evidence | Confidence | Remaining |
 |---|---|---|---|---|---|
 | Core | IMPLEMENTED | TESTED (runtime `check`, post-B4 repair) | `baseline.md` §B3/B4 (inert `assert`→`check`); `tests/phase1/{buffer,buffer_pool,message}_test.mojo` | HIGH | `latency_histogram`/`queue` expectations were corrected in §B4 (never executed before) |
-| Ownership | IMPLEMENTED (move + copy, no aliasing) | TESTED | `tests/phase2/routing_matrix_test.mojo` asserts publish COPIES per destination, original consumed; `tests/phase1/buffer_test.mojo` move | MEDIUM | D1: fan-out zeroes `MessageID` + drops headers (`persistence_readiness.md` §1.1/§2.1); envelope not readable back |
-| Routing | IMPLEMENTED | TESTED (runtime matrix) | `tests/phase2/{exchange,router,routing_matrix}_test.mojo`; direct/fanout/topic wildcard asserted | MEDIUM | headers exchange = stub (D10 `exchange.mojo:202-206`); topic `#` zero-or-more escalation (`baseline.md` §B4.3); copy-not-share (D2) |
+| Ownership | IMPLEMENTED (move + copy, no aliasing) | TESTED | `tests/phase2/routing_matrix_test.mojo` asserts publish COPIES per destination, original consumed; `tests/phase1/buffer_test.mojo` move | HIGH | D1 **fixed in 0004 WP-A**: fan-out preserves `MessageID`+`headers`; envelope now readable back via `read_message_id`/`read_headers` (`routing_matrix_test.mojo`) |
+| Routing | IMPLEMENTED | TESTED (runtime matrix) | `tests/phase2/{exchange,router,routing_matrix}_test.mojo`; direct/fanout/topic wildcard asserted; 0004 WP-A preserves `message_id`+`headers` per destination (pinned by `test_metadata_fidelity_*`) | HIGH | headers exchange = stub (D10 `exchange.mojo:202-206`); topic `#` zero-or-more escalation (`baseline.md` §B4.3); copy-cut done in 0004 WP-B (single bulk copy; pool recycle still P1b) |
 | Queueing | IMPLEMENTED | TESTED | `tests/phase2/queue_test.mojo` FIFO two-stack, ack, reject→tail requeue; §B5 negative proof (capacity counts unacked) | HIGH | reject requeue is tail (D9); delivery-tag namespace per-process (§1.2) |
 | Backpressure | IMPLEMENTED (window tracked) | TESTED (unit) | `tests/phase5/flow_control_test.mojo`, `tests/phase2/bounded_resource_test.mojo` | MEDIUM | flow-control policy sits in transport and is production-dead (F-4); queue-full = silent drop; no push-on-publish (pull-on-subscribe only, §25) |
 | UDS | IMPLEMENTED (flare provider) | TESTED | `tests/phase4/uds_test.mojo`, `tests/integration/{socket_behavior,flare_smoke}.mojo` real loopback | HIGH | socket mode umask-accidental; no `chmod`/`SO_PEERCRED` (`security_audit.md` §4) |
@@ -55,7 +55,7 @@ costs; syscall- and cache-level attribution is NOT PROVEN (no profiler).
 | Hyrx framing | IMPLEMENTED (pure data) | TESTED | `tests/phase5/framing_test.mojo` (5 frame types + encode/decode) | MEDIUM | `FRAME_TYPE_ACK/REJECT/FLOW_CONTROL` production-dead; §24-forbidden ack semantics below transport (F-4) |
 | AMQP codec | IMPLEMENTED (frame envelope byte-correct) | TESTED (bounded + negative) | `amqp_conformance.md` §1.1; `tests/phase6/{frame_codec_test,frame_codec_bounds,field_table}.mojo` | MEDIUM | content-header omits `weight` (§1.3); field tables dead code (3 types only, §1.4); NOT verified against an independent implementation |
 | AMQP state machine | ADVANCING: header echo + start/start-ok/tune/tune-ok/open/open-ok IMPLEMENTED; basic-class dispatch live — all driven by a real client | TESTED (byte-exact + real pika) | `negotiation_impl.md` §2–3 (start (10,10), tune (10,30), open-ok 13-byte (10,41)); pika 9/9 (`interop_rabbitmq.md` Update); `tests/phase7/connection_negotiation_test.mojo` | MEDIUM | close/secure/heartbeats/field-tables still missing; no transition gate on dispatch; frame_max/heartbeat renegotiation absent |
-| Real AMQP clients | INTEROPERABILITY PROVEN (basic path): pika completes handshake + publish/consume/get/ack + multi-frame bodies | TESTED (real client, 9/9) | pika 1.4.4 **9/9 vs our broker** (incl. 9000-byte body across multiple content-body frames at frame_max=4096) AND 9/9 vs reference RabbitMQ 4.3.5; delivery body byte-exact `b'hello-hyrx'`; `negotiation_impl.md`, `interop_rabbitmq.md` Update | MEDIUM | narrow basic path only; outgoing basic.deliver/get-ok carry `exchange=''` `routing-key=''` `delivery_tag=0` (start-at-0) + content-header property-flags=0/message_count=0 vs RabbitMQ's populated envelope — see "Known limitations"; auth not enforced; TLS/async-push/error-edge differential NOT PROVEN |
+| Real AMQP clients | INTEROPERABILITY PROVEN (basic path): pika completes handshake + publish/consume/get/ack + multi-frame bodies | TESTED (real client, 9/9) | pika 1.4.4 **9/9 vs our broker** (incl. 9000-byte body across multiple content-body frames at frame_max=4096) AND 9/9 vs reference RabbitMQ 4.3.5; delivery body byte-exact `b'hello-hyrx'`; `negotiation_impl.md`, `interop_rabbitmq.md` Update; 0004 WP-C populates outgoing deliver/get-ok `routing-key` + `message-count` (proven by `tests/phase7/amqp_service_test.mojo`) | MEDIUM | narrow basic path only; outgoing basic.deliver/get-ok now carry the published `routing-key` + a populated post-pop `message-count` (0004 WP-C); `exchange=''` and content-header property-flags=0 remain (NOT DONE in 0004 — known limitation, §8 of spec); `delivery_tag` starts at 0 per queue by design; auth not enforced; TLS/async-push/error-edge differential NOT PROVEN |
 | RabbitMQ differential | BLOCKED (broad surface) | NOT TESTED (error/edge differential) | `interop_rabbitmq.md` §2: reference `pika_lifecycle.py` 18/18 vs RabbitMQ 4.3.5; §Update: same-client basic path 9/9 vs **both** brokers — but the HyrxMQ-vs-RabbitMQ **error/edge** differential was NOT RUN | NOT PROVEN | only the narrow same-client basic pass captured; true error/edge/nack/cancel/close/confirm differential NOT RUN; envelope fidelity gap (empty exchange/rk/tag, props=0) |
 | Concurrency | NOT IMPLEMENTED (single-threaded) | N/A | `concurrency_design.md` §1/§7: zero thread/atomic in `src/`; CAS unresolvable, no std Mutex/channel | NOT PROVEN | EXPLICITLY DEFERRED WITH EVIDENCE; §6 test list unmet |
 | Persistence | NOT IMPLEMENTED | N/A | `persistence_readiness.md` §0/§5: no WAL/fsync/checkpoint/recovery; `durable` flag dead (D11) | NOT PROVEN | recovery-readiness = NEEDS-DESIGN-FIXES (identity, tag namespace, non-silent overflow) |
@@ -132,15 +132,17 @@ still never an unqualified "RabbitMQ compatible".
 
 ## Known limitations & follow-ups
 
-- **Deliver envelope fidelity (next small correctness item).** On OUR broker the
-  passing pika run shows outgoing `basic.deliver`/`basic.get-ok` carrying
+- **Deliver envelope fidelity (partially closed in 0004 WP-C).** On OUR broker
+  the passing pika run showed outgoing `basic.deliver`/`basic.get-ok` carrying
   `exchange=''`, `routing-key=''` and `delivery_tag=0` (start-at-0, single value
   observed), whereas RabbitMQ populated `exchange='hyrx.content.a.x'`,
-  `rk='hyrx.key.a'` and an incrementing delivery-tag. Root cause: the core
-  `Delivery` carries no envelope (exchange / routing-key / message-id)
-  read-back accessor, consistent with prior audit finding **D1** (router zeroes
-  `message_id`/headers on fan-out; engine exposes no envelope accessor). Outbound
-  content-header also has property-flags=0 and message_count=0. Recorded as
-  **NOT PROVEN** (envelope/property fidelity), not hidden behind the 9/9 pass.
-  Next item: add an envelope read-back on the core `Delivery` and populate the
-  deliver/get-ok envelope + delivery-tag + property flags.
+  `rk='hyrx.key.a'` and an incrementing delivery-tag. Root cause was **D1** (router
+  zeroed `message_id`/headers on fan-out; engine exposed no envelope accessor).
+  **0004 WP-A + WP-C fix:** `Router.publish` now preserves `message_id`+`headers`;
+  the engine surfaces `queue_routing_key`+`queue_message_count` through
+  `EmbeddedEngine`→`HyrxMQBroker`→`AMQPService`, so outgoing deliver/get-ok now
+  carry the **published `routing-key`** and a **populated post-pop `message-count`**
+  (proven by `tests/phase7/amqp_service_test.mojo`). `exchange=''` and content-header
+  property-flags=0 remain **NOT DONE** in 0004 (spec §8 known limitation) — recorded,
+  not hidden. `delivery_tag` still starts at 0 per queue by design (engine tag
+  counter), matching the prior observation and not a defect.
