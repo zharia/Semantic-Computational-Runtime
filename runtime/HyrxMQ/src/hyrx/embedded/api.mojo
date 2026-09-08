@@ -7,7 +7,6 @@
 # The embedded API delegates to the core Router for all routing/delivery.
 # No duplicate routing logic. No duplicate queue/exchange structs.
 
-from hyrx.core.buffer_pool import BufferPool
 from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.pool_stats import PoolStats
 from hyrx.core.message import Message
@@ -21,11 +20,13 @@ struct HyrxConfig:
     var _default_queue_capacity: Int
     var _buffer_pool_slab_size: Int
     var _buffer_pool_max_slabs: Int
+    var _buffer_pool_enabled: Bool
 
     def __init__(out self):
         self._default_queue_capacity = 1024
         self._buffer_pool_slab_size = 4096
         self._buffer_pool_max_slabs = 64
+        self._buffer_pool_enabled = False
 
     def __init__(
         out self,
@@ -36,6 +37,7 @@ struct HyrxConfig:
         self._default_queue_capacity = queue_capacity
         self._buffer_pool_slab_size = slab_size
         self._buffer_pool_max_slabs = max_slabs
+        self._buffer_pool_enabled = False
 
 struct HyrxStats:
     """Snapshot of engine statistics."""
@@ -79,7 +81,6 @@ struct HyrxEngine:
     """
 
     var _router: Router
-    var _pool: BufferPool
     var _config: HyrxConfig
     var _messages_published: Int
     var _messages_delivered: Int
@@ -87,10 +88,10 @@ struct HyrxEngine:
     var _messages_rejected: Int
 
     def __init__(out self, var config: HyrxConfig):
-        self._router = Router()
-        self._pool = BufferPool(
+        self._router = Router(
             config._buffer_pool_slab_size,
             config._buffer_pool_max_slabs,
+            config._buffer_pool_enabled,
         )
         self._config = config^
         self._messages_published = 0
@@ -199,5 +200,5 @@ struct HyrxEngine:
             self._messages_rejected,
             self._router.queue_count(),
             self._router.consumer_count(),
-            self._pool.stats(),
+            self._router.pool_stats(),
         )

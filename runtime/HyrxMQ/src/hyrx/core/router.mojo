@@ -21,10 +21,19 @@ from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import Exchange, ExchangeType, Binding
 from hyrx.core.queue import Queue, QueueConfig, Delivery
 from hyrx.core.consumer import Consumer
+from hyrx.core.buffer_pool import BufferPool
+from hyrx.core.pool_stats import PoolStats
 
 struct Router:
     """Core routing engine. Routes published messages to queue destinations."""
 
+    # _pool is declared FIRST so, under Mojo's reverse-order field deinit, it is
+    # torn down AFTER _queues: the pool must outlive every queue whose messages may
+    # release pooled buffers back into it (p1b invariant R6). Owned here, not by the
+    # engine, so Router is the single component that acquires/releases buffers and
+    # Queue never needs a borrow of the pool (avoids disjoint-mutable-borrow issues).
+    var _pool: BufferPool
+    var _pool_enabled: Bool
     var _exchanges: Dict[String, Exchange]
     var _queues: Dict[String, Queue]
     var _consumers: Dict[UInt64, Consumer]
@@ -32,11 +41,28 @@ struct Router:
     var _messages_routed: Int
 
     def __init__(out self):
+        self._pool = BufferPool(4096, 64)
+        self._pool_enabled = False
         self._exchanges = Dict[String, Exchange]()
         self._queues = Dict[String, Queue]()
         self._consumers = Dict[UInt64, Consumer]()
         self._next_consumer_id = 0
         self._messages_routed = 0
+
+    def __init__(
+        out self, max_class: Int, max_pooled: Int, pool_enabled: Bool
+    ):
+        self._pool = BufferPool(max_class, max_pooled)
+        self._pool_enabled = pool_enabled
+        self._exchanges = Dict[String, Exchange]()
+        self._queues = Dict[String, Queue]()
+        self._consumers = Dict[UInt64, Consumer]()
+        self._next_consumer_id = 0
+        self._messages_routed = 0
+
+    def pool_stats(ref self) -> PoolStats:
+        """Pool allocation snapshot (surfaced via the engine's stats())."""
+        return self._pool.stats()
 
     # ---- exchange management ------------------------------------------
 
