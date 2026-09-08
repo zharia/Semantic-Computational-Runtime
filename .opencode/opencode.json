@@ -10,6 +10,26 @@
     "tail_turns": 15
   },
   "plugin": [],
+  "lsp": {
+    "mojo": {
+      "command": [
+        "/home/zharia/Projects/experiments/semantic_computational_runtime/.venv/bin/mojo-lsp-server"
+      ],
+      "extensions": [".mojo"]
+    }
+  },
+  "mcp": {
+    "lean-lsp": {
+      "type": "local",
+      "command": ["uvx", "lean-lsp-mcp"],
+      "cwd": "/home/zharia/Projects/experiments/semantic_computational_runtime",
+      "environment": {
+        "PATH": "/home/zharia/.elan/bin:/home/zharia/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      },
+      "enabled": true,
+      "timeout": 120000
+    }
+  },
   "skills": {
     "paths": [
       "./skills/asd-ste100",

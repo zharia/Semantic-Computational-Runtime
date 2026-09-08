@@ -1,0 +1,11 @@
+[project]
+name = "scr"
+version = "0.0.1"
+description = "Semantic Computational Runtime — project-level toolchain"
+requires-python = ">=3.11"
+dependencies = [
+    "mojo==1.0.0",
+]
+
+[tool.uv]
+package = false
