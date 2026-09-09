@@ -87,6 +87,15 @@ struct TCPListener:
         var conn = TCPConnection(stream^, id)
         return Optional[TCPConnection](conn^)
 
+    def accept_fd(ref self) raises -> Int:
+        """The underlying listening socket fd (event-driven serving).
+
+        Borrowed fd: TcpListener owns the close. Only valid once
+        ``start()`` succeeded."""
+        if not self._listener.__bool__():
+            raise "TCPListener.accept_fd: listener not started"
+        return Int(self._listener.value().as_raw_fd())
+
 
 struct TCPConnection(Movable, AMQPConn):
     """A TCP connection carrying Hyrx messages."""
@@ -108,6 +117,13 @@ struct TCPConnection(Movable, AMQPConn):
 
     def conn_id(ref self) -> UInt64:
         return self._base.id()
+
+    def poll_fd(ref self) -> Int:
+        """Raw stream fd for the readiness registry (event-driven serving).
+
+        Borrowed: TcpStream owns the close. Reuses flare's own accessor —
+        no duplicate fd plumbing."""
+        return Int(self._stream.as_raw_fd())
 
     def send_bytes(mut self, var data: List[UInt8]) raises -> Int:
         """Write every byte of ``data``. Returns bytes sent."""

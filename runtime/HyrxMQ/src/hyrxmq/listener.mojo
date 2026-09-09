@@ -20,11 +20,14 @@
 # own only the concrete transport; the header -> handshake -> content frame
 # state machine lives once, in `AMQPConnServing`.
 
-from std.collections import List, Optional
+from std.collections import Dict, List, Optional
 
 from hyrx.transport.transport import TransportConfig, AMQPConn
 from hyrx.transport.tcp import TCPListener, TCPConnection
 from hyrx.transport.uds import UDSListener, UDSConnection
+from hyrx.transport.poll import EventPoller, PollEvent
+
+from hyrx.core.feature_flags import event_driven_serving
 
 from hyrx.amqp.frame_codec import AMQPFrameCodec
 from hyrx.amqp.constants import (
@@ -124,6 +127,21 @@ def SERVE_FAILED() -> Int:
     per-connection damage only (audit §13/§29).
     """
     return -2
+
+
+# Fairness dose (0015): the max number of frames served from ONE slot in a
+# single ready-cycle before the loop rotates to the next ready fd. Under a
+# burst the slot is simply re-fired by the level-triggered poller right
+# after, so throughput is unharmed but other ready connections get a turn
+# within one deadline window.
+def _FAIRNESS_DOSE() -> Int:
+    return 8
+
+
+# Poll timeout (0015): the readiness wait is bounded so `_running` (stop())
+# stays responsive while idle.
+def _POLL_TIMEOUT_MS() -> Int:
+    return 100
 
 
 struct AMQPConnServing[Conn: AMQPConn]:
@@ -231,6 +249,48 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._active -= 1
         if self._conns[slot].__bool__():
             self._conns[slot].value().close()
+
+    def close_slot(mut self, slot: Int):
+        """Public form of :meth:`_close_slot` (event-driven teardown).
+
+        Idempotent: a slot already closed (e.g. by serve_one_frame itself
+        on SERVE_CLOSED/SERVE_FAILED) is left untouched."""
+        if slot < 0 or slot >= len(self._closed):
+            return
+        self._close_slot(slot)
+
+    def slot_conn_fd(ref self, slot: Int) -> Int:
+        """The raw fd of the slot's connection (event-driven registry key).
+
+        Reuses the transport's own fd accessor through the AMQPConn trait
+        (additive for 0015); returns -1 for a closed/empty slot so the
+        event loop skips it."""
+        if slot < 0 or slot >= len(self._closed):
+            return -1
+        if self._closed[slot]:
+            return -1
+        if not self._conns[slot].__bool__():
+            return -1
+        return self._conns[slot].value().poll_fd()
+
+    def serve_slot_dose(mut self, slot: Int) -> Int:
+        """Serve up to _FAIRNESS_DOSE() frames from ONE slot. NEVER raises.
+
+        The readiness-rotation dose: serve_one_frame() repeatedly while it
+        returns SERVE_DISPATCHED, bounded by the dose constant so a
+        burst-y connection cannot starve other ready connections. Returns
+        the last outcome code (SERVE_DISPATCHED means the dose budget ran
+        out with the slot still dispatching — the level-triggered poller
+        re-fires it right after; SERVE_PARTIAL/teardown codes end the dose
+        naturally). Teardown itself is left to the caller (the loop owns
+        the registry).
+        """
+        var last = SERVE_DISPATCHED()
+        for _ in range(_FAIRNESS_DOSE()):
+            last = self.serve_one_frame(slot)
+            if last != SERVE_DISPATCHED():
+                break
+        return last
 
     # ---- serving (the one frame/header/handshake state machine) ----
 
@@ -471,9 +531,137 @@ struct AMQPListener:
         main() so systemd restarts the unit under its StartLimit* rate limit —
         the alternative (spinning on a dead listener) is worse, and Mojo 1.0
         exposes no portable sleep here to back off.
-        """
+
+        0015: when `event_driven_serving()` is True this instead runs
+        :meth:`serve_event_driven` — one thread, rotating fairness across
+        registered connections via a level-triggered readiness registry.
+        Flag False => this legacy loop is byte-identical to before."""
+        if event_driven_serving():
+            self.serve_event_driven()
+            return
         while self._running:
             _ = self.accept_and_serve_one()
+
+    # ---- 0015: event-driven serving ----
+
+    def serve_event_driven(mut self) raises:
+        """Single-threaded readiness loop over the TCP accept fd and every
+        registered connection fd (flag event_driven_serving = True).
+
+        Per plan.md 0015: the registry holds the listener accept fd plus one
+        entry per registered conn fd, level-triggered, timeout 100 ms so
+        `_running` stays responsive. Listener-readable -> one bounded accept
+        per readiness event (the level-triggered poller re-fires while more
+        pendings); refused connections are handled by register() exactly as
+        today (close + refuse, never registered). Conn-readable -> one
+        fairness dose (max K frames, then rotate); teardown on
+        SERVE_CLOSED/SERVE_FAILED goes through the SAME _close_slot path and
+        the fd is deregistered. In-loop recv stays blocking BUT is only
+        invoked after readiness reported data.
+
+        The dose/teardown machinery is shared (parameterized by <Conn:
+        AMQPConn> inside AMQPConnServing) — this wrapper contributes only
+        the concrete accept routine, exactly like the legacy tier.
+        """
+        var poller = EventPoller()
+        var lfd = self._transport.accept_fd()
+        var ltoken = UInt64(Int(lfd))
+        poller.add(lfd, ltoken)
+        var slot_of_fd = Dict[UInt64, Int]()
+        var events = List[PollEvent]()
+        while self._running:
+            var n = poller.wait(events, _POLL_TIMEOUT_MS())
+            for i in range(n):
+                var ev = events[i]
+                if ev.wakeup:
+                    continue
+                if ev.token == ltoken:
+                    self._accept_drain(poller, slot_of_fd)
+                else:
+                    self._serve_readiness(poller, slot_of_fd, events[i])
+
+
+    def _accept_drain(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+    ) raises:
+        """One accept per listener readiness; register the conn fd.
+
+        Bounded by one per readiness event (the level-triggered registry
+        re-fires while accepts remain). Refused connections return -1 from
+        accept_one(): register() already closed that socket, nothing is
+        registered."""
+        if not self._running:
+            return
+        var slot = self.accept_one()
+        if slot < 0:
+            return
+        var fd = self._srv.slot_conn_fd(slot)
+        if fd < 0:
+            # belt-and-braces: an unregistered-but-open slot would never be
+            # served by the loop; close it the same way.
+            self._srv.close_slot(slot)
+            return
+        var token = UInt64(Int(fd))
+        poller.add(fd, token)
+        slot_of_fd[token] = slot
+
+    def _serve_readiness(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+        ref ev: PollEvent,
+    ) raises:
+        """Serve one conn readiness event: one dose, then rotate.
+
+        Ordering rule (0015 EBADF crash): DEREGISTER BEFORE CLOSE. The
+        Reactor's `epoll_ctl DEL` (via _deregister -> poller.remove) runs
+        while the fd is STILL OPEN. The DEL that can still hit a dead fd —
+        the serve path closed the socket inside the dose
+        (registered-but-closed race) — EBADFs, and poller.remove tolerates
+        exactly that, purging the stale registry entry; every other error
+        propagates.
+        Error/hup-only events tear the slot down in that order. A dose that
+        reports SERVE_CLOSED/FAILED tears down the same way (close_slot is
+        idempotent). Stale tokens (slot already torn down) are skipped."""
+        if ev.token not in slot_of_fd:
+            return
+        var slot = slot_of_fd[ev.token]
+        if ev.failed or (ev.hup and not ev.readable):
+            self._deregister(poller, slot_of_fd, Int(ev.token))
+            self._srv.close_slot(slot)
+            return
+        var rc = self._srv.serve_slot_dose(slot)
+        if rc < 0:
+            self._deregister(poller, slot_of_fd, Int(ev.token))
+            self._srv.close_slot(slot)
+
+    def _deregister(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+        fd: Int,
+    ) raises:
+        """Remove the fd from the readiness registry at slot teardown.
+
+        Ordering (0015): `poller.remove` — the epoll_ctl DEL — runs FIRST,
+        while the fd is still open (the caller must deregister before any
+        close_slot), and is guarded by `is_registered` so it never raises on
+        an absent fd. EBADF is tolerated at deregister only when the fd was
+        already closed by the serve path (the registered-but-closed race);
+        poller.remove purges the stale registry entry and returns False in
+        that case, True after a clean DEL. Every other error propagates and
+        the fd->slot mapping is then kept, so a failing remove cannot
+        silently lose the mapping. The `slot_of_fd` entry is popped either
+        way: once the registry outcome settles, the mapping must clear."""
+        var token = UInt64(Int(fd))
+        if poller.is_registered(fd):
+            # True: clean DEL. False: EBADF tolerated, stale entry purged
+            # by the poller. Either way the registry no longer holds the fd.
+            _ = poller.remove(fd)
+        if token in slot_of_fd:
+            _ = slot_of_fd.pop(token)
 
 
 struct UDSAMQPListener:
@@ -559,6 +747,121 @@ struct UDSAMQPListener:
         return served
 
     def serve_forever(mut self) raises:
-        """The binary's accept loop: one connection at a time, to completion."""
+        """The binary's accept loop: one connection at a time, to completion.
+
+        0015: when `event_driven_serving()` is True this instead runs
+        :meth:`serve_event_driven` — the same single-threaded readiness
+        loop as the TCP front end, over the UDS listener fd + conn fds
+        (a bound Unix socket fd works identically as a readiness source).
+        Flag False => this legacy loop is byte-identical to before."""
+        if event_driven_serving():
+            self.serve_event_driven()
+            return
         while self._running:
             _ = self.accept_and_serve_one()
+
+    # ---- 0015: event-driven serving ----
+
+    def serve_event_driven(mut self) raises:
+        """Single-threaded readiness loop over the UDS accept fd and every
+        registered connection fd (flag event_driven_serving = True).
+
+        Identical registry design to the TCP front end (see
+        AMQPListener.serve_event_driven): level-triggered, 100 ms timeout,
+        one bounded accept per listener readiness, one fairness dose per
+        conn readiness, serve-close-path teardown + deregistration. The
+        UDS listener fd itself is registered the same way — a bound Unix
+        domain socket is an ordinary pollable fd (unchanged under path
+        rebinding, since stop()/rebind goes through a fresh start() +
+        fresh loop)."""
+        var poller = EventPoller()
+        var lfd = self._transport.accept_fd()
+        var ltoken = UInt64(Int(lfd))
+        poller.add(lfd, ltoken)
+        var slot_of_fd = Dict[UInt64, Int]()
+        var events = List[PollEvent]()
+        while self._running:
+            var n = poller.wait(events, _POLL_TIMEOUT_MS())
+            for i in range(n):
+                var ev = events[i]
+                if ev.wakeup:
+                    continue
+                if ev.token == ltoken:
+                    self._accept_drain(poller, slot_of_fd)
+                else:
+                    self._serve_readiness(poller, slot_of_fd, events[i])
+
+
+    def _accept_drain(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+    ) raises:
+        """One accept per listener readiness; register the conn fd.
+
+        Refused accepts return -1 (register already closed the socket)."""
+        if not self._running:
+            return
+        var slot = self.accept_one()
+        if slot < 0:
+            return
+        var fd = self._srv.slot_conn_fd(slot)
+        if fd < 0:
+            # belt-and-braces: an unregistered-but-open slot would never be
+            # served by the loop; close it the same way.
+            self._srv.close_slot(slot)
+            return
+        var token = UInt64(Int(fd))
+        poller.add(fd, token)
+        slot_of_fd[token] = slot
+
+    def _serve_readiness(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+        ref ev: PollEvent,
+    ) raises:
+        """Serve one conn readiness event: one dose, then rotate.
+
+        Same deregister-before-close ordering rule as the TCP front end (see
+        AMQPListener._serve_readiness): poller.remove (epoll_ctl DEL) runs on
+        the still-open fd, then close_slot; a DEL that EBADFs because the
+        serve path already closed the fd (registered-but-closed race) is
+        tolerated there — every other error propagates."""
+        if ev.token not in slot_of_fd:
+            return
+        var slot = slot_of_fd[ev.token]
+        if ev.failed or (ev.hup and not ev.readable):
+            self._deregister(poller, slot_of_fd, Int(ev.token))
+            self._srv.close_slot(slot)
+            return
+        var rc = self._srv.serve_slot_dose(slot)
+        if rc < 0:
+            self._deregister(poller, slot_of_fd, Int(ev.token))
+            self._srv.close_slot(slot)
+
+    def _deregister(
+        mut self,
+        mut poller: EventPoller,
+        mut slot_of_fd: Dict[UInt64, Int],
+        fd: Int,
+    ) raises:
+        """Remove the fd from the readiness registry at slot teardown.
+
+        Ordering (0015): `poller.remove` — the epoll_ctl DEL — runs FIRST,
+        while the fd is still open (the caller must deregister before any
+        close_slot), and is guarded by `is_registered` so it never raises on
+        an absent fd. EBADF is tolerated at deregister only when the fd was
+        already closed by the serve path (the registered-but-closed race);
+        poller.remove purges the stale registry entry and returns False in
+        that case, True after a clean DEL. Every other error propagates and
+        the fd->slot mapping is then kept, so a failing remove cannot
+        silently lose the mapping. The `slot_of_fd` entry is popped either
+        way: once the registry outcome settles, the mapping must clear."""
+        var token = UInt64(Int(fd))
+        if poller.is_registered(fd):
+            # True: clean DEL. False: EBADF tolerated, stale entry purged
+            # by the poller. Either way the registry no longer holds the fd.
+            _ = poller.remove(fd)
+        if token in slot_of_fd:
+            _ = slot_of_fd.pop(token)

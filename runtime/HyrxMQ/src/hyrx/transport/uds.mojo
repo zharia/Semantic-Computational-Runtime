@@ -74,6 +74,15 @@ struct UDSListener:
         var conn = UDSConnection(stream^, id)
         return Optional[UDSConnection](conn^)
 
+    def accept_fd(ref self) raises -> Int:
+        """The underlying listening socket fd (event-driven serving).
+
+        Borrowed fd: UnixListener owns the close. Only valid once
+        ``start()`` succeeded."""
+        if not self._listener.__bool__():
+            raise "UDSListener.accept_fd: listener not started"
+        return Int(self._listener.value().as_raw_fd())
+
 
 struct UDSConnection(Movable, AMQPConn):
     """A Unix domain socket connection carrying Hyrx bytes.
@@ -105,6 +114,13 @@ struct UDSConnection(Movable, AMQPConn):
 
     def conn_id(ref self) -> UInt64:
         return self._base.id()
+
+    def poll_fd(ref self) -> Int:
+        """Raw stream fd for the readiness registry (event-driven serving).
+
+        Borrowed: UnixStream owns the close. Reuses flare's own accessor —
+        no duplicate fd plumbing."""
+        return Int(self._stream.as_raw_fd())
 
     def send_bytes(mut self, var data: List[UInt8]) raises -> Int:
         """Write every byte of ``data``. Returns bytes sent."""

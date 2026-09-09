@@ -37,6 +37,15 @@ trait AMQPConn(Movable, Deinitable):
         """Close the connection."""
         ...
 
+    def poll_fd(ref self) -> Int:
+        """Raw socket fd for readiness registration (event-driven serving).
+
+        Additive for 0015: the single-threaded readiness loop registers this
+        fd on a level-triggered poller and deregisters it at slot teardown.
+        The fd is borrowed — the transport owns the close. -1 is not a valid
+        value for a live connection."""
+        ...
+
 
 struct TransportConfig:
     """Configuration for a transport."""
