@@ -18,10 +18,11 @@
 
 | Invariant | Status | Evidence |
 |---|---|---|
-| Byte-exactness at all sizes | **VERIFIED** | 40/0 tests, frame_codec_test, content_reassembly_test, raw_bytes_test |
+| Byte-exactness at all sizes | **VERIFIED** | 40/0 tests, frame_codec_test, content_reassembly_test, byte_path_test (new) |
 | No semantic change | **VERIFIED** | 40/0 tests, identical behavior flag OFF vs ON |
+| unsafe_memcpy correctness | **VERIFIED** | tests/phase8/byte_path_test: body/method/compaction/chunked round-trips at sizes 0/1/2/3/7/8/127/128/255/4096/16384/65536; **negative proof**: shortening one try_parse_frame memcpy `count` by 1 fails the guard |
 | Flag-gated default | **ON** | memcpy is correctness-preserving; instant rollback available |
-| Core independent | **VERIFIED** | raw_bytes.mojo, feature_flags.mojo: std.collections only |
+| Core independent | **VERIFIED** | feature_flags.mojo + remaining core modules: std.collections only (raw_bytes.mojo retired in 0006) |
 | Wire format unchanged | **VERIFIED** | frame_codec_test byte-level assertions |
 
 ## Known Gaps
@@ -29,7 +30,7 @@
 | Gap | Risk | Mitigation |
 |---|---|---|
 | 65 KB / 128 KB not at parity | Cannot claim gap closure at these sizes | TCP/network-level (writev, TCP_CORK); not application copy loops; tracked for future milestone |
-| Flag OFF in production pending A/B confirmation | Users may not see improvement | Flag is ON by default; all tests pass with ON |
+| Flag default ON; byte-exactness guard previously missing | Resolved by 0006 cleanup | Flag is ON by default (rollback = flip OFF); guard now EXISTS: tests/phase8/byte_path_test + negative proof on a try_parse_frame memcpy count; suite 40/0 |
 | `resize(unsafe_uninit_length=)` leaves garbage before memcpy | UB if memcpy doesn't cover all bytes | Every site covers exactly `count` bytes; property tests at 0/1/4K/64K/128K |
 
 ## Recommendation

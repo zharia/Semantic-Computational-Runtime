@@ -1,5 +1,7 @@
 # 0005 — Contiguous Byte-Path Performance Report
 
+> **Errata (0006 cleanup):** the `tests/phase8/raw_bytes_test` referenced here never existed/ran; the real unsafe_memcpy byte-exactness guard is `tests/phase8/byte_path_test` (suite now 40/0). The `contiguous_batch_enabled` flag is now default ON (memcpy path), and the 0005 `RawBytes` struct was retired. 0005's "default OFF / 39-40 /0" evidence lines reflect the plan-time assumption, not the shipped state.
+
 **Date:** 2026-09-09
 **Milestone:** 0005_contiguous-byte-path
 **Depends on:** 0004_phase-1-7-optimisation

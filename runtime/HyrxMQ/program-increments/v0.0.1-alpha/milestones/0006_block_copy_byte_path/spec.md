@@ -88,13 +88,13 @@ path is measurably faster and byte-exact. Instant rollback: flip flag OFF.
 
 1. 40/0 tests green every commit (existing + new)
 2. Byte-exact at 0/1/4K/64K/128K + mid-frame TCP splits
-3. Flag-gated default OFF — instant rollback
+3. Flag default ON; instant rollback by flipping it OFF
 4. Paired same-broker A/B: 16 KB Hyrx/Rabbit ≥ ~1.0 (parity)
 5. No small-payload regression (< 5% noise)
 
 ## 7. Definition of done
 
-1. All 8 block-copy sites landed, `test_all` 39/0
+1. All 8 block-copy sites landed, `test_all` 40/0 (incl. tests/phase8/byte_path_test)
 2. Paired A/B shows 16 KB parity (1.24x)
 3. Default flipped ON (per §5 policy)
 4. 0005 RawBytes struct retired (superseded by direct memcpy)

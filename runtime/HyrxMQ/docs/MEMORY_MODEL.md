@@ -250,9 +250,9 @@ semantics and needs its own decision record.
 
 ### New types
 
-- **`RawBytes`** (`src/hyrx/core/raw_bytes.mojo`): **DEPRECATED (0006).**
+- **`RawBytes`** (`src/hyrx/core/raw_bytes.mojo`): **REMOVED (0006).**
   Superseded by direct `unsafe_memcpy` between `List[UInt8].unsafe_ptr()` pointers.
-  Retained for reference only; not imported by any active code.
+  The struct was retired and the module deleted; it no longer exists in the tree.
 
 - **`feature_flags.contiguous_batch_enabled()`** (`src/hyrx/core/feature_flags.mojo`):
   flag-gated, default ON. When True, Buffer.from_buffer_copy, Buffer.snapshot,
@@ -323,4 +323,4 @@ via `List[UInt8].unsafe_ptr()` and `resize(unsafe_uninit_length=)`.
 **A/B result:** 16 KB Hyrx/Rabbit went from 0.47x (0005) to **1.24x** (closed).
 65 KB: 0.33x to 0.63x (+90%). 128 KB: 0.25x to 0.49x (+96%).
 
-**Flag:** default ON (memcpy is correctness-preserving). 39/0 tests green.
+**Flag:** default ON (memcpy is correctness-preserving). 40/0 tests green; byte-exact guard = tests/phase8/byte_path_test (negative proof on a try_parse_frame memcpy count).
