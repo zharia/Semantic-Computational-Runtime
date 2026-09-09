@@ -55,5 +55,9 @@
       "./skills/scr-edit-domain",
       "./skills/scr-meta-edit"
     ]
+  },
+  "tmpDir": "./.tmp",
+  "tmpWorkspace": {
+    "/tmp/**": "allow"
   }
 }

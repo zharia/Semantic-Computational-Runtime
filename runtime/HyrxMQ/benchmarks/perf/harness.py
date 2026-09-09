@@ -68,8 +68,8 @@ from pika_uds import connect as uds_connect  # noqa: E402
 
 HYRX_BIN = os.environ.get('HYRXMQ_BIN', os.path.join(ROOT, 'build',
                                                      'hyrxmq-listen'))
-RABBIT_HOST = '127.0.0.1'
-RABBIT_PORT = 5672
+RABBIT_HOST = os.environ.get('RABBIT_HOST', '127.0.0.1')
+RABBIT_PORT = int(os.environ.get('RABBIT_PORT', '5672'))
 HYRX_DOCKER_PORT = 5700
 HYRX_NATIVE_PORT = 5701
 USER = os.environ.get('HYRX_USER', 'admin')
