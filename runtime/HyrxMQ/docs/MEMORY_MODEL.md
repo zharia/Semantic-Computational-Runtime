@@ -349,3 +349,16 @@ through live `recv_bytes`, partial-feed shrink-branch assertions, negative
 proof: dropping the `resize(unsafe_uninit_length=got)` shrink fails the test).
 `recv_exact` retention record: premise rebutted — 17 callers in 7 test files,
 zero in `src/`; retained, not on any measured hot path.
+
+## 0009 note (2026-09-09, increment 0009)
+
+Measurement-only (zero production change): native closed-loop bench client
+exists — `benchmarks/native_cycle_bench.mojo`, same publish→basic_get 1-in-flight
+shape on both brokers. Broker-only ceiling recorded (6.4x @ 64 B → 1.21x @
+128 KB; hyrx 17.25 µs/msg floor) in
+`program-increments/v0.0.1-alpha/milestones/0009_native_measurement_profile/reports/native_ceiling_and_profile.md`.
+0007 fix confirmed by the 128 KB profile: `recv_bytes` off the hot list (was
+78.02% pre-0007). 0010 target ranking from measured shares: response-assembly
+copies (`emit_message_frames` 23.6% + `resp.copy()`) / List realloc-extend churn
+(~27%, persistent per-connection buffers) / payload extract
+(`read_payload` 5.9%, direct-into-codec ingest).
