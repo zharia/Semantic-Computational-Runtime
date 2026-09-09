@@ -16,13 +16,6 @@ from flare.uds import UnixListener, UnixStream
 from hyrx.transport.transport import TransportConfig, TransportConnection, AMQPConn
 
 
-def _zeroed(n: Int) -> List[UInt8]:
-    """Zero-filled byte storage used as a read target."""
-    var b = List[UInt8]()
-    b.resize(n, 0)
-    return b^
-
-
 struct UDSListener:
     """Listens on a Unix domain socket path."""
 
@@ -116,12 +109,14 @@ struct UDSConnection(Movable, AMQPConn):
         May return fewer bytes than requested; an empty result means EOF."""
         if max_bytes <= 0:
             return List[UInt8]()
-        var buf = _zeroed(max_bytes)
+        var buf = List[UInt8](unsafe_uninit_length=max_bytes)
         var got = self._stream.read(buf.unsafe_ptr(), max_bytes)
-        var out = List[UInt8]()
-        for i in range(got):
-            out.append(buf[i])
-        return out^
+        if got == max_bytes:
+            return buf^
+        if got <= 0:
+            return List[UInt8]()
+        buf.resize(unsafe_uninit_length=got)
+        return buf^
 
     def recv_exact(mut self, n: Int) raises -> List[UInt8]:
         """Read until exactly ``n`` bytes are collected. Raises on EOF."""
