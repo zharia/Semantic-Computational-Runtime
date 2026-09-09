@@ -47,12 +47,10 @@ The ranking must be measured rather than assumed.
 
 Every experimental optimization needs an A/B benchmark.
 
-> Current state (milestone 0003): nothing above is implemented. The engine is
-> **not** zero-copy — it copies the payload (twice) per destination, which the
-> §21 investigation measured as the dominant in-process cost (~150–200 MiB/s
-> scalar-copy floor; the per-byte loop in `Router.publish`). See
-> `.../0003_phase-1-7-audit/reports/benchmarks.md` (§B3/§B4). Treat "zero-copy"
-> as an experimental target only.
+> Current state (milestone 0006): per-byte copy loops replaced with `unsafe_memcpy`
+> block copies. 16 KB gap closed (1.24x vs RabbitMQ). 65 KB / 128 KB improved
+> ~2x but not at parity (TCP/kernel-level, not application copy loops). Flag
+> default ON. In-process codec throughput: ~290 MiB/s at 64 KiB payload.
 
 ## I/O
 

@@ -18,8 +18,10 @@
 # Mojo 1.0 compatibility. The List manages element count directly.
 
 from std.collections import List
+from std.memory import unsafe_memcpy
 
 from hyrx.core.buffer_snapshot import BufferSnapshot
+from hyrx.core.feature_flags import contiguous_batch_enabled
 
 struct Buffer:
     """A contiguous byte region with ownership semantics."""
@@ -84,9 +86,18 @@ struct Buffer:
         one append pass.  It deliberately does not call ``resize()`` first, so
         the copy path does not zero-fill then overwrite the same bytes.
         """
-        var result = Buffer(source.size())
-        for i in range(source.size()):
-            result._data.append(source[i])
+        var n = source.size()
+        var result = Buffer(n)
+        if contiguous_batch_enabled():
+            result.resize_uninit(n)
+            unsafe_memcpy(
+                dest=result._data.unsafe_ptr(),
+                src=source._data.unsafe_ptr(),
+                count=n,
+            )
+        else:
+            for i in range(source.size()):
+                result._data.append(source[i])
         return result^
 
     def snapshot(ref self) -> BufferSnapshot:
@@ -97,9 +108,18 @@ struct Buffer:
         even if this Buffer is later mutated, moved or destroyed.
         This is not a borrowed view — see `BufferSnapshot`.
         """
-        var snapshot = List[UInt8](capacity=len(self._data))
-        for i in range(len(self._data)):
-            snapshot.append(self._data[i])
+        var n = len(self._data)
+        var snapshot = List[UInt8](capacity=n)
+        if contiguous_batch_enabled():
+            snapshot.resize(unsafe_uninit_length=n)
+            unsafe_memcpy(
+                dest=snapshot.unsafe_ptr(),
+                src=self._data.unsafe_ptr(),
+                count=n,
+            )
+        else:
+            for i in range(len(self._data)):
+                snapshot.append(self._data[i])
         return BufferSnapshot(snapshot^)
 
     def resize(mut self, new_size: Int) raises:
@@ -116,6 +136,14 @@ struct Buffer:
         # Shrink: remove trailing bytes.
         while len(self._data) > new_size:
             _ = self._data.pop()
+
+    def resize_uninit(mut self, new_size: Int):
+        """Set logical size WITHOUT zero-initializing new bytes.
+
+        Caller MUST immediately fill the new region via unsafe_memcpy
+        before any read. No capacity check — caller must guarantee.
+        """
+        self._data.resize(unsafe_uninit_length=new_size)
 
     # ---- pool origin tag (used by BufferPool; see buffer_pool.mojo) ----
 

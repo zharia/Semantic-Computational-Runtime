@@ -8,6 +8,7 @@
 # size and never retains more than one maximum-size frame.
 
 from std.collections import List
+from std.memory import unsafe_memcpy
 
 from hyrx.amqp.constants import (
     FRAME_BODY,
@@ -16,6 +17,7 @@ from hyrx.amqp.constants import (
     FRAME_HEARTBEAT,
     FRAME_METHOD,
 )
+from hyrx.core.feature_flags import contiguous_batch_enabled
 
 
 def DEFAULT_MAX_FRAME_SIZE() -> Int:
@@ -55,10 +57,14 @@ struct AMQPFrame:
         return len(self.payload)
 
     def payload_copy(ref self) -> List[UInt8]:
-        var result = List[UInt8]()
-        for i in range(len(self.payload)):
-            result.append(self.payload[i])
-        return result^
+        """Return an owned copy of the payload bytes."""
+        if contiguous_batch_enabled():
+            return self.payload.copy()
+        else:
+            var result = List[UInt8](capacity=len(self.payload))
+            for i in range(len(self.payload)):
+                result.append(self.payload[i])
+            return result^
 
 
 struct MethodFrame:
@@ -117,10 +123,16 @@ struct AMQPFrameCodec:
 
     NOTE: `max_frame_size` is a PROVISIONAL FIXED ceiling, NOT a negotiated
     one — see the NOT IMPLEMENTED marker above this struct.
+
+    P2 cursor design: `_cursor` tracks the current read position in `_buffer`.
+    After parsing a frame, `_cursor` advances past it. Compaction (shifting
+    unparsed bytes to index 0) happens only when the cursor passes half the
+    buffer, not per-frame. This eliminates the O(n)-per-frame remaining rebuild.
     """
 
     var _buffer: List[UInt8]
     var _max_frame_size: Int
+    var _cursor: Int
 
     def __init__(out self, max_frame_size: Int = DEFAULT_MAX_FRAME_SIZE()):
         """Create a codec with a payload ceiling of `max_frame_size` bytes.
@@ -130,18 +142,48 @@ struct AMQPFrameCodec:
         """
         self._buffer = List[UInt8]()
         self._max_frame_size = max_frame_size
+        self._cursor = 0
 
     def frame_limit(ref self) -> Int:
         """Maximum legal payload size for one frame (bytes)."""
         return self._max_frame_size
 
     def buffered_bytes(ref self) -> Int:
-        """Bytes currently retained in the internal buffer.
+        """Bytes currently retained in the internal buffer (unparsed backlog).
 
         Invariant enforced by feed_bytes/try_parse_frame: this never exceeds
         `frame_limit() + _FRAME_OVERHEAD()`.
         """
-        return len(self._buffer)
+        return len(self._buffer) - self._cursor
+
+    def _compact(mut self):
+        """Shift unparsed bytes to index 0 when cursor is past halfway.
+
+        Called by try_parse_frame after advancing the cursor. Amortized O(1):
+        each byte is moved at most once across all compactions.
+        """
+        if self._cursor == 0:
+            return
+        var remaining = len(self._buffer) - self._cursor
+        if remaining > 0:
+            if contiguous_batch_enabled():
+                # memmove-safe: allocate temp, copy back
+                var new_buf = List[UInt8](capacity=remaining)
+                new_buf.resize(unsafe_uninit_length=remaining)
+                unsafe_memcpy(
+                    dest=new_buf.unsafe_ptr(),
+                    src=self._buffer.unsafe_ptr() + self._cursor,
+                    count=remaining,
+                )
+                self._buffer = new_buf^
+            else:
+                var new_buf = List[UInt8](capacity=remaining)
+                for i in range(self._cursor, len(self._buffer)):
+                    new_buf.append(self._buffer[i])
+                self._buffer = new_buf^
+        else:
+            self._buffer.clear()
+        self._cursor = 0
 
     def feed_bytes(mut self, var data: List[UInt8]) raises:
         """Feed incoming bytes into the codec buffer.
@@ -155,17 +197,31 @@ struct AMQPFrameCodec:
         than one maximum-size frame is failed closed. The listener satisfies
         this (it parses every step and reads at most 64 KiB per step).
         """
+        # P2: compact before feed if cursor is past half the buffer
+        if self._cursor > 0 and self._cursor > len(self._buffer) // 2:
+            self._compact()
         var limit = self._max_frame_size + _FRAME_OVERHEAD()
-        if len(data) > limit - len(self._buffer):
+        if len(data) > limit - self.buffered_bytes():
             _ = _frame_error(
                 "buffer accumulation "
-                + String(len(self._buffer) + len(data))
+                + String(self.buffered_bytes() + len(data))
                 + " bytes exceeds the buffered-frame limit "
                 + String(limit)
                 + " bytes"
             )
-        for i in range(len(data)):
-            self._buffer.append(data[i])
+        if contiguous_batch_enabled():
+            # block copy: grow buffer in-place, memcpy data
+            var old_len = len(self._buffer)
+            var new_len = old_len + len(data)
+            self._buffer.resize(unsafe_uninit_length=new_len)
+            unsafe_memcpy(
+                dest=self._buffer.unsafe_ptr() + old_len,
+                src=data.unsafe_ptr(),
+                count=len(data),
+            )
+        else:
+            for i in range(len(data)):
+                self._buffer.append(data[i])
 
     def try_parse_frame(mut self) raises -> Optional[AMQPFrame]:
         """Try to parse a complete frame from the buffer.
@@ -174,11 +230,14 @@ struct AMQPFrameCodec:
         Raises the catchable `AMQP frame error:` when the frame is provably
         malformed: an illegal frame_type octet, a declared payload larger
         than frame_limit(), or a wrong frame-end byte.
+
+        P2 cursor design: reads from self._cursor offset, advances cursor
+        past the parsed frame. No remaining-rebuild copy.
         """
         # Reject an illegal frame type as soon as the first octet arrives, so
         # garbage cannot be buffered at all.
-        if len(self._buffer) >= 1:
-            var t = self._buffer[0]
+        if self.buffered_bytes() >= 1:
+            var t = self._buffer[self._cursor]
             if (
                 t != FRAME_METHOD()
                 and t != FRAME_HEADER()
@@ -192,16 +251,17 @@ struct AMQPFrameCodec:
                 )
 
         # Need at least 7 bytes: type(1) + channel(2) + size(4)
-        if len(self._buffer) < 7:
+        if self.buffered_bytes() < 7:
             return Optional[AMQPFrame]()
 
-        var frame_type = self._buffer[0]
-        var channel = (UInt16(self._buffer[1]) << 8) | UInt16(self._buffer[2])
+        var c = self._cursor
+        var frame_type = self._buffer[c]
+        var channel = (UInt16(self._buffer[c + 1]) << 8) | UInt16(self._buffer[c + 2])
         var size = (
-            (UInt32(self._buffer[3]) << 24) |
-            (UInt32(self._buffer[4]) << 16) |
-            (UInt32(self._buffer[5]) << 8) |
-            UInt32(self._buffer[6])
+            (UInt32(self._buffer[c + 3]) << 24) |
+            (UInt32(self._buffer[c + 4]) << 16) |
+            (UInt32(self._buffer[c + 5]) << 8) |
+            UInt32(self._buffer[c + 6])
         )
 
         # Validate the DECLARED size before touching payload bytes: an oversized
@@ -216,16 +276,26 @@ struct AMQPFrameCodec:
 
         # Check if we have the full frame (7 + size + 1 for end byte)
         var total = 7 + Int(size) + 1
-        if len(self._buffer) < total:
+        if self.buffered_bytes() < total:
             return Optional[AMQPFrame]()
 
-        # Extract payload
-        var payload = List[UInt8]()
-        for i in range(7, 7 + Int(size)):
-            payload.append(self._buffer[i])
+        # Extract payload — read from cursor offset
+        var payload = List[UInt8](capacity=Int(size))
+        var payload_start = c + 7
+        var payload_end = c + 7 + Int(size)
+        if contiguous_batch_enabled():
+            payload.resize(unsafe_uninit_length=Int(size))
+            unsafe_memcpy(
+                dest=payload.unsafe_ptr(),
+                src=self._buffer.unsafe_ptr() + payload_start,
+                count=Int(size),
+            )
+        else:
+            for i in range(payload_start, payload_end):
+                payload.append(self._buffer[i])
 
         # Verify frame end byte
-        var end_byte = self._buffer[7 + Int(size)]
+        var end_byte = self._buffer[payload_end]
         if end_byte != FRAME_END():
             _ = _frame_error(
                 "frame end byte "
@@ -233,11 +303,8 @@ struct AMQPFrameCodec:
                 + " is not 0xCE"
             )
 
-        # Remove consumed bytes from buffer
-        var remaining = List[UInt8]()
-        for i in range(total, len(self._buffer)):
-            remaining.append(self._buffer[i])
-        self._buffer = remaining^
+        # P2: advance cursor past this frame (no rebuild copy)
+        self._cursor = c + total
 
         return AMQPFrame(frame_type, channel, payload^)
 
@@ -267,8 +334,12 @@ struct AMQPFrameCodec:
         result.append(UInt8((method_id >> 8) & 0xFF))
         result.append(UInt8(method_id & 0xFF))
         # args
-        for i in range(len(args)):
-            result.append(args[i])
+        if contiguous_batch_enabled():
+            for i in range(len(args)):
+                result.append(args[i])
+        else:
+            for i in range(len(args)):
+                result.append(args[i])
         # frame end
         result.append(0xCE)
         return result^
@@ -320,8 +391,12 @@ struct AMQPFrameCodec:
         result.append(UInt8((property_flags >> 8) & 0xFF))
         result.append(UInt8(property_flags & 0xFF))
         # properties
-        for i in range(len(properties)):
-            result.append(properties[i])
+        if contiguous_batch_enabled():
+            for i in range(len(properties)):
+                result.append(properties[i])
+        else:
+            for i in range(len(properties)):
+                result.append(properties[i])
         # frame end
         result.append(0xCE)
         return result^
@@ -343,11 +418,23 @@ struct AMQPFrameCodec:
         result.append(UInt8((payload_size >> 16) & 0xFF))
         result.append(UInt8((payload_size >> 8) & 0xFF))
         result.append(UInt8(payload_size & 0xFF))
-        # body bytes
-        for i in range(len(body)):
-            result.append(body[i])
-        # frame end
-        result.append(0xCE)
+        # body bytes (8 = type+channel+size = frame header before payload)
+        var n = len(body)
+        if contiguous_batch_enabled():
+            # pre-size result: 7 header + n body + 1 end = n+8
+            result.resize(unsafe_uninit_length=n + 8)
+            unsafe_memcpy(
+                dest=result.unsafe_ptr() + 7,
+                src=body.unsafe_ptr(),
+                count=n,
+            )
+            # write frame end at index 7+n (result already has length n+8)
+            result[7 + n] = 0xCE
+        else:
+            for i in range(len(body)):
+                result.append(body[i])
+            # frame end
+            result.append(0xCE)
         return result^
 
     @staticmethod
@@ -371,9 +458,13 @@ def parse_method_args(var args: List[UInt8]) raises -> MethodFrame:
         raise "method frame payload too short"
     var class_id = (UInt16(args[0]) << 8) | UInt16(args[1])
     var method_id = (UInt16(args[2]) << 8) | UInt16(args[3])
-    var rest = List[UInt8]()
-    for i in range(4, len(args)):
-        rest.append(args[i])
+    var rest = List[UInt8](capacity=len(args) - 4)
+    if contiguous_batch_enabled():
+        for i in range(4, len(args)):
+            rest.append(args[i])
+    else:
+        for i in range(4, len(args)):
+            rest.append(args[i])
     return MethodFrame(class_id, method_id, rest^)
 
 
@@ -406,7 +497,11 @@ def parse_header_frame_payload(
         UInt64(payload[11])
     )
     var property_flags = (UInt16(payload[12]) << 8) | UInt16(payload[13])
-    var props = List[UInt8]()
-    for i in range(14, len(payload)):
-        props.append(payload[i])
+    var props = List[UInt8](capacity=len(payload) - 14)
+    if contiguous_batch_enabled():
+        for i in range(14, len(payload)):
+            props.append(payload[i])
+    else:
+        for i in range(14, len(payload)):
+            props.append(payload[i])
     return HeaderFrame(class_id, weight, body_size, property_flags, props^)

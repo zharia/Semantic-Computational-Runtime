@@ -53,6 +53,7 @@
 #   handler yet; unhandled synchronous methods get no reply at all.
 
 from std.collections import Dict, List, Optional
+from std.memory import unsafe_memcpy
 
 from hyrx.amqp.frame_codec import AMQPFrame, AMQPFrameCodec, parse_header_frame_payload
 from hyrx.amqp.field_table import FieldTable
@@ -178,16 +179,18 @@ def write_short_string(mut out: List[UInt8], var s: String):
     """Append an AMQP short-string (1-byte length + bytes) to `out`."""
     var b = s.as_bytes()
     out.append(UInt8(len(b)))
-    for i in range(len(b)):
-        out.append(b[i])
+    var old_len = len(out)
+    out.resize(unsafe_uninit_length=old_len + len(b))
+    unsafe_memcpy(dest=out.unsafe_ptr() + old_len, src=b.unsafe_ptr(), count=len(b))
 
 
 def write_long_string(mut out: List[UInt8], var s: String):
     """Append an AMQP long-string (4-byte big-endian length + bytes) to `out`."""
     var b = s.as_bytes()
     write_u32(out, UInt32(len(b)))
-    for i in range(len(b)):
-        out.append(b[i])
+    var old_len = len(out)
+    out.resize(unsafe_uninit_length=old_len + len(b))
+    unsafe_memcpy(dest=out.unsafe_ptr() + old_len, src=b.unsafe_ptr(), count=len(b))
 
 
 def write_long_str_empty(mut out: List[UInt8]):
@@ -341,8 +344,9 @@ def emit_message_frames(
     var hdr = AMQPFrameCodec.encode_header_frame(
         chan, mid.class_id, UInt64(body_len), UInt16(0), List[UInt8]()
     )
-    for i in range(len(hdr)):
-        out.append(hdr[i])
+    var old_len = len(out)
+    out.resize(unsafe_uninit_length=old_len + len(hdr))
+    unsafe_memcpy(dest=out.unsafe_ptr() + old_len, src=hdr.unsafe_ptr(), count=len(hdr))
     if body_len == 0:
         return out^
     var chunk = frame_max - 8
@@ -353,12 +357,13 @@ def emit_message_frames(
         var n = chunk
         if pos + n > body_len:
             n = body_len - pos
-        var part = List[UInt8]()
-        for i in range(pos, pos + n):
-            part.append(body[i])
+        var part = List[UInt8](capacity=n)
+        part.resize(unsafe_uninit_length=n)
+        unsafe_memcpy(dest=part.unsafe_ptr(), src=body.unsafe_ptr() + pos, count=n)
         var wf = AMQPFrameCodec.encode_body_frame(chan, part^)
-        for i in range(len(wf)):
-            out.append(wf[i])
+        var out_len = len(out)
+        out.resize(unsafe_uninit_length=out_len + len(wf))
+        unsafe_memcpy(dest=out.unsafe_ptr() + out_len, src=wf.unsafe_ptr(), count=len(wf))
         pos += n
     return out^
 
@@ -883,8 +888,15 @@ struct AMQPService:
                 + String(want),
             )
             return
-        for i in range(frame.payload_size()):
-            self._pending_bodies[conn_id].append(frame.payload[i])
+        var pb = self._pending_bodies.pop(conn_id)
+        var pb_old_len = len(pb)
+        pb.resize(unsafe_uninit_length=pb_old_len + frame.payload_size())
+        unsafe_memcpy(
+            dest=pb.unsafe_ptr() + pb_old_len,
+            src=frame.payload.unsafe_ptr(),
+            count=frame.payload_size(),
+        )
+        self._pending_bodies[conn_id] = pb^
         if len(self._pending_bodies[conn_id]) == want:
             self._publish_pending(conn_id)
 
@@ -984,8 +996,13 @@ struct AMQPService:
             var wire = emit_message_frames(
                 chan, BASIC_DELIVER(), args^, payload^, self._frame_max
             )
-            for i in range(len(wire)):
-                dst.append(wire[i])
+            var dst_old_len = len(dst)
+            dst.resize(unsafe_uninit_length=dst_old_len + len(wire))
+            unsafe_memcpy(
+                dest=dst.unsafe_ptr() + dst_old_len,
+                src=wire.unsafe_ptr(),
+                count=len(wire),
+            )
             if auto_ack:
                 _ = self._broker.ack(cid, tag)
             n += 1

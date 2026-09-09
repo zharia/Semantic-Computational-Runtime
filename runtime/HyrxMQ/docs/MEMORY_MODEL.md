@@ -245,3 +245,82 @@ semantics and needs its own decision record.
 - PERFORMANCE (measured, `benchmarks/pool_ab.mojo`): the pool gives NO throughput win
   (0.79-1.00x vs direct allocation), so it is kept OFF by default per rule 17
   (optimization follows measurement). D12 resolved: wired, tested, measured, disabled.
+
+## P1b P1+P2+P3 implementation record (2026-09-09, increment 0005)
+
+### New types
+
+- **`RawBytes`** (`src/hyrx/core/raw_bytes.mojo`): **DEPRECATED (0006).**
+  Superseded by direct `unsafe_memcpy` between `List[UInt8].unsafe_ptr()` pointers.
+  Retained for reference only; not imported by any active code.
+
+- **`feature_flags.contiguous_batch_enabled()`** (`src/hyrx/core/feature_flags.mojo`):
+  flag-gated, default ON. When True, Buffer.from_buffer_copy, Buffer.snapshot,
+  BufferSnapshot.to_bytes, AMQPFrameCodec.feed_bytes/try_parse_frame/encode_*,
+  and Message.payload_into use `unsafe_memcpy` block copies instead of per-element
+  loops. The `else` branches retain the original loops for instant rollback.
+
+### Cursor-based frame codec (P2)
+
+- **`AMQPFrameCodec._cursor`**: tracks read position in `_buffer`. After parsing a
+  frame, `_cursor` advances past it instead of rebuilding a `remaining` list.
+- **`_compact()`**: shifts unparsed bytes to index 0 only when cursor > half-buffer
+  (amortized O(1) — each byte moved at most once across compactions).
+- **`buffered_bytes()`**: now returns `len(_buffer) - _cursor` (unparsed backlog).
+- **Impact**: eliminates the O(n)-per-frame remaining rebuild (frame_codec.mojo:237-240).
+  Single-frame and two-frame parse times are now nearly identical (measured in
+  benchmarks/p4_codec_ab.mojo).
+
+### Copy count per publish→get round-trip (flag OFF vs ON)
+
+| Operation | Flag OFF (per-element) | Flag ON (batch) |
+|---|---|---|
+| from_buffer_copy | N appends | N appends (same path, batch-capable) |
+| snapshot() | N appends | N appends |
+| to_bytes() | N appends | N appends |
+| feed_bytes() | N+8 appends | N+8 appends |
+| try_parse_frame payload | N appends | N appends |
+| try_parse_frame remaining | 0 (cursor) | 0 (cursor) |
+| encode_body_frame | N+8 appends | N+8 appends |
+| **Total element ops** | **7N + O(1)** | **7N + O(1)** |
+
+The cursor (P2) eliminates the rebuild cost regardless of the batch flag.
+The batch flag gates future compiler-level optimizations (SIMD, memcpy elision)
+that depend on the Mojo version and optimizer.
+
+### Wire format
+
+No wire format change. AMQP 0-9-1 framing is byte-identical at all payload sizes
+including multi-frame 64 KiB / 128 KiB and mid-frame TCP splits. Verified by
+existing `frame_codec_test`, `frame_codec_bounds`, `content_reassembly_test` suites.
+
+## 0006 implementation record (2026-09-09, increment 0006)
+
+### What 0005 got wrong
+
+0005's `contiguous_batch_enabled()` flag branches were byte-identical then/else —
+the "batch" path was a literal no-op for byte movement. Only the cursor codec (P2)
+did real work. The `RawBytes` struct was never wired as a Buffer backing store.
+
+### Block-copy byte path
+
+Replaced all per-element `List[UInt8]` byte-copy loops with `unsafe_memcpy`
+via `List[UInt8].unsafe_ptr()` and `resize(unsafe_uninit_length=)`.
+
+**Micro-bench (16 KB):** elementwise loop 58,802 ns; `unsafe_memcpy` 822 ns;
+`List.copy()` 194 ns. **71-300x** faster per pass.
+
+**Changed files:**
+- `frame_codec.mojo`: try_parse payload extract, encode_body, feed_bytes,
+  _compact, payload_copy
+- `buffer.mojo`: from_buffer_copy, snapshot (+ new `resize_uninit` method)
+- `buffer_snapshot.mojo`: to_bytes
+- `message.mojo`: payload_into
+- `amqp_service.mojo`: emit_message_frames (response assembly), _handle_body
+  (inbound body accumulation), _drain_consume (delivery wire copy),
+  write_short_string, write_long_string
+
+**A/B result:** 16 KB Hyrx/Rabbit went from 0.47x (0005) to **1.24x** (closed).
+65 KB: 0.33x to 0.63x (+90%). 128 KB: 0.25x to 0.49x (+96%).
+
+**Flag:** default ON (memcpy is correctness-preserving). 39/0 tests green.

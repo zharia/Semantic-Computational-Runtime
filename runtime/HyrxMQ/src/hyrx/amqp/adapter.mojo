@@ -18,6 +18,7 @@ from hyrx.core.exchange import ExchangeType
 from hyrx.core.buffer import Buffer
 from hyrx.core.queue import Delivery
 from hyrx.embedded.api import HyrxEngine
+from std.memory import unsafe_memcpy
 
 
 def exchange_type_from_name(var name: String) -> ExchangeType:
@@ -104,9 +105,12 @@ struct AMQPAdapter:
         var headers = Dict[String, String]()
         var env = Envelope(MessageID(0), routing_key^, headers^)
         var buf = Buffer(len(body))
-        buf.resize(len(body))
-        for i in range(len(body)):
-            buf[i] = body[i]
+        buf.resize_uninit(len(body))
+        unsafe_memcpy(
+            dest=buf._data.unsafe_ptr(),
+            src=body.unsafe_ptr(),
+            count=len(body),
+        )
         var msg = Message(env^, buf^)
         return engine.publish(msg^, exchange_name^)
 
@@ -135,7 +139,7 @@ struct AMQPAdapter:
     ) raises -> List[UInt8]:
         """Read a delivered message's payload bytes (message stays owned)."""
         var view = engine.read_payload(consumer_id, delivery_tag)
-        return view.to_bytes()
+        return view.take_bytes()
 
     def queue_routing_key(
         mut self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64

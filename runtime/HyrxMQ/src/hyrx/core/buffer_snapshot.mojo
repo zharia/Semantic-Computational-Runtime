@@ -18,6 +18,8 @@
 # self-contained copy. The name says what it is: a snapshot, not a view.
 
 from std.collections import List
+from std.memory import unsafe_memcpy
+from hyrx.core.feature_flags import contiguous_batch_enabled
 
 struct BufferSnapshot:
     """An owned copy of a contiguous byte region.
@@ -51,7 +53,21 @@ struct BufferSnapshot:
         Ownership: the returned list is a second copy; mutating or
         dropping it does not affect this snapshot (or vice versa).
         """
-        var result = List[UInt8](capacity=len(self._data))
-        for i in range(len(self._data)):
-            result.append(self._data[i])
-        return result^
+        if contiguous_batch_enabled():
+            return self._data.copy()
+        else:
+            var result = List[UInt8](capacity=len(self._data))
+            for i in range(len(self._data)):
+                result.append(self._data[i])
+            return result^
+
+    def take_bytes(mut self) -> List[UInt8]:
+        """Detach and return the snapshot's bytes; leave self empty.
+
+        Ownership: the returned list IS the snapshot's backing storage.
+        No copy — the snapshot is consumed. Use when the caller needs
+        the bytes and the snapshot is no longer needed.
+        """
+        var out = List[UInt8](capacity=0)
+        swap(out, self._data)
+        return out^

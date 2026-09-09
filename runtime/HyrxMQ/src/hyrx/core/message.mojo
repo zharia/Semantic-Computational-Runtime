@@ -11,6 +11,8 @@
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
+from hyrx.core.feature_flags import contiguous_batch_enabled
+from std.memory import unsafe_memcpy
 
 struct MessageID:
     """Globally unique message identifier. Opaque 64-bit value."""
@@ -111,8 +113,16 @@ struct Message:
         Ownership: `dst` moves in and out; the Message keeps its own payload.
         """
         var n = self._payload.size()
-        for i in range(n):
-            dst.append(self._payload[i])
+        if contiguous_batch_enabled():
+            dst.resize_uninit(n)
+            unsafe_memcpy(
+                dest=dst._data.unsafe_ptr(),
+                src=self._payload._data.unsafe_ptr(),
+                count=n,
+            )
+        else:
+            for i in range(n):
+                dst.append(self._payload[i])
         return dst^
 
     def payload_size(ref self) -> Int:
