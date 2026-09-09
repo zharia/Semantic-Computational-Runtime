@@ -39,7 +39,8 @@ RATING_DELTA = 0.10          # fail if |R - R_baseline| exceeds this
 RABBIT_DRIFT_WARN_PCT = 25.0 # reference broker moved -> environment warning only
 HOST_KEYS = ('cpu_model', 'nproc', 'pika_version', 'rabbit_version',
              'hyrxmq_git_head')
-HYRX_CELLS = ('hyrx-tcp-docker', 'hyrx-tcp-native', 'hyrx-uds')
+HYRX_CELLS = ('hyrx-tcp-docker', 'hyrx-tcp-hostnet', 'hyrx-tcp-native',
+              'hyrx-uds')
 
 
 def _cell(data, name):

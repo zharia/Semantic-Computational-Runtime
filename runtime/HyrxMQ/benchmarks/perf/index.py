@@ -43,10 +43,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 FAIR_BASE = 'rabbit-tcp'
 FAIR_HYRX = 'hyrx-tcp-docker'
 NATIVE = 'hyrx-tcp-native'
-CELL_ORDER = ('rabbit-tcp', 'hyrx-tcp-docker', 'hyrx-tcp-native', 'hyrx-uds')
+CELL_ORDER = ('rabbit-tcp', 'hyrx-tcp-docker', 'hyrx-tcp-hostnet',
+              'hyrx-tcp-native', 'hyrx-uds')
 CELL_LABEL = {
     'rabbit-tcp': 'RabbitMQ (docker-published TCP)',
     'hyrx-tcp-docker': 'HyrxMQ (docker-published TCP) [fair pair]',
+    'hyrx-tcp-hostnet': 'HyrxMQ (docker host-network TCP, no proxy hop)',
     'hyrx-tcp-native': 'HyrxMQ (native loopback TCP)',
     'hyrx-uds': 'HyrxMQ (AF_UNIX)',
 }
