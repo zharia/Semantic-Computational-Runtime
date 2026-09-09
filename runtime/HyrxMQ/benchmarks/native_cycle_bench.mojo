@@ -14,18 +14,29 @@
 
 # The broker must already be listening, e.g.:
 #   mojo run -I src -I vendor/flare src/hyrxmq/main_listen.mojo 5673 &
-# Run (port required):
+#   HYRXMQ_UDS_PATH=@hyrxmq_bench_abstract mojo run -I src -I vendor/flare \
+#     src/hyrxmq/main_listen.mojo &
+# Run — TCP mode (<port> required, byte-identical to the original):
 #   mojo run -I src -I vendor/flare benchmarks/native_cycle_bench.mojo <port> \
 #     [--sizes 64,256,1024,4096,16384,65536,131072] [--count N] [--no-echo]
+# Run — UDS mode (--uds present, <port> optional and ignored):
+#   mojo run -I src -I vendor/flare benchmarks/native_cycle_bench.mojo \
+#     --uds @hyrxmq_bench_abstract [--sizes ...] [--count N] [--no-echo]
+# --uds accepts a filesystem socket path (/tmp/hyrxmq.sock) or a Linux
+# abstract-namespace name (@name). Both transports drive the SAME measured
+# pipeline: the client wrapper is parameterized on the AMQPConn trait, exactly
+# like the broker's AMQPConnServing, so nothing in the loop is transport code.
 # --no-echo: skip consuming/asserting the 8-octet header echo. HyrxMQ echoes
-# it (broker_tcp_e2e); RabbitMQ does not, so against RabbitMQ the default
-# fails at "server echoed the 8-octet header".
+# it over BOTH transports (broker_tcp_e2e, broker_uds_e2e); RabbitMQ does not,
+# so against RabbitMQ the default fails at "server echoed the 8-octet header".
 
 from std.time import perf_counter_ns
 from std.collections import List
 from std.sys import argv
 
 from hyrx.transport.tcp import TCPConnection
+from hyrx.transport.uds import UDSConnection
+from hyrx.transport.transport import AMQPConn
 
 from hyrx.amqp.frame_codec import AMQPFrame, AMQPFrameCodec
 from hyrx.amqp.constants import (
@@ -155,16 +166,21 @@ def open_args() -> List[UInt8]:
     return args^
 
 
-# ---- connection wrapper (ClientStream from broker_tcp_e2e) ----
+# ---- connection wrapper (ClientStream from broker_tcp_e2e, AMQPConn-typed) ----
 
-struct Conn:
-    """Socket client with an incremental frame decoder (bounded reads)."""
+struct Conn[C: AMQPConn]:
+    """Socket client with an incremental frame decoder (bounded reads).
 
-    var conn: TCPConnection
+    The connection is held through the transport contract (`C: AMQPConn`), the
+    same bound the broker's `AMQPConnServing[Conn: AMQPConn]` uses, so
+    TCPConnection and UDSConnection instantiate this wrapper with identical
+    measured code (static dispatch, no virtual call in the timed loop)."""
+
+    var conn: Self.C
     var codec: AMQPFrameCodec
     var last_payload: List[UInt8]
 
-    def __init__(out self, var c: TCPConnection):
+    def __init__(out self, var c: Self.C):
         self.conn = c^
         self.codec = AMQPFrameCodec()
         self.last_payload = List[UInt8]()
@@ -246,7 +262,25 @@ struct Conn:
         check_bytes(got, want, "delivered body bytes match the published body")
 
     def read_exact(mut self, n: Int) raises -> List[UInt8]:
-        return self.conn.recv_exact(n)
+        """Local copy of TCPConnection.recv_exact (tcp.mojo:135-150).
+
+        `recv_exact` is NOT on the AMQPConn trait (only conn_id/recv_bytes/
+        send_bytes/close are), so the exact-read loop lives here and goes
+        through `recv_bytes` — identical semantics for both transports."""
+        var out = List[UInt8]()
+        while len(out) < n:
+            var chunk = self.conn.recv_bytes(n - len(out))
+            if len(chunk) == 0:
+                raise (
+                    "client: recv_exact EOF after "
+                    + String(len(out))
+                    + " of "
+                    + String(n)
+                    + " bytes"
+                )
+            for i in range(len(chunk)):
+                out.append(chunk[i])
+        return out^
 
     def close(mut self):
         self.conn.close()
@@ -254,7 +288,7 @@ struct Conn:
 
 # ---- per-connection setup ----
 
-def do_handshake(mut client: Conn, echo: Bool) raises:
+def do_handshake[C: AMQPConn](mut client: Conn[C], echo: Bool) raises:
     """header -> start -> start-ok -> tune -> tune-ok -> open -> open-ok.
 
     Same frame order as broker_tcp_e2e::do_handshake, but against the live
@@ -279,7 +313,7 @@ def do_handshake(mut client: Conn, echo: Bool) raises:
     )
 
 
-def open_channel(mut client: Conn) raises:
+def open_channel[C: AMQPConn](mut client: Conn[C]) raises:
     """channel.open(1) -> channel.open-ok (args: reserved-1 shortstr)."""
     var cargs = List[UInt8]()
     write_short_string(cargs, "")
@@ -287,7 +321,9 @@ def open_channel(mut client: Conn) raises:
     check(client.next_method() == CHANNEL_OPEN_OK(), "channel.open-ok received")
 
 
-def setup_topology(mut client: Conn, var ex: String, var q: String) raises:
+def setup_topology[C: AMQPConn](
+    mut client: Conn[C], var ex: String, var q: String
+) raises:
     """exchange.declare (direct, auto-delete) + queue.declare (auto-delete,
     x-expires 60000) + queue.bind, consuming every reply frame.
 
@@ -374,8 +410,8 @@ def build_cycle_wire(
     return wire^
 
 
-def run_cycle(
-    mut client: Conn, ref wire: List[UInt8], ref body: List[UInt8]
+def run_cycle[C: AMQPConn](
+    mut client: Conn[C], ref wire: List[UInt8], ref body: List[UInt8]
 ) raises:
     """Send one publish+get cycle and consume the full get-ok reply.
 
@@ -388,7 +424,14 @@ def run_cycle(
 
 # ---- per-size driver ----
 
-def run_size(port: Int, size: Int, count: Int, echo: Bool) raises:
+def run_size[C: AMQPConn](
+    mut client: Conn[C], size: Int, count: Int, echo: Bool
+) raises:
+    """The measured run for one payload size on an ALREADY-CONNECTED client.
+
+    Connection setup is the caller's (run_size_tcp / run_size_uds) because the
+    two transports have different connect signatures; everything timed here is
+    identical for both."""
     var body = List[UInt8]()
     for i in range(size):
         body.append(UInt8(i & 0xFF))
@@ -399,11 +442,9 @@ def run_size(port: Int, size: Int, count: Int, echo: Bool) raises:
     var ex = "bench.ex." + String(size)
     var q = "bench.q." + String(size)
 
-    var conn = TCPConnection.connect("127.0.0.1", port)
-    var client = Conn(conn^)
-    do_handshake(client, echo)
-    open_channel(client)
-    setup_topology(client, ex.copy(), q.copy())
+    do_handshake[C](client, echo)
+    open_channel[C](client)
+    setup_topology[C](client, ex.copy(), q.copy())
 
     var wire = build_cycle_wire(ex.copy(), q.copy(), body)
 
@@ -411,11 +452,11 @@ def run_size(port: Int, size: Int, count: Int, echo: Bool) raises:
     if count < warm:
         warm = count
     for _ in range(warm):
-        run_cycle(client, wire, body)
+        run_cycle[C](client, wire, body)
 
     var t0 = perf_counter_ns()
     for _ in range(count):
-        run_cycle(client, wire, body)
+        run_cycle[C](client, wire, body)
     var elapsed = Int(perf_counter_ns() - t0)
     check(elapsed > 0, "timer advanced during the measured window")
 
@@ -429,6 +470,23 @@ def run_size(port: Int, size: Int, count: Int, echo: Bool) raises:
     )
 
     client.close()
+
+
+def run_size_tcp(port: Int, size: Int, count: Int, echo: Bool) raises:
+    """Fresh TCP connection (127.0.0.1:<port>) -> the shared measured run."""
+    var conn = TCPConnection.connect("127.0.0.1", port)
+    var client = Conn[TCPConnection](conn^)
+    run_size[TCPConnection](client, size, count, echo)
+
+
+def run_size_uds(path: String, size: Int, count: Int, echo: Bool) raises:
+    """Fresh UDS connection (pathname or @abstract) -> the shared run.
+
+    Connect idiom copied from tests/integration/broker_uds_e2e.mojo:266 /
+    uds_abstract.mojo:269: UDSConnection.connect(path.copy())."""
+    var conn = UDSConnection.connect(path.copy())
+    var client = Conn[UDSConnection](conn^)
+    run_size[UDSConnection](client, size, count, echo)
 
 
 # ---- CLI (argv style from src/hyrxmq/main_listen.mojo) ----
@@ -456,15 +514,25 @@ def main() raises:
     var args = argv()
     check(
         len(args) > 1,
-        "usage: native_cycle_bench <port> [--sizes s,s,...] [--count N] [--no-echo]",
+        "usage: native_cycle_bench [<port>] [--uds @name|/path.sock]"
+        + " [--sizes s,s,...] [--count N] [--no-echo]",
     )
-    var port = Int(args[1])
+    var port = 0
+    var have_port = False
+    var uds_path = ""
     var sizes = List[Int]([64, 256, 1024, 4096, 16384, 65536, 131072])
     var forced = -1
     var echo = True
-    var i = 2
+    var i = 1
     while i < len(args):
-        if args[i] == "--sizes":
+        if args[i] == "--uds":
+            i += 1
+            check(
+                i < len(args),
+                "--uds needs a socket path (/tmp/x.sock or @abstract)",
+            )
+            uds_path = args[i]
+        elif args[i] == "--sizes":
             i += 1
             check(i < len(args), "--sizes needs a comma-separated list")
             sizes = parse_sizes(args[i])
@@ -475,9 +543,21 @@ def main() raises:
             check(forced > 0, "--count must be positive")
         elif args[i] == "--no-echo":
             echo = False
+        elif not have_port:
+            port = Int(args[i])
+            have_port = True
         else:
             raise "native_cycle_bench: unknown argument " + args[i]
         i += 1
+
+    # Mutually exclusive transports: --uds wins and the positional port (if any)
+    # is ignored; without --uds the TCP path requires the port as before.
+    var uds = len(uds_path.bytes()) > 0
+    if not uds:
+        check(
+            have_port,
+            "native_cycle_bench: <port> is required unless --uds is given",
+        )
 
     for j in range(len(sizes)):
         var size = sizes[j]
@@ -485,6 +565,9 @@ def main() raises:
         var count = default_count(size)
         if forced > 0:
             count = forced
-        run_size(port, size, count, echo)
+        if uds:
+            run_size_uds(uds_path.copy(), size, count, echo)
+        else:
+            run_size_tcp(port, size, count, echo)
 
     print("NATIVE_BENCH=PASS")
