@@ -1,4 +1,4 @@
 [submodule "runtime/HyrxMQ/vendor/flare"]
 	path = runtime/HyrxMQ/vendor/flare
-	url = https://github.com/ehsanmok/flare
+	url = git@github.com:zharia/flare.git
 	branch = v0.10.0

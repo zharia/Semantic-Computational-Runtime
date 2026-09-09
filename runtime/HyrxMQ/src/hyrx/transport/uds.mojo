@@ -76,7 +76,18 @@ struct UDSListener:
 
 
 struct UDSConnection(Movable, AMQPConn):
-    """A Unix domain socket connection carrying Hyrx bytes."""
+    """A Unix domain socket connection carrying Hyrx bytes.
+
+    Path conventions: a ``path`` that starts with ``@`` (e.g.
+    ``@hyrxmq_bench_abstract``) binds/connects in the Linux
+    *abstract namespace* — ``flare.uds._libc.fill_sockaddr_un``
+    encodes ``sun_path[0] = 0`` plus the name octets, no socket
+    file is created and ``unlink`` is a silent no-op there.
+    Abstract sockets are a Linux-only kernel feature; flare raises
+    ``Error`` for ``@name`` paths on macOS/BSD. Any other ``path``
+    is a regular filesystem pathname socket and behaves exactly as
+    before — nothing else about the UDS transport changes.
+    """
 
     var _base: TransportConnection
     var _stream: UnixStream
