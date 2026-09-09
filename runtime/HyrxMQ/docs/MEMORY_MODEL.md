@@ -376,3 +376,17 @@ gone. Suite 43/0 (both new probes negative-proofed; flag-OFF rollback
 byte-identical). Baseline R 1.364 → 1.430 (CI 1.4205–1.435), every
 hyrx/rabbit gate ratio ≥ 1.29; evidence in
 `program-increments/v0.0.1-alpha/milestones/0010_response_copy_elimination/reports/performance_canonical.md`.
+
+## 0011 note (2026-09-09, increment 0011)
+
+Filesystem-free local IPC: UDS `@name` paths bind in the Linux abstract
+namespace via the vendored flare `fill_sockaddr_un` seam (additive-only,
+pathname behavior byte-identical, full AMQP compatibility); proven by NEW
+`tests/integration/uds_abstract.mojo` over live `@hyrxmq_bench_abstract`
+sockets (full handshake + consume→deliver→ack, byte-compared), suite 44/0.
+Bench gains `hyrx-tcp-hostnet` (same container, `--network host`, no
+port-publish): the hostnet-vs-docker delta isolates the docker-proxy
+userspace hop as the docker cell's historical ~10–30% ratio deficit;
+hostnet ≥ native. Gate R 1.430 → 1.442 (CI 1.4314–1.4454), hostnet recorded
+as evidence, not yet gated; evidence in
+`program-increments/v0.0.1-alpha/milestones/0011_fs_free_local_ipc/reports/performance_canonical.md`.
