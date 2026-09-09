@@ -390,3 +390,18 @@ userspace hop as the docker cell's historical ~10–30% ratio deficit;
 hostnet ≥ native. Gate R 1.430 → 1.442 (CI 1.4314–1.4454), hostnet recorded
 as evidence, not yet gated; evidence in
 `program-increments/v0.0.1-alpha/milestones/0011_fs_free_local_ipc/reports/performance_canonical.md`.
+
+## 0012 note (2026-09-09, increment 0012)
+
+Measurement-only: the persistent-buffer + direct-into-codec ingest rewrite
+(0010 post-mortem's ~28% realloc/extend hypothesis) was measured BEFORE
+implementation and **rejected by the pre-committed gate** — codec probe
+(current ingest vs 131072-payload floor) 9.9–11.1 µs/msg, floor pair
+2.2 µs ⇒ recoverable 8.6 µs/msg = 1.3% of the 644 µs 128 KB closed-loop
+wall, below the 10 µs/msg implement threshold (rule 17). Remaining
+user-CPU after 0010 is horizontally distributed (no site > 16%:
+emit 14.1%, realloc 15.3%, extend 12.9%); the wall is dominated by
+1-in-flight serial scheduling + kernel + client latency. No production
+change; suite unchanged 44/0; revisit only if the architecture changes
+(e.g. batched consume pipelines).
+Evidence: `program-increments/v0.0.1-alpha/milestones/0012_persistent_codec_buffers/reports/measurement_probe.md`.
