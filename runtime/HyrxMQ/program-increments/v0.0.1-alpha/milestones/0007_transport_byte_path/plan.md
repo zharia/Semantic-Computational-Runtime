@@ -46,6 +46,7 @@ was "TCP/kernel-level". That claim was **wrong**. Evidence chain:
 
 - No new perf numbers beyond the runs recorded in `reports/`.
 - 128 K parity (1.0x) is NOT claimed: 1.21x measured on this host/run — above
-  parity, but single-host evidence; the CI-style gate stays "≥ ~1.0".
+  parity, but single-host evidence (hardened 2026-09-09 by 0008: 5-rep sweep
+  all cells >= parity, see 0008 reports); the CI-style gate stays "≥ ~1.0".
 - `recv_exact`/header-step per-element appends in the serving path remain
   (small frames only, no large-payload impact measured).

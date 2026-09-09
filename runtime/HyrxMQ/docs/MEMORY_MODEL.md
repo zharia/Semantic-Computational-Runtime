@@ -336,3 +336,16 @@ RabbitMQ (was 0.86x — 0006 attributed the gap to TCP/kernel; corrected: the
 gap was user-space transport loops, not the kernel). UDS 128 KB +62%.
 Suite 40/0; see `program-increments/v0.0.1-alpha/milestones/0007_transport_byte_path/`
 for the evidence chain.
+
+## 0008 note (2026-09-09, increment 0008)
+
+No production change. Baseline refreshed to a 0007-state canonical 5-rep
+sweep: gate R 1.364, 95% CI 1.351–1.374, every Hyrx cell/size ≥ parity vs
+rabbit (min 1.13x docker@65K); full table in
+`program-increments/v0.0.1-alpha/milestones/0008_baseline_transport_guard/reports/performance_canonical.md`.
+Transport byte path now guarded by
+`tests/phase8/transport_byte_path_test.mojo` (suite 41/0; 13 sizes byte-exact
+through live `recv_bytes`, partial-feed shrink-branch assertions, negative
+proof: dropping the `resize(unsafe_uninit_length=got)` shrink fails the test).
+`recv_exact` retention record: premise rebutted — 17 callers in 7 test files,
+zero in `src/`; retained, not on any measured hot path.
