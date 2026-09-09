@@ -49,7 +49,7 @@ run_test() {
 while IFS= read -r f; do
     run_test "$f"
 done < <(find tests/phase0 tests/phase1 tests/phase2 tests/phase3 \
-              tests/phase4 tests/phase5 tests/phase6 tests/phase7 \
+              tests/phase4 tests/phase5 tests/phase6 tests/phase7 tests/phase8 \
               -name '*.mojo' -type f | sort)
 
 for f in tests/integration/*.mojo; do
