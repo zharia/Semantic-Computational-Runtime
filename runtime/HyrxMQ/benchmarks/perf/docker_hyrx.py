@@ -37,7 +37,11 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 BIN = os.path.join(REPO_ROOT, 'build', 'hyrxmq-listen')
 IMAGE = 'hyrx-bench'
 CONTAINER = 'hyrx-bench-listen'
+CONTAINER_HOSTNET = 'hyrx-bench-listen-hostnet'
 PORT = 5700
+# host-net cell: broker binds the host namespace directly, so it needs a port
+# distinct from the bridge cell's published 5700 (and from 5672/5673/5697).
+HOSTNET_PORT = 5702
 BASE_IMAGE = 'alpine:latest'
 FRAME_MAX = 131072
 
@@ -131,12 +135,35 @@ def wait_port(host='127.0.0.1', port=PORT, timeout=20.0):
     return False
 
 
-def up(tag=None, port=PORT, name=CONTAINER):
-    """Start the container on the default bridge, published like node-rabbitmq."""
+def free_host_port(start=HOSTNET_PORT, host='127.0.0.1'):
+    """Smallest loopback port >= `start` that binds right now. Host-net shares
+    the host namespace, so the default must be negotiated, never assumed."""
+    for cand in range(start, start + 32):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, cand))
+            except OSError:
+                continue
+        return cand
+    raise RuntimeError(f'no free loopback port in [{start}, {start + 31}]')
+
+
+def up(tag=None, port=PORT, name=CONTAINER, network='bridge'):
+    """Start the container. `bridge`: published like node-rabbitmq (userspace
+    docker-proxy hop). `host`: --network host, NO port publishing — the broker
+    listens on `port` in the host namespace directly (no proxy hop)."""
     tag = tag or image_tag()
     _sh('docker', 'rm', '-f', name)  # idempotent
-    res = _sh('docker', 'run', '-d', '--name', name, '--network', 'bridge',
-              '-p', f'127.0.0.1:{port}:{port}', tag)
+    cmd = ['docker', 'run', '-d', '--name', name, '--network', network]
+    if network == 'host':
+        # the image bakes HYRXMQ_HOST=0.0.0.0 HYRXMQ_PORT=5700; in host-net the
+        # inner listen port IS the host port, so override the env and publish
+        # nothing.
+        cmd += ['-e', 'HYRXMQ_HOST=127.0.0.1', '-e', f'HYRXMQ_PORT={port}']
+    else:
+        cmd += ['-p', f'127.0.0.1:{port}:{port}']
+    cmd.append(tag)
+    res = _sh(*cmd)
     if res.returncode != 0:
         raise RuntimeError(f'docker run failed: {res.stderr.strip()}')
     if not wait_port(port=port):
@@ -145,8 +172,11 @@ def up(tag=None, port=PORT, name=CONTAINER):
         raise RuntimeError(f'container {name} not accepting on :{port}; '
                            f'logs:\n{log}')
     return {'container': name, 'id': res.stdout.strip()[:12], 'image': tag,
-            'port': port, 'published': f'127.0.0.1:{port}->{port}',
-            'network': 'bridge'}
+            'port': port,
+            'published': (f'host-net 127.0.0.1:{port} (no proxy)'
+                          if network == 'host'
+                          else f'127.0.0.1:{port}->{port}'),
+            'network': network}
 
 
 def down(name=CONTAINER, tag=None):
@@ -173,12 +203,18 @@ def leftovers():
             'images': [i for i in imgs if i.startswith(IMAGE + ':')]}
 
 
-def ensure_fair_cell(port=PORT):
-    """build -> up -> return info dict; caller must call `down` (see harness)."""
+def ensure_fair_cell(port=None, network='bridge'):
+    """build -> up -> return info dict; caller must call `down` (see harness).
+
+    `network='host'` with port=None negotiates the smallest free loopback port
+    >= HOSTNET_PORT (host-net binds the host namespace directly)."""
+    name = CONTAINER if network == 'bridge' else CONTAINER_HOSTNET
+    if port is None:
+        port = PORT if network == 'bridge' else free_host_port()
     tag, ctx = build_image()
     try:
         try:
-            info = up(tag=tag, port=port)
+            info = up(tag=tag, port=port, name=name, network=network)
         except Exception:
             # never leave a half-started fairness container behind
             down(tag=tag)
@@ -196,7 +232,10 @@ def main():
     b = sub.add_parser('build', help='build the throwaway image')
     b.add_argument('--keep-context', action='store_true')
     u = sub.add_parser('up', help='build + start the container')
-    u.add_argument('--port', type=int, default=PORT)
+    u.add_argument('--port', type=int, default=None,
+                   help='bridge: default 5700; host: default = negotiated '
+                        f'free port >= {HOSTNET_PORT}')
+    u.add_argument('--network', choices=('bridge', 'host'), default='bridge')
     d = sub.add_parser('down', help='remove every hyrx-bench* container/image')
     d.add_argument('--tag', default=None)
     sub.add_parser('status', help='report leftovers')
@@ -211,7 +250,7 @@ def main():
         if not args.keep_context:
             shutil.rmtree(ctx, ignore_errors=True)
     elif args.cmd == 'up':
-        print(ensure_fair_cell(args.port))
+        print(ensure_fair_cell(args.port, network=args.network))
     elif args.cmd == 'down':
         for kind, what, ok in down(tag=args.tag):
             print(f'{kind} {what}: {"ok" if ok else "FAILED"}')

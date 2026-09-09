@@ -12,6 +12,10 @@ Cells (matrix = cells x payloads):
                      published 127.0.0.1:5700 -> container:5700, mirroring the
                      rabbit publish. THE FAIR PAIR with rabbit-tcp: identical
                      network path, so the delta is the engine.
+    hyrx-tcp-hostnet Same throwaway container and broker binary, but
+                     --network host with no port publishing: the client reaches
+                     the broker over local loopback WITHOUT the docker-proxy
+                     hop, isolating the proxy cost from the engine.
     hyrx-tcp-native  HyrxMQ as a host process on loopback (no proxy hop).
     hyrx-uds         HyrxMQ over AF_UNIX (HyrxMQ-only: RabbitMQ has no
                      Unix-socket listener, so this cell is compared against
@@ -72,6 +76,7 @@ RABBIT_HOST = os.environ.get('RABBIT_HOST', '127.0.0.1')
 RABBIT_PORT = int(os.environ.get('RABBIT_PORT', '5672'))
 HYRX_DOCKER_PORT = 5700
 HYRX_NATIVE_PORT = 5701
+HYRX_HOSTNET_PORT = 5702  # floor; docker_hyrx.free_host_port negotiates upward
 USER = os.environ.get('HYRX_USER', 'admin')
 PW = os.environ.get('HYRX_PASS', 'password')
 VHOST = '/'
@@ -85,7 +90,8 @@ _PROBE_BATCH = 64       # smaller batch for the count-calibration probe
 _LATENCY_OPS = 2000
 TARGET_REP_SECONDS = 2.5
 
-CELLS = ('rabbit-tcp', 'hyrx-tcp-docker', 'hyrx-tcp-native', 'hyrx-uds')
+CELLS = ('rabbit-tcp', 'hyrx-tcp-docker', 'hyrx-tcp-hostnet',
+         'hyrx-tcp-native', 'hyrx-uds')
 
 # Apples-to-apples protocol configuration (§19). Both brokers get the SAME
 # pika Parameters; the values below are chosen so that neither broker pays a
@@ -115,6 +121,7 @@ class Endpoint:
         self.host = RABBIT_HOST
         self.port = {'rabbit-tcp': RABBIT_PORT,
                      'hyrx-tcp-docker': HYRX_DOCKER_PORT,
+                     'hyrx-tcp-hostnet': HYRX_HOSTNET_PORT,
                      'hyrx-tcp-native': HYRX_NATIVE_PORT}.get(cell)
         self.uds_path = ''
         if cell == 'hyrx-uds':
@@ -138,6 +145,13 @@ class Endpoint:
             return
         if cell == 'hyrx-tcp-docker':
             self.container = docker_hyrx.ensure_fair_cell(port=HYRX_DOCKER_PORT)
+            return
+        if cell == 'hyrx-tcp-hostnet':
+            # same broker container, --network host: no port publishing, so
+            # the negotiated inner listen port IS the host-side port.
+            self.container = docker_hyrx.ensure_fair_cell(
+                port=None, network='host')
+            self.port = self.container['port']
             return
         # native process cells: HYRXMQ_FRAME_MAX is both the advertised tune
         # value and the codec ceiling (src/hyrxmq/main_listen.mojo).
@@ -243,6 +257,7 @@ class Endpoint:
              'uds_path': self.uds_path,
              'via': {'rabbit-tcp': 'docker port-publish (userspace proxy)',
                      'hyrx-tcp-docker': 'docker port-publish (userspace proxy)',
+                     'hyrx-tcp-hostnet': 'host publish: no userspace proxy hop',
                      'hyrx-tcp-native': 'native loopback',
                      'hyrx-uds': 'AF_UNIX socket'}[self.cell]}
         if self.container:
@@ -648,7 +663,7 @@ def run_cell(cell, payloads, cap_seconds, quick=False):
         out.update(status='BLOCKED', error=msg)
         try:  # never leave the throwaway container/image behind on a BLOCKED cell
             ep.stop()
-            if cell == 'hyrx-tcp-docker':
+            if cell in ('hyrx-tcp-docker', 'hyrx-tcp-hostnet'):
                 docker_hyrx.down()
         except Exception:
             pass
