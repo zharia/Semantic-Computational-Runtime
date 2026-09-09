@@ -1,0 +1,15 @@
+# Only dist/rootfs + nothing else goes into the image context.
+.git
+.pixi
+.venv
+program-increments
+tests
+benchmarks
+docs
+sprints
+src
+vendor
+build/*
+!build/hyrxmq-listen
+**/__pycache__
+dist/libs
