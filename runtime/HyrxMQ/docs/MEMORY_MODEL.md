@@ -324,3 +324,15 @@ via `List[UInt8].unsafe_ptr()` and `resize(unsafe_uninit_length=)`.
 65 KB: 0.33x to 0.63x (+90%). 128 KB: 0.25x to 0.49x (+96%).
 
 **Flag:** default ON (memcpy is correctness-preserving). 40/0 tests green; byte-exact guard = tests/phase8/byte_path_test (negative proof on a try_parse_frame memcpy count).
+
+## 0007 note (2026-09-09, increment 0007)
+
+Transport byte path fixed: `recv_bytes` in both `src/hyrx/transport/tcp.mojo`
+and `src/hyrx/transport/uds.mojo` now uses an uninitialized buffer + one read
++ shrink to bytes received (the per-element zero-fill `_zeroed` helper and the
+element-wise append pass are removed). No semantic change: length = bytes
+read, contents = those bytes, empty = EOF. 128 KB TCP is now **1.21x** vs
+RabbitMQ (was 0.86x — 0006 attributed the gap to TCP/kernel; corrected: the
+gap was user-space transport loops, not the kernel). UDS 128 KB +62%.
+Suite 40/0; see `program-increments/v0.0.1-alpha/milestones/0007_transport_byte_path/`
+for the evidence chain.

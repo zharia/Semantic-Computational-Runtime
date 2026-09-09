@@ -47,12 +47,13 @@ hot-path sites, plus eliminates a second copy in the read path via
 
 **65 KB at parity (1.03x).** The elementwise copy loops were the dominant cost;
 block copy eliminates them. Adapter publish/read path changes (memcpy + take_bytes)
-had no measurable impact — the remaining 128 KB gap is TCP/kernel-level.
+had no measurable impact — the remaining 128 KB gap is closed by 0007
+(transport recv_bytes per-element loops; was NOT TCP/kernel — see 0007 reports).
 
 **128 KB improved from 0.49x to 0.86x** — 75% improvement but not at parity.
-Remaining gap is TCP send/recv buffer management: single send() per round-trip,
-TCP_NODELAY already set. RabbitMQ's erlang runtime has better kernel buffer
-management at large payloads.
+(0006 attribution "TCP send/recv buffer management / Erlang kernel buffering"
+was wrong — retired: the gap was HyrxMQ user-space per-element loops in the
+transport read path. Closed by 0007; see 0007 reports.)
 
 ### Acceptance verdict
 
@@ -61,7 +62,7 @@ management at large payloads.
 | 16 KB Hyrx/Rabbit >= ~1.0 (native) | **PASS (1.58x)** |
 | 4 KB Hyrx/Rabbit >= ~1.0 | **PASS (1.65x)** |
 | 65 KB Hyrx/Rabbit >= ~1.0 | **PASS (1.03x)** |
-| 128 KB Hyrx/Rabbit >= ~1.0 | **FAIL (0.86x)** — kernel-level |
+| 128 KB Hyrx/Rabbit >= ~1.0 | **FAIL (0.86x)** — closed by 0007 (transport recv_bytes per-element loops; was NOT TCP/kernel — see 0007 reports) |
 | No small-payload regression | **PASS** (all sizes faster) |
 
 ### Flag policy
