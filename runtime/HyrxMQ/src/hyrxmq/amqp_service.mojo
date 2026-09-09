@@ -55,8 +55,13 @@
 from std.collections import Dict, List, Optional
 from std.memory import unsafe_memcpy
 
-from hyrx.amqp.frame_codec import AMQPFrame, AMQPFrameCodec, parse_header_frame_payload
+from hyrx.amqp.frame_codec import (
+    AMQPFrame,
+    AMQPFrameCodec,
+    parse_header_frame_payload,
+)
 from hyrx.amqp.field_table import FieldTable
+from hyrx.core.feature_flags import contiguous_batch_enabled
 from hyrx.amqp.constants import (
     FRAME_METHOD,
     FRAME_HEADER,
@@ -336,7 +341,7 @@ def emit_message_frames(
     var args: List[UInt8],
     var body: List[UInt8],
     frame_max: Int,
-) -> List[UInt8]:
+) raises -> List[UInt8]:
     var out = AMQPFrameCodec.encode_method_frame(
         chan, mid.class_id, mid.method_id, args^
     )
@@ -352,6 +357,20 @@ def emit_message_frames(
     var chunk = frame_max - 8
     if chunk < _MIN_BODY_CHUNK():
         chunk = _MIN_BODY_CHUNK()
+    if contiguous_batch_enabled():
+        # Contiguous path: no intermediate `part`/`wf` lists — body chunks are
+        # read DIRECTLY from the `body` list via unsafe_ptr (count-based
+        # pointer reads); `body` is not moved and stays valid through all
+        # appends. Per chunk, append_body_frame applies its single resize and
+        # memcpy onto `out`.
+        var pos = 0
+        while pos < body_len:
+            var n = chunk
+            if pos + n > body_len:
+                n = body_len - pos
+            AMQPFrameCodec.append_body_frame(out, chan, body.unsafe_ptr() + pos, n)
+            pos += n
+        return out^
     var pos = 0
     while pos < body_len:
         var n = chunk

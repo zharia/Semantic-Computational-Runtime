@@ -161,21 +161,46 @@ struct AMQPFrameCodec:
 
         Called by try_parse_frame after advancing the cursor. Amortized O(1):
         each byte is moved at most once across all compactions.
+
+        Contiguous path: in-place left-shift, overlap-safe (plain memcpy OK)
+        only under the precondition remaining <= cursor; enforced by an
+        explicit branch guard, with a fresh-alloc copy as the fallback when
+        the caller violates the precondition.
         """
         if self._cursor == 0:
             return
         var remaining = len(self._buffer) - self._cursor
         if remaining > 0:
             if contiguous_batch_enabled():
-                # memmove-safe: allocate temp, copy back
-                var new_buf = List[UInt8](capacity=remaining)
-                new_buf.resize(unsafe_uninit_length=remaining)
-                unsafe_memcpy(
-                    dest=new_buf.unsafe_ptr(),
-                    src=self._buffer.unsafe_ptr() + self._cursor,
-                    count=remaining,
-                )
-                self._buffer = new_buf^
+                if remaining <= self._cursor:
+                    # In-place left-shift: precondition remaining <= cursor
+                    # holds (feed_bytes compacts only once the cursor is past
+                    # half the buffer), so the write region [0, remaining)
+                    # never overlaps the read region [cursor,
+                    # cursor+remaining) and plain memcpy is safe. The src
+                    # origin is erased so the two pointers into one List pass
+                    # the exclusivity check (same-buffer dest/src).
+                    var src_ptr = (
+                        (self._buffer.unsafe_ptr() + self._cursor)
+                        .as_unsafe_any_origin()
+                    )
+                    unsafe_memcpy(
+                        dest=self._buffer.unsafe_ptr(),
+                        src=src_ptr,
+                        count=remaining,
+                    )
+                    self._buffer.resize(unsafe_uninit_length=remaining)
+                else:
+                    # Precondition violated by the caller: fresh alloc, copy
+                    # back (overlap-free).
+                    var new_buf = List[UInt8](capacity=remaining)
+                    new_buf.resize(unsafe_uninit_length=remaining)
+                    unsafe_memcpy(
+                        dest=new_buf.unsafe_ptr(),
+                        src=self._buffer.unsafe_ptr() + self._cursor,
+                        count=remaining,
+                    )
+                    self._buffer = new_buf^
             else:
                 var new_buf = List[UInt8](capacity=remaining)
                 for i in range(self._cursor, len(self._buffer)):
@@ -436,6 +461,56 @@ struct AMQPFrameCodec:
             # frame end
             result.append(0xCE)
         return result^
+
+    @staticmethod
+    def append_body_frame(
+        mut out: List[UInt8],
+        chan: UInt16,
+        payload: UnsafePointer[UInt8, _],
+        count: Int,
+    ) raises:
+        """Append ONE body frame in place, byte-identical to encode_body_frame.
+
+        Wire-byte-identity contract: appends EXACTLY the octets
+        encode_body_frame writes for the same channel/payload — type=3 (BODY),
+        channel(2)=chan (big-endian), size(4)=count (big-endian) +
+        payload(count) + frame-end(1), so the frame occupies 7 + count + 1 =
+        count + 8 octets.
+
+        Contiguous path (flag True): ONE resize(+count+8), the 7 header octets
+        written in place, one unsafe_memcpy of the payload, one frame-end
+        octet — no intermediate payload list. Flag False: the elementwise
+        append/loop sequence encode_body_frame uses for its owned-list path —
+        identical octets.
+        """
+        if contiguous_batch_enabled():
+            var old_len = len(out)
+            var total = 7 + count + 1
+            out.resize(unsafe_uninit_length=old_len + total)
+            out[old_len] = 3
+            out[old_len + 1] = UInt8((chan >> 8) & 0xFF)
+            out[old_len + 2] = UInt8(chan & 0xFF)
+            out[old_len + 3] = UInt8((count >> 24) & 0xFF)
+            out[old_len + 4] = UInt8((count >> 16) & 0xFF)
+            out[old_len + 5] = UInt8((count >> 8) & 0xFF)
+            out[old_len + 6] = UInt8(count & 0xFF)
+            unsafe_memcpy(
+                dest=out.unsafe_ptr() + old_len + 7, src=payload, count=count
+            )
+            out[old_len + 7 + count] = 0xCE
+        else:
+            # Elementwise fallback: mirror the encode_body_frame append
+            # sequence exactly (same octets, elementwise).
+            out.append(3)
+            out.append(UInt8((chan >> 8) & 0xFF))
+            out.append(UInt8(chan & 0xFF))
+            out.append(UInt8((count >> 24) & 0xFF))
+            out.append(UInt8((count >> 16) & 0xFF))
+            out.append(UInt8((count >> 8) & 0xFF))
+            out.append(UInt8(count & 0xFF))
+            for i in range(count):
+                out.append(payload[i])
+            out.append(0xCE)
 
     @staticmethod
     def encode_heartbeat(channel: UInt16) -> List[UInt8]:

@@ -303,12 +303,14 @@ struct AMQPConnServing[Conn: AMQPConn]:
         var conn_id = self._conns[slot].value().conn_id()
         var resp = self._service.handle_frame(conn_id, frame.value())
         if resp.__bool__():
+            # open-ok detected pre-send (borrow-safe pattern)
+            var open_ok = _resp_is_open_ok(resp.value())
             self._conns[slot].value().send_bytes(resp.value().copy())
             # Handshake completion is detected from the reply bytes only (no new
             # service coupling): an open-ok reply ends negotiation.
             if (
                 self._phases[slot] == PHASE_HANDSHAKING()
-                and _resp_is_open_ok(resp.value())
+                and open_ok
             ):
                 self._phases[slot] = PHASE_READY()
 
