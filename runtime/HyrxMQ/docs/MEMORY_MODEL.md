@@ -362,3 +362,17 @@ shape on both brokers. Broker-only ceiling recorded (6.4x @ 64 B → 1.21x @
 copies (`emit_message_frames` 23.6% + `resp.copy()`) / List realloc-extend churn
 (~27%, persistent per-connection buffers) / payload extract
 (`read_payload` 5.9%, direct-into-codec ingest).
+
+## 0010 note (2026-09-09, increment 0010)
+
+Emit single-write path + in-place compaction: the contiguous emit branch
+assembles the response with NO cascade resize and NO `part`/`wf`
+intermediates via the NEW additive `AMQPFrameCodec.append_body_frame` (one
+resize per frame; byte-identity contract with `encode_body_frame`,
+probe-proven at 8 boundary sizes); `AMQPFrameCodec._compact` shifts unparsed
+bytes in place (invariant guard `remaining <= cursor` — memcpy overlap-safe
+under the guard, fresh-alloc fallback), so parse-time fresh buffers are
+gone. Suite 43/0 (both new probes negative-proofed; flag-OFF rollback
+byte-identical). Baseline R 1.364 → 1.430 (CI 1.4205–1.435), every
+hyrx/rabbit gate ratio ≥ 1.29; evidence in
+`program-increments/v0.0.1-alpha/milestones/0010_response_copy_elimination/reports/performance_canonical.md`.
