@@ -54,3 +54,13 @@ all death sites + D8 orphans requeued. Commits 575fc70..fd92345, suite 39/0, eve
 phase negative-proofed. Measured (benchmarks/pool_ab.mojo): NO throughput win
 (0.79-1.00x) -> kept `buffer_pool_enabled=false`. See p1b_design.md §9. Increment 0004
 is now COMPLETE (WP-A/B/C/D + evidence + P1b implemented-and-evaluated).
+
+## Containerization + canonical benchmark (2026-09-09)
+- HyrxMQ containerized (self-contained `FROM scratch` image, `Dockerfile` +
+  `packaging/build_image.sh`, commit b921882); validated serving AMQP end-to-end.
+- Deploy to 192.168.100.112 BLOCKED by target CPU (2009 i7-920, pre-x86-64-v3);
+  Mojo runtime libs require v3 -> cannot execute there. Not a code defect.
+- Canonical fair matrix re-run vs a FRESH same-host reference RabbitMQ (node-rabbitmq
+  untouched): **R=1.063 (CI 1.054-1.073)** — honest decomposition: ~1.3-1.5x faster
+  small payloads, ~2-3x slower at >=4KB (large-payload copy remains the top gap).
+  See reports/performance_canonical.md.
