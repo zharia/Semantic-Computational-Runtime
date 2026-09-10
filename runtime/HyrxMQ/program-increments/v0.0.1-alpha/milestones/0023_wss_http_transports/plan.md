@@ -59,6 +59,20 @@ Origin policy = **allow-all by default**, extensible via config
   transport rows are real; the phase9 fixture = the pending piece.
 - 0023-T4 remains the one OPEN item on the todo list.
 
+## T4 done (in-suite)
+
+- tests/phase9/wss_test.mojo: registered + green; TWO real fixture defects
+  fixed (the close-handshake suppression shape + the fixture file-name
+  fusion from 1.0.0 String-length fusion; equal-length path helpers + a
+  key-first one-file-per-arg writer); rows kept: boot, amqp refusal,
+  subprotocol x2, byte round trip, origin x2, close mapping (close-ok
+  FIRST then 1000), injected refusal (0 seam reads), path counts (2
+  reads, key-first), admin /health+/stats+query+404x3.
+- LATENT WSS BUG registered (next round, 1 file): wss.mojo:446 - a
+  decoded peer CLOSE suppresses the local WS close handshake (the tier
+  never answers a close that arrived in the same read batch).
+- suite 46/0 -> 47/0 (phase9 now in the discovery list).
+
 ## Explicitly NOT claimed
 
 - Same-port ALPN multiplexing (deferred; h2 coupling).
