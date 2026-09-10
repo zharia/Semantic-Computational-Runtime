@@ -64,7 +64,16 @@ identical — rollback tier):
   60.7k aggregate, NO head-of-line stall (legacy: 53k aggregate + ~2 s
   conn-2 stall). Per-conn rate dips during conflation (dose interaction) -
   per-message round-trip floor bounds the closed loop.
-- OPEN BUG (0016): the batched pika harness flow (256 in-flight) wedges at
+- OPEN BUG UPDATE (0016 investigation): the wedge predates/lives independent
+  of the event loop — a flaky ~50%-of-runs wedge reproduces DIRECTLY with a
+  plain pika client at 64B K=16 in-flight (10/10 runs: 5 wedges), even on
+  the legacy tier; strace of a completed run shows fully correct
+  broker-side framing + clean client close on every visible path, so it is
+  a nondeterministic interaction (pika/loop bound or broker batch boundary)
+  NOT captured in any probe yet. The single-conn 0013-series sweeps predate
+  these runs and never showed this; the harness CellTimeout = same
+  phenomenon amplified by its 120 s cells. Next: gather a per-binary
+  reproduction under BOTH event tiers + only-then-roll the flag forward.
   calibration on EVERY Hyrx cell with the event loop ON; reproducible only
   through harness machinery, not through single/pair native probes. The
   loop therefore ships default-OFF (legacy tier engaged) until root-caused.
