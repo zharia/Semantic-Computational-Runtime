@@ -189,6 +189,88 @@ struct HyrxEngine:
             self._messages_rejected += 1
         return result
 
+    # ---- 0017 T1: topology management pass-throughs (additive) ----
+
+    def has_queue(ref self, var name: String) -> Bool:
+        """Whether a queue with this name is declared."""
+        return self._router.has_queue(name^)
+
+    def has_exchange(ref self, var name: String) -> Bool:
+        """Whether an exchange with this name is declared."""
+        return self._router.has_exchange(name^)
+
+    def purge_queue(mut self, var name: String) raises -> Int:
+        """queue.purge (50,30): drop ready messages (unacked untouched).
+
+        Returns the number purged, -1 when the queue is missing."""
+        return self._router.purge_queue(name^)
+
+    def delete_queue_checked(
+        mut self, var name: String, if_empty: Bool, if_unused: Bool
+    ) raises -> Int:
+        """queue.delete (50,40) with if-empty/if-unused; sentinels -1/-2/-3."""
+        return self._router.delete_queue_checked(name^, if_empty, if_unused)
+
+    def delete_exchange_checked(
+        mut self, var name: String, if_unused: Bool
+    ) raises -> Int:
+        """exchange.delete (40,20) with if-unused; sentinels -1/-2."""
+        return self._router.delete_exchange_checked(name^, if_unused)
+
+    def bind_exchange(
+        mut self,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """exchange.bind (40,30) exchange→exchange binding."""
+        return self._router.bind_exchange(source^, destination^, routing_key^)
+
+    def unbind_exchange(
+        mut self,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """exchange.unbind (40,40)."""
+        return self._router.unbind_exchange(source^, destination^, routing_key)
+
+    def unbind_queue(
+        mut self,
+        queue_name: String,
+        exchange_name: String,
+        routing_key: String,
+    ) raises -> Bool:
+        """queue.unbind (50,50) via the router's binding removal."""
+        return self._router.unbind_queue(queue_name, exchange_name, routing_key)
+
+    def unregister_consumer(mut self, consumer_id: UInt64) raises -> Bool:
+        """Reader deregistration (channel.close / teardown): requeues unacked."""
+        return self._router.unregister_consumer(consumer_id)
+
+    def bulk_ack(mut self, consumer_id: UInt64, delivery_tag: UInt64) raises -> Int:
+        """basic.ack multiple=true: ack every tag <= tag (0 = all)."""
+        var n = self._router.bulk_ack(consumer_id, delivery_tag)
+        self._messages_acknowledged += n
+        return n
+
+    def nack(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64, requeue: Bool
+    ) raises -> Bool:
+        """basic.nack (60,120) single tag."""
+        var result = self._router.nack(consumer_id, delivery_tag, requeue)
+        if result:
+            self._messages_rejected += 1
+        return result
+
+    def nack_through(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64, requeue: Bool
+    ) raises -> Int:
+        """basic.nack (60,120) multiple=true: every tag <= tag."""
+        var n = self._router.nack_through(consumer_id, delivery_tag, requeue)
+        self._messages_rejected += n
+        return n
+
     # ---- telemetry ----
 
     def stats(ref self) -> HyrxStats:

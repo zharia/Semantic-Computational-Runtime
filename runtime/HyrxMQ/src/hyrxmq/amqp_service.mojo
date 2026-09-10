@@ -23,34 +23,34 @@
 # basic.consume reply (pull-on-subscribe) instead of pushed asynchronously at
 # publish time — async push-after-subscribe is NOT IMPLEMENTED.
 #
-# NOT IMPLEMENTED (wire-level gaps, honest list):
-# - connection close: the close (10,50) / close-ok (10,51) and channel.close
-#   (20,40) / close-ok (20,41) handshake, and secure (10,20) / secure-ok
-#   (10,21). The header/start/start-ok/tune/tune-ok/open/open-ok negotiation is
-#   now IMPLEMENTED (see connection_start_frame / _reply_tune / handle_frame and
-#   src/hyrxmq/listener.mojo's pre-frame header stage); credentials are parsed
-#   but NOT validated (no auth backend).
+# NOT IMPLEMENTED (wire-level gaps, honest list — 0017 T1 update):
+# - connection close / channel close handshake: NOW IMPLEMENTED. connection.close
+#   (10,50) is replied with close-ok (10,51) from ANY state and tolerated
+#   everywhere (the listener then closes the socket AFTER the reply); channel.close
+#   (20,40) is replied with close-ok (20,41) on the SAME channel number and the
+#   number becomes CLOSED: any later business method on it gets the normative
+#   server-side channel.close error reply (404 NOT_FOUND / 406
+#   PRECONDITION_FAILED + failing class/method ids), content frames are
+#   tolerated silently, channel.open re-opens the number. secure (10,20/21)
+#   remains NOT implemented; credentials are parsed but NOT validated.
 # - frame_max / heartbeat renegotiation and heartbeat timers (tune advertises
 #   heartbeat=0; non-zero heartbeats are NOT IMPLEMENTED).
 # - INBOUND content properties: the HEADER frame's body-size is read for
-#   reassembly, but the property-list bytes are NOT decoded (field tables are
-#   not serialized on the wire; see src/hyrx/amqp/field_table.mojo). OUTBOUND
+#   reassembly, but the property-list bytes are NOT decoded (T2). OUTBOUND
 #   properties are sent as property-flags=0 + empty property-list, so a real
-#   client sees every property as None: delivery_mode/content_type/etc.
-#   fidelity is NOT PROVEN.
-# - the `arguments` field tables of queue/exchange declare and basic.consume
-#   are skipped by length (read_table_skip), not interpreted.
-# - basic.ack multiple=true (ack up to and including) is parsed but NOT
-#   honoured: only the addressed tag is acknowledged.
+#   client sees every property as None — property fidelity is NOT PROVEN.
+# - the declare `arguments` field tables are read by length (read_table_skip),
+#   not interpreted (T3); x-dead-letter-exchange requeue-false routing lands in
+#   T3 (requeue=false currently DROPS, which is the normative T1 behavior).
 # - basic.cancel is answered with cancel-ok, but the engine consumer is NOT
-#   unregistered (the connection's consumer stays live until EOF).
-# - connection state enforcement: methods are served even when no connection is
-#   open (the AMQPConnectionState record is written by connection.open but never
-#   gates dispatch).
+#   unregistered (the connection's consumer stays live until EOF/close).
+# - connection state enforcement: business methods are not gated on the
+#   connection=open state (AMQPConnectionState is written but never gates
+#   dispatch; only the listener's handshake phases gate frames).
 # - get-ok message-count is always 0: the engine exposes no queue-depth read-back
 #   (the field is wire-correct in length, not accurate in value).
-# - basic.nack (60,120) and channel.flow (20,20) have no required reply or
-#   handler yet; unhandled synchronous methods get no reply at all.
+# - channel.flow (20,20) has no handler; publish `immediate=1` is parsed and
+#   ignored (unroutable-immediate has no return in this broker).
 
 from std.collections import Dict, List, Optional
 from std.memory import unsafe_memcpy
@@ -73,27 +73,48 @@ from hyrx.amqp.constants import (
     CONNECTION_TUNE_OK,
     CONNECTION_OPEN,
     CONNECTION_OPEN_OK,
+    CONNECTION_CLOSE,
+    CONNECTION_CLOSE_OK,
     CHANNEL_OPEN,
     CHANNEL_OPEN_OK,
+    CHANNEL_CLOSE,
+    CHANNEL_CLOSE_OK,
     EXCHANGE_DECLARE,
     EXCHANGE_DECLARE_OK,
+    EXCHANGE_DELETE,
+    EXCHANGE_DELETE_OK,
+    EXCHANGE_BIND,
+    EXCHANGE_BIND_OK,
+    EXCHANGE_UNBIND,
+    EXCHANGE_UNBIND_OK,
     QUEUE_DECLARE,
     QUEUE_DECLARE_OK,
     QUEUE_BIND,
     QUEUE_BIND_OK,
+    QUEUE_PURGE,
+    QUEUE_PURGE_OK,
+    QUEUE_DELETE,
+    QUEUE_DELETE_OK,
+    QUEUE_UNBIND,
+    QUEUE_UNBIND_OK,
     BASIC_QOS,
     BASIC_QOS_OK,
     BASIC_PUBLISH,
+    BASIC_RETURN,
     BASIC_CANCEL,
     BASIC_CANCEL_OK,
     BASIC_CONSUME,
     BASIC_CONSUME_OK,
+    BASIC_NACK,
     BASIC_ACK,
     BASIC_REJECT,
     BASIC_GET,
     BASIC_GET_OK,
     BASIC_GET_EMPTY,
     BASIC_DELIVER,
+    REPLY_NOT_FOUND,
+    REPLY_PRECONDITION_FAILED,
+    REPLY_NO_ROUTE,
     MethodID,
 )
 from hyrx.amqp.connection_state import (
@@ -137,6 +158,56 @@ def QUEUE_DECLARE_BIT_NO_WAIT() -> UInt8:
 
 # basic.ack bit-packed flags: `multiple` is the single (low) bit.
 def BASIC_ACK_BIT_MULTIPLE() -> UInt8:
+    return 1
+
+
+# basic.nack (60,120) bit-packed flags, low-first in spec order:
+# multiple=1, requeue=2.
+def BASIC_NACK_BIT_MULTIPLE() -> UInt8:
+    return 1
+
+
+def BASIC_NACK_BIT_REQUEUE() -> UInt8:
+    return 2
+
+
+# basic.publish bits (one octet), low-first in spec order:
+# mandatory=1, immediate=2.
+def BASIC_PUBLISH_BIT_MANDATORY() -> UInt8:
+    return 1
+
+
+# queue.delete bit-packed flags (one octet), low-first in spec order:
+# if-empty=1, if-unused=2, no-wait=4.
+def QUEUE_DELETE_BIT_EMPTY() -> UInt8:
+    return 1
+
+
+def QUEUE_DELETE_BIT_UNUSED() -> UInt8:
+    return 2
+
+
+def QUEUE_DELETE_BIT_NO_WAIT() -> UInt8:
+    return 4
+
+
+# queue.purge bit-packed flags: single no-wait bit.
+def QUEUE_PURGE_BIT_NO_WAIT() -> UInt8:
+    return 1
+
+
+# exchange.delete bit-packed flags (one octet), low-first in spec order:
+# if-unused=1, no-wait=2.
+def EXCHANGE_DELETE_BIT_UNUSED() -> UInt8:
+    return 1
+
+
+def EXCHANGE_DELETE_BIT_NO_WAIT() -> UInt8:
+    return 2
+
+
+# exchange.bind / exchange.unbind bit-packed flags: single no-wait bit.
+def EXCHANGE_BIND_BIT_NO_WAIT() -> UInt8:
     return 1
 
 
@@ -400,14 +471,18 @@ struct PendingPublish:
     var exchange: String
     var routing_key: String
     var channel: UInt16
+    # basic.publish mandatory bit (60,40): when set and the message routed to
+    # ZERO queues, the service emits basic.return (60,50) with reply-code 312.
     # -1 = METHOD seen, HEADER not yet arrived; >= 0 = declared body size.
+    var mandatory: Int
     var body_size: Int
 
 
-    def __init__(out self, var ex: String, var rk: String, chan: UInt16):
+    def __init__(out self, var ex: String, var rk: String, chan: UInt16, mandatory: Int):
         self.exchange = ex^
         self.routing_key = rk^
         self.channel = chan
+        self.mandatory = mandatory
         self.body_size = -1
 
     # Mojo 1.0: mutate the stored value through a chained call on the Dict
@@ -437,6 +512,12 @@ struct AMQPService:
     # Last consumer-tag per registered consumer id (echoed in consume-ok and
     # carried in every deliver frame; AMQP routes deliveries by this string).
     var _ctags: Dict[UInt64, String]
+    # Per-connection CLOSED channel numbers (0017 T1: channel.close 20,40).
+    # A channel the client has closed (or the server closed with the 404/406
+    # error reply) lives here: any method frame on such a channel is answered
+    # with the normative channel-level error close; content frames are
+    # tolerated silently. channel.open on the number re-opens it (removed).
+    var _closed_channels: Dict[UInt64, List[UInt16]]
     # Count of dropped protocol-error content frames (fail-closed visibility
     # for tests/status without an async logging path).
     var _content_errors: Int
@@ -453,6 +534,7 @@ struct AMQPService:
         self._get_queues = Dict[UInt64, String]()
         self._get_tags = Dict[UInt64, UInt64]()
         self._ctags = Dict[UInt64, String]()
+        self._closed_channels = Dict[UInt64, List[UInt16]]()
         self._content_errors = 0
         # Value advertised in connection.tune and enforced as the per-connection
         # codec ceiling by the listener. config.frame_max is validated >= 4096
@@ -581,11 +663,11 @@ struct AMQPService:
         frames.
         """
         if frame.frame_type == FRAME_HEADER():
-            self._on_content_header(conn_id, frame)
-            return Optional[List[UInt8]]()
+            # 0017 T1: the handler may now emit a basic.return (60,50) content
+            # sequence (mandatory=1 publish completed with a zero-size body).
+            return self._on_content_header(conn_id, frame)
         if frame.frame_type == FRAME_BODY():
-            self._on_content_body(conn_id, frame)
-            return Optional[List[UInt8]]()
+            return self._on_content_body(conn_id, frame)
         if frame.frame_type != FRAME_METHOD():
             return Optional[List[UInt8]]()
 
@@ -597,6 +679,59 @@ struct AMQPService:
         var class_id = reader.read_short()
         var method_id = reader.read_short()
         var mid = MethodID(class_id, method_id)
+
+        # ---- 0017 T1: CLOSED-channel guard (normative error table) ----
+        # After channel.close (20,40) the channel number counts closed. Any
+        # subsequent business method (class not in {10 connection, 20 channel})
+        # on it is answered with a SERVER-side channel.close carrying
+        # reply-code 404 NOT_FOUND ("channel ... already closed") and the
+        # failing method's class/method ids; no *_ok is produced for it.
+        # Content frames on a closed channel are tolerated silently (guard in
+        # _on_content_header/_on_content_body); heartbeat frames never reach
+        # dispatch. Channel-class methods stay allowed so the client's
+        # close-ok (acknowledgment of the server error close) or a
+        # channel.open re-opening the number still parse; connection-class
+        # methods on channel 0 are unaffected by per-channel state.
+        if (
+            self._channel_is_closed(conn_id, chan)
+            and chan != 0
+            and class_id != 10
+            and class_id != 20
+        ):
+            return self._channel_error(
+                chan,
+                REPLY_NOT_FOUND(),
+                "NOT_FOUND - channel is already closed",
+                mid,
+            )
+
+        # ---- connection close (10,50): tolerated from ANY state ----
+        # (spec: connection.close may be issued during any handshake phase
+        # and in face of errors; the reply is always close-ok then teardown.)
+        if mid == CONNECTION_CLOSE():
+            # Client args: reply-code(short) + reply-text(shortstr) +
+            # failing class-id(short) + method-id(short) — read, then ignored:
+            # the connection ends regardless of the reason.
+            _ = reader.read_short()
+            _ = reader.read_short_string()
+            _ = reader.read_short()
+            _ = reader.read_short()
+            # Engine consumers deregistered BEFORE the close-ok goes out so
+            # their unacked deliveries requeue cleanly (unregister_consumer's
+            # D8 reclaim).
+            self._cleanup_connection(conn_id)
+            # Reply vs teardown ORDER (normative, amqp0-9-1.xml connection
+            # class): close-ok is written on the wire FIRST; the listener
+            # (listener.mojo) then closes the slot — the is-CONNECTION_CLOSE
+            # byte-glue there sends any response for the frame BEFORE it
+            # closes the slot, so this order holds by construction for both
+            # the fair-dose and event-driven loops.
+            return self._reply(
+                chan,
+                CONNECTION_CLOSE_OK().class_id,
+                CONNECTION_CLOSE_OK().method_id,
+                List[UInt8](),
+            )
 
         # ---- connection negotiation ----
         if mid == CONNECTION_START_OK():
@@ -641,6 +776,10 @@ struct AMQPService:
 
         # ---- channel ----
         if mid == CHANNEL_OPEN():
+            # 0017 T1: channel.open on a PREVIOUSLY CLOSED channel number
+            # re-opens it (the closed-channel guard above then no longer
+            # fails its methods).
+            self._reopen_channel(conn_id, chan)
             var okargs = List[UInt8]()
             write_long_str_empty(okargs)
             return self._reply(
@@ -648,6 +787,27 @@ struct AMQPService:
                 CHANNEL_OPEN_OK().class_id,
                 CHANNEL_OPEN_OK().method_id,
                 okargs^,
+            )
+
+        # ---- channel close (20,40): close-ok on the SAME channel number ----
+        # Client args: reply-code(short) + reply-text(shortstr) + failing
+        # class-id(short) + method-id(short) — read and ignored. The channel
+        # number is marked CLOSED (per-connection `_closed_channels`), so any
+        # later method on it gets the 404 channel-error reply above. No
+        # in-flight state for this channel survives (a half-reassembled
+        # publish on it is dropped fail-closed).
+        if mid == CHANNEL_CLOSE():
+            _ = reader.read_short()
+            _ = reader.read_short_string()
+            _ = reader.read_short()
+            _ = reader.read_short()
+            self._mark_channel_closed(conn_id, chan)
+            # close-ok (20,41) carries NO arguments per amqp0-9-1.xml.
+            return self._reply(
+                chan,
+                CHANNEL_CLOSE_OK().class_id,
+                CHANNEL_CLOSE_OK().method_id,
+                List[UInt8](),
             )
 
         # ---- exchange ----
@@ -702,14 +862,20 @@ struct AMQPService:
             # the same channel by exactly one HEADER frame and N BODY frames
             # (§2.3.5); reassembly completes in _on_content_body, which is the
             # only path that reaches broker.publish for this method.
+            # 0017 T1: mandatory=1 is now CARRIED: a publish routed to ZERO
+            # queues gets basic.return (60,50) + content on this channel
+            # (see _publish_pending). immediate=1 is NOT honoured (flagged).
             _ = reader.read_short()  # reserved-1
             var pex = reader.read_short_string()
             var prk = reader.read_short_string()
-            _ = reader.read_octet()  # bits: mandatory / immediate (NOT honoured)
+            var pbits = reader.read_octet()
+            var mandatory = 0
+            if (pbits & BASIC_PUBLISH_BIT_MANDATORY()) != 0:
+                mandatory = 1
             # A new METHOD frame re-arms the per-connection state: any previous
             # half-reassembled publish is dropped (bounded, never published).
             self._clear_pending(conn_id)
-            self._pending[conn_id] = PendingPublish(pex^, prk^, chan)
+            self._pending[conn_id] = PendingPublish(pex^, prk^, chan, mandatory)
             self._pending_bodies[conn_id] = List[UInt8]()
             return Optional[List[UInt8]]()
 
@@ -792,20 +958,28 @@ struct AMQPService:
         # ---- basic ack ----
         if mid == BASIC_ACK():
             # Spec arguments: delivery-tag(long-long) + multiple(bit).
+            # 0017 T1: multiple=true is now HONOURED — with Router.bulk_ack
+            # every unacked tag ≤ this tag on the consumer's queue is
+            # acknowledged in tag order (tag 0 = all outstanding, per AMQP).
+            # A tag produced by a basic.get delivery is addressed through the
+            # get-registered consumer too (the engine resolves a tag through
+            # the consumer's queue; tags are idempotent, so a second pass on
+            # the same queue is a no-op).
             var tag = reader.read_long_long()
             var ack_bits = reader.read_octet()
             var multiple = (ack_bits & BASIC_ACK_BIT_MULTIPLE()) != 0
-            # NOT IMPLEMENTED: multiple=true means "ack up to and including this
-            # tag" (and, with tag 0, "all outstanding"). The engine acknowledges
-            # one tag at a time, so only the addressed delivery_tag below is
-            # honoured and the batch request is NOT. This octet used to be
-            # mis-read as a consumer id, which acked nothing.
-            _ = multiple
-            # The consumer is the one this connection registered via
-            # basic.consume; its id is issued by the engine (single authority).
-            # A tag produced by basic.get is addressed to the get-registered
-            # consumer instead (the engine resolves a tag through the consumer's
-            # queue, so the right consumer id matters).
+            if multiple:
+                if conn_id in self._consumers:
+                    _ = self._broker.bulk_ack(self._consumers[conn_id], tag)
+                if conn_id in self._get_cids:
+                    _ = self._broker.bulk_ack(self._get_cids[conn_id], tag)
+                return Optional[List[UInt8]]()
+            # multiple=false: exactly one tag. The consumer is the one this
+            # connection registered via basic.consume; its id is issued by
+            # the engine (single authority). A tag produced by basic.get is
+            # addressed to the get-registered consumer instead (the engine
+            # resolves a tag through the consumer's queue, so the right
+            # consumer id matters).
             var done = False
             if conn_id in self._consumers:
                 done = self._broker.ack(self._consumers[conn_id], tag)
@@ -818,10 +992,271 @@ struct AMQPService:
                 done = self._broker.ack(self._get_cids[conn_id], tag)
             return Optional[List[UInt8]]()
 
+        # ---- basic nack (60,120) — NO reply (fire-and-forget, like nack's
+        # reject sibling; there is no nack-ok in 0-9-1) ----
+        if mid == BASIC_NACK():
+            # Spec args: delivery-tag(long-long) + bits[multiple=1, requeue=2].
+            # 0017 T1 semantics:
+            #   requeue=true  → Router.nack* (requeue; the message's delivery
+            #                   counter increments on its next dequeue).
+            #   requeue=false → the message is DROPPED (x-dead-letter-exchange
+            #                   requeue-false routing lands in T3; until then
+            #                   drop is the normative-visible behavior).
+            #   multiple=true → every unacked tag ≤ this one resolves in tag
+            #                   order; tag 0 = all outstanding.
+            # NO basic.return is composed for the dropped message (the task
+            # states the mandatory-basic.return of a nacked message is NONE
+            # here).
+            var ntag = reader.read_long_long()
+            var nbits = reader.read_octet()
+            var n_multiple = (nbits & BASIC_NACK_BIT_MULTIPLE()) != 0
+            var n_requeue = (nbits & BASIC_NACK_BIT_REQUEUE()) != 0
+            if n_multiple:
+                if conn_id in self._consumers:
+                    _ = self._broker.nack_through(
+                        self._consumers[conn_id], ntag, n_requeue
+                    )
+                if conn_id in self._get_cids:
+                    _ = self._broker.nack_through(
+                        self._get_cids[conn_id], ntag, n_requeue
+                    )
+            else:
+                var resolved = False
+                if conn_id in self._consumers:
+                    resolved = self._broker.nack(self._consumers[conn_id], ntag, n_requeue)
+                if (
+                    not resolved
+                    and conn_id in self._get_tags
+                    and conn_id in self._get_cids
+                    and self._get_tags[conn_id] == ntag
+                ):
+                    resolved = self._broker.nack(self._get_cids[conn_id], ntag, n_requeue)
+            return Optional[List[UInt8]]()
+
+        # ---- queue.purge (50,30) ----
+        if mid == QUEUE_PURGE():
+            # Spec args: reserved-1(short) + queue(shortstr) + bits
+            # [no-wait=1]. queue.purge-ok (50,31): message-count (long) =
+            # number of READY messages dropped. UNACKED deliveries are
+            # NEVER touched by purge (normative). Missing queue → the
+            # normative channel-level error close with reply-code 404
+            # NOT_FOUND (implemented via _channel_error below), then this
+            # channel number is closed for further methods per
+            # _mark_channel_closed (recorded by the guard's rename of the
+            # channel state — see _channel_error).
+            _ = reader.read_short()  # reserved-1 (deprecated ticket)
+            var pq = reader.read_short_string()
+            var pbits = reader.read_octet()
+            var purged = self._broker.purge_queue(pq.copy())
+            if purged < 0:
+                var emsg = "NOT_FOUND - no queue " + pq.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg^,
+                    mid,
+                )
+            if (pbits & QUEUE_PURGE_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            var pargs = List[UInt8]()
+            write_u32(pargs, UInt32(purged))
+            return self._reply(
+                chan,
+                QUEUE_PURGE_OK().class_id,
+                QUEUE_PURGE_OK().method_id,
+                pargs^,
+            )
+
+        # ---- queue.delete (50,40) ----
+        if mid == QUEUE_DELETE():
+            # Spec args: reserved-1(short) + queue(shortstr) + bits
+            # [if-empty=1, if-unused=2, no-wait=4]. queue.delete-ok (50,41):
+            # message-count (long) = REMOVED messages (ready + unacked).
+            # Consumers registered on the queue are unregistered by
+            # the router (their unacked are deleted with the queue; there is
+            # no per-consumer wire callback per 0017 T1 item 11). Refusals:
+            # missing queue -> 404 NOT_FOUND channel error;
+            # if_empty violated (queue not empty) -> 406 PRECONDITION_FAILED;
+            # if_unused violated (active consumers) -> 406 PRECONDITION_FAILED.
+            _ = reader.read_short()  # reserved-1
+            var dq = reader.read_short_string()
+            var dbits = reader.read_octet()
+            var dcount = self._broker.delete_queue_checked(
+                dq.copy(),
+                (dbits & QUEUE_DELETE_BIT_EMPTY()) != 0,
+                (dbits & QUEUE_DELETE_BIT_UNUSED()) != 0,
+            )
+            if dcount == -1:
+                var emsg = "NOT_FOUND - no queue " + dq.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg^,
+                    mid,
+                )
+            if dcount == -2:
+                return self._channel_error(
+                    chan,
+                    REPLY_PRECONDITION_FAILED(),
+                    "PRECONDITION_FAILED - if_empty (queue not empty)",
+                    mid,
+                )
+            if dcount == -3:
+                return self._channel_error(
+                    chan,
+                    REPLY_PRECONDITION_FAILED(),
+                    "PRECONDITION_FAILED - if_unused (queue in use)",
+                    mid,
+                )
+            if (dbits & QUEUE_DELETE_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            var delargs = List[UInt8]()
+            write_u32(delargs, UInt32(dcount))
+            return self._reply(
+                chan,
+                QUEUE_DELETE_OK().class_id,
+                QUEUE_DELETE_OK().method_id,
+                delargs^,
+            )
+
+        # ---- queue.unbind (50,50) ----
+        if mid == QUEUE_UNBIND():
+            # Spec args: reserved-1(short) + queue(shortstr) + exchange
+            # (shortstr) + routing-key(shortstr) + arguments(table).
+            # queue.unbind-ok (50,51): NO arguments. A missing queue,
+            # exchange or binding is answered with the 404 NOT_FOUND
+            # channel error (normative error table; flagged: rabbit returns
+            # 404 also for unbind of a non-existent binding).
+            _ = reader.read_short()  # reserved-1
+            var uq = reader.read_short_string()
+            var ue = reader.read_short_string()
+            var urk = reader.read_short_string()
+            reader.read_table_skip()  # arguments (not interpreted)
+            var unbound = self._broker.unbind_queue(uq.copy(), ue.copy(), urk.copy())
+            if not unbound:
+                var emsg = "NOT_FOUND - no binding " + uq.copy()
+                var emsg2 = emsg + " via " + ue.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg2^,
+                    mid,
+                )
+            return self._reply(
+                chan,
+                QUEUE_UNBIND_OK().class_id,
+                QUEUE_UNBIND_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- exchange.delete (40,20) ----
+        if mid == EXCHANGE_DELETE():
+            # Spec args: reserved-1(short) + exchange(shortstr) + bits
+            # [if-unused=1, no-wait=2]. exchange.delete-ok (40,21): NO
+            # arguments. Deleting an exchange also unbinds every
+            # exchange→exchange binding pointing at it (router-side normative
+            # reachability). Missing → 404 channel error; if_unused
+            # violated (any binding exists) → 406 channel error.
+            _ = reader.read_short()  # reserved-1
+            var dex = reader.read_short_string()
+            var dbits = reader.read_octet()
+            var dcode = self._broker.delete_exchange_checked(
+                dex.copy(), (dbits & EXCHANGE_DELETE_BIT_UNUSED()) != 0
+            )
+            if dcode == -1:
+                var emsg = "NOT_FOUND - no exchange " + dex.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg^,
+                    mid,
+                )
+            if dcode == -2:
+                return self._channel_error(
+                    chan,
+                    REPLY_PRECONDITION_FAILED(),
+                    "PRECONDITION_FAILED - exchange in use (if_unused)",
+                    mid,
+                )
+            if (dbits & EXCHANGE_DELETE_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            return self._reply(
+                chan,
+                EXCHANGE_DELETE_OK().class_id,
+                EXCHANGE_DELETE_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- exchange.bind (40,30): exchange→exchange binding ----
+        if mid == EXCHANGE_BIND():
+            # Spec args: reserved-1(short) + destination(shortstr) +
+            # source(shortstr) + routing-key(shortstr) + bits[no-wait] +
+            # arguments(table). Messages published to SOURCE under the
+            # routing key route INTO destination (destination bound to
+            # source). Missing source or destination → 404 channel error
+            # (normative); bind-ok (40,31) carries no arguments.
+            _ = reader.read_short()  # reserved-1
+            var bdest = reader.read_short_string()
+            var bsrc = reader.read_short_string()
+            var brk = reader.read_short_string()
+            var bbits = reader.read_octet()
+            reader.read_table_skip()  # arguments
+            var bound = self._broker.bind_exchange(bsrc.copy(), bdest.copy(), brk.copy())
+            if not bound:
+                var emsg = "NOT_FOUND - no exchange " + bsrc.copy()
+                var emsg2 = emsg + " / " + bdest.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg2^,
+                    mid,
+                )
+            if (bbits & EXCHANGE_BIND_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            return self._reply(
+                chan,
+                EXCHANGE_BIND_OK().class_id,
+                EXCHANGE_BIND_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- exchange.unbind (40,40) ----
+        if mid == EXCHANGE_UNBIND():
+            # Spec args: reserved-1(short) + destination(shortstr) +
+            # source(shortstr) + routing-key(shortstr) + bits[no-wait] +
+            # arguments(table). exchange.unbind-ok carries NO arguments and
+            # its index is 51 (40,51) per amqp0-9-1.xml (see constants.mojo).
+            # Missing source exchange → 404 channel error; a missing exact
+            # binding also errors (404) per normative table (flagged).
+            _ = reader.read_short()  # reserved-1
+            var xdest = reader.read_short_string()
+            var xsrc = reader.read_short_string()
+            var xrk = reader.read_short_string()
+            var xbits = reader.read_octet()
+            reader.read_table_skip()  # arguments
+            var unbound = self._broker.unbind_exchange(xsrc.copy(), xdest.copy(), xrk.copy())
+            if not unbound:
+                var emsg = "NOT_FOUND - no binding " + xdest.copy()
+                return self._channel_error(
+                    chan,
+                    REPLY_NOT_FOUND(),
+                    emsg^,
+                    mid,
+                )
+            if (xbits & EXCHANGE_BIND_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            return self._reply(
+                chan,
+                EXCHANGE_UNBIND_OK().class_id,
+                EXCHANGE_UNBIND_OK().method_id,
+                List[UInt8](),
+            )
+
         # ---- unhandled method: no reply ----
-        # NOT IMPLEMENTED: a required *_ok is not sent for the remaining
-        # unhandled synchronous methods (channel.flow, queue.purge, tx.*, ...);
-        # peers will block waiting for those replies.
+        # NOT IMPLEMENTED (0017 residual): channel.flow (20,20) [*_ok is the
+        # client's own flow-ok — the server must only RESUME/PAUSE], tx.* and
+        # confirm.* (T4), secure (10,20/21); unhandled synchronous methods
+        # still get no reply (peers would block).
         return Optional[List[UInt8]]()
 
     # ---- inbound content reassembly (amqp0-9-1.xml §2.3.5) ----
@@ -845,16 +1280,115 @@ struct AMQPService:
         self._clear_pending(conn_id)
         print("hyrxmq: content frame dropped (conn " + String(conn_id) + "): " + why)
 
-    def _on_content_header(mut self, conn_id: UInt64, frame: AMQPFrame) raises:
+    # ---- per-channel closed-state (0017 T1: channel.close 20,40) ----
+
+    def _channel_is_closed(ref self, conn_id: UInt64, chan: UInt16) raises -> Bool:
+        """Whether `chan` is in the connection's closed-channel record."""
+        if conn_id not in self._closed_channels:
+            return False
+        var chans = self._closed_channels[conn_id].copy()
+        for i in range(len(chans)):
+            if chans[i] == chan:
+                return True
+        return False
+
+    def _mark_channel_closed(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Record `chan` as closed for this connection (channel.close 20,40).
+
+        Deduplicated. Any half-reassembled publish whose METHOD frame ran on
+        the closed channel is dropped fail-closed (it can never complete
+        legally — content frames on the closed channel are swallowed).
+        """
+        var chans = List[UInt16]()
+        if conn_id in self._closed_channels:
+            chans = self._closed_channels[conn_id].copy()
+        for i in range(len(chans)):
+            if chans[i] == chan:
+                return
+        chans.append(chan.copy())
+        self._closed_channels[conn_id] = chans^
+        if conn_id in self._pending:
+            if self._pending[conn_id].channel == chan:
+                self._clear_pending(conn_id)
+
+    def _reopen_channel(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """channel.open (20,10) on a previously closed number re-opens it."""
+        if conn_id not in self._closed_channels:
+            return
+        var kept = List[UInt16]()
+        var old = self._closed_channels.pop(conn_id)
+        for i in range(len(old)):
+            if old[i] != chan:
+                kept.append(old[i])
+        if len(kept) > 0:
+            self._closed_channels[conn_id] = kept^
+
+    def _cleanup_connection(mut self, conn_id: UInt64) raises:
+        """Release the connection's engine consumers and per-conn state.
+
+        Called on connection.close (10,50) from ANY state BEFORE the close-ok
+        reply is encoded: both consumers (basic.consume slice and the
+        basic.get consumer) requeue their unacked deliveries via
+        Router.unregister_consumer (single routing authority).
+        """
+        if conn_id in self._consumers:
+            var cid = self._consumers.pop(conn_id)
+            _ = self._broker.unregister_consumer(cid)
+        if conn_id in self._get_cids:
+            var gcid = self._get_cids.pop(conn_id)
+            _ = self._broker.unregister_consumer(gcid)
+        if conn_id in self._get_tags:
+            _ = self._get_tags.pop(conn_id)
+        if conn_id in self._get_queues:
+            _ = self._get_queues.pop(conn_id)
+        self._clear_pending(conn_id)
+        if conn_id in self._closed_channels:
+            _ = self._closed_channels.pop(conn_id)
+
+    def _channel_error(
+        ref self,
+        chan: UInt16,
+        code: UInt16,
+        var text: String,
+        failing: MethodID,
+    ) raises -> Optional[List[UInt8]]:
+        """Encode the normative SERVER-side channel-level error: a channel.close
+        (20,40) frame carrying reply-code + reply-text + the failing method's
+        class/method ids (amqp0-9-1.xml error tables; §1.4.2 channel.close).
+
+        This reply itself CLOSES the channel: the closed-channel state is
+        recorded here too (the client answers with channel.close-ok, which
+        this service tolerates on the closed number through the channel-class
+        guard carve-out).
+        """
+        _ = self  # ref-only helper (no state writes on the borrow-ref here)
+        var eargs = List[UInt8]()
+        write_u16(eargs, code)
+        write_short_string(eargs, text^)
+        write_u16(eargs, failing.class_id)
+        write_u16(eargs, failing.method_id)
+        var bytes = AMQPFrameCodec.encode_method_frame(
+            chan, CHANNEL_CLOSE().class_id, CHANNEL_CLOSE().method_id, eargs^
+        )
+        return Optional[List[UInt8]](bytes^)
+
+    def _on_content_header(mut self, conn_id: UInt64, frame: AMQPFrame) raises -> Optional[List[UInt8]]:
         """A content HEADER frame: it must follow a basic.publish METHOD frame.
 
         Only the class-id (must be basic=60) and body-size (§2.3.5.2 offsets
         0:2 / 4:12) are read; the property-list is deliberately NOT decoded
         (property fidelity is NOT PROVEN — see module header).
+
+        0017 T1: a content frame on a CLOSED channel is tolerated silently
+        (returns None without touching any state); a completed zero-size
+        publish on a mandatory=1 channel can emit a full basic.return content
+        sequence as the response.
         """
+        if self._channel_is_closed(conn_id, frame.channel):
+            return Optional[List[UInt8]]()
         if conn_id not in self._pending:
             self._fail_content(conn_id, "header frame with no pending publish")
-            return
+            return Optional[List[UInt8]]()
         var hdr = parse_header_frame_payload(frame.payload_copy())
         if hdr.class_id != BASIC_CLASS_ID():
             self._fail_content(
@@ -863,10 +1397,10 @@ struct AMQPService:
                 + String(hdr.class_id)
                 + " is not basic (60)",
             )
-            return
+            return Optional[List[UInt8]]()
         if self._pending[conn_id].body_size >= 0:
             self._fail_content(conn_id, "second content header for one publish")
-            return
+            return Optional[List[UInt8]]()
         var size = Int(hdr.body_size)
         if size > MAX_PENDING_BODY():
             self._fail_content(
@@ -874,29 +1408,34 @@ struct AMQPService:
                 "declared body size " + String(size) + " exceeds the "
                 + String(MAX_PENDING_BODY()) + "-byte reassembly ceiling",
             )
-            return
+            return Optional[List[UInt8]]()
         self._pending[conn_id].set_body_size(size)
         if size == 0:
             # Zero-length body: exactly ZERO body frames follow (§2.3.5.3).
-            self._publish_pending(conn_id)
+            return self._publish_pending(conn_id)
+        return Optional[List[UInt8]]()
 
-    def _on_content_body(mut self, conn_id: UInt64, frame: AMQPFrame) raises:
+    def _on_content_body(mut self, conn_id: UInt64, frame: AMQPFrame) raises -> Optional[List[UInt8]]:
         """A content BODY frame: append, complete, or fail closed.
 
         Bounds (audit §13/§18): a body frame with no pending publish is dropped
         without allocating; an arrival that would push the accumulated length
         PAST the declared body-size is a protocol error — the whole message is
         dropped, never published, and no further bytes are retained.
+
+        0017 T1: content frames on a CLOSED channel are tolerated silently.
         """
+        if self._channel_is_closed(conn_id, frame.channel):
+            return Optional[List[UInt8]]()
         if conn_id not in self._pending or conn_id not in self._pending_bodies:
             self._fail_content(conn_id, "body frame with no pending publish")
-            return
+            return Optional[List[UInt8]]()
         var want = self._pending[conn_id].body_size
         if want <= 0:
             # Either no header yet (body before header, -1) or a zero-size body
             # that already completed: in both cases this frame is out of order.
             self._fail_content(conn_id, "body frame before/after its header")
-            return
+            return Optional[List[UInt8]]()
         var have = len(self._pending_bodies[conn_id])
         if have + frame.payload_size() > want:
             self._fail_content(
@@ -906,7 +1445,7 @@ struct AMQPService:
                 + " bytes against a declared "
                 + String(want),
             )
-            return
+            return Optional[List[UInt8]]()
         var pb = self._pending_bodies.pop(conn_id)
         var pb_old_len = len(pb)
         pb.resize(unsafe_uninit_length=pb_old_len + frame.payload_size())
@@ -917,16 +1456,41 @@ struct AMQPService:
         )
         self._pending_bodies[conn_id] = pb^
         if len(self._pending_bodies[conn_id]) == want:
-            self._publish_pending(conn_id)
+            return self._publish_pending(conn_id)
+        return Optional[List[UInt8]]()
 
-    def _publish_pending(mut self, conn_id: UInt64) raises:
+    def _publish_pending(mut self, conn_id: UInt64) raises -> Optional[List[UInt8]]:
         """Hand the fully reassembled body to the broker (the single publish
-        point for inbound content) and clear the per-connection state."""
+        point for inbound content) and clear the per-connection state.
+
+        0017 T1 basic.return (60,50): when the publish carried mandatory=1
+        and routed to ZERO queues, the response is the normative unroutable
+        signal: a basic.return method (reply-code 312 NO_ROUTE, reply-text
+        NO_ROUTE) followed by the message's OWN content (HEADER + BODY)
+        frames, emitted on the PUBLISHER's channel. Because dispatch is
+        one-frame-in/one-reply-out, this return IS "before any other pending
+        reply" for that channel. mandatory=0: silently unrouted (current
+        behavior stands)."""
         if conn_id not in self._pending or conn_id not in self._pending_bodies:
-            return
+            return Optional[List[UInt8]]()
         var p = self._pending.pop(conn_id)
         var body = self._pending_bodies.pop(conn_id)
-        _ = self._broker.publish(p.exchange.copy(), p.routing_key.copy(), body^)
+        var routed = self._broker.publish(p.exchange.copy(), p.routing_key.copy(), body.copy())
+        if p.mandatory == 1 and routed <= 0:
+            # basic.return (60,50) args: reply-code(short)=312 + reply-text
+            # (shortstr)="NO_ROUTE" + exchange(shortstr) + routing-key
+            # (shortstr) — followed by the message content (HEADER+BODY).
+            var rargs = List[UInt8]()
+            write_u16(rargs, REPLY_NO_ROUTE())
+            write_short_string(rargs, "NO_ROUTE")
+            write_short_string(rargs, p.exchange)
+            write_short_string(rargs, p.routing_key)
+            return Optional[List[UInt8]](
+                emit_message_frames(
+                    p.channel, BASIC_RETURN(), rargs^, body^, self._frame_max
+                )^
+            )
+        return Optional[List[UInt8]]()
 
     # ---- synchronous basic.get ----
 

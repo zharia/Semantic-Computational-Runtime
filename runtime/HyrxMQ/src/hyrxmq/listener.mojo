@@ -365,6 +365,19 @@ struct AMQPConnServing[Conn: AMQPConn]:
         if resp.__bool__():
             # open-ok detected pre-send (borrow-safe pattern)
             var open_ok = _resp_is_open_ok(resp.value())
+
+            # --- 0017 T1 CONNECTION_CLOSE teardown ordering (NORMATIVE) ---
+            # amqp0-9-1.xml connection class: the server replies
+            # connection.close-ok (10,51) FIRST and only then closes the
+            # socket; the same rule holds when the server initiates (T4).
+            # The dispatch above returns the close-ok as the response for the
+            # connection.close frame, so the send below hits the wire BEFORE
+            # the is_close teardown that follows — the "no 20 s hang, no
+            # close-ok lost" property required by the 0017 e2e gate. The
+            # bytes-only guarantee: resp is fully written here, then the slot
+            # is closed in the is_close block after this branch. A service
+            # raise between send and close is impossible (handle_frame
+            # produced the bytes already).
             self._conns[slot].value().send_bytes(resp.value().copy())
             # Handshake completion is detected from the reply bytes only (no new
             # service coupling): an open-ok reply ends negotiation.
@@ -375,6 +388,9 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 self._phases[slot] = PHASE_READY()
 
         if is_close:
+            # ONLY after the close-ok frames above were written. _close_slot
+            # is idempotent and never propagates an error; the event-driven
+            # loop's deregister-before-close ordering is preserved there.
             self._close_slot(slot)
         return SERVE_DISPATCHED()
 

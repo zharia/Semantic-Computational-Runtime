@@ -177,3 +177,95 @@ struct AMQPAdapter:
         NOT IMPLEMENTED: the `requeue` bit — the engine always requeues.
         """
         return engine.reject(consumer_id, delivery_tag)
+
+    # ---- 0017 T1 translations (additive; single routing authority = engine) ----
+
+    def has_queue(ref self, mut engine: HyrxEngine, var name: String) -> Bool:
+        """Queue presence preflight before queue.purge/delete (404 table)."""
+        return engine.has_queue(name^)
+
+    def has_exchange(ref self, mut engine: HyrxEngine, var name: String) -> Bool:
+        """Exchange presence preflight before delete (404 table)."""
+        return engine.has_exchange(name^)
+
+    def purge_queue(mut self, mut engine: HyrxEngine, var name: String) raises -> Int:
+        """Translate AMQP queue.purge (50,30). -1 = missing queue."""
+        return engine.purge_queue(name^)
+
+    def delete_queue_checked(
+        mut self,
+        mut engine: HyrxEngine,
+        var name: String,
+        if_empty: Bool,
+        if_unused: Bool,
+    ) raises -> Int:
+        """Translate AMQP queue.delete (50,40); sentinels -1/-2/-3."""
+        return engine.delete_queue_checked(name^, if_empty, if_unused)
+
+    def delete_exchange_checked(
+        mut self, mut engine: HyrxEngine, var name: String, if_unused: Bool
+    ) raises -> Int:
+        """Translate AMQP exchange.delete (40,20); sentinels -1/-2."""
+        return engine.delete_exchange_checked(name^, if_unused)
+
+    def bind_exchange(
+        mut self,
+        mut engine: HyrxEngine,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """Translate AMQP exchange.bind (40,30)."""
+        return engine.bind_exchange(source^, destination^, routing_key^)
+
+    def unbind_exchange(
+        mut self,
+        mut engine: HyrxEngine,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """Translate AMQP exchange.unbind (40,40)."""
+        return engine.unbind_exchange(source^, destination^, routing_key)
+
+    def unbind_queue(
+        mut self,
+        mut engine: HyrxEngine,
+        var queue: String,
+        var exchange: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """Translate AMQP queue.unbind (50,50)."""
+        return engine.unbind_queue(queue^, exchange^, routing_key)
+
+    def unregister_consumer(
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64
+    ) raises -> Bool:
+        """Translate consumer deregistration (channel/connection teardown)."""
+        return engine.unregister_consumer(consumer_id)
+
+    def bulk_ack(
+        mut self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Int:
+        """Translate AMQP basic.ack multiple=true: every tag <= tag."""
+        return engine.bulk_ack(consumer_id, delivery_tag)
+
+    def nack(
+        mut self,
+        mut engine: HyrxEngine,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        requeue: Bool,
+    ) raises -> Bool:
+        """Translate AMQP basic.nack (60,120) single tag."""
+        return engine.nack(consumer_id, delivery_tag, requeue)
+
+    def nack_through(
+        mut self,
+        mut engine: HyrxEngine,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        requeue: Bool,
+    ) raises -> Int:
+        """Translate AMQP basic.nack (60,120) multiple=true."""
+        return engine.nack_through(consumer_id, delivery_tag, requeue)

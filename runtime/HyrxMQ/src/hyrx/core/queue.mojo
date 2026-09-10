@@ -205,6 +205,94 @@ struct Queue:
             return True
         return False
 
+    # ---- bulk resolution (amqp basic.ack/nack multiple=true; 0017 T1) ----
+    #
+    # Delivery tags are per-queue ascending dequeue order, so "all unacked tags
+    # ≤ T" is exactly the prefix of _unacked_tags up to the first tag > T.
+
+    def _take_reclaim_through(
+        mut self, delivery_tag: UInt64
+    ) raises -> List[Buffer]:
+        """Pop every unacked message with tag <= delivery_tag, in tag order.
+
+        Each message's envelope is destroyed and its payload Buffer handed out
+        (owned) — call Router-side per buffer with pool.release (no-op for
+        non-pooled). Shared body of ack_reclaim_through / drop_unacked_through.
+        """
+        var out = List[Buffer]()
+        var i = 0
+        while i < len(self._unacked_tags):
+            var t = self._unacked_tags[i]
+            if t > delivery_tag:
+                break
+            _ = self._unacked_tags.pop(i)
+            var msg = self._unacked.pop(t)
+            out.append(msg.take_payload())
+        return out^
+
+    def ack_reclaim_through(mut self, delivery_tag: UInt64) raises -> List[Buffer]:
+        """basic.ack (60,80) multiple=true: acknowledge every tag <= tag.
+
+        Messages are destroyed; payload Buffers returned for pool release.
+        Assumes the embedding consumer resolved the tag scope (Router).
+        """
+        return self._take_reclaim_through(delivery_tag)
+
+    def drop_unacked_through(mut self, delivery_tag: UInt64) raises -> List[Buffer]:
+        """basic.nack (60,120) requeue=false, multiple=true: drop <= tag.
+
+        Same mechanics as ack_reclaim_through but semantically the
+        no-requeue nack path (drops; no x-dead-letter routing in T1).
+        """
+        return self._take_reclaim_through(delivery_tag)
+
+    def drop_unacked(mut self, delivery_tag: UInt64) raises -> Buffer:
+        """basic.nack single-tag requeue=false: destroy one unacked message.
+
+        Returns the payload Buffer (pool release by Router). Assumes the tag
+        is present (Router re-checks has_unacked first).
+        """
+        var msg = self._unacked.pop(delivery_tag)
+        self._untrack_unacked(delivery_tag)
+        return msg.take_payload()
+
+    def requeue_unacked_through(mut self, delivery_tag: UInt64) raises -> Int:
+        """basic.nack requeue=true, multiple=true: requeue every tag <= tag.
+
+        Tag order is preserved (each requeued message is appended to the
+        inbox in _unacked_tags order); the next dequeue bumps each message's
+        delivery counter (increment_delivery_count in dequeue — the
+        redelivery counter Router.requeue_unacked relies on). Returns the
+        number requeued.
+        """
+        var n = 0
+        var i = 0
+        while i < len(self._unacked_tags):
+            var t = self._unacked_tags[i]
+            if t > delivery_tag:
+                break
+            _ = self._unacked_tags.pop(i)
+            var msg = self._unacked.pop(t)
+            self._inbox.append(msg^)
+            n += 1
+        return n
+
+    # ---- queue.purge (amqp 50,30; 0017 T1) ----
+
+    def purge_ready(mut self) raises -> List[Message]:
+        """Remove every READY message (inbox + outbox); UNACKED untouched.
+
+        queue.purge drops only ready messages and MUST NOT touch unacked
+        deliveries. Returns the purged messages so Router releases their
+        payload Buffers to the pool. Returns an empty list for an empty queue
+        (a legal purge, count 0)."""
+        var out = List[Message]()
+        while len(self._outbox) > 0:
+            out.append(self._outbox.pop())
+        while len(self._inbox) > 0:
+            out.append(self._inbox.pop())
+        return out^
+
     def drain_messages(mut self) raises -> List[Message]:
         """Move every owned Message (outbox + inbox + unacked) out for reclaim.
 
@@ -253,3 +341,6 @@ struct Queue:
 
     def capacity(ref self) -> Int:
         return self._config._capacity
+
+    # 0017 T1: bulk-resolution + purge additions live above (ack_reclaim_through,
+    # drop_unacked, drop_unacked_through, requeue_unacked_through, purge_ready).

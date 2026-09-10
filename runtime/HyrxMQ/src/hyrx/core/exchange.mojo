@@ -138,11 +138,17 @@ struct Exchange:
     var _name: String
     var _type: ExchangeType
     var _bindings: List[Binding]
+    # Exchange→exchange bindings (exchange.bind (40,30)); _queue_name holds
+    # the destination exchange name. Independent of _bindings.
+    var _dest_exchanges: List[Binding]
 
     def __init__(out self, var name: String, var exchange_type: ExchangeType):
         self._name = name^
         self._type = exchange_type^
         self._bindings = List[Binding]()
+        # Exchange→exchange bindings (exchange.bind (40,30)); _queue_name holds
+        # the destination exchange name. Independent of _bindings.
+        self._dest_exchanges = List[Binding]()
 
     def name(ref self) -> String:
         return self._name
@@ -156,6 +162,93 @@ struct Exchange:
             self._bindings, binding._queue_name, binding._routing_key
         ):
             self._bindings.append(binding^)
+
+    # ---- exchange-to-exchange bindings (amqp exchange.bind (40,30)) ----
+    #
+    # The SAME Binding shape is reused: _queue_name holds the DESTINATION
+    # exchange name (the exchange messages flow INTO). The queue-binding table
+    # and this table are independent, so routing order cannot conflate them;
+    # Router.publish walks this table through Router._expand_chain.
+
+    def add_exchange_binding(mut self, var binding: Binding):
+        """Register a binding whose destination is ANOTHER exchange (40,30).
+
+        Duplicate (destination, routing-key) bindings are ignored, like the
+        queue-binding path.
+        """
+        if not _binding_exists(
+            self._dest_exchanges, binding._queue_name, binding._routing_key
+        ):
+            self._dest_exchanges.append(binding^)
+
+    def remove_exchange_binding(
+        mut self, var dest: String, routing_key: String
+    ) -> Bool:
+        """Remove one exchange→exchange binding. True if found and removed."""
+        for i in range(len(self._dest_exchanges)):
+            if (
+                self._dest_exchanges[i]._queue_name == dest
+                and self._dest_exchanges[i]._routing_key == routing_key
+            ):
+                _ = self._dest_exchanges.pop(i)
+                return True
+        return False
+
+    def remove_exchange_bindings_to(mut self, var dest: String) -> Int:
+        """Drop every E2E binding pointing AT `dest` (exchange.delete 40,20).
+
+        Router.delete_exchange calls this on every surviving exchange so
+        the deleted exchange is fully unbound from the chain. Returns the
+        number of bindings dropped. Pop-in-place: Binding is not Copyable,
+        so it is moved directly into the popped slot (destroyed by pop).
+        """
+        var dropped = 0
+        var i = 0
+        while i < len(self._dest_exchanges):
+            if self._dest_exchanges[i]._queue_name == dest:
+                _ = self._dest_exchanges.pop(i)
+                dropped += 1
+            else:
+                i += 1
+        return dropped
+
+    def match_exchanges(ref self, routing_key: String) -> List[String]:
+        """Destination SET of EXCHANGE names matching for a publish (40,30).
+
+        Same matching rules as match() (direct exact / fanout all / topic
+        wildcards / headers stub), evaluated on the E2E binding table.
+        Duplicates removed."""
+        var result = List[String]()
+
+        if self._type == ExchangeType.direct():
+            for i in range(len(self._dest_exchanges)):
+                if self._dest_exchanges[i]._routing_key == routing_key:
+                    var d = self._dest_exchanges[i]._queue_name
+                    if not _already_present(result, d):
+                        result.append(d)
+        elif self._type == ExchangeType.fanout():
+            for i in range(len(self._dest_exchanges)):
+                var d = self._dest_exchanges[i]._queue_name
+                if not _already_present(result, d):
+                    result.append(d)
+        elif self._type == ExchangeType.topic():
+            for i in range(len(self._dest_exchanges)):
+                if _topic_match(routing_key, self._dest_exchanges[i]._routing_key):
+                    var d = self._dest_exchanges[i]._queue_name
+                    if not _already_present(result, d):
+                        result.append(d)
+        elif self._type == ExchangeType.headers():
+            # Stub: return all bound exchanges (mirrors the queue stub).
+            for i in range(len(self._dest_exchanges)):
+                var d = self._dest_exchanges[i]._queue_name
+                if not _already_present(result, d):
+                    result.append(d)
+
+        return result^
+
+    def exchange_binding_count(ref self) -> Int:
+        """Number of exchange→exchange bindings on this exchange (40,30)."""
+        return len(self._dest_exchanges)
 
     def remove_binding(mut self, queue_name: String, routing_key: String) -> Bool:
         """Remove a binding. Returns True if found and removed."""
@@ -209,3 +302,7 @@ struct Exchange:
 
     def binding_count(ref self) -> Int:
         return len(self._bindings)
+
+    # 0017 T1: exchange→exchange surface lives above (add_exchange_binding,
+    # remove_exchange_binding, remove_exchange_bindings_to, match_exchanges,
+    # exchange_binding_count)

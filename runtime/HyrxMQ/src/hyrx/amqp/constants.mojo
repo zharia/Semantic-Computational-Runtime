@@ -224,6 +224,22 @@ def TX_ROLLBACK_OK() -> MethodID:
     return MethodID(90, 31)
 
 # Reply codes
+
+# Reply-code 312 NO_ROUTE: basic.return (60,50) reply-code for a mandatory=1
+# publish routed to NO queue (amqp0-9-1.xml response-code table).
+def REPLY_NO_ROUTE() -> UInt16:
+    return 312
+
+# Reply-code 404 NOT_FOUND: channel-level error close for a missing queue /
+# exchange / binding under the normative error table.
+def REPLY_NOT_FOUND() -> UInt16:
+    return 404
+
+# Reply-code 406 PRECONDITION_FAILED: refused queue.delete if_empty /
+# if_unused and exchange.delete if_unused.
+def REPLY_PRECONDITION_FAILED() -> UInt16:
+    return 406
+
 def REPLY_SUCCESS() -> UInt16:
     return 200
 

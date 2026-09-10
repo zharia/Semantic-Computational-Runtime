@@ -145,6 +145,91 @@ struct HyrxMQBroker:
         """Reject a delivery (requeue)."""
         return self._adapter.reject(self._engine, consumer_id, delivery_tag)
 
+    # ---- 0017 T1 management surface (additive; adapter = the one translator) ----
+
+    def has_queue(ref self, var name: String) -> Bool:
+        """Queue presence (404 preflight for purge/delete/unbind)."""
+        return self._adapter.has_queue(self._engine, name^)
+
+    def has_exchange(ref self, var name: String) -> Bool:
+        """Exchange presence (404 preflight)."""
+        return self._adapter.has_exchange(self._engine, name^)
+
+    def purge_queue(mut self, var name: String) raises -> Int:
+        """queue.purge (50,30): -1 = missing queue, else purged count."""
+        return self._adapter.purge_queue(self._engine, name^)
+
+    def delete_queue_checked(
+        mut self, var name: String, if_empty: Bool, if_unused: Bool
+    ) raises -> Int:
+        """queue.delete (50,40): -1 missing / -2 not empty / -3 in use."""
+        return self._adapter.delete_queue_checked(
+            self._engine, name^, if_empty, if_unused
+        )
+
+    def delete_exchange_checked(
+        mut self, var name: String, if_unused: Bool
+    ) raises -> Int:
+        """exchange.delete (40,20): -1 missing / -2 in use."""
+        return self._adapter.delete_exchange_checked(self._engine, name^, if_unused)
+
+    def bind_exchange(
+        mut self,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """exchange.bind (40,30) exchange→exchange."""
+        return self._adapter.bind_exchange(
+            self._engine, source^, destination^, routing_key^
+        )
+
+    def unbind_exchange(
+        mut self,
+        var source: String,
+        var destination: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """exchange.unbind (40,40)."""
+        return self._adapter.unbind_exchange(
+            self._engine, source^, destination^, routing_key
+        )
+
+    def unbind_queue(
+        mut self,
+        var queue: String,
+        var exchange: String,
+        var routing_key: String,
+    ) raises -> Bool:
+        """queue.unbind (50,50)."""
+        return self._adapter.unbind_queue(
+            self._engine, queue^, exchange^, routing_key
+        )
+
+    def unregister_consumer(mut self, consumer_id: UInt64) raises -> Bool:
+        """Consumer deregistration (teardown path; requeues unacked)."""
+        return self._adapter.unregister_consumer(self._engine, consumer_id)
+
+    def bulk_ack(mut self, consumer_id: UInt64, delivery_tag: UInt64) raises -> Int:
+        """basic.ack multiple=true: ack every tag <= tag (0 = all)."""
+        return self._adapter.bulk_ack(self._engine, consumer_id, delivery_tag)
+
+    def nack(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64, requeue: Bool
+    ) raises -> Bool:
+        """basic.nack (60,120) single tag: requeue or drop."""
+        return self._adapter.nack(
+            self._engine, consumer_id, delivery_tag, requeue
+        )
+
+    def nack_through(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64, requeue: Bool
+    ) raises -> Int:
+        """basic.nack (60,120) multiple=true: every tag <= tag."""
+        return self._adapter.nack_through(
+            self._engine, consumer_id, delivery_tag, requeue
+        )
+
     # ---- management surface ----
 
     def status(ref self) -> BrokerStatus:
