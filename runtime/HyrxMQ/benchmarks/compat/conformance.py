@@ -34,8 +34,26 @@ Rows (0017 T2 sequence):
     unknown_exchange.404  ... basic.publish to a MISSING exchange
         (mandatory=0) → channel.close 404 NOT_FOUND (normative)
     return.mandatory_312  ... basic.publish mandatory=1 to an EXISTING
-        exchange whose route misses → NO delivery anywhere + connection
+        exchange whose ROUTE misses → NO delivery anywhere + connection
         stays usable (312 basic.return on the wire; see needs-probe note)
+
+0017 T4 row additions (extension/reliability classes + auth + heartbeat):
+    confirm.ack           ... confirm.select + THREE basic.publish with
+        confirmations enabled → every publish acknowledged (3 confirm
+        acks — pika raises on a missing/timeout confirm), message delivered.
+    tx.commit             ... tx.select + publish 2 → NOTHING visible before
+        commit (get empty), exactly 2 after tx.commit.
+    tx.rollback           ... tx.select + publish 1 + tx.rollback → the
+        message is NEVER delivered (staging dropped).
+    heartbeat.tune        ... pika handshake at heartbeat=60: tune-ok landS
+        (connection completes) + the connection OPERATES (publish+get).
+    heartbeat.cyclic_and_miss ... RAW-socket client at heartbeat=1 that sends
+        NOTHING after open: an idle-frames/silence probe — records whether
+        the SERVER sends cyclic heartbeats and closes after 2 missed client
+        heartbeats (rabbit does; HyrxMQ: PARTIAL — named limitation).
+    auth.reject           ... admin/password connects (good login); an
+        UNKNOWN user gets the connection.close 403 ACCESS_REFUSED
+        (pika: ProbableAuthenticationError) — same on both brokers.
 
 Run modes:
 
@@ -114,12 +132,12 @@ def bounded(secs):
         signal.signal(signal.SIGALRM, prev)
 
 
-def new_conn(host, port):
+def new_conn(host, port, heartbeat=0):
     creds = pika.PlainCredentials(USER, PW)
     params = pika.ConnectionParameters(
         host=host, port=port, virtual_host=VHOST, credentials=creds,
         connection_attempts=1, retry_delay=0.2, socket_timeout=10,
-        blocked_connection_timeout=10, heartbeat=0,
+        blocked_connection_timeout=10, heartbeat=heartbeat,
     )
     return pika.BlockingConnection(params)
 
@@ -220,6 +238,13 @@ ROW_ORDER = ["props." + f for f in PROPS_SPEC] + [
     "dlx_reject",
     "x_max_length",
     "durable.declare_ok",
+    # 0017 T4 rows (extension/reliability classes + auth + heartbeat):
+    "confirm.ack",
+    "tx.commit",
+    "tx.rollback",
+    "heartbeat.tune",
+    "heartbeat.cyclic_and_miss",
+    "auth.reject",
 ]
 
 
@@ -624,6 +649,276 @@ def op_durable_declare_ok(host, port):
         return {"error": _exc_payload(e)}
 
 
+# --------------------------------------------------------------------------
+# 0017 T4 rows: extension/reliability classes + auth + heartbeat.
+# Same ground-truth workflow: rabbit first, then hyrx; identical ops.
+# --------------------------------------------------------------------------
+
+
+def tname4(tag):
+    return "t4.%s" % tag
+
+
+def op_confirm_ack(host, port):
+    """confirm.select + THREE publishes with confirmations enabled: pika's
+    BlockingChannel.basic_publish RAISES (timeout/nack) unless EVERY publish
+    is acknowledged — the row passing means 3 confirm acks landed; the
+    message is then delivered by get."""
+    exch = tname4("confirm.x")
+    queue = tname4("confirm.q")
+    rkey = tname4("confirm.k")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        declare_topology(ch, exch, queue, rkey)
+        ch.confirm_delivery()
+        with bounded(10):
+            for i in range(3):
+                ch.basic_publish(exchange=exch, routing_key=rkey, body=BODY)
+        m, _p, b = get_once(ch, queue)
+        if m is not None:
+            ch.basic_ack(delivery_tag=m.delivery_tag)
+        out = {
+            # confirm_delivery(): publish only returns on the confirm ack
+            "publishes_confirmed": 3,
+            "delivered": m is not None,
+            "body_ok": bool(m is not None and b == BODY),
+        }
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_tx_commit(host, port):
+    """tx.select + publish 2: NOTHING visible before commit (get empty),
+    exactly 2 after tx.commit (the staged messages pushed into queue
+    storage in publish order)."""
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        declare_topology(ch, tname4("tx.c.x"), tname4("tx.c.q"), tname4("tx.c.k"))
+        with bounded(8):
+            ch.tx_select()
+            ch.basic_publish(exchange=tname4("tx.c.x"),
+                             routing_key=tname4("tx.c.k"), body=BODY)
+            ch.basic_publish(exchange=tname4("tx.c.x"),
+                             routing_key=tname4("tx.c.k"), body=BODY)
+        m_before, _p, _b = get_once(ch, tname4("tx.c.q"))  # NOT committed yet
+        with bounded(8):
+            ch.tx_commit()
+        m2, _p2, _b2 = get_once(ch, tname4("tx.c.q"))
+        m3, _p3, _b3 = get_once(ch, tname4("tx.c.q"))
+        if m2 is not None:
+            ch.basic_ack(delivery_tag=m2.delivery_tag)
+        if m3 is not None:
+            ch.basic_ack(delivery_tag=m3.delivery_tag)
+        out = {
+            "visible_before_commit": m_before is not None,
+            "after_commit": (m2 is not None) + (m3 is not None),
+        }
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_tx_rollback(host, port):
+    """tx.select + publish 1 + tx.rollback: the message is NEVER delivered
+    (the staging was dropped; the queue stays empty)."""
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        declare_topology(ch, tname4("tx.r.x"), tname4("tx.r.q"), tname4("tx.r.k"))
+        with bounded(8):
+            ch.tx_select()
+            ch.basic_publish(exchange=tname4("tx.r.x"),
+                             routing_key=tname4("tx.r.k"), body=BODY)
+            ch.tx_rollback()
+        m, _p, _b = get_once(ch, tname4("tx.r.q"))
+        out = {"delivered_after_rollback": m is not None}
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_heartbeat_tune(host, port):
+    """pika handshake at heartbeat=60: the tune/tune-ok heartbeat
+    negotiation lands (connection completes) AND the connection still
+    OPERATES afterwards (publish + basic.get round-trip)."""
+    try:
+        conn = new_conn(host, port, heartbeat=60)
+        ch = conn.channel()
+        declare_topology(ch, tname4("hb.tune.x"), tname4("hb.tune.q"),
+                         tname4("hb.tune.k"))
+        ch.basic_publish(exchange=tname4("hb.tune.x"),
+                         routing_key=tname4("hb.tune.k"), body=BODY)
+        m, _p, _b = get_once(ch, tname4("hb.tune.q"))
+        if m is not None:
+            ch.basic_ack(delivery_tag=m.delivery_tag)
+        out = {
+            "connected": bool(conn.is_open),
+            "operated": m is not None,
+        }
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+# ---- raw-socket AMQP 0-9-1 helpers (heartbeat server-cycle probe) ----
+
+
+def _raw_frame(ftype, channel, payload=b""):
+    return (bytes([ftype]) + channel.to_bytes(2, "big") +
+            len(payload).to_bytes(4, "big") + payload + b"\xce")
+
+
+def _raw_method(channel, cid, mid, args=b""):
+    return _raw_frame(1, channel,
+                      cid.to_bytes(2, "big") + mid.to_bytes(2, "big") + args)
+
+
+def _shortstr(s):
+    enc = s.encode()
+    return bytes([len(enc)]) + enc
+
+
+def _longstr(b):
+    return len(b).to_bytes(4, "big") + b
+
+
+def _raw_recv_frame(sock):
+    """Read one complete frame; raise ConnectionError on EOF."""
+    hdr = b""
+    while len(hdr) < 7:
+        chunk = sock.recv(7 - len(hdr))
+        if not chunk:
+            raise ConnectionError("EOF")
+        hdr += chunk
+    size = int.from_bytes(hdr[3:7], "big")
+    rest = b""
+    while len(rest) < size + 1:
+        chunk = sock.recv(size + 1 - len(rest))
+        if not chunk:
+            raise ConnectionError("EOF")
+        rest += chunk
+    return hdr[0], int.from_bytes(hdr[1:3], "big"), rest[:size]
+
+
+def _raw_handshake(sock, heartbeat):
+    """connection.start -> start-ok -> tune -> tune-ok -> open -> open-ok."""
+    ftype, _ch, body = _raw_recv_frame(sock)
+    assert (ftype, body[:4]) == (1, (10).to_bytes(2, "big") + (10).to_bytes(2, "big"))
+    sock.sendall(_raw_method(0, 10, 11,
+                             _longstr(b"") +           # client-properties
+                             _shortstr("PLAIN") +      # mechanism
+                             _longstr(b"\x00" + USER.encode() + b"\x00" +
+                                      PW.encode()) +   # SASL PLAIN
+                             _shortstr("en_US")))      # locale
+    ftype, _ch, body = _raw_recv_frame(sock)
+    tune = tuple(body[:4])
+    assert tune == ((10).to_bytes(2, "big") + (30).to_bytes(2, "big")), tune
+    sock.sendall(_raw_method(0, 10, 31,
+                             (2047).to_bytes(2, "big") +
+                             (131072).to_bytes(4, "big") +
+                             int(heartbeat).to_bytes(2, "big")))
+    sock.sendall(_raw_method(0, 10, 40,
+                             _shortstr(VHOST) + _shortstr("") + b"\x00"))
+    ftype, _ch, body = _raw_recv_frame(sock)
+    openok = tuple(body[:4])
+    assert openok == ((10).to_bytes(2, "big") + (41).to_bytes(2, "big")), openok
+
+
+def op_heartbeat_cyclic_and_miss(host, port):
+    """A raw-socket client at heartbeat=1 that sends NOTHING after open:
+    an honest IDLE probe for server cyclic heartbeats + the 2-miss close.
+
+    RabbitMQ: sends cyclic heartbeats (~1s apart) and closes the connection
+    after 2 missed CLIENT heartbeats (~2s) -> server frames AND a close/EOF
+    arrive inside the bound. HyrxMQ (documented PARTIAL, no timer
+    subsystem): silence — it neither sends cyclic heartbeats nor closes on
+    misses (its minimal T4 heartbeat is the reply to a RECEIVED heartbeat).
+    """
+    sock = None
+    try:
+        with bounded(14):
+            sock = socket.create_connection((host, port), timeout=6)
+            _raw_handshake(sock, heartbeat=1)
+            saw_heartbeat = False
+            saw_close = False
+            deadline = time.monotonic() + 3.6
+            sock.settimeout(0.5)
+            while time.monotonic() < deadline:
+                try:
+                    ftype, _ch, body = _raw_recv_frame(sock)
+                except socket.timeout:
+                    continue
+                except (ConnectionError, OSError):
+                    saw_close = True
+                    break
+                if ftype == 8:
+                    saw_heartbeat = True
+                if (ftype == 1 and len(body) >= 4 and
+                        body[:4] == (10).to_bytes(2, "big") + (50).to_bytes(2, "big")):
+                    saw_close = True
+            try:
+                sock.close()
+            except Exception:
+                pass
+            return {"observed": {
+                "server_cyclic_heartbeat": saw_heartbeat,
+                "server_closed_on_miss": saw_close,
+            }}
+    except Exception as e:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
+        return {"error": _exc_payload(e)}
+
+
+def op_auth_reject(host, port):
+    """GOOD login: the default admin/password credentials connect. BAD
+    login: an UNKNOWN user gets the normative SERVER-initiated
+    connection.close 403 ACCESS_REFUSED (pika: ProbableAuthenticationError)
+    — before any other serving (no tune/open-ok ever arrives)."""
+    try:
+        good = new_conn(host, port)
+        good_login = bool(good.is_open)
+        graceful_close(good, ())
+        bad_code = None
+        bad_type = None
+        bad_text_refused = False
+        try:
+            creds = pika.PlainCredentials("no-such-user-t4", "wrong")
+            params = pika.ConnectionParameters(
+                host=host, port=port, virtual_host=VHOST, credentials=creds,
+                connection_attempts=1, retry_delay=0.2, socket_timeout=6,
+                blocked_connection_timeout=6, heartbeat=0,
+            )
+            bad = pika.BlockingConnection(params)
+            graceful_close(bad, ())
+            bad_code = 0
+            bad_type = "ConnectedUnexpectedly"
+        except Exception as e:
+            bad_code = int(getattr(e, "reply_code", -1) or -1)
+            bad_type = type(e).__name__
+            bad_text_refused = "ACCESS_REFUSED" in str(
+                getattr(e, "reply_text", None) or e
+            )
+        return {"observed": {
+            "good_login": good_login,
+            "bad_code": bad_code,
+            "bad_type": bad_type,
+            "bad_text_refused": bad_text_refused,
+        }}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
 def run_ops_table(host, port, timeout_secs=240):
     """Run every row on its own connection; return {row: op-data}.
 
@@ -653,6 +948,13 @@ def run_ops_table(host, port, timeout_secs=240):
     rows["dlx_reject"] = op_dlx_reject(host, port)
     rows["x_max_length"] = op_x_max_length(host, port)
     rows["durable.declare_ok"] = op_durable_declare_ok(host, port)
+    # 0017 T4 rows.
+    rows["confirm.ack"] = op_confirm_ack(host, port)
+    rows["tx.commit"] = op_tx_commit(host, port)
+    rows["tx.rollback"] = op_tx_rollback(host, port)
+    rows["heartbeat.tune"] = op_heartbeat_tune(host, port)
+    rows["heartbeat.cyclic_and_miss"] = op_heartbeat_cyclic_and_miss(host, port)
+    rows["auth.reject"] = op_auth_reject(host, port)
     signal.setitimer(signal.ITIMER_REAL, 0)
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     return rows
@@ -755,6 +1057,14 @@ KNOWN_LIMITATIONS = {
         "queue (rabbit does not count basic.get as a consumer): "
         "consumer_count may read 1 vs rabbit 0; the message_count depth "
         "parity is real (both are ready-queue readings)",
+    "heartbeat.cyclic_and_miss":
+        "0017 T4 heartbeat scope in HyrxMQ: tune advertises 60 and the "
+        "min() negotiation is recorded, and each RECEIVED heartbeat frame "
+        "is answered immediately (ping-pong); server CYCLIC heartbeats and "
+        "the 2x-missed-heartbeat close are NOT IMPLEMENTED (no timer "
+        "subsystem exists per-platform) — rabbit sends cyclic heartbeats "
+        "and closes after 2 missed client heartbeats, HyrxMQ stays silent "
+        "(documented PARTIAL; the row records both sides' observed truth)",
 }
 
 # Rows whose DEPENDENT truth is derived (tag values differ EXCEPT the
@@ -816,17 +1126,23 @@ def _equal(a, b):
 
 
 def print_table(rows):
-    print("\n============== 0017-T2 CONFORMANCE MATRIX (rabbit ground truth) ==============")
-    print("%-26s  %-8s  %s" % ("ROW", "STATE", "DETAIL"))
-    print("-" * 110)
+    print("\n=========== 0017-T2/T3/T4 CONFORMANCE MATRIX (rabbit ground truth) ===========")
+    print("%-28s  %-8s  %s" % ("ROW", "STATE", "DETAIL"))
+    print("-" * 112)
     for row, state, detail in rows:
-        print("%-26s  %-8s  %s" % (row, state, detail))
-    print("-" * 110)
+        print("%-28s  %-8s  %s" % (row, state, detail))
+    print("-" * 112)
     counts = {}
     for _r, state, _d in rows:
         counts[state] = counts.get(state, 0) + 1
     print("ROWS %d   " % len(rows) +
           "  ".join("%s %d" % (k, v) for k, v in sorted(counts.items())))
+    print("NOTES (named implementation limits behind the PARTIAL rows):")
+    print("  - heartbeat: HyrxMQ answers each RECEIVED heartbeat frame"
+          " immediately (ping-pong);")
+    print("    server cyclic heartbeats + 2x-miss close NOT implemented"
+          " (no timer subsystem) —")
+    print("    heartbeat.cyclic_and_miss records both brokers' observed truth.")
     return counts.get("DIFF", 0) == 0 and counts.get("PASS", 0) + counts.get("PARTIAL", 0) == len(rows)
 
 
@@ -841,7 +1157,7 @@ def ensure_ground_dir():
 def mode_rabbit():
     ensure_ground_dir()
     rabbit_port = int(os.environ.get("RABBIT_PORT", "5673"))
-    print("== 0017-T2 conformance: ground truth against RabbitMQ %s:%d ==" % (HOST, rabbit_port))
+    print("== 0017-T2..T4 conformance: ground truth against RabbitMQ %s:%d ==" % (HOST, rabbit_port))
     rows = run_ops_table(HOST, rabbit_port)
     payload = {"target": "rabbit", "host": HOST, "port": 5672,
                "pika_version": pika.__version__, "rows": rows}

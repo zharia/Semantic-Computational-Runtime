@@ -12,6 +12,24 @@
 from std.collections import List, Optional
 
 
+# 0017 T4: one credentials-table entry (username + password). The broker
+# validates SASL PLAIN responses against THIS table (default: admin/password);
+# a mismatch is the normative connection.close 403 ACCESS_REFUSED.
+struct UserRecord:
+    """One configured broker user (username + password)."""
+
+    var username: String
+    var password: String
+
+    def __init__(out self, var user: String, var passwd: String):
+        self.username = user^
+        self.password = passwd^
+
+    def __copyinit__(out self, existing: Self):
+        self.username = existing.username
+        self.password = existing.password
+
+
 struct KeyValuePair:
     """A single parsed `key = value` configuration entry."""
 
@@ -82,6 +100,8 @@ struct HyrxMQConfig:
     var default_queue_capacity: Int
     var vhost: String
     var node_name: String
+    # 0017 T4: SASL PLAIN credentials table (default: admin/password).
+    var users: List[UserRecord]
 
     def __init__(out self):
         self.listen_host = "0.0.0.0"
@@ -92,6 +112,8 @@ struct HyrxMQConfig:
         self.default_queue_capacity = 1024
         self.vhost = "/"
         self.node_name = "hyrxmq@localhost"
+        self.users = List[UserRecord]()
+        self.users.append(UserRecord("admin", "password"))
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -102,6 +124,7 @@ struct HyrxMQConfig:
         self.default_queue_capacity = existing.default_queue_capacity
         self.vhost = existing.vhost
         self.node_name = existing.node_name
+        self.users = existing.users.copy()
 
     def apply(mut self, var key: String, var value: String) raises:
         """Assign one recognized key. Unknown keys are REJECTED (audit §17).
@@ -195,3 +218,8 @@ struct HyrxMQConfig:
             raise "config: default_queue_capacity must be positive"
         if self.heartbeat_secs < 0:
             raise "config: heartbeat_secs must not be negative"
+        if len(self.users) == 0:
+            raise "config: users table must not be empty"
+        for i in range(len(self.users)):
+            if len(self.users[i].username.bytes()) == 0:
+                raise "config: user entry has an empty username"

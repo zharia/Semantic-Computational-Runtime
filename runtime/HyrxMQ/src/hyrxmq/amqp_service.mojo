@@ -32,7 +32,43 @@
 #   server-side channel.close error reply (404 NOT_FOUND / 406
 #   PRECONDITION_FAILED + failing class/method ids), content frames are
 #   tolerated silently, channel.open re-opens the number. secure (10,20/21)
-#   remains NOT implemented; credentials are parsed but NOT validated.
+#   remains NOT implemented.
+# - 0017 T4 AUTH: credentials ARE validated now. The SASL PLAIN response
+#   (authcid/passwd, RFC 4616) is checked against HyrxMQConfig.users
+#   (default admin/password); a mismatch — or a non-PLAIN mechanism — is the
+#   normative SERVER-initiated connection.close (10,50) reply-code 403
+#   ACCESS_REFUSED with the reference close text ("...using authentication
+#   mechanism PLAIN. For details see the broker logfile.", failing method =
+#   connection.start_ok 10,11), emitted BEFORE any further serving.
+# - 0017 T4 publisher confirms (confirm class 85, RabbitMQ extension):
+#   confirm.select (85,10) → confirm.select-ok (85,11) arms per-channel
+#   confirm mode; every completed basic.publish on that channel is then
+#   acknowledged to the publisher with basic.ack (60,80)
+#   delivery-tag = 1-based per-channel confirm counter, multiple=0 — AFTER
+#   the route (the router's publish returned), so a fan-out to ZERO queues
+#   STILL acks (empty fanout is handled), and a mandatory=1 unroutable
+#   publish emits the basic.return content sequence FIRST and the confirm
+#   ack AFTER it (the wire ordering rabbit uses). No broker-internal
+#   confirm timeout exists (the ack always follows the completed publish;
+#   multi_ack opt-in is NOT IMPLEMENTED — every ack is multiple=0 single-tag).
+# - 0017 T4 transactions (tx class 90): tx.select (90,10) → select-ok arms
+#   per-channel tx mode: basic.publish bodies are STAGED (never pushed to the
+#   router) until tx.commit (90,20), which pushes them into the router's
+#   queue storage exactly in publish order (each gets the same route +
+#   unknown-exchange 404 + basic.return + confirm-ack treatment it would
+#   have gotten immediately) → commit-ok (90,21). tx.rollback (90,30) drops
+#   the staging → rollback-ok (90,31). get/deliver semantics are NOT changed
+#   in tx mode (consumers see only committed messages — standard flow).
+# - 0017 T4 heartbeats (PARTIAL, honest scope): tune (10,30) now advertises
+#   heartbeat=60 (HyrmMQConfig.heartbeat_secs); the negotiated value is
+#   min(advertised, the client's tune-ok heartbeat) and is recorded on the
+#   connection state. The MINIMAL client-heartbeat protocol is implemented
+#   INSIDE the serving loop (listener.mojo): a received heartbeat frame
+#   (type 8) is answered IMMEDIATELY with our own heartbeat frame (cheap
+#   ping-pong that keeps client liveness timers satisfied). NOT IMPLEMENTED:
+#   server CYCLIC heartbeats (no timer subsystem exists per-platform) and
+#   the 2x-missed-heartbeat connection close — every conformance-matrix row
+#   records this honestly as PARTIAL.
 # - 0017 T3 (declare-bit semantics + queue arguments): the declare `arguments`
 #   field tables ARE DECODED now (ByteReader.read_table → FieldTable; the
 #   read_table_skip calls below that remain are non-queue-class tables).
@@ -55,8 +91,9 @@
 #   into the DLX through the Router) are all honored. The DEFAULT exchange ""
 #   now publishes DIRECT into the queue named by the routing key (the
 #   exchange's normative pre-bound direct binding; needs-probe resolved).
-# - frame_max / heartbeat renegotiation and heartbeat timers (tune advertises
-#   heartbeat=0; non-zero heartbeats are NOT IMPLEMENTED).
+# - 0017 T4 heartbeats: see the T4 block above — tune advertises 60, the
+#   ping-pong reply is implemented in the serving loop; server cyclic
+#   heartbeats + 2x-miss close remain NOT IMPLEMENTED (no timer subsystem).
 # - INBOUND content properties (0017 T2): NOW IMPLEMENTED byte-faithfully —
 #   the publisher's property-flag word + RAW property-list bytes are stored
 #   (PendingPublish.prop_flags + _pending_prop_bytes) and re-emitted verbatim
@@ -149,6 +186,16 @@ from hyrx.amqp.constants import (
     BASIC_GET_OK,
     BASIC_GET_EMPTY,
     BASIC_DELIVER,
+    FRAME_HEARTBEAT,
+    CONFIRM_SELECT,
+    CONFIRM_SELECT_OK,
+    TX_SELECT,
+    TX_SELECT_OK,
+    TX_COMMIT,
+    TX_COMMIT_OK,
+    TX_ROLLBACK,
+    TX_ROLLBACK_OK,
+    REPLY_ACCESS_REFUSED,
     REPLY_NOT_FOUND,
     REPLY_PRECONDITION_FAILED,
     REPLY_NO_ROUTE,
@@ -163,7 +210,7 @@ from hyrx.amqp.connection_state import (
 
 from hyrx.core.queue import Delivery
 from hyrxmq.broker import HyrxMQBroker
-from hyrxmq.config import HyrxMQConfig
+from hyrxmq.config import HyrxMQConfig, UserRecord
 from hyrxmq.status import BrokerStatus
 
 
@@ -300,8 +347,8 @@ def _sasl_plain_authcid(var response: String) -> String:
     """Recover the authcid from a SASL PLAIN response.
 
     SASL PLAIN message = `authzid NUL authcid NUL passwd` (RFC 4616), so the
-    authcid is the segment between the first and second NUL. Used for logging
-    only — credentials are NOT validated (see handle_frame).
+    authcid is the segment between the first and second NUL. Validated against
+    HyrxMQConfig.users (0017 T4) and echoed in the handshake log line.
     """
     var b = response.as_bytes()
     var n = len(b)
@@ -316,12 +363,50 @@ def _sasl_plain_authcid(var response: String) -> String:
     return out^
 
 
+def _sasl_plain_passwd(var response: String) -> String:
+    """Recover the passwd from a SASL PLAIN response: the segment after the
+    SECOND NUL (RFC 4616: authzid NUL authcid NUL passwd). Validated against
+    HyrxMQConfig.users (0017 T4); never logged."""
+    var b = response.as_bytes()
+    var n = len(b)
+    var nuls = 0
+    var i = 0
+    while i < n:
+        if b[i] == 0:
+            nuls += 1
+            if nuls == 2:
+                i += 1
+                break
+        i += 1
+    var out = String()
+    while i < n and b[i] != 0:
+        out.append(Codepoint(b[i]))
+        i += 1
+    return out^
+
+
+# confirm.select (85,10) bit-packed flags: the single (low) nowait bit.
+def CONFIRM_SELECT_BIT_NO_WAIT() -> UInt8:
+    return 1
+
+
 def write_u32(mut out: List[UInt8], value: UInt32):
     """Append a big-endian u32."""
     out.append(UInt8((value >> 24) & 0xFF))
     out.append(UInt8((value >> 16) & 0xFF))
     out.append(UInt8((value >> 8) & 0xFF))
     out.append(UInt8(value & 0xFF))
+
+
+def _concat(mut out: List[UInt8], var src: List[UInt8]):
+    """Append one encoded frame/list onto `out` in one memcpy (0017 T4:
+    multi-frame responses — basic.return + confirm-ack, tx.commit batches)."""
+    var n = len(src)
+    if n == 0:
+        return
+    var old_len = len(out)
+    out.resize(unsafe_uninit_length=old_len + n)
+    unsafe_memcpy(dest=out.unsafe_ptr() + old_len, src=src.unsafe_ptr(), count=n)
 
 
 def write_u64(mut out: List[UInt8], value: UInt64):
@@ -628,6 +713,53 @@ struct _ChanTagMap:
         self.tags = List[UInt64]()
 
 
+# 0017 T4: per-channel PUBLISHER-CONFIRM state. Confirms use their OWN
+# 1-based per-channel ack-id namespace (RabbitMQ semantics), independent of
+# the delivery-tag namespace above: `mode` arms confirm delivery
+# (confirm.select 85,10) and `next_tag` is the ack-id issued for the NEXT
+# completed publish on the channel (starts at 1).
+struct _ChanConfirm:
+    """Per-(connection, channel) publisher-confirm state. Copyable."""
+
+    var mode: Bool
+    var next_tag: UInt64
+
+    def __init__(out self):
+        self.mode = False
+        self.next_tag = 1
+
+
+# 0017 T4: ONE staged transactional publish (tx mode). Copyable on purpose (
+# same dict-of-struct pattern as PendingPublish): the staged BODY + property
+# slice bytes are carried on the struct (they are ValueCopyable) until the
+# commit pushes them through the router exactly as an immediate publish was.
+struct _TxStaged:
+    """One queued (tx-mode) publish awaiting tx.commit/tx.rollback."""
+
+    var exchange: String
+    var routing_key: String
+    var mandatory: Int
+    var prop_flags: UInt16
+    var body: List[UInt8]
+    var props: List[UInt8]
+
+    def __init__(
+        out self,
+        var ex: String,
+        var rk: String,
+        mand: Int,
+        flags: UInt16,
+        var body_bytes: List[UInt8],
+        var prop_bytes: List[UInt8],
+    ):
+        self.exchange = ex^
+        self.routing_key = rk^
+        self.mandatory = mand
+        self.prop_flags = flags
+        self.body = body_bytes^
+        self.props = prop_bytes^
+
+
 struct PendingPublish:
     """In-flight inbound content for ONE connection (method -> header -> body).
 
@@ -782,10 +914,40 @@ struct AMQPService:
     # auto-delete last-consumer bookkeeping) and cid → queue name.
     var _cids: Dict[UInt64, String]
     var _cid_by_ctag: Dict[String, UInt64]
+    # 0017 T4: SASL PLAIN credentials table (copied from the config BEFORE
+    # `config` is consumed by the broker).
+    var _users: List[UserRecord]
+    # 0017 T4: the heartbeat value ADVERTISED in connection.tune (10,30).
+    var _heartbeat_secs: Int
+    # 0017 T4: the NEGOTIATED heartbeat per connection = min(advertised,
+    # the client's tune-ok value); recorded on tune-ok (10,31).
+    var _heartbeat_negotiated: Dict[UInt64, UInt16]
+    # 0017 T4: per-(connection, channel) publisher-confirm state (85).
+    var _confirms: Dict[UInt64, _ChanConfirm]
+    var _confirm_keys: List[UInt64]
+    # 0017 T4: per-(connection, channel) tx staging (90).
+    var _tx: Dict[UInt64, List[_TxStaged]]
+    var _tx_keys: List[UInt64]
 
     def __init__(out self, var config: HyrxMQConfig):
-        # Read frame_max BEFORE `config` is consumed by HyrxMQBroker(config^).
+        # Read frame_max + the T4 values (users table, heartbeat advertised)
+        # BEFORE `config` is consumed by HyrxMQBroker(config^) — all three are
+        # read from the still-owned config here, then it is moved.
         var fm = config.frame_max
+        var hb = config.heartbeat_secs
+        # Element-wise rebuild of the users table (an explicit __init__ chain
+        # is used in place of List[UserRecord].copy() so the copy never
+        # depends on a non-trivial struct list's CollectionElement conformance
+        # — the same conservative pattern Mojo 1.0 dict-of-struct code here
+        # uses: String copies only).
+        var users = List[UserRecord]()
+        for i in range(len(config.users)):
+            users.append(
+                UserRecord(
+                    config.users[i].username.copy(),
+                    config.users[i].password.copy(),
+                )
+            )
         self._broker = HyrxMQBroker(config^)
         self._conns = Dict[UInt64, AMQPConnectionState]()
         self._consumers = Dict[UInt64, UInt64]()
@@ -806,6 +968,15 @@ struct AMQPService:
         self._exchange_meta_keys = List[String]()
         self._cids = Dict[UInt64, String]()
         self._cid_by_ctag = Dict[String, UInt64]()
+        # 0017 T4: users table + heartbeat advertised value (copied above,
+        # before the config was consumed).
+        self._users = users^
+        self._heartbeat_secs = hb
+        self._heartbeat_negotiated = Dict[UInt64, UInt16]()
+        self._confirms = Dict[UInt64, _ChanConfirm]()
+        self._confirm_keys = List[UInt64]()
+        self._tx = Dict[UInt64, List[_TxStaged]]()
+        self._tx_keys = List[UInt64]()
         # Value advertised in connection.tune and enforced as the per-connection
         # codec ceiling by the listener. config.frame_max is validated >= 4096
         # (see HyrxMQConfig.frame_max / validate).
@@ -896,10 +1067,92 @@ struct AMQPService:
         return out^
 
     def _chan_drop(mut self, conn_id: UInt64, chan: UInt16) raises:
-        """Drop a channel's whole tag namespace (channel close)."""
+        """Drop a channel's whole per-connection namespace (channel close).
+
+        0017 T4: the channel's CONFIRM state and TX STAGING die with it too
+        (a rolled-back-by-close staging is dropped fail-closed, never
+        published — matching the half-reassembled publish rule)."""
         var key = _chan_key(conn_id, chan)
         if key in self._chan_maps:
             _ = self._chan_maps.pop(key)
+        # 0017 T4: confirms + tx staging are channel-scoped as well.
+        if key in self._confirms:
+            _ = self._confirms.pop(key)
+        if key in self._tx:
+            _ = self._tx.pop(key)
+
+    # ---- 0017 T4: publisher-confirm state (confirm class 85) ----
+
+    def _confirm_enable(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Arm publisher-confirms for the channel (confirm.select 85,10)."""
+        var key = _chan_key(conn_id, chan)
+        var st = _ChanConfirm()
+        if key in self._confirms:
+            st = self._confirms.pop(key)
+        else:
+            self._confirm_keys.append(key)
+        st.mode = True
+        # next_tag stays where the channel's confirm counter is (the ack-id
+        # namespace is per channel and monotonic over its life — rabbit
+        # parity; it does not restart on re-select).
+        self._confirms[key] = st^
+
+    def _confirm_next_tag(
+        mut self, conn_id: UInt64, chan: UInt16
+    ) raises -> Optional[UInt64]:
+        """Issue the NEXT confirm ack-id (1-based, per channel) when the
+        channel is in confirm mode; None = not confirming."""
+        var key = _chan_key(conn_id, chan)
+        if key not in self._confirms:
+            return Optional[UInt64]()
+        var st = self._confirms.pop(key)
+        var t = st.next_tag
+        st.next_tag += 1
+        self._confirms[key] = st^
+        return Optional[UInt64](t)
+
+    # ---- 0017 T4: tx staging (tx class 90) ----
+
+    def _tx_enable(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Arm tx mode for the channel (tx.select 90,10). The staging list
+        starts empty; commit/rollback consume it."""
+        var key = _chan_key(conn_id, chan)
+        var lst = List[_TxStaged]()
+        if key in self._tx:
+            lst = self._tx.pop(key)
+        else:
+            self._tx_keys.append(key)
+        self._tx[key] = lst^
+
+    def _tx_active(ref self, conn_id: UInt64, chan: UInt16) -> Bool:
+        """Whether the channel is in tx mode (staging publishes)."""
+        return _chan_key(conn_id, chan) in self._tx
+
+    def _tx_stage(mut self, conn_id: UInt64, chan: UInt16, var msg: _TxStaged) raises:
+        """STAGE one completed publish in tx mode (in publish order)."""
+        var key = _chan_key(conn_id, chan)
+        var lst = List[_TxStaged]()
+        if key in self._tx:
+            lst = self._tx.pop(key)
+        else:
+            self._tx_keys.append(key)
+        lst.append(msg^)
+        self._tx[key] = lst^
+
+    def _tx_take(mut self, conn_id: UInt64, chan: UInt16) raises -> List[_TxStaged]:
+        """Take (and clear) the channel's whole staging in publish order.
+
+        The key STAYS armed: commit/rollback END the current transaction but
+        leave the channel in tx mode (rabbit parity), so a later publish on the
+        same channel keeps staging. Popping the key here de-armed tx mode after
+        the first commit — the next publish then bypassed staging and reached
+        the router, surviving a subsequent rollback."""
+        var key = _chan_key(conn_id, chan)
+        if key not in self._tx:
+            return List[_TxStaged]()
+        var staged = self._tx.pop(key)
+        self._tx[key] = List[_TxStaged]()
+        return staged^
 
     # ---- lifecycle / broker delegation ----
 
@@ -982,17 +1235,19 @@ struct AMQPService:
         )
 
     def _reply_tune(ref self, chan: UInt16) -> Optional[List[UInt8]]:
-        """connection.tune (10,30): channel-max(2047), frame-max, heartbeat(0).
+        """connection.tune (10,30): channel-max(2047), frame-max, heartbeat.
 
-        heartbeat=0 is REQUIRED for the synchronous path: this broker has no
-        heartbeat timer, so any non-zero value would make a real client (pika)
-        wait for heartbeats that never arrive. Non-zero heartbeats are NOT
-        IMPLEMENTED.
+        0017 T4: heartbeat now ADVERTISES the configured value
+        (`HyrmMQConfig.heartbeat_secs`, default 60). The negotiated value is
+        min(this, the client's tune-ok heartbeat) and is recorded at tune-ok
+        (10,31). PARTIAL scope (no timer subsystem): the broker does NOT send
+        cyclic heartbeats and does NOT close on 2 misses; the listener
+        answers each RECEIVED heartbeat frame immediately (ping-pong).
         """
         var args = List[UInt8]()
         write_u16(args, 2047)  # channel-max (short)
         write_u32(args, UInt32(self._frame_max))  # frame-max (long)
-        write_u16(args, 0)  # heartbeat (short) = none, see note above
+        write_u16(args, UInt16(self._heartbeat_secs))  # heartbeat (short)
         return self._reply(
             chan,
             CONNECTION_TUNE().class_id,
@@ -1028,6 +1283,16 @@ struct AMQPService:
             return self._on_content_header(conn_id, frame)
         if frame.frame_type == FRAME_BODY():
             return self._on_content_body(conn_id, frame)
+        if frame.frame_type == FRAME_HEARTBEAT():
+            # 0017 T4 (minimal client-heartbeat protocol): a received
+            # heartbeat frame (type 8, zero payload) gets an IMMEDIATE
+            # heartbeat reply — the cheap ping-pong that keeps a client's
+            # liveness timer satisfied. The SERVING LOOP also answers these
+            # inline (listener.mojo); this branch keeps the direct
+            # handle_frame path (unit tests) wire-correct too.
+            return Optional[List[UInt8]](
+                AMQPFrameCodec.encode_heartbeat(frame.channel)
+            )
         if frame.frame_type != FRAME_METHOD():
             return Optional[List[UInt8]]()
 
@@ -1047,8 +1312,8 @@ struct AMQPService:
         # reply-code 404 NOT_FOUND ("channel ... already closed") and the
         # failing method's class/method ids; no *_ok is produced for it.
         # Content frames on a closed channel are tolerated silently (guard in
-        # _on_content_header/_on_content_body); heartbeat frames never reach
-        # dispatch. Channel-class methods stay allowed so the client's
+        # _on_content_header/_on_content_body); heartbeat frames are ANSWERED
+        # (echo — 0017 T4 ping-pong) above, before this guard. Channel-class methods stay allowed so the client's
         # close-ok (acknowledgment of the server error close) or a
         # channel.open re-opening the number still parse; connection-class
         # methods on channel 0 are unaffected by per-channel state.
@@ -1102,10 +1367,11 @@ struct AMQPService:
             var mechanism = reader.read_short_string()
             var response = reader.read_long_string()
             var locale = reader.read_short_string()
-            # NOT IMPLEMENTED: credentials are parsed but NOT validated
-            # (no auth backend). SASL PLAIN response is `\0 authcid \0 passwd`;
-            # we recover the authcid for logging only.
-            var authcid = _sasl_plain_authcid(response^)
+            # 0017 T4 AUTH: SASL PLAIN response = `authzid NUL authcid NUL
+            # passwd` (RFC 4616). Validated against HyrxMQConfig.users; the
+            # password is never logged.
+            var authcid = _sasl_plain_authcid(response.copy())
+            var passwd = _sasl_plain_passwd(response.copy())
             print(
                 "hyrxmq: connection.start-ok mechanism="
                 + mechanism
@@ -1114,16 +1380,58 @@ struct AMQPService:
                 + " locale="
                 + locale
             )
+            var auth_ok = False
+            if len(mechanism.bytes()) != 0 and mechanism.copy() == "PLAIN":
+                for i in range(len(self._users)):
+                    if (
+                        self._users[i].username.copy() == authcid.copy()
+                        and self._users[i].password.copy() == passwd.copy()
+                    ):
+                        auth_ok = True
+                        break
+            if not auth_ok:
+                # Normative SERVER-initiated close (rabbit ground truth):
+                # reply-code 403 ACCESS_REFUSED + the reference close text,
+                # failing method = connection.start_ok (10,11). Emitted BEFORE
+                # any further serving (tune is never sent on a refused login).
+                var msg_c1 = "ACCESS_REFUSED - Login was refused using authentication mechanism "
+                var msg_c2 = msg_c1 + mechanism.copy()
+                var msg_c3 = msg_c2 + ". For details see the broker logfile."
+                var cargs = List[UInt8]()
+                write_u16(cargs, REPLY_ACCESS_REFUSED())
+                write_short_string(cargs, msg_c3^)
+                write_u16(cargs, CONNECTION_START_OK().class_id)
+                write_u16(cargs, CONNECTION_START_OK().method_id)
+                return self._reply(
+                    UInt16(0),
+                    CONNECTION_CLOSE().class_id,
+                    CONNECTION_CLOSE().method_id,
+                    cargs^,
+                )
             if conn_id not in self._conns:
                 self._conns[conn_id] = AMQPConnectionState()
             self._conns[conn_id].set_state(CONN_STATE_TUNE_SENT())
             return self._reply_tune(chan)
 
         if mid == CONNECTION_TUNE_OK():
-            # connection.tune-ok (10,31): record, do not re-enforce. No reply.
+            # connection.tune-ok (10,31): channel-max(short) + frame-max(long)
+            # + heartbeat(short). 0017 T4: the heartbeat is NEGOTIATED —
+            # min(what we advertised in tune, the client's tune-ok value) —
+            # and recorded on the connection state (0 = disabled). The value
+            # is recorded only (not re-enforced: see the PARTIAL heartbeat
+            # scope in the module header); record + state, no reply.
             if conn_id not in self._conns:
                 self._conns[conn_id] = AMQPConnectionState()
-            self._conns[conn_id].set_state(CONN_STATE_TUNE_RECEIVED())
+            _ = reader.read_short()  # channel-max (recorded, not re-enforced)
+            _ = reader.read_long()  # frame-max (recorded, not re-enforced)
+            var client_hb = reader.read_short()
+            var neg_hb = self._heartbeat_secs
+            if UInt16(client_hb) < UInt16(neg_hb):
+                neg_hb = Int(client_hb)
+            self._conns[conn_id].negotiate(
+                UInt16(2047), UInt32(self._frame_max), UInt16(neg_hb)
+            )
+            self._heartbeat_negotiated[conn_id] = UInt16(neg_hb)
             return Optional[List[UInt8]]()
 
         if mid == CONNECTION_OPEN():
@@ -1463,6 +1771,80 @@ struct AMQPService:
                 chan,
                 QUEUE_BIND_OK().class_id,
                 QUEUE_BIND_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- 0017 T4: confirm.select (85,10) — RabbitMQ extension ----
+        # Spec args (extension): nowait (bit). Arms confirm mode on the
+        # channel: every subsequent completed basic.publish is acknowledged
+        # with basic.ack (60,80) carrying a 1-based per-channel confirm
+        # ack-id, multiple=0, AFTER the route (see _execute_publish).
+        if mid == CONFIRM_SELECT():
+            var csbits = reader.read_octet()
+            self._confirm_enable(conn_id, chan)
+            if (csbits & CONFIRM_SELECT_BIT_NO_WAIT()) != 0:
+                return Optional[List[UInt8]]()
+            return self._reply(
+                chan,
+                CONFIRM_SELECT_OK().class_id,
+                CONFIRM_SELECT_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- 0017 T4: tx.select (90,10) — per-channel tx mode ----
+        # Spec args: NONE. Publishes on this channel are STAGED from now on
+        # (never pushed to the router immediately); commit/rollback below.
+        # Idempotent per channel (rabbit parity).
+        if mid == TX_SELECT():
+            self._tx_enable(conn_id, chan)
+            return self._reply(
+                chan,
+                TX_SELECT_OK().class_id,
+                TX_SELECT_OK().method_id,
+                List[UInt8](),
+            )
+
+        # ---- 0017 T4: tx.commit (90,20) — push the staging into the router ----
+        # Every staged publish is executed NOW, exactly as an immediate
+        # publish would have been (route, unknown-exchange 404, mandatory
+        # basic.return FIRST then the confirm ack) in publish order; the
+        # commit-ok (90,21) reply is appended LAST. A channel-error close
+        # (404 impossible exchange) aborts the replay (channel dead).
+        if mid == TX_COMMIT():
+            var cstaged = self._tx_take(conn_id, chan)
+            var out = List[UInt8]()
+            # Replay in publish order (pop-front; owned moves, no copies).
+            while len(cstaged) > 0:
+                var s = cstaged.pop(0)
+                var ok = self._execute_publish(
+                    conn_id,
+                    chan,
+                    s.exchange.copy(),
+                    s.routing_key.copy(),
+                    s.mandatory,
+                    s.prop_flags,
+                    s.body.copy(),
+                    s.props.copy(),
+                    out,
+                )
+                if not ok:
+                    return Optional[List[UInt8]](out^)
+            var cokf = AMQPFrameCodec.encode_method_frame(
+                chan,
+                TX_COMMIT_OK().class_id,
+                TX_COMMIT_OK().method_id,
+                List[UInt8](),
+            )
+            _concat(out, cokf^)
+            return Optional[List[UInt8]](out^)
+
+        # ---- 0017 T4: tx.rollback (90,30) — DROP the staging ----
+        if mid == TX_ROLLBACK():
+            _ = self._tx_take(conn_id, chan)
+            return self._reply(
+                chan,
+                TX_ROLLBACK_OK().class_id,
+                TX_ROLLBACK_OK().method_id,
                 List[UInt8](),
             )
 
@@ -1936,11 +2318,12 @@ struct AMQPService:
                 List[UInt8](),
             )
 
-        # ---- unhandled method: no reply ----
-        # NOT IMPLEMENTED (0017 residual): channel.flow (20,20) [*_ok is the
-        # client's own flow-ok — the server must only RESUME/PAUSE], tx.* and
-        # confirm.* (T4), secure (10,20/21); unhandled synchronous methods
-        # still get no reply (peers would block).
+# ---- unhandled method: no reply ----
+# NOT IMPLEMENTED (0017 residual): channel.flow (20,20) [*_ok is the
+# client's own flow-ok — the server must only RESUME/PAUSE] and secure
+# (10,20/21); unhandled synchronous methods still get no reply (peers
+# would block). confirm.* and tx.* are IMPLEMENTED (0017 T4, see the
+# module header).
         return Optional[List[UInt8]]()
 
     # ---- inbound content reassembly (amqp0-9-1.xml §2.3.5) ----
@@ -2039,6 +2422,28 @@ struct AMQPService:
                 _ = self._chan_key_list.pop(i)
             else:
                 i += 1
+        # 0017 T4: drop the connection's confirm + tx namespaces and the
+        # negotiated-heartbeat record (same key-walk pattern).
+        var i5 = 0
+        while i5 < len(self._confirm_keys):
+            var ckey = self._confirm_keys[i5]
+            if ckey // 65536 == conn_id:
+                if ckey in self._confirms:
+                    _ = self._confirms.pop(ckey)
+                _ = self._confirm_keys.pop(i5)
+            else:
+                i5 += 1
+        var i6 = 0
+        while i6 < len(self._tx_keys):
+            var tkey = self._tx_keys[i6]
+            if tkey // 65536 == conn_id:
+                if tkey in self._tx:
+                    _ = self._tx.pop(tkey)
+                _ = self._tx_keys.pop(i6)
+            else:
+                i6 += 1
+        if conn_id in self._heartbeat_negotiated:
+            _ = self._heartbeat_negotiated.pop(conn_id)
         if conn_id in self._closed_channels:
             _ = self._closed_channels.pop(conn_id)
         # 0017 T3: exclusive CLIENT-connection-owned queues die with their
@@ -2326,58 +2731,66 @@ struct AMQPService:
             return self._publish_pending(conn_id)
         return Optional[List[UInt8]]()
 
-    def _publish_pending(mut self, conn_id: UInt64) raises -> Optional[List[UInt8]]:
-        """Hand the fully reassembled body to the broker (the single publish
-        point for inbound content) and clear the per-connection state.
+    # ---- 0017 T4: the ONE publish execution point ----
 
-        0017 T1 basic.return (60,50): when the publish carried mandatory=1
-        and routed to ZERO queues, the response is the normative unroutable
-        signal: a basic.return method (reply-code 312 NO_ROUTE, reply-text
-        NO_ROUTE) followed by the message's OWN content (HEADER + BODY)
-        frames, emitted on the PUBLISHER's channel. Because dispatch is
-        one-frame-in/one-reply-out, this return IS "before any other pending
-        reply" for that channel. mandatory=0: silently unrouted (current
-        behavior stands)."""
-        if conn_id not in self._pending or conn_id not in self._pending_bodies:
-            return Optional[List[UInt8]]()
-        var p = self._pending.pop(conn_id)
-        var body = self._pending_bodies.pop(conn_id)
-        # 0017 T2: the raw property-list slice rides beside the flag word.
-        var props = List[UInt8]()
-        if conn_id in self._pending_prop_bytes:
-            props = self._pending_prop_bytes.pop(conn_id)
-        # 0017 T2: unknown-exchange publish → channel.close 404 NOT_FOUND
-        # (Rabbit normative) — replacing the old 312-no-route path. The
-        # default exchange "" is NOT unknown (normative; always present):
-        # it routes to nothing in this engine slice (needs-probe: direct
-        # queue-name routing), so a mandatory=1 "" publish behaves per the
-        # route-miss path below. Unknown exchange WITH mandatory=0 also gets
-        # the 404.
-        if len(p.exchange.bytes()) != 0 and not self._broker.has_exchange(p.exchange.copy()):
-            self._mark_channel_closed(conn_id, p.channel)
-            var emsg = "NOT_FOUND - no exchange '" + p.exchange.copy() + "' in vhost '/'"
-            return self._channel_error(
-                p.channel,
+    def _execute_publish(
+        mut self,
+        conn_id: UInt64,
+        chan: UInt16,
+        var exchange: String,
+        var routing_key: String,
+        mandatory: Int,
+        prop_flags: UInt16,
+        var body: List[UInt8],
+        var props: List[UInt8],
+        mut out: List[UInt8],
+    ) raises -> Bool:
+        """Execute ONE publish (immediate or replayed-from-tx) and append the
+        response bytes for it onto `out`.
+
+        0017 T4 shared by the immediate path (_publish_pending) and the
+        tx.commit replay — the SINGLE point that:
+          1. rejects an unknown exchange with the normative channel.close 404
+             (immediate semantics kept: the exchange check happens at publish
+             time, ALSO in tx mode — rabbit parity),
+          2. routes the message (default exchange → direct queue by routing
+             key; otherwise through the exchange),
+          3. composes basic.return (60,50) 312 FIRST for a mandatory=1
+             unroutable publish (echoing the publisher's own stored header),
+          4. THEN issues the publisher-confirm ack (basic.ack 60,80,
+             delivery-tag = 1-based per-channel confirm counter, multiple=0)
+             AFTER the route — the router's publish returned — including for
+             a fan-out to ZERO queues (empty fanout = handled → still acked)
+             and after the basic.return of a mandatory unroutable publish
+             (rabbit wire ordering). No broker-internal confirm timeout.
+        Returns False when the channel was error-closed (404).
+        """
+        if len(exchange.bytes()) != 0 and not self._broker.has_exchange(exchange.copy()):
+            self._mark_channel_closed(conn_id, chan)
+            var emsg = "NOT_FOUND - no exchange '" + exchange.copy() + "' in vhost '/'"
+            var err = self._channel_error(
+                chan,
                 REPLY_NOT_FOUND(),
                 emsg^,
                 BASIC_PUBLISH(),
             )
+            if err.__bool__():
+                _concat(out, err.value().copy())
+            return False
         var routed = 0
-        # 0017 T3: the DEFAULT exchange ("") publishes DIRECT into the queue
-        # named by the routing key (the exchange's pre-bound direct binding —
-        # the needs-probe from T1/T2 is resolved here). An unrouted mandatory
-        # publish still composes the normative basic.return 312 below.
-        if len(p.exchange.bytes()) == 0:
+        # The DEFAULT exchange ("") publishes DIRECT into the queue named by
+        # the routing key (the exchange's normative pre-bound direct binding).
+        if len(exchange.bytes()) == 0:
             routed = self._broker.publish_to_queue_with_props(
-                p.routing_key.copy(), body.copy(),
-                p.prop_flags, props.copy(),
+                routing_key.copy(), body.copy(),
+                prop_flags, props.copy(),
             )
         else:
             routed = self._broker.publish_with_props(
-                p.exchange.copy(), p.routing_key.copy(), body.copy(),
-                p.prop_flags, props.copy(),
+                exchange.copy(), routing_key.copy(), body.copy(),
+                prop_flags, props.copy(),
             )
-        if p.mandatory == 1 and routed <= 0:
+        if mandatory == 1 and routed <= 0:
             # basic.return (60,50) args: reply-code(short)=312 + reply-text
             # (shortstr)="NO_ROUTE" + exchange(shortstr) + routing-key
             # (shortstr) — followed by the message content (HEADER+BODY).
@@ -2386,15 +2799,86 @@ struct AMQPService:
             var rargs = List[UInt8]()
             write_u16(rargs, REPLY_NO_ROUTE())
             write_short_string(rargs, "NO_ROUTE")
-            write_short_string(rargs, p.exchange)
-            write_short_string(rargs, p.routing_key)
-            return Optional[List[UInt8]](
-                emit_message_frames(
-                    p.channel, BASIC_RETURN(), rargs^, body^, self._frame_max,
-                    p.prop_flags, props.copy(),
-                )^
+            write_short_string(rargs, exchange.copy())
+            write_short_string(rargs, routing_key.copy())
+            var retf = emit_message_frames(
+                chan, BASIC_RETURN(), rargs^, body.copy(), self._frame_max,
+                prop_flags, props.copy(),
             )
-        return Optional[List[UInt8]]()
+            _concat(out, retf^)
+        # Publisher-confirm ack (0017 T4): AFTER the route (routed >= 0 = the
+        # router accepted the publish; empty fanout still acks). The ack-id
+        # counter is per channel and 1-based.
+        var ctag = self._confirm_next_tag(conn_id, chan)
+        if ctag.__bool__():
+            var cargs = List[UInt8]()
+            write_u64(cargs, ctag.value())
+            cargs.append(0)  # multiple=0: single-tag ack per publish
+            var ackf = AMQPFrameCodec.encode_method_frame(
+                chan,
+                BASIC_ACK().class_id,
+                BASIC_ACK().method_id,
+                cargs^,
+            )
+            _concat(out, ackf^)
+        return True
+
+    def _publish_pending(mut self, conn_id: UInt64) raises -> Optional[List[UInt8]]:
+        """Hand the fully reassembled body to the broker (the single publish
+        point for inbound content) and clear the per-connection state.
+
+        0017 T4: in tx mode the completed publish is STAGED instead (its
+        execution happens at tx.commit through the same _execute_publish
+        path); otherwise the publish runs IMMEDIATELY through
+        _execute_publish (unknown-exchange 404, route, mandatory
+        basic.return FIRST then the confirm ack).
+        """
+        if conn_id not in self._pending or conn_id not in self._pending_bodies:
+            return Optional[List[UInt8]]()
+        var p = self._pending.pop(conn_id)
+        var body = self._pending_bodies.pop(conn_id)
+        # 0017 T2: the raw property-list slice rides beside the flag word.
+        var props = List[UInt8]()
+        if conn_id in self._pending_prop_bytes:
+            props = self._pending_prop_bytes.pop(conn_id)
+        # 0017 T4 tx mode: STAGE (deferred until tx.commit; the exchange
+        # existence check stays IMMEDIATE even in tx mode — rabbit checks
+        # the exchange at publish time, not at commit; only a real (or the
+        # default) exchange is allowed to stage).
+        if self._tx_active(conn_id, p.channel):
+            if len(p.exchange.bytes()) != 0 and not self._broker.has_exchange(p.exchange.copy()):
+                self._mark_channel_closed(conn_id, p.channel)
+                var temsg = "NOT_FOUND - no exchange '" + p.exchange.copy() + "' in vhost '/'"
+                return self._channel_error(
+                    p.channel,
+                    REPLY_NOT_FOUND(),
+                    temsg^,
+                    BASIC_PUBLISH(),
+                )
+            self._tx_stage(
+                conn_id,
+                p.channel,
+                _TxStaged(
+                    p.exchange.copy(), p.routing_key.copy(), p.mandatory,
+                    p.prop_flags, body.copy(), props.copy(),
+                ),
+            )
+            return Optional[List[UInt8]]()
+        var out = List[UInt8]()
+        _ = self._execute_publish(
+            conn_id,
+            p.channel,
+            p.exchange.copy(),
+            p.routing_key.copy(),
+            p.mandatory,
+            p.prop_flags,
+            body.copy(),
+            props.copy(),
+            out,
+        )
+        if len(out) == 0:
+            return Optional[List[UInt8]]()
+        return Optional[List[UInt8]](out^)
 
     # ---- synchronous basic.get ----
 
@@ -2574,3 +3058,30 @@ struct AMQPService:
             QUEUE_DECLARE_OK().method_id,
             args^,
         )
+
+    # ---- 0017 T4 observability (tests / fail-closed audits) ----
+
+    def confirms_enabled(mut self, conn_id: UInt64, chan: UInt16) raises -> Bool:
+        """Whether the channel is in publisher-confirm mode (85)."""
+        return _chan_key(conn_id, chan) in self._confirms
+
+    def tx_mode_enabled(mut self, conn_id: UInt64, chan: UInt16) raises -> Bool:
+        """Whether the channel is in tx mode (90)."""
+        return self._tx_active(conn_id, chan)
+
+    def tx_staged_count(mut self, conn_id: UInt64, chan: UInt16) raises -> Int:
+        """Messages currently STAGED on a tx-mode channel."""
+        var key = _chan_key(conn_id, chan)
+        if key not in self._tx:
+            return 0
+        return len(self._tx[key])
+
+    def advertised_heartbeat(ref self) -> Int:
+        """The heartbeat value the tune frame advertises."""
+        return self._heartbeat_secs
+
+    def negotiated_heartbeat(mut self, conn_id: UInt64) raises -> Int:
+        """min(advertised, the client's tune-ok heartbeat); 0 = none."""
+        if conn_id not in self._heartbeat_negotiated:
+            return 0
+        return Int(self._heartbeat_negotiated[conn_id])

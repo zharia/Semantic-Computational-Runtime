@@ -233,12 +233,15 @@ def REPLY_NO_ROUTE() -> UInt16:
 # Reply-code 404 NOT_FOUND: channel-level error close for a missing queue /
 # exchange / binding under the normative error table.
 def REPLY_NOT_FOUND() -> UInt16:
-    return 404
-
-# Reply-code 406 PRECONDITION_FAILED: refused queue.delete if_empty /
+    return 404# Reply-code 406 PRECONDITION_FAILED: refused queue.delete if_empty /
 # if_unused and exchange.delete if_unused.
 def REPLY_PRECONDITION_FAILED() -> UInt16:
     return 406
+
+# Reply-code 403 ACCESS_REFUSED: connection.close on a failed SASL PLAIN
+# authentication (0017 T4; normative close text lives in amqp_service).
+def REPLY_ACCESS_REFUSED() -> UInt16:
+    return 403
 
 def REPLY_SUCCESS() -> UInt16:
     return 200

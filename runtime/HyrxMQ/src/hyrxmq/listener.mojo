@@ -33,6 +33,7 @@ from hyrx.amqp.frame_codec import AMQPFrameCodec
 from hyrx.amqp.constants import (
     CONNECTION_CLOSE,
     CONNECTION_OPEN_OK,
+    FRAME_HEARTBEAT,
     FRAME_METHOD,
     MethodID,
 )
@@ -102,6 +103,25 @@ def _resp_is_open_ok(ref resp: List[UInt8]) -> Bool:
     var class_id = (UInt16(resp[7]) << 8) | UInt16(resp[8])
     var method_id = (UInt16(resp[9]) << 8) | UInt16(resp[10])
     return MethodID(class_id, method_id) == CONNECTION_OPEN_OK()
+
+
+def _resp_is_connection_close(ref resp: List[UInt8]) -> Bool:
+    """True when the reply's FIRST frame is a SERVER-initiated
+    connection.close (10,50) — the same byte glue as _resp_is_open_ok.
+
+    0017 T4: when the service answers a HANDSHAKE frame (connection.start-ok)
+    with the normative connection.close 403 ACCESS_REFUSED, the socket is
+    closed right after those bytes hit the wire (rabbit parity: the broker
+    closes after sending the close; it does not wait for the client's
+    close-ok). The client-initiated close path is UNAFFECTED: there the reply
+    is close-ok (10,51) and the teardown key is the inbound frame instead."""
+    if len(resp) < 11:
+        return False
+    if resp[0] != FRAME_METHOD():
+        return False
+    var class_id = (UInt16(resp[7]) << 8) | UInt16(resp[8])
+    var method_id = (UInt16(resp[9]) << 8) | UInt16(resp[10])
+    return MethodID(class_id, method_id) == CONNECTION_CLOSE()
 
 
 # serve_one_frame() outcome codes.
@@ -351,10 +371,26 @@ struct AMQPConnServing[Conn: AMQPConn]:
             if not frame.__bool__():
                 return SERVE_PARTIAL()
 
+        # --- 0017 T4 heartbeats (the MUTABLE frame timers live HERE, in the
+        # serving loop — additive to both the fair-dose and event-driven
+        # tiers; the 0015 serving-model flag state is UNCHANGED) ---
+        # The MINIMAL client-heartbeat protocol: a received heartbeat frame
+        # (type 8, zero payload) gets an IMMEDIATE heartbeat echo — the
+        # cheap ping-pong that keeps the client's liveness timer satisfied.
+        # NOT IMPLEMENTED (honest PARTIAL per receipt): server CYCLIC
+        # heartbeats (no timer subsystem exists) and the 2x-miss close —
+        # they need a background timer, which this loop deliberately does
+        # not host. Heartbeat frames never reach the broker dispatch.
+        if frame.value().frame_type == FRAME_HEARTBEAT():
+            var echo = AMQPFrameCodec.encode_heartbeat(frame.value().channel)
+            self._conns[slot].value().send_bytes(echo^)
+            return SERVE_DISPATCHED()
+
         # Close-detection is byte glue only: class/method ids of a method
         # frame, no routing semantics.
         var p = frame.value().payload_copy()
         var is_close = False
+        var server_close = False
         if frame.value().frame_type == FRAME_METHOD() and len(p) >= 4:
             var class_id = (UInt16(p[0]) << 8) | UInt16(p[1])
             var method_id = (UInt16(p[2]) << 8) | UInt16(p[3])
@@ -365,6 +401,9 @@ struct AMQPConnServing[Conn: AMQPConn]:
         if resp.__bool__():
             # open-ok detected pre-send (borrow-safe pattern)
             var open_ok = _resp_is_open_ok(resp.value())
+            # server-initiated connection.close detected pre-send (0017 T4:
+            # auth refusal 403 — the reply IS the close frame)
+            server_close = _resp_is_connection_close(resp.value())
 
             # --- 0017 T1 CONNECTION_CLOSE teardown ordering (NORMATIVE) ---
             # amqp0-9-1.xml connection class: the server replies
@@ -387,10 +426,13 @@ struct AMQPConnServing[Conn: AMQPConn]:
             ):
                 self._phases[slot] = PHASE_READY()
 
-        if is_close:
-            # ONLY after the close-ok frames above were written. _close_slot
-            # is idempotent and never propagates an error; the event-driven
-            # loop's deregister-before-close ordering is preserved there.
+        if is_close or server_close:
+            # ONLY after the close-ok frames above were written (is_close:
+            # the client's close got its close-ok; server_close: the 403
+            # auth-refusal close itself — rabbit closes right after sending).
+            # _close_slot is idempotent and never propagates an error; the
+            # event-driven loop's deregister-before-close ordering is
+            # preserved there.
             self._close_slot(slot)
         return SERVE_DISPATCHED()
 

@@ -6,8 +6,10 @@
 # Proves:
 #   - connection.start-ok (10,11) parses (table-skip + mechanism + SASL PLAIN
 #     response + locale) and answers connection.tune (10,30) with channel-max
-#     2047, frame-max and heartbeat=0.
-#   - connection.tune-ok (10,31) is recorded with no reply.
+#     2047, frame-max and heartbeat=60 (0017 T4: the configured value is
+#     ADVERTISED; the negotiated min is recorded at tune-ok).
+#   - connection.tune-ok (10,31) is recorded with no reply and NEGOTIATES the
+#     heartbeat (0017 T4: min(advertised, client's value) on the state).
 #   - connection.open (10,40) answers open-ok (10,41) with EXACTLY one reserved
 #     short-string and the correct frame length (regression: the old reply wrote
 #     an extra long-string that desynchronized real clients).
@@ -137,8 +139,9 @@ def test_start_ok_yields_tune() raises:
         and wire[16] == 0x00,
         "tune frame-max is 131072 (big-endian)",
     )
-    # heartbeat MUST be 0 for the synchronous path (no timer).
-    check(wire[17] == 0 and wire[18] == 0, "tune heartbeat is 0")
+    # heartbeat = 60 = 0x003C (0017 T4: the advertised configured value; the
+    # negotiated min is recorded at tune-ok, no timer subsystem exists).
+    check(wire[17] == 0x00 and wire[18] == 60, "tune heartbeat is 60")
     check(wire[len(wire) - 1] == 0xCE, "tune ends with frame-end")
 
     # State advanced to TUNE_SENT (open-ok not yet reached).
@@ -167,6 +170,23 @@ def test_tune_ok_records_no_reply() raises:
         svc._conns[UInt64(101)].state() == CONN_STATE_TUNE_RECEIVED(),
         "tune-ok recorded (state=TUNE_RECEIVED)",
     )
+    # 0017 T4: the heartbeat NEGOTIATES = min(advertised 60, client's 0) = 0.
+    check(svc.negotiated_heartbeat(UInt64(101)) == 0, "negotiated hb = 0")
+    # A NON-ZERO client value negotiates to min(60, client).
+    var svc2 = AMQPService(HyrxMQConfig()^)
+    svc2.start()
+    var a2 = List[UInt8]()
+    write_u16(a2, 2047)
+    write_u32(a2, UInt32(fm))
+    write_u16(a2, 30)
+    var frame2 = build_frame(
+        UInt16(0),
+        CONNECTION_TUNE_OK().class_id,
+        CONNECTION_TUNE_OK().method_id,
+        a2^,
+    )
+    _ = svc2.handle_frame(UInt64(102), frame2^)
+    check(svc2.negotiated_heartbeat(UInt64(102)) == 30, "negotiated min(60,30)")
 
 
 def test_open_answers_single_shortstr_open_ok() raises:
