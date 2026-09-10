@@ -60,7 +60,9 @@ operations against RabbitMQ 4.3.5 AND HyrxMQ and comparing outcomes
   auto_delete (delete on last consumer), x-message-ttl (per-message
   dequeue timer), x-dead-letter-exchange (route rejected/expired bodies
   into the DLX), x-expires honored, queue-length caps via x-max-length.
-- **T4 — extension classes + reliability**: publisher confirms (85:
+- **T4 — DONE (code verified via suite 45/0 incl. the new negative-proof
+  t4 test; conformance 26 PASS / 1 PARTIAL / 5-6 DIFF, matrix below):
+  extension classes + reliability:: publisher confirms (85:
   confirm.select): per-publish ack-ids (multi_ack opt-in), tx (90):
   select/commit/rollback with pending-publish staging, heartbeats
   (tune heartbeat=60; server timer + client-responsiveness deadline),
@@ -79,6 +81,25 @@ operations against RabbitMQ 4.3.5 AND HyrxMQ and comparing outcomes
   error row explicitly, not just the happy path).
 - Gates: no regression on the pika matrix cells; the 0015 flag stays as-is
   until its gate is cleared in a calm window (unchanged rule).
+
+## X. Remaining DIFF rows (honest, root-caused, owned)
+
+1. **pika capability table** (CONFIRM tx etc clients throw
+   "Confirm.Select not Supported by Server" because the connection.start
+   server-properties table is EMPTY: no capabilities key): a REAL missing
+   piece regardless of dispatch-side support -> fix in the 0018+ P1 scope
+   (emit the normative server-properties with capabilities:
+   publisher_confirms/exchange_exchange_bindings/basic.nack/tx).
+2. **5 handshake-timeout rows** (exclusive.second_conn_declare + the rows
+   after a pika client wedged a connection): the LEGACY serialized serving
+   tier's one-conn-at-a-time bound (a stale pika connection holds the
+   accept loop); the legit roll-forward = 0015 event loop default-ON after
+   its batched-flow gate clears. Both brokers otherwise reach 405 rows
+   correctly.
+3. Not outstanding: the Reactor fd-reuse leak is FIXED via EventPoller
+   unconditional-replace semantics (T3); suite 45/0 both tiers) plus the
+   conformance script's own fixes by the coordinator (bytes-js audit).
+   All DIFF rows get fix owners before any 100% claim is finalized.
 
 ## Explicitly NOT claimed by THIS increment
 
