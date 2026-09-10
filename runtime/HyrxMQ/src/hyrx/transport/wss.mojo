@@ -270,6 +270,7 @@ struct WSSConnection(Movable, AMQPConn):
     var _inbuf: List[UInt8]  # undecoded wire bytes (start of next frame)
     var _ready: List[UInt8]  # payload bytes from COMPLETE frames
     var _closed: Bool
+    var _close_sent: Bool
 
     def __init__(
         out self, var tcp: TcpStream, ssl_addr: Int, conn_id: UInt64
@@ -282,6 +283,7 @@ struct WSSConnection(Movable, AMQPConn):
         self._inbuf = List[UInt8]()
         self._ready = List[UInt8]()
         self._closed = False
+        self._close_sent = False
 
     def conn_id(ref self) -> UInt64:
         return self._base.id()
@@ -344,8 +346,9 @@ struct WSSConnection(Movable, AMQPConn):
         - 1: control frame handled (PING answered with an unmasked PONG
           per RFC 6455 §5.5.3); keep draining;
         - 0: no complete frame in ``_inbuf`` (read more);
-        - -1: the peer sent CLOSE — connection EOF (leftover ``_ready``
-          stays available; nothing further is read)."""
+        - -1: the peer sent CLOSE — the connection is EOF (leftover
+          ``_ready`` stays available; nothing further is read). The §5.5.1
+          close echo belongs to the teardown (``close``), never here."""
         if len(self._inbuf) == 0:
             return 0
         var dec = WsFrame.decode_one(Span[UInt8, _](self._inbuf))
@@ -361,6 +364,13 @@ struct WSSConnection(Movable, AMQPConn):
             raise "WSSConnection: client frame is not masked (RFC 6455 §5.1)"
         self._inbuf = _drop_prefix(self._inbuf, consumed)
         if opcode == WsOpcode.CLOSE:
+            # RFC 6455 §5.5.1: record the decoded peer CLOSE as EOF only.
+            # The echo must NOT be written here: a pre-written batch
+            # releases its exact-count read on THIS frame, so an immediate
+            # echo would ride the wire AHEAD of the replies still queued in
+            # the backlog (the roundtrip row's binary-message assert). The
+            # serving teardown (_close_slot -> close) is the single echo
+            # emitter; _closed here must not skip it (the bare-FIN defect).
             self._closed = True
             return -1
         if opcode == WsOpcode.PING:
@@ -438,18 +448,35 @@ struct WSSConnection(Movable, AMQPConn):
         self._write_bytes(wire^)
         return n
 
+    def _send_close_frame(mut self):
+        """Emit the server's own WS close frame (code 1000) AT MOST once.
+
+        The single emitter is the teardown in close(); a decoded peer CLOSE
+        is echoed through that same path (§5.5.1), never from _drain_frame,
+        so the close frame can never overtake the replies still in the
+        backlog. The send-once flag is the idempotent close contract (two
+        calls, one frame). Best effort: a failing write never propagates —
+        teardown must not be blocked by a vanished peer."""
+        if self._close_sent:
+            return
+        self._close_sent = True
+        try:
+            var frame = WsFrame.close(WsCloseCode.NORMAL, "")
+            var wire = frame.encode(mask=False)
+            self._write_bytes(wire^)
+        except:
+            pass
+
     def close(mut self):
         """WS close handshake (code 1000), then the carrier close.
 
         Best effort: a failing close-frame write never blocks teardown
-        (the client may have already vanished)."""
-        if not self._closed:
-            try:
-                var frame = WsFrame.close(WsCloseCode.NORMAL, "")
-                var wire = frame.encode(mask=False)
-                self._write_bytes(wire^)
-            except:
-                pass
+        (the client may have already vanished). This is the ONLY close-frame
+        emitter: it runs after the serving layer has dispatched the decoded
+        backlog (replies first, then the §5.5.1 echo), and a close already
+        sent here is never re-sent — a decoded peer CLOSE sets _closed but
+        must still reach this handshake (the bare-FIN defect)."""
+        self._send_close_frame()
         if self._ssl != 0:
             try:
                 _ = _ssl_shutdown_block(self._lib, self._ssl)
