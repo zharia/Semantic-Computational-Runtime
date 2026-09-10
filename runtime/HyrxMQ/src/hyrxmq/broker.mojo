@@ -83,6 +83,42 @@ struct HyrxMQBroker:
         """Declare a queue. True if created."""
         return self._adapter.declare_queue(self._engine, name^, durable=False)
 
+    # ---- 0017 T3: decoded-argument declare + declare-ok readouts ----
+
+    def declare_queue_full(
+        mut self,
+        var name: String,
+        durable: Bool,
+        ttl_ms: Int,
+        expires_ms: Int,
+        max_length: Int,
+        overflow_reject: Bool,
+        var dlx: String,
+        var dlrk: String,
+    ) raises -> Bool:
+        """Declare a queue with the decoded declare arguments (the ADAPTER
+        owns the AMQP→Hyrx translation; this passes the decoded values)."""
+        return self._adapter.declare_queue_full(
+            self._engine, name^, durable, ttl_ms, expires_ms,
+            max_length, overflow_reject, dlx^, dlrk^,
+        )
+
+    def queue_depth(ref self, var name: String) -> Int:
+        """Ready depth (declare-ok message-count). -1 = missing queue."""
+        return self._adapter.queue_depth(self._engine, name^)
+
+    def queue_consumer_count(ref self, var name: String) -> Int:
+        """Live consumer count (declare-ok consumer-count). -1 missing."""
+        return self._adapter.queue_consumer_count(self._engine, name^)
+
+    def exchange_type_of(ref self, var name: String) -> String:
+        """Existing exchange's type name ("" = missing; 406 equivalence)."""
+        return self._adapter.exchange_type_of(self._engine, name^)
+
+    def exchange_binding_total(ref self, var name: String) -> Int:
+        """Total bindings on an exchange; -1 missing."""
+        return self._adapter.exchange_binding_total(self._engine, name^)
+
     def bind_queue(
         mut self,
         var queue: String,
@@ -125,10 +161,24 @@ struct HyrxMQBroker:
             prop_flags, prop_bytes^,
         )
 
+    # 0017 T3: the DEFAULT exchange ("") publish — DIRECT into the queue
+    # named by the routing key (the exchange's pre-bound direct binding).
+    def publish_to_queue_with_props(
+        mut self,
+        var queue_name: String,
+        var body: List[UInt8],
+        prop_flags: UInt16,
+        var prop_bytes: List[UInt8],
+    ) raises -> Int:
+        """Publish straight into a named queue (the default exchange's
+        normative direct binding). Returns 1 = routed / 0 = unrouted."""
+        return self._adapter.publish_to_queue_with_props(
+            self._engine, queue_name^, body^, prop_flags, prop_bytes^,
+        )
+
     def content_prop_flags(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
-    ) raises -> UInt16:
-        """Read an unacked delivery's raw AMQP property-flag word."""
+    ) raises -> UInt16:        """Read an unacked delivery's raw AMQP property-flag word."""
         return self._adapter.queue_content_prop_flags(
             self._engine, consumer_id, delivery_tag
         )

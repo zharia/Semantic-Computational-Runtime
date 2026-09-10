@@ -71,13 +71,48 @@ struct AMQPAdapter:
     def declare_queue(
         mut self, mut engine: HyrxEngine, var name: String, durable: Bool
     ) raises -> Bool:
-        """Translate AMQP queue.declare to Hyrx. True if created.
-
-        NOT IMPLEMENTED: `durable` (see declare_exchange) plus exclusive /
-        auto-delete queue properties, which the engine does not model.
-        """
+        """Translate AMQP queue.declare to Hyrx. True if created."""
         _ = durable
         return engine.declare_queue(name^)
+
+    # ---- 0017 T3: the decoded declare-argument translation ----
+
+    def declare_queue_full(
+        mut self,
+        mut engine: HyrxEngine,
+        var name: String,
+        durable: Bool,
+        ttl_ms: Int,
+        expires_ms: Int,
+        max_length: Int,
+        overflow_reject: Bool,
+        var dlx: String,
+        var dlrk: String,
+    ) raises -> Bool:
+        """Translate the decoded queue.declare arguments onto the engine's
+        queue config. x-expires lives in the SERVICE (lazy last-activity
+        evaluation — the engine has no timer subsystem). The engine resolves
+        capacity<=0 to its own default."""
+        return engine.declare_queue_full(
+            name^, max_length, durable, ttl_ms, expires_ms,
+            max_length, overflow_reject, dlx^, dlrk^,
+        )
+
+    def queue_depth(ref self, ref engine: HyrxEngine, var name: String) -> Int:
+        """Wait-declare-ok message-count parity (ready depth; -1 missing)."""
+        return engine.queue_depth(name^)
+
+    def queue_consumer_count(ref self, ref engine: HyrxEngine, var name: String) -> Int:
+        """declare-ok consumer-count parity (live consumers)."""
+        return engine.queue_consumer_count(name^)
+
+    def exchange_type_of(ref self, ref engine: HyrxEngine, var name: String) -> String:
+        """Existing exchange type name ("" = missing)."""
+        return engine.exchange_type_of(name^)
+
+    def exchange_binding_total(ref self, ref engine: HyrxEngine, var name: String) -> Int:
+        """Total bindings on an exchange; -1 missing."""
+        return engine.exchange_binding_total(name^)
 
     def bind_queue(
         mut self,
@@ -139,6 +174,29 @@ struct AMQPAdapter:
         var msg = Message(env^, buf^, prop_flags, prop_bytes^)
         return engine.publish(msg^, exchange_name^)
 
+    # 0017 T3: the DEFAULT exchange ("") publish — routed DIRECT into the
+    # queue named by the routing key (the exchange's pre-bound binding).
+    def publish_to_queue_with_props(
+        mut self,
+        mut engine: HyrxEngine,
+        var queue_name: String,
+        var body: List[UInt8],
+        prop_flags: UInt16,
+        var prop_bytes: List[UInt8],
+    ) raises -> Int:
+        """Translate the default-exchange publish (exchange="") to Hyrx as a
+        direct queue route. Byte-faithful content props are carried here too."""
+        var headers = Dict[String, String]()
+        var env = Envelope(MessageID(0), queue_name.copy(), headers^)
+        var buf = Buffer(len(body))
+        buf.resize_uninit(len(body))
+        unsafe_memcpy(
+            dest=buf._data.unsafe_ptr(),
+            src=body.unsafe_ptr(),
+            count=len(body),
+        )
+        var msg = Message(env^, buf^, prop_flags, prop_bytes^)
+        return engine.publish_to_queue(msg^, queue_name^)
     # ---- 0017 T2 readouts ----
 
     def queue_content_prop_flags(

@@ -21,10 +21,9 @@ def contiguous_batch_enabled() -> Bool:
 # 0015 P1: Use the event loop in the serving path
 # Replaces the serialized one-connection-at-a-time accept/serve loop with a
 # single-threaded level-triggered readiness loop that rotates across slots.
-# Default ON (flag-gated; False = instant rollback to the legacy serial loop).
-def event_driven_serving_disabled_0015_legacy_marker() -> Bool: return Falsee
-
-
+# Default OFF for now — legacy serial serving is the default until the
+# 0016 batched-flow gate check; flag-gated; True = roll forward to the
+# event loop (False = the legacy serial loop, instant rollback).
 def event_driven_serving() -> Bool:
     """Whether the 0015 event-driven multi-connection serving loop is enabled.
 
@@ -34,4 +33,4 @@ def event_driven_serving() -> Bool:
     both loop exactly as before: one connection at a time, to completion —
     byte path identical, instant rollback.
     """
-    return True
+    return False

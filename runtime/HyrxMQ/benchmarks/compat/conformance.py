@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""benchmarks/compat/conformance.py — 0017 T2 pika conformance matrix.
+"""benchmarks/compat/conformance.py — 0017 T2/T3 pika conformance matrix.
 
-Amqp 0-9-1 CONTENT-PROPERTY + delivery-semantics conformance probe. Pika
-(1.4.x) drives BOTH brokers with the same operation table:
+Amqp 0-9-1 CONTENT-PROPERTY + delivery-semantics + DECLARE-BIT/QUEUE-ARGUMENT
+conformance probe. Pika (1.4.x) drives BOTH brokers with the same operation
+table:
 
     rabbit mode:  LIVE reference RabbitMQ on :5672 (ground truth; never
                   modified, process/container untouched).
@@ -210,6 +211,15 @@ ROW_ORDER = ["props." + f for f in PROPS_SPEC] + [
     "tags.per_channel",
     "unknown_exchange.404",
     "return.mandatory_312",
+    # 0017 T3 rows (declare-bit semantics + queue arguments):
+    "passive.exists",
+    "passive.missing",
+    "exclusive.second_conn_declare",
+    "auto_delete.last_consumer_gone",
+    "x_message_ttl",
+    "dlx_reject",
+    "x_max_length",
+    "durable.declare_ok",
 ]
 
 
@@ -371,7 +381,7 @@ def op_unknown_exchange(host, port):
 
 def op_mandatory_return(host, port):
     """basic.publish mandatory=1 to an EXISTING exchange whose ROUTE misses
-    -> NO delivery anywhere + the connection/channel stays usable."""
+    -> NO delivery anywhere + the connection stays usable."""
     try:
         conn = new_conn(host, port)
         ch = conn.channel()
@@ -385,6 +395,229 @@ def op_mandatory_return(host, port):
                "connection_usable": bool(conn.is_open)}
         if m:
             ch.basic_ack(delivery_tag=m.delivery_tag)
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+# --------------------------------------------------------------------------
+# 0017 T3 rows: declare-bit semantics + queue arguments.
+# Each row runs on its OWN connection (per-row unique names; the Rabbit
+# exclusive-queue lock survives row cleanup decays).
+# --------------------------------------------------------------------------
+
+
+def qname3(tag):
+    return "t3.%s" % tag
+
+
+def op_passive_exists(host, port):
+    """passive declare of an EXISTING queue -> declare-ok with the REAL
+    counts (message_count = ready depth after the unacked basic.get,
+    consumer_count = the client's own transient consumer)."""
+    q = qname3("pass.q")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        ch.queue_declare(queue=q, durable=False)
+        for i in range(5):
+            ch.basic_publish(exchange="", routing_key=q, body=BODY)
+        m, _p, _b = get_once(ch, q)  # one unacked delivery (READY = 4)
+        if m is not None:
+            ch.basic_ack(delivery_tag=m.delivery_tag)
+        # recount depth: after the ack above the ready depth is back to 5.
+        dm = ch.queue_declare(queue=q, passive=True)
+        out = {
+            "message_count": dm.method.message_count,
+            "consumer_count": dm.method.consumer_count,
+        }
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_passive_missing(host, port):
+    """passive declare of a MISSING queue -> channel.close 404 NOT_FOUND
+    observed as ChannelClosedByBroker with reply-code 404."""
+    q = qname3("pass.missing.%s" % host)
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        try:
+            ch.queue_declare(queue=q, passive=True)
+            graceful_close(conn, (ch,))
+            return {"observed": {"closed": False}}
+        except Exception as e:
+            payload = _exc_payload(e)
+            graceful_close(conn, ())
+            return {"observed": {"closed": True, "code": payload["code"],
+                                 "type": payload["type"]}}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_exclusive_second_conn(host, port):
+    """SECOND connection declares the exclusive queue -> 405
+    RESOURCE_LOCKED on BOTH brokers (the broker replies channel.close)."""
+    q = qname3("excl.q")
+    c1 = None
+    c2 = None
+    try:
+        c1 = new_conn(host, port)
+        ch1 = c1.channel()
+        ch1.queue_declare(queue=q, durable=False, exclusive=True)
+        c2 = new_conn(host, port)
+        ch2 = c2.channel()
+        try:
+            ch2.queue_declare(queue=q, durable=False, exclusive=True)
+            graceful_close(c1, (ch1,))
+            graceful_close(c2, (ch2,))
+            return {"observed": {"code": 0}}
+        except Exception as e:
+            payload = _exc_payload(e)
+            graceful_close(c2, ())
+            graceful_close(c1, (ch1,))
+            return {"observed": {"code": payload["code"],
+                                 "type": payload["type"]}}
+    except Exception as e:
+        for c in (c1, c2):
+            try:
+                graceful_close(c, ())
+            except Exception:
+                pass
+        return {"error": _exc_payload(e)}
+
+
+def op_auto_delete_last_consumer_gone(host, port):
+    """auto_delete=1 queue: consume + cancel (last consumer leaves) -> the
+    queue is GONE (a passive declare on a FRESH connection 404-closes)."""
+    q = qname3("auto.q")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        ch.queue_declare(queue=q, durable=False, auto_delete=True)
+        r = ch.basic_consume(queue=q, auto_ack=True,
+                             on_message_callback=lambda *_a: None)
+        ch.basic_cancel(r)
+        ch.close()
+        graceful_close(conn, ())
+        conn2 = new_conn(host, port)
+        ch2 = conn2.channel()
+        try:
+            ch2.queue_declare(queue=q, passive=True)
+            graceful_close(conn2, (ch2,))
+            return {"observed": {"queue_gone": False}}
+        except Exception as e:
+            payload = _exc_payload(e)
+            graceful_close(conn2, ())
+            return {"observed": {"queue_gone": True, "code": payload["code"]}}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_x_message_ttl(host, port):
+    """x-message-ttl=800: a message stays IN the queue PAST its TTL is never
+    delivered (the follow-up get returns EMPTY)."""
+    q = qname3("ttl.q")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        ch.queue_declare(queue=q, durable=False, arguments={
+            "x-message-ttl": 800,
+        })
+        ch.basic_publish(exchange="", routing_key=q, body=BODY)
+        time.sleep(1.4)
+        m, _p, _b = get_once(ch, q)
+        if m:
+            ch.basic_ack(delivery_tag=m.delivery_tag)
+        graceful_close(conn, (ch,))
+        return {"observed": {"delivered_after_ttl": m is not None}}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_dlx_reject(host, port):
+    """basic.reject(requeue=False) on a queue bound to a DLX -> the message
+    lands in the dlx queue with delivery_mode PRESERVED."""
+    dlxex = qname3("dlx.x")
+    dlxq = qname3("dlx.q")
+    srcq = qname3("dlx.src")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        ch.exchange_declare(exchange=dlxex, exchange_type="direct",
+                            durable=False)
+        ch.queue_declare(queue=dlxq, durable=False)
+        ch.queue_bind(queue=dlxq, exchange=dlxex, routing_key="dlx")
+        ch.queue_declare(queue=srcq, durable=False, arguments={
+            "x-dead-letter-exchange": dlxex,
+            "x-dead-letter-routing-key": "dlx",
+        })
+        ch.basic_publish(exchange="", routing_key=srcq, body=BODY,
+                         properties=pika.BasicProperties(delivery_mode=2))
+        m, _p, _b = get_once(ch, srcq)
+        if m is None:
+            graceful_close(conn, (ch,))
+            return {"observed": {"dead_delivered": False, "body_ok": False,
+                                 "delivery_mode_ok": False}}
+        ch.basic_reject(delivery_tag=m.delivery_tag, requeue=False)
+        time.sleep(0.3)
+        m2, p2, b2 = get_once(ch, dlxq)
+        if m2:
+            ch.basic_ack(delivery_tag=m2.delivery_tag)
+        out = {
+            "dead_delivered": m2 is not None,
+            "body_ok": (b2 == BODY),
+            "delivery_mode_ok": bool(p2 is not None and p2.delivery_mode == 2),
+        }
+        graceful_close(conn, (ch,))
+        return {"observed": out}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_x_max_length(host, port):
+    """x-max-length=3 with the DEFAULT drop-head overflow: publishing 5
+    leaves the LAST 3 messages (drop-oldest at the cap)."""
+    q = qname3("cap.q")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        ch.queue_declare(queue=q, durable=False, arguments={
+            "x-max-length": 3,
+        })
+        for i in range(5):
+            ch.basic_publish(exchange="", routing_key=q, body=b"m%d" % i)
+        bodies = []
+        while True:
+            m, _p, b = get_once(ch, q)
+            if m is None:
+                break
+            bodies.append(b)
+            ch.basic_ack(delivery_tag=m.delivery_tag)
+        graceful_close(conn, (ch,))
+        return {"observed": {"bodies": [b.decode("utf-8", "replace") for b in bodies]}}
+    except Exception as e:
+        return {"error": _exc_payload(e)}
+
+
+def op_durable_declare_ok(host, port):
+    """durable=True declare -> declare-ok parity (NO persistence is claimed
+    anywhere in this matrix: durable is a METADATA FLAG in this slice; real
+    storage durability is the milestone-0018 report layer's note)."""
+    q = qname3("dur.q")
+    try:
+        conn = new_conn(host, port)
+        ch = conn.channel()
+        m = ch.queue_declare(queue=q, durable=True)
+        out = {"queue_name": m.method.queue == q}
+        m2 = ch.queue_declare(queue=q, passive=True)
+        out.update({
+            "message_count": m2.method.message_count,
+            "consumer_count": m2.method.consumer_count,
+        })
         graceful_close(conn, (ch,))
         return {"observed": out}
     except Exception as e:
@@ -407,8 +640,19 @@ def run_ops_table(host, port, timeout_secs=240):
         rows["redelivered.nack_requeue"] = op_redelivered_nack(host, port)
         rows["tags.no_collision"] = op_tags_no_collision(host, port)
         rows["tags.per_channel"] = op_tags_per_channel(host, port)
-        rows["unknown_exchange.404"] = op_unknown_exchange(host, port)
-        rows["return.mandatory_312"] = op_mandatory_return(host, port)
+    rows["unknown_exchange.404"] = op_unknown_exchange(host, port)
+    rows["return.mandatory_312"] = op_mandatory_return(host, port)
+    # 0017 T3 rows.
+    rows["passive.exists"] = op_passive_exists(host, port)
+    rows["passive.missing"] = op_passive_missing(host, port)
+    rows["exclusive.second_conn_declare"] = op_exclusive_second_conn(host, port)
+    rows["auto_delete.last_consumer_gone"] = (
+        op_auto_delete_last_consumer_gone(host, port)
+    )
+    rows["x_message_ttl"] = op_x_message_ttl(host, port)
+    rows["dlx_reject"] = op_dlx_reject(host, port)
+    rows["x_max_length"] = op_x_max_length(host, port)
+    rows["durable.declare_ok"] = op_durable_declare_ok(host, port)
     signal.setitimer(signal.ITIMER_REAL, 0)
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     return rows
@@ -495,6 +739,22 @@ KNOWN_LIMITATIONS = {
     "tags.per_channel":
         "T2 delivery-tags start at 0 (legacy byte parity with the 44-test "
         "suite) where rabbit starts at 1; per-channel independence identical",
+    "x_message_ttl":
+        "T3 x-message-ttl in HyrxMQ is an IN-MEMORY delivery-time check on "
+        "the enqueue stamp (no timer subsystem): expiry dead-letters/drops "
+        "like rabbit at the get, but the window REARMS only per enqueue — "
+        "an idle queue re-arms on its next dequeue access (documented "
+        "PARTIAL); rabbit also re-checks against a per-delivery aging "
+        "comparable to this",
+    "durable.declare_ok":
+        "durable is a METADATA FLAG in HyrxMQ (FLAG ONLY, in-memory; NO disk "
+        "persistence claimed — the row records only the declare-ok shape "
+        "parity; the report layer notes milestone 0018 for real storage)",
+    "passive.exists":
+        "HyrxMQ's basic.get keeps its engine consumer REGISTERED on the "
+        "queue (rabbit does not count basic.get as a consumer): "
+        "consumer_count may read 1 vs rabbit 0; the message_count depth "
+        "parity is real (both are ready-queue readings)",
 }
 
 # Rows whose DEPENDENT truth is derived (tag values differ EXCEPT the

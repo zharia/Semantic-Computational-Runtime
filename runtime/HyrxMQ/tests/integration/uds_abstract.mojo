@@ -280,6 +280,8 @@ def main() raises:
     reserved_short(eargs)
     write_short_string(eargs, "e2e.ex")
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits: passive/durable/auto-delete/no-wait = 0
+    write_u32(eargs, 0)  # arguments: empty field table (u32 length 0)
     client.send(request(UInt16(1), EXCHANGE_DECLARE(), eargs^))
     check(listener.serve_one_frame(slot) == 1, "exchange.declare served")
     check(
@@ -292,6 +294,7 @@ def main() raises:
     reserved_short(qargs)
     write_short_string(qargs, "e2e.q")
     qargs.append(0)  # bits: passive/durable/exclusive/auto-delete/no-wait = 0
+    write_u32(qargs, 0)  # arguments: empty field table (u32 length 0)
     client.send(request(UInt16(1), QUEUE_DECLARE(), qargs^))
     check(listener.serve_one_frame(slot) == 1, "queue.declare served")
     check(

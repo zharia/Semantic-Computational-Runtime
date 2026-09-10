@@ -154,7 +154,7 @@ struct Exchange:
         return self._name
 
     def exchange_type(ref self) -> ExchangeType:
-        return self._type
+        return ExchangeType(self._type._value)
 
     def add_binding(mut self, var binding: Binding):
         """Add a binding. Duplicate bindings are ignored."""

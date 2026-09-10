@@ -33,6 +33,28 @@
 #   PRECONDITION_FAILED + failing class/method ids), content frames are
 #   tolerated silently, channel.open re-opens the number. secure (10,20/21)
 #   remains NOT implemented; credentials are parsed but NOT validated.
+# - 0017 T3 (declare-bit semantics + queue arguments): the declare `arguments`
+#   field tables ARE DECODED now (ByteReader.read_table → FieldTable; the
+#   read_table_skip calls below that remain are non-queue-class tables).
+#   passive/durable/exclusive/auto-delete bits are parsed AND enforced:
+#   passive declare replays the REAL counts (message_count = ready depth,
+#   consumer_count = live consumers; declare of a MISSING queue/exchange or a
+#   type/flag-inequivalent redeclare gets the normative 404 / 405 / 406
+#   channel-error close with failing cls/mid). durable is a metadata FLAG only
+#   (no disk persistence — milestone 0018), exclusive queues are owned by the
+#   declaring client connection (auto-delete on close, 405 for foreign
+#   consume/get/ddeclare), auto_delete deletes on the last-consumer/unbind
+#   event (basic.cancel now unregisters the engine consumer — the old
+#   no-op-cancel slice behavior is retired). The queue arguments
+#   x-message-ttl (delivery-time expiry; expired messages dead-letter FIRST
+#   when x-dead-letter-exchange is set, else drop), x-expires (LAZY deletion —
+#   last-activity evaluated on next declare/get/consume; NO timer subsystem
+#   exists, recorded as PARTIAL), x-max-length (drop-head trimming at the cap,
+#   or overflow='reject-publish' capacity refusal) and x-dead-letter
+#   exchange/routing-key (basic.reject/nack requeue=false + TTL expiry route
+#   into the DLX through the Router) are all honored. The DEFAULT exchange ""
+#   now publishes DIRECT into the queue named by the routing key (the
+#   exchange's normative pre-bound direct binding; needs-probe resolved).
 # - frame_max / heartbeat renegotiation and heartbeat timers (tune advertises
 #   heartbeat=0; non-zero heartbeats are NOT IMPLEMENTED).
 # - INBOUND content properties (0017 T2): NOW IMPLEMENTED byte-faithfully —
@@ -51,11 +73,13 @@
 #   mandatory=1. The default exchange "" is treated as present (normative) :
 #   it routes to zero queues in this engine slice (needs-probe: direct
 #   queue-name routing onto the default exchange).
-# - the declare `arguments` field tables are read by length (read_table_skip),
-#   not interpreted (T3); x-dead-letter-exchange requeue-false routing lands in
-#   T3 (requeue=false currently DROPS, which is the normative T1 behavior).
-# - basic.cancel is answered with cancel-ok, but the engine consumer is NOT
-#   unregistered (the connection's consumer stays live until EOF/close).
+# - the declare `arguments` field tables of exchange.declare/queue.declare/
+#   basic.consume are DECODED since 0017 T3 (see the not-implemented list
+#   above for what remains out of scope: connection-close state enforcement,
+#   secure, heartbeats).
+# - basic.cancel is answered with cancel-ok AND the engine consumer is now
+#   unregistered (0017 T3 auto-delete semantics; deliveries requeue through
+#   the Router).
 # - connection state enforcement: business methods are not gated on the
 #   connection=open state (AMQPConnectionState is written but never gates
 #   dispatch; only the listener's handshake phases gate frames).
@@ -66,6 +90,7 @@
 
 from std.collections import Dict, List, Optional
 from std.memory import unsafe_memcpy
+from std.time import monotonic
 
 from hyrx.amqp.frame_codec import (
     AMQPFrame,
@@ -166,6 +191,54 @@ def _MIN_BODY_CHUNK() -> Int:
 # auto-delete=8, no-wait=16.
 def QUEUE_DECLARE_BIT_NO_WAIT() -> UInt8:
     return 16
+
+
+def QUEUE_DECLARE_BIT_PASSIVE() -> UInt8:
+    return 1
+
+
+def QUEUE_DECLARE_BIT_DURABLE() -> UInt8:
+    return 2
+
+
+def QUEUE_DECLARE_BIT_EXCLUSIVE() -> UInt8:
+    return 4
+
+
+def QUEUE_DECLARE_BIT_AUTO_DELETE() -> UInt8:
+    return 8
+
+
+# exchange.declare bit-packed flags (same octet layout): passive=1,
+# durable=2, reserved=4, auto-delete=8, no-wait=16 (Rabbit extension layout).
+def EXCHANGE_DECLARE_BIT_PASSIVE() -> UInt8:
+    return 1
+
+
+def EXCHANGE_DECLARE_BIT_DURABLE() -> UInt8:
+    return 2
+
+
+def EXCHANGE_DECLARE_BIT_AUTO_DELETE() -> UInt8:
+    return 8
+
+
+def EXCHANGE_DECLARE_BIT_NO_WAIT() -> UInt8:
+    return 16
+
+
+# 0017 T3: RESOURCE_LOCKED reply-code (exclusive-queue access table).
+def REPLY_RESOURCE_LOCKED() -> UInt16:
+    return 405
+
+
+# 0017 T3 field-table type tag of AMQP long-int 'I' (see field_table.mojo).
+def FT_TYPE_INT() -> Int:
+    return 73
+
+
+def FT_TYPE_STRING() -> Int:
+    return 83
 
 
 # basic.ack bit-packed flags: `multiple` is the single (low) bit.
@@ -388,6 +461,31 @@ struct ByteReader:
             )
         self.pos += n
 
+    def read_table(mut self) raises -> FieldTable:
+        """DECODE a field table (0017 T3): length-bounded slice → FieldTable.
+
+        The 4-byte declared length is trusted only within the remaining
+        bytes (bounded parse — a truncated table decodes as far as its
+        bytes reach, never past the frame)."""
+        var n = Int(self.read_long())
+        if self.pos + n > len(self.data):
+            raise (
+                "ByteReader.read_table: declared table of "
+                + String(n)
+                + " bytes exceeds "
+                + String(len(self.data) - self.pos)
+                + " remaining"
+            )
+        var slice = List[UInt8]()
+        slice.append(UInt8((n >> 24) & 0xFF))
+        slice.append(UInt8((n >> 16) & 0xFF))
+        slice.append(UInt8((n >> 8) & 0xFF))
+        slice.append(UInt8(n & 0xFF))
+        for i in range(n):
+            slice.append(self.data[self.pos])
+            self.pos += 1
+        return FieldTable.from_bytes(slice^)
+
     def read_remaining(mut self) -> List[UInt8]:
         var out = List[UInt8]()
         while self.pos < len(self.data):
@@ -571,6 +669,70 @@ struct PendingPublish:
         self.prop_flags = flags
 
 
+# ---- 0017 T3: declare-flag metadata (service-owned lifecycle) ----
+
+
+struct _QueueMeta:
+    """AMQP declare-flag metadata for one queue.
+
+    exclusive/owner: a CLIENT-connection-owned queue (one-connection
+    lifetime) — `owner` = the declaring connection id (0 = shared). The
+    queue auto-deletes on that connection's close and denies consume/get
+    from other connections. persist_expire: x-expires LAZY expiry window
+    (ms; 0 = off) evaluated on the next access (get/declare/consume) —
+    the service has no timer subsystem, so expiry is NOT proactive (the
+    honest PARTIAL framing per receipt)."""
+
+    var durable: Bool
+    var exclusive: Bool
+    var auto_delete: Bool
+    var owner: UInt64
+    var expires_ms: Int
+    var last_ms: Int
+
+    def __init__(
+        out self,
+        durable: Bool,
+        exclusive: Bool,
+        auto_delete: Bool,
+        owner: UInt64,
+        expires_ms: Int,
+        last_ms: Int,
+    ):
+        self.durable = durable
+        self.exclusive = exclusive
+        self.auto_delete = auto_delete
+        self.owner = owner
+        self.expires_ms = expires_ms
+        self.last_ms = last_ms
+
+    def touch(mut self, now_ms: Int):
+        """Record one access of the queue (lazy x-expires basis)."""
+        self.last_ms = now_ms
+
+
+struct _ExchangeMeta:
+    """AMQP declare-flag metadata for one exchange (durable flag + the
+    auto-delete bit: delete on the LAST unbind)."""
+
+    var durable: Bool
+    var auto_delete: Bool
+    var last_ms: Int
+
+    def __init__(out self, durable: Bool, auto_delete: Bool, last_ms: Int):
+        self.durable = durable
+        self.auto_delete = auto_delete
+        self.last_ms = last_ms
+
+    def touch(mut self, now_ms: Int):
+        self.last_ms = now_ms
+
+
+def _now_ms() -> Int:
+    """Monotonic milliseconds (steady clock; no timer infra — used lazily."""
+    return Int(monotonic() // 1_000_000)
+
+
 struct AMQPService:
     """Frame-level dispatch into the HyrxMQ broker (no sockets)."""
 
@@ -610,6 +772,16 @@ struct AMQPService:
     # Count of dropped protocol-error content frames (fail-closed visibility
     # for tests/status without an async logging path).
     var _content_errors: Int
+    # 0017 T3: declare-flag metadata (service-owned; single lifecycle
+    # per queue/exchange, mirroring the field-table argument semantics).
+    var _queue_meta: Dict[String, _QueueMeta]
+    var _queue_meta_keys: List[String]
+    var _exchange_meta: Dict[String, _ExchangeMeta]
+    var _exchange_meta_keys: List[String]
+    # 0017 T3: reverse ctag → engine consumer id (basic.cancel resolution +
+    # auto-delete last-consumer bookkeeping) and cid → queue name.
+    var _cids: Dict[UInt64, String]
+    var _cid_by_ctag: Dict[String, UInt64]
 
     def __init__(out self, var config: HyrxMQConfig):
         # Read frame_max BEFORE `config` is consumed by HyrxMQBroker(config^).
@@ -628,6 +800,12 @@ struct AMQPService:
         self._ctags = Dict[UInt64, String]()
         self._closed_channels = Dict[UInt64, List[UInt16]]()
         self._content_errors = 0
+        self._queue_meta = Dict[String, _QueueMeta]()
+        self._queue_meta_keys = List[String]()
+        self._exchange_meta = Dict[String, _ExchangeMeta]()
+        self._exchange_meta_keys = List[String]()
+        self._cids = Dict[UInt64, String]()
+        self._cid_by_ctag = Dict[String, UInt64]()
         # Value advertised in connection.tune and enforced as the per-connection
         # codec ceiling by the listener. config.frame_max is validated >= 4096
         # (see HyrxMQConfig.frame_max / validate).
@@ -995,14 +1173,97 @@ struct AMQPService:
             )
 
         # ---- exchange ----
+        # exchange.declare (40,10). Bits: passive(1) durable(2)
+        # reserved(4) auto-delete(8) no-wait(16); trailing `arguments`
+        # field table (AMQP arguments semantics are queue-class only —
+        # x-args on exchanges are not defined, so the table is parsed but
+        # not reinterpreted). 0017 T3 declare-bit semantics:
+        #   passive=1: queue EXISTS → the exchange is NOT mutated, reply
+        #     declare-ok (the shape parity); a MISSING exchange → the
+        #     normative server-side channel.close (reply-code=404,
+        #     reply-text="NOT_FOUND - no exchange '<name>' in vhost '/'",
+        #     failing cls/mid = (40,10)); a declared TYPE that differs from
+        #     the existing exchange's type → 406 PRECONDITION_FAILED
+        #     (inequivalent arg 'type').
+        #   durable: FLAG ONLY (in-memory metadata; the report layer notes
+        #     milestone 0018 persistence — NO disk persistence is claimed).
+        #   auto_delete: delete on the LAST unbind (exchange.unbind and
+        #     queue.unbind paths both count bindings before dropping).
         if mid == EXCHANGE_DECLARE():
-            _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
+            _ = reader.read_short()  # reserved-1 (deprecated "ticket")
             var ex_name = reader.read_short_string()
             var ex_type = reader.read_short_string()
-            _ = reader.read_octet()  # bits: passive/durable/auto-delete/no-wait
-            # NOT IMPLEMENTED: those bits (always declares synchronously, so
-            # exchange.declare's no-wait is NOT honoured) and `arguments`.
-            _ = self._broker.declare_exchange(ex_name^, ex_type^)
+            var ebits = reader.read_octet()
+            var eargs_ft = reader.read_table()
+            var e_passive = (ebits & EXCHANGE_DECLARE_BIT_PASSIVE()) != 0
+            var e_durable = (ebits & EXCHANGE_DECLARE_BIT_DURABLE()) != 0
+            var e_auto = (ebits & EXCHANGE_DECLARE_BIT_AUTO_DELETE()) != 0
+            var e_no_wait = (ebits & EXCHANGE_DECLARE_BIT_NO_WAIT()) != 0
+            _ = eargs_ft  # decoded, no queue-class semantics apply here
+            var e_exists = self._broker.has_exchange(ex_name.copy())
+            if e_passive:
+                if not e_exists:
+                    self._mark_channel_closed(conn_id, chan)
+                    var emsg1 = "NOT_FOUND - no exchange '"
+                    var emsg2 = emsg1 + ex_name.copy()
+                    var emsg = emsg2 + "' in vhost '/'"
+                    return self._channel_error(
+                        chan,
+                        REPLY_NOT_FOUND(),
+                        emsg^,
+                        mid,
+                    )
+                var at = self._broker.exchange_type_of(ex_name.copy())
+                if at != ex_type:
+                    self._mark_channel_closed(conn_id, chan)
+                    var m1 = "PRECONDITION_FAILED - inequivalent arg 'type' for exchange '"
+                    var m2 = m1 + ex_name.copy()
+                    var m3 = m2 + "' in vhost '/'"
+                    return self._channel_error(
+                        chan,
+                        REPLY_PRECONDITION_FAILED(),
+                        m3^,
+                        mid,
+                    )
+                # passive declare-ok: no mutation of the exchange.
+            else:
+                var created = True
+                if len(ex_name.bytes()) != 0:
+                    created = self._broker.declare_exchange(
+                        ex_name.copy(), ex_type.copy()
+                    )
+                if not created:
+                    var at = self._broker.exchange_type_of(ex_name.copy())
+                    if at != ex_type:
+                        self._mark_channel_closed(conn_id, chan)
+                        var m1 = "PRECONDITION_FAILED - inequivalent arg 'type' for exchange '"
+                        var m2 = m1 + ex_name.copy()
+                        var m3 = m2 + "' in vhost '/'"
+                        return self._channel_error(
+                            chan,
+                            REPLY_PRECONDITION_FAILED(),
+                            m3^,
+                            mid,
+                        )
+                # durable-flag + auto-delete metadata recorded (created OR
+                # refreshed; declare equivalence is verified above). Insert
+                # via pop-then-reinsert (Mojo dict-of-struct pattern).
+                var had_em = ex_name.copy() in self._exchange_meta
+                if had_em:
+                    _ = self._exchange_meta.pop(ex_name.copy())
+                self._exchange_meta[ex_name.copy()] = _ExchangeMeta(
+                    e_durable, e_auto, _now_ms()
+                )
+                if not had_em:
+                    self._exchange_meta_keys.append(ex_name.copy())
+                if e_durable:
+                    print(
+                        "hyrxmq: exchange '"
+                        + ex_name.copy()
+                        + "' durable=1 (FLAG ONLY, in-memory; 0018 storage)"
+                    )
+            if e_no_wait:
+                return Optional[List[UInt8]]()
             return self._reply(
                 chan,
                 EXCHANGE_DECLARE_OK().class_id,
@@ -1011,18 +1272,185 @@ struct AMQPService:
             )
 
         # ---- queue declare ----
+        # queue.declare (50,10). Bits: passive(1) durable(2) exclusive(4)
+        # auto-delete(8) no-wait(16); trailing `arguments` field table —
+        # 0017 T3: DECODED and honored (read_table_skip dropped):
+        #   x-message-ttl (I): per-message DELIVERY-TIME expiry (ms;
+        #     dead-letter FIRST when the queue carries
+        #     x-dead-letter-exchange, else drop).
+        #   x-expires (I): LAZY queue deletion — last-activity window
+        #     evaluated on next get/declare/consume (no timer subsystem:
+        #     PARTIAL per receipt).
+        #   x-max-length (I): cap; overflow drop-oldest (AMQP default) or
+        #     reject-publish (capacity refusal).
+        #   x-dead-letter-exchange (S) + x-dead-letter-routing-key (S):
+        #     basic.reject/nack requeue=false messages and TTL-expired
+        #     messages route into the DLX via the Router.
+        #   Declare-flag semantics:
+        #     passive=1: EXISTS → declare-ok with the REAL counts
+        #       (message_count, consumer_count) and NO mutation; MISSING →
+        #       the normative channel.close (reply-code=404, reply-text=
+        #       "NOT_FOUND - no queue '<name>' in vhost '/'", failing
+        #       cls/mid = (50,10)).
+        #     durable: FLAG ONLY (in-memory; NO disk persistence claimed;
+        #       milestone 0018 owns real storage).
+        #     exclusive: CLIENT-connection-owned — declare from ANOTHER
+        #       connection → 405 RESOURCE_LOCKED channel.close; the queue
+        #       auto-deletes on the owning connection's close; other
+        #       connections' consume/get denied 405.
+        #     auto_delete: delete when the LAST consumer leaves (basic.cancel
+        #       + connection-close paths).
+        #   The declare-ok wire shape is EXACT (queue shortstr +
+        #   message_count long + consumer_count long — nothing more).
         if mid == QUEUE_DECLARE():
             _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
             var q_name = reader.read_short_string()
             var q_bits = reader.read_octet()
-            # NOT IMPLEMENTED: passive/durable/exclusive/auto-delete bits and
-            # the trailing `arguments` field table (field tables are not
-            # serialized on the wire).
-            _ = self._broker.declare_queue(q_name.copy())
+            var q_args = reader.read_table()
+            var q_passive = (q_bits & QUEUE_DECLARE_BIT_PASSIVE()) != 0
+            var q_durable = (q_bits & QUEUE_DECLARE_BIT_DURABLE()) != 0
+            var q_excl = (q_bits & QUEUE_DECLARE_BIT_EXCLUSIVE()) != 0
+            var q_auto = (q_bits & QUEUE_DECLARE_BIT_AUTO_DELETE()) != 0
+            var q_no_wait = (q_bits & QUEUE_DECLARE_BIT_NO_WAIT()) != 0
+            # LAZY x-expires evaluation (get/declare/consume trigger points).
+            _ = self._queue_check_expires(q_name.copy())
+            var q_exists = self._broker.has_queue(q_name.copy())
+            if q_passive:
+                if not q_exists:
+                    self._mark_channel_closed(conn_id, chan)
+                    var emsg1 = "NOT_FOUND - no queue '"
+                    var emsg2 = emsg1 + q_name.copy()
+                    var emsg = emsg2 + "' in vhost '/'"
+                    return self._channel_error(
+                        chan,
+                        REPLY_NOT_FOUND(),
+                        emsg^,
+                        mid,
+                    )
+                # passive declare-ok with the REAL counts; NO mutation.
+                var mdepth = self._broker.queue_depth(q_name.copy())
+                var ccount = self._broker.queue_consumer_count(q_name.copy())
+                if (q_bits & QUEUE_DECLARE_BIT_NO_WAIT()) != 0:
+                    return Optional[List[UInt8]]()
+                return self._reply_queue_declare_ok(
+                    chan, q_name^, mdepth, ccount
+                )
+            if q_exists:
+                # Equivalence + exclusive-ownership table (50,10/60,20 reply
+                # codes per amqp0-9-1.xml normative error table). Reads are
+                # chained primitive reads (NO struct copy); the refresh is
+                # pop-then-reinsert.
+                var has_meta = q_name.copy() in self._queue_meta
+                var e_owner = UInt64(0)
+                var e_durable_flag = False
+                var e_auto_flag = False
+                if has_meta:
+                    e_owner = self._queue_meta[q_name.copy()].owner
+                    e_durable_flag = self._queue_meta[q_name.copy()].durable
+                    e_auto_flag = self._queue_meta[q_name.copy()].auto_delete
+                    if e_owner != 0 and e_owner != conn_id:
+                        self._mark_channel_closed(conn_id, chan)
+                        var lmsg1 = "RESOURCE_LOCKED - cannot obtain exclusive access to locked queue '"
+                        var lmsg2 = lmsg1 + q_name.copy()
+                        var lmsg = lmsg2 + "' in vhost '/'. It could be originally declared on another connection."
+                        return self._channel_error(
+                            chan,
+                            REPLY_RESOURCE_LOCKED(),
+                            lmsg^,
+                            mid,
+                        )
+                    if e_durable_flag != q_durable:
+                        self._mark_channel_closed(conn_id, chan)
+                        var fmsg1 = "PRECONDITION_FAILED - inequivalent arg 'durable' for queue '"
+                        var fmsg2 = fmsg1 + q_name.copy()
+                        var fmsg3 = fmsg2 + "' in vhost '/'"
+                        return self._channel_error(
+                            chan,
+                            REPLY_PRECONDITION_FAILED(),
+                            fmsg3^,
+                            mid,
+                        )
+                    if e_auto_flag != q_auto:
+                        self._mark_channel_closed(conn_id, chan)
+                        var fmsg1 = "PRECONDITION_FAILED - inequivalent arg 'auto_delete' for queue '"
+                        var fmsg2 = fmsg1 + q_name.copy()
+                        var fmsg3 = fmsg2 + "' in vhost '/'"
+                        return self._channel_error(
+                            chan,
+                            REPLY_PRECONDITION_FAILED(),
+                            fmsg3^,
+                            mid,
+                        )
+                    # matching redeclare: flags stay; LAZY-touch ONLY.
+                    _ = self._queue_meta[q_name.copy()].touch(_now_ms())
+                var mdepth = self._broker.queue_depth(q_name.copy())
+                var ccount = self._broker.queue_consumer_count(q_name.copy())
+                if (q_bits & QUEUE_DECLARE_BIT_NO_WAIT()) != 0:
+                    return Optional[List[UInt8]]()
+                return self._reply_queue_declare_ok(
+                    chan, q_name^, mdepth, ccount
+                )
+            # NEW queue: parse the declare arguments NOW (single decode).
+            var ttl_ms = 0
+            var expires_ms = 0
+            var max_len = 0
+            var overflow_reject = False
+            var dlx_name = String("")
+            var dlrk_name = String("")
+            if q_args.type_of("x-message-ttl") == FT_TYPE_INT():
+                var v = q_args.get_int("x-message-ttl")
+                if v.__bool__():
+                    ttl_ms = v.value()
+            # actually guard raises: get_int's Optional
+            if q_args.type_of("x-expires") == FT_TYPE_INT():
+                var v = q_args.get_int("x-expires")
+                if v.__bool__():
+                    expires_ms = v.value()
+            if q_args.type_of("x-max-length") == FT_TYPE_INT():
+                var v = q_args.get_int("x-max-length")
+                if v.__bool__():
+                    max_len = v.value()
+            if q_args.type_of("x-dead-letter-exchange") == FT_TYPE_STRING():
+                var v = q_args.get_string("x-dead-letter-exchange")
+                if v.__bool__():
+                    dlx_name = v.value()
+            if q_args.type_of("x-dead-letter-routing-key") == FT_TYPE_STRING():
+                var v = q_args.get_string("x-dead-letter-routing-key")
+                if v.__bool__():
+                    dlrk_name = v.value()
+            var ov = q_args.get_string("x-overflow")
+            if ov.__bool__():
+                if ov.value() == "reject-publish":
+                    overflow_reject = True
+            _ = self._broker.declare_queue_full(
+                q_name.copy(), q_durable, ttl_ms, expires_ms,
+                max_len, overflow_reject, dlx_name.copy(), dlrk_name.copy(),
+            )
+            self._queue_meta[q_name.copy()] = _QueueMeta(
+                q_durable, q_excl, q_auto, conn_id if q_excl else UInt64(0),
+                expires_ms, _now_ms(),
+            )
+            if len(self._queue_meta_keys) == 0:
+                self._queue_meta_keys.append(q_name.copy())
+            else:
+                var found_meta_key = False
+                for i in range(len(self._queue_meta_keys)):
+                    if self._queue_meta_keys[i] == q_name:
+                        found_meta_key = True
+                        break
+                if not found_meta_key:
+                    self._queue_meta_keys.append(q_name.copy())
+            if q_durable:
+                print(
+                    "hyrxmq: queue '"
+                    + q_name.copy()
+                    + "' durable=1 (FLAG ONLY, in-memory; 0018 storage)"
+                )
             if (q_bits & QUEUE_DECLARE_BIT_NO_WAIT()) != 0:
-                # no-wait set → "the server will not respond to the method"
                 return Optional[List[UInt8]]()
-            return self._reply_queue_declare_ok(chan, q_name^)
+            var mdepth = self._broker.queue_depth(q_name.copy())
+            var ccount = self._broker.queue_consumer_count(q_name.copy())
+            return self._reply_queue_declare_ok(chan, q_name^, mdepth, ccount)
 
         # ---- queue bind ----
         if mid == QUEUE_BIND():
@@ -1078,12 +1506,25 @@ struct AMQPService:
                 List[UInt8](),
             )
 
-        # ---- basic cancel (60,30): answer cancel-ok (consumer NOT unregistered)
+        # ---- basic cancel (60,30): answer cancel-ok; 0017 T3: the engine
+        # consumer IS unregistered now (needed for the auto-delete
+        # last-consumer-gone semantics; the OLD slice kept it live).
         if mid == BASIC_CANCEL():
             var xtag = reader.read_short_string()
             _ = reader.read_octet()  # bits: no-wait (always answered here)
             var xargs = List[UInt8]()
-            write_short_string(xargs, xtag^)
+            write_short_string(xargs, xtag.copy())
+            var xcid = self._take_consumer_by_ctag(xtag.copy())
+            if xcid != 0:
+                _ = self._broker.unregister_consumer(xcid)
+                if conn_id in self._consumers and self._consumers[conn_id] == xcid:
+                    _ = self._consumers.pop(conn_id)
+                if xcid in self._ctags:
+                    _ = self._ctags.pop(xcid)
+                if xcid in self._cids:
+                    var xq = self._cids.pop(xcid)
+                    # auto_delete: last consumer gone → queue deleted.
+                    self._maybe_auto_delete_queue(xq^)
             return self._reply(
                 chan,
                 BASIC_CANCEL_OK().class_id,
@@ -1100,8 +1541,14 @@ struct AMQPService:
             var cq = reader.read_short_string()
             var ctag = reader.read_short_string()
             var cbits = reader.read_octet()
-            reader.read_table_skip()  # arguments (NOT IMPLEMENTED: skipped)
-            var cid = self._broker.consume_register(cq^)
+            var cargs_ft = reader.read_table()
+            _ = cargs_ft  # decoded; consumer-side x-args have no queue-class semantics here
+            # 0017 T3: consume preflight (missing → 404 close; exclusive
+            # owned by ANOTHER connection → 405 close; lazy x-expires).
+            var cfail = self._queue_access_error(conn_id, chan, cq.copy(), mid)
+            if len(cfail) > 0:
+                return Optional[List[UInt8]](cfail^)
+            var cid = self._broker.consume_register(cq.copy())
             # Slice limitation: one consumer per connection (last consume wins).
             self._consumers[conn_id] = cid
             # The client's consumer-tag is echoed (a real client routes inbound
@@ -1111,6 +1558,7 @@ struct AMQPService:
             if len(tag_out.bytes()) == 0:
                 tag_out = "hyrxmq-ctag-" + String(cid)
             self._ctags[cid] = tag_out.copy()
+            self._register_consumer_tracking(cid, cq.copy(), tag_out.copy())
             var cargs = List[UInt8]()
             write_short_string(cargs, tag_out^)
             var reply = AMQPFrameCodec.encode_method_frame(
@@ -1132,17 +1580,28 @@ struct AMQPService:
             return self._handle_get(conn_id, chan, gq^, gbits)
 
         # ---- basic reject (60,90): delivery-tag long-long + requeue bit ----
+        # 0017 T3: requeue=false now DEAD-LETTERS through the queue's
+        # x-dead-letter-exchange (Router.nack requeue=False; with no DLX the
+        # message is dropped — the normative T1 visible behavior). requeue=1
+        # stays the engine reject (requeue) path.
         if mid == BASIC_REJECT():
             var rtag = reader.read_long_long()
-            _ = reader.read_octet()  # requeue (the engine always requeues)
+            var rbits = reader.read_octet()
+            var r_requeue = (rbits & 1) != 0
             # 0017 T2: resolve through the per-channel tag map first.
             var rentry = self._chan_take(conn_id, chan, rtag)
             if rentry.__bool__():
                 var r_cid = rentry.value().consumer_id
                 var r_tag = rentry.value().engine_tag
-                _ = self._broker.reject(r_cid, r_tag)
+                if r_requeue:
+                    _ = self._broker.reject(r_cid, r_tag)
+                else:
+                    _ = self._broker.nack(r_cid, r_tag, False)
             elif conn_id in self._consumers:
-                _ = self._broker.reject(self._consumers[conn_id], rtag)
+                if r_requeue:
+                    _ = self._broker.reject(self._consumers[conn_id], rtag)
+                else:
+                    _ = self._broker.nack(self._consumers[conn_id], rtag, False)
             return Optional[List[UInt8]]()
 
         # ---- basic ack ----
@@ -1363,6 +1822,8 @@ struct AMQPService:
                     emsg2^,
                     mid,
                 )
+            # 0017 T3: exchange auto-delete (delete on the LAST unbind).
+            self._maybe_auto_delete_exchange(ue.copy())
             return self._reply(
                 chan,
                 QUEUE_UNBIND_OK().class_id,
@@ -1464,6 +1925,8 @@ struct AMQPService:
                     emsg^,
                     mid,
                 )
+            # 0017 T3: exchange auto-delete (delete on the LAST unbind).
+            self._maybe_auto_delete_exchange(xsrc.copy())
             if (xbits & EXCHANGE_BIND_BIT_NO_WAIT()) != 0:
                 return Optional[List[UInt8]]()
             return self._reply(
@@ -1578,6 +2041,169 @@ struct AMQPService:
                 i += 1
         if conn_id in self._closed_channels:
             _ = self._closed_channels.pop(conn_id)
+        # 0017 T3: exclusive CLIENT-connection-owned queues die with their
+        # connection (one-connection lifetime): delete + drop metadata.
+        var i2 = 0
+        while i2 < len(self._queue_meta_keys):
+            var qn = self._queue_meta_keys[i2]
+            if qn.copy() in self._queue_meta:
+                var m_excl = self._queue_meta[qn.copy()].exclusive
+                var m_owner = self._queue_meta[qn.copy()].owner
+                if m_excl and m_owner == conn_id:
+                    _ = self._broker.delete_queue_checked(qn.copy(), False, False)
+                    _ = self._queue_meta.pop(qn.copy())
+                    _ = self._queue_meta_keys.pop(i2)
+                    print("hyrxmq: exclusive queue '" + qn.copy() + "' deleted (owning connection closed)")
+                else:
+                    i2 += 1
+            else:
+                _ = self._queue_meta_keys.pop(i2)
+        # The connection's consumers are gone; auto_delete queues with NO
+        # remaining consumer delete too (auto_delete last-consumer semantics).
+        i2 = 0
+        while i2 < len(self._queue_meta_keys):
+            var qn = self._queue_meta_keys[i2]
+            _ = self._maybe_auto_delete_queue(qn.copy())
+            if qn.copy() not in self._queue_meta:
+                i2 = 0
+                continue
+            i2 += 1
+        # Any ctag→cid entries pointing at dead consumers are unreachable:
+        # the connection's consumer ids died with _consumers/_ctrack. The
+        # dicts are per-connection-clean only by cid; stale ctag→cid entries
+        # resolve to dead ids and are re-popped on the next cancel attempt
+        # (bounded by one entry per consumer).
+
+    # ---- 0017 T3: lazy x-expires + declare-flag metadata upkeep ----
+
+    def _queue_check_expires(mut self, var q: String) raises -> Bool:
+        """LAZY x-expires evaluation: delete the queue when it stayed
+        untouched past its x-expires window.
+
+        No timer subsystem exists (the receipt's honest PARTIAL): the check
+        fires only when the queue is NEXT TOUCHED (declare with arguments
+        semantics, basic.get, basic.consume). Returns True when the queue
+        was JUST deleted (the caller proceeds as if it were missing)."""
+        if q.copy() in self._queue_meta:
+            var m_expires = self._queue_meta[q.copy()].expires_ms
+            var m_last = self._queue_meta[q.copy()].last_ms
+            if m_expires > 0 and (_now_ms() - m_last) > m_expires:
+                _ = self._broker.delete_queue_checked(q.copy(), False, False)
+                _ = self._queue_meta.pop(q.copy())
+                var i = 0
+                while i < len(self._queue_meta_keys):
+                    if self._queue_meta_keys[i] == q:
+                        _ = self._queue_meta_keys.pop(i)
+                        break
+                    i += 1
+                print("hyrxmq: queue '" + q.copy() + "' expired (x-expires, lazy check)")
+                return True
+        return False
+
+    def _queue_touch(mut self, var q: String) raises:
+        """Record one live queue access (declare / get / consume start).
+
+        Chained mutator call (NO struct copy out of the Dict)."""
+        if q.copy() in self._queue_meta:
+            _ = self._queue_meta[q.copy()].touch(_now_ms())
+
+    # ---- 0017 T3: exclusive-ownership + auto-delete bookkeeping ----
+
+    def _queue_access_error(
+        mut self,
+        conn_id: UInt64,
+        chan: UInt16,
+        var queue: String,
+        failing: MethodID,
+    ) raises -> List[UInt8]:
+        """Preflight for basic.consume / basic.get on one queue.
+
+        Returns the ERROR BYTES (a channel 404/405 close frame) when the
+        access is DENIED; an EMPTY list = allowed: missing queue → 404
+        NOT_FOUND channel.close; exclusive queue owned by ANOTHER connection
+        → 405 RESOURCE_LOCKED. Otherwise the LAZY x-expires reaping runs
+        and the access counts (last-activity basis)."""
+        _ = self._queue_check_expires(queue.copy())
+        if not self._broker.has_queue(queue.copy()):
+            self._mark_channel_closed(conn_id, chan)
+            var msg1 = "NOT_FOUND - no queue '"
+            var msg2 = msg1 + queue.copy()
+            var msg3 = msg2 + "' in vhost '/'"
+            var err = self._channel_error(chan, REPLY_NOT_FOUND(), msg3^, failing)
+            if err.__bool__():
+                return err.value().copy()
+            return List[UInt8]()
+        if queue.copy() in self._queue_meta:
+            var m_owner = self._queue_meta[queue.copy()].owner
+            if m_owner != 0 and m_owner != conn_id:
+                self._mark_channel_closed(conn_id, chan)
+                var msg1 = "RESOURCE_LOCKED - cannot obtain exclusive access to locked queue '"
+                var msg2 = msg1 + queue.copy()
+                var msg3 = msg2 + "' in vhost '/'. It could be originally declared on another connection."
+                var err = self._channel_error(chan, REPLY_RESOURCE_LOCKED(), msg3^, failing)
+                if err.__bool__():
+                    return err.value().copy()
+        self._queue_touch(queue.copy())
+        return List[UInt8]()
+
+    # ---- 0017 T3: exchange auto-delete bookkeeping ----
+
+    def _maybe_auto_delete_exchange(mut self, var name: String) raises:
+        """auto_delete exchange semantic: when the LAST binding leaves
+        (queue.unbind / exchange.unbind paths), the exchange goes away."""
+        if name.copy() not in self._exchange_meta:
+            return
+        var m_auto = self._exchange_meta[name.copy()].auto_delete
+        if not m_auto:
+            return
+        var total = self._broker.exchange_binding_total(name.copy())
+        if total == 0:
+            _ = self._broker.delete_exchange_checked(name.copy(), False)
+            _ = self._exchange_meta.pop(name.copy())
+            var i = 0
+            while i < len(self._exchange_meta_keys):
+                if self._exchange_meta_keys[i] == name:
+                    _ = self._exchange_meta_keys.pop(i)
+                    break
+                i += 1
+            print("hyrxmq: exchange '" + name.copy() + "' auto-deleted (last binding gone)")
+
+    def _maybe_auto_delete_queue(mut self, var q: String) raises:
+        """auto_delete=8 semantic: when the LAST consumer leaves, the queue
+        goes away (basic.cancel path + connection-close cleanup)."""
+        if q.copy() not in self._queue_meta:
+            return
+        var m_auto = self._queue_meta[q.copy()].auto_delete
+        if not m_auto:
+            return
+        if self._broker.queue_consumer_count(q.copy()) == 0:
+            _ = self._broker.delete_queue_checked(q.copy(), False, False)
+            _ = self._queue_meta.pop(q.copy())
+            var i = 0
+            while i < len(self._queue_meta_keys):
+                if self._queue_meta_keys[i] == q:
+                    _ = self._queue_meta_keys.pop(i)
+                    break
+                i += 1
+            print("hyrxmq: queue '" + q.copy() + "' auto-deleted (last consumer gone)")
+
+    # ---- 0017 T3: ctag → consumer resolution (basic.cancel) ----
+
+    def _register_consumer_tracking(
+        mut self, cid: UInt64, var queue: String, var ctag: String
+    ) raises:
+        """Track one registered consumer: cid→queue + ctag→cid reverse."""
+        self._cids[cid] = queue^
+        if len(ctag.bytes()) != 0:
+            self._cid_by_ctag[ctag^] = cid
+
+    def _take_consumer_by_ctag(mut self, var ctag: String) raises -> UInt64:
+        """basic.cancel: resolve + forget the engine consumer id a client
+        consumer-tag addresses (0 = unknown tag)."""
+        if ctag in self._cid_by_ctag:
+            var cid = self._cid_by_ctag.pop(ctag.copy())
+            return cid
+        return UInt64(0)
 
     def _channel_error(
         ref self,
@@ -1736,10 +2362,21 @@ struct AMQPService:
                 emsg^,
                 BASIC_PUBLISH(),
             )
-        var routed = self._broker.publish_with_props(
-            p.exchange.copy(), p.routing_key.copy(), body.copy(),
-            p.prop_flags, props.copy(),
-        )
+        var routed = 0
+        # 0017 T3: the DEFAULT exchange ("") publishes DIRECT into the queue
+        # named by the routing key (the exchange's pre-bound direct binding —
+        # the needs-probe from T1/T2 is resolved here). An unrouted mandatory
+        # publish still composes the normative basic.return 312 below.
+        if len(p.exchange.bytes()) == 0:
+            routed = self._broker.publish_to_queue_with_props(
+                p.routing_key.copy(), body.copy(),
+                p.prop_flags, props.copy(),
+            )
+        else:
+            routed = self._broker.publish_with_props(
+                p.exchange.copy(), p.routing_key.copy(), body.copy(),
+                p.prop_flags, props.copy(),
+            )
         if p.mandatory == 1 and routed <= 0:
             # basic.return (60,50) args: reply-code(short)=312 + reply-text
             # (shortstr)="NO_ROUTE" + exchange(shortstr) + routing-key
@@ -1777,6 +2414,11 @@ struct AMQPService:
         immediately.
         """
         var cid = self._get_cids[conn_id] if conn_id in self._get_cids else UInt64(0)
+        # 0017 T3: get preflight (missing→404 close; exclusive other-conn
+        # →405 close; lazy x-expires + last-activity).
+        var gerr = self._queue_access_error(conn_id, chan, queue.copy(), BASIC_GET())
+        if len(gerr) > 0:
+            return Optional[List[UInt8]](gerr^)
         if conn_id not in self._get_cids or self._get_queues[conn_id] != queue:
             cid = self._broker.consume_register(queue.copy())
             self._get_cids[conn_id] = cid
@@ -1917,13 +2559,15 @@ struct AMQPService:
         )
 
     def _reply_queue_declare_ok(
-        ref self, chan: UInt16, var q_name: String
+        ref self, chan: UInt16, var q_name: String, mcount: Int, ccount: Int
     ) -> Optional[List[UInt8]]:
-        # declare-ok: queue short-string + message-count long + consumer-count long.
+        # declare-ok: queue short-string + message-count long + consumer-count
+        # long (EXACT shape; message_count = REAL ready depth, consumer_count
+        # = REAL live consumer count — 0017 T3).
         var args = List[UInt8]()
         write_short_string(args, q_name^)
-        write_u32(args, 0)
-        write_u32(args, 0)
+        write_u32(args, UInt32(mcount))
+        write_u32(args, UInt32(ccount))
         return self._reply(
             chan,
             QUEUE_DECLARE_OK().class_id,

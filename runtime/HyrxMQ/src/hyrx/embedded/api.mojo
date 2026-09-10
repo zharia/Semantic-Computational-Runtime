@@ -113,6 +113,47 @@ struct HyrxEngine:
             name^, self._config._default_queue_capacity
         )
 
+    # ---- 0017 T3: decoded-argument declare + service readouts (additive) ----
+
+    def declare_queue_full(
+        mut self,
+        var name: String,
+        capacity: Int,
+        durable: Bool,
+        ttl_ms: Int,
+        expires_ms: Int,
+        max_length: Int,
+        overflow_reject: Bool,
+        var dlx: String,
+        var dlrk: String,
+        ) raises -> Bool:
+        """Declare a queue carrying the decoded AMQP declare arguments
+        (durable = FLAG ONLY, in-memory; storage = milestone 0018).
+        capacity <= 0 falls back to the engine's default queue capacity."""
+        var cap = capacity
+        if cap <= 0:
+            cap = self._config._default_queue_capacity
+        return self._router.declare_queue_full(
+            name^, cap, durable, ttl_ms, expires_ms,
+            max_length, overflow_reject, dlx^, dlrk^,
+        )
+
+    def queue_depth(ref self, var name: String) -> Int:
+        """Ready depth of a queue (declare-ok message-count). -1 missing."""
+        return self._router.queue_depth(name^)
+
+    def queue_consumer_count(ref self, var name: String) -> Int:
+        """Live consumer count of a queue (declare-ok consumer-count)."""
+        return self._router.queue_consumer_count(name^)
+
+    def exchange_type_of(ref self, var name: String) -> String:
+        """Existing exchange's type name ("" = missing)."""
+        return self._router.exchange_type_of(name^)
+
+    def exchange_binding_total(ref self, var name: String) -> Int:
+        """Total bindings on an exchange; -1 missing."""
+        return self._router.exchange_binding_total(name^)
+
     def bind_queue(
         mut self,
         queue_name: String,
@@ -131,6 +172,15 @@ struct HyrxEngine:
         Returns the number of queues the message was routed to.
         """
         var count = self._router.publish(msg^, exchange_name)
+        self._messages_published += 1
+        return count
+
+    def publish_to_queue(
+        mut self, var msg: Message, var queue_name: String
+    ) raises -> Int:
+        """0017 T3: the DEFAULT exchange ("") publish — DIRECT into the
+        named queue (the exchange's pre-bound queue-name binding)."""
+        var count = self._router.publish_to_queue(msg^, queue_name)
         self._messages_published += 1
         return count
 

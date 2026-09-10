@@ -93,6 +93,9 @@ struct Message:
     var _envelope: Envelope
     var _payload: Buffer
     var _delivery_count: Int
+    # 0017 T3: monotonic enqueue-time (ns) for the queue-side x-message-ttl
+    # delivery-time expiry. 0 = engine-internal/unstamped.
+    var _enqueue_ns: Int
     # 0017 T2: byte-faithful inbound content properties (AMQP flag word +
     # raw property-list slice). Empty (flags 0) for engine-internal messages.
     var _props: ContentProps
@@ -105,6 +108,7 @@ struct Message:
         self._envelope = envelope^
         self._payload = payload^
         self._delivery_count = 0
+        self._enqueue_ns = 0
         self._props = ContentProps()
 
     # 0017 T2 additive constructor: same message but carrying content props.
@@ -118,7 +122,16 @@ struct Message:
         self._envelope = envelope^
         self._payload = payload^
         self._delivery_count = 0
+        self._enqueue_ns = 0
         self._props = ContentProps(prop_flags, prop_bytes^)
+
+    # 0017 T3: enqueue-time stamp (the Queue/Router side calls this once at
+    # enqueue; the delivery path evaluates the age against x-message-ttl).
+    def set_enqueue_ns(mut self, ns: Int):
+        self._enqueue_ns = ns
+
+    def enqueue_ns(ref self) -> Int:
+        return self._enqueue_ns
 
     def content_prop_flags(ref self) -> UInt16:
         """The raw AMQP property-flag word the publisher sent."""

@@ -181,6 +181,11 @@ def declare_topo(
     eargs.append(0)
     write_short_string(eargs, ex.copy())
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits: passive/durable/auto-delete/no-wait = 0
+    eargs.append(0)  # arguments: empty field table (u32 length 0)
+    eargs.append(0)
+    eargs.append(0)
+    eargs.append(0)
     var f1 = method_frame(UInt16(1), 40, 10, eargs^)
     _ = svc.handle_frame(conn, f1)
 
@@ -188,6 +193,10 @@ def declare_topo(
     qargs.append(0)
     qargs.append(0)
     write_short_string(qargs, q.copy())
+    qargs.append(0)  # bits
+    qargs.append(0)  # arguments: empty field table (u32 length 0)
+    qargs.append(0)
+    qargs.append(0)
     qargs.append(0)
     var f2 = method_frame(UInt16(1), 50, 10, qargs^)
     _ = svc.handle_frame(conn, f2)
@@ -323,7 +332,7 @@ def test_split_body_reassembles_and_delivers() raises:
     check_bytes(got, bytes_of("Hi!AB"), "two body frames reassembled exactly")
 
     # And the delivery can be acked with the tag the deliver frame carried.
-    check((Int(dtag) == 0), "engine issued delivery tag 0")
+    check((Int(dtag) == 1), "first wire delivery tag is 1 (1-based per channel)")
     var af = method_frame(UInt16(1), 60, 80, ack_args(dtag))
     _ = svc.handle_frame(UInt64(1), af)
     check((svc.status().messages_acked == 1), "consume-path delivery acked")

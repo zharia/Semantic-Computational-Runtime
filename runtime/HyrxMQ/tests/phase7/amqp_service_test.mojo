@@ -54,6 +54,14 @@ def reserved() -> List[UInt8]:
     return a^
 
 
+def append_empty_table(mut a: List[UInt8]):
+    # arguments: empty field table (u32 length 0), as pika emits.
+    a.append(0)
+    a.append(0)
+    a.append(0)
+    a.append(0)
+
+
 def publish_frames(
     var svc: AMQPService,
     conn_id: UInt64,
@@ -140,6 +148,7 @@ def test_queue_declare_produces_ok() raises:
     var args = reserved()
     write_short_string(args, "orders")
     args.append(0)  # bits: passive/durable/exclusive/auto-delete/no-wait all 0
+    append_empty_table(args)
     var frame = build_frame(
         UInt16(1), QUEUE_DECLARE().class_id, QUEUE_DECLARE().method_id, args^
     )
@@ -173,6 +182,7 @@ def test_queue_declare_no_wait_suppresses_ok() raises:
     var args = reserved()
     write_short_string(args, "quiet")
     args.append(QUEUE_DECLARE_BIT_NO_WAIT())
+    append_empty_table(args)
     var frame = build_frame(
         UInt16(1), QUEUE_DECLARE().class_id, QUEUE_DECLARE().method_id, args^
     )
@@ -186,6 +196,7 @@ def test_queue_declare_no_wait_suppresses_ok() raises:
     var args2 = reserved()
     write_short_string(args2, "loud")
     args2.append(0)
+    append_empty_table(args2)
     var frame2 = build_frame(
         UInt16(1), QUEUE_DECLARE().class_id, QUEUE_DECLARE().method_id, args2^
     )
@@ -261,6 +272,8 @@ def test_publish_reaches_broker() raises:
     var eargs = reserved()
     write_short_string(eargs, "ex")
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits: passive/durable/auto-delete/no-wait = 0
+    append_empty_table(eargs)
     var eframe = build_frame(UInt16(1), UInt16(40), UInt16(10), eargs^)
     _ = svc.handle_frame(UInt64(5), eframe^)
 
@@ -268,6 +281,7 @@ def test_publish_reaches_broker() raises:
     var qargs = reserved()
     write_short_string(qargs, "q")
     qargs.append(0)  # bits
+    append_empty_table(qargs)
     var qframe = build_frame(UInt16(1), UInt16(50), UInt16(10), qargs^)
     _ = svc.handle_frame(UInt64(5), qframe^)
 
@@ -314,12 +328,15 @@ def test_basic_ack_uses_the_addressed_delivery_tag() raises:
     var eargs = reserved()
     write_short_string(eargs, "ax")
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits
+    append_empty_table(eargs)
     var eframe = build_frame(UInt16(1), UInt16(40), UInt16(10), eargs^)
     _ = svc.handle_frame(UInt64(7), eframe^)
 
     var qargs = reserved()
     write_short_string(qargs, "aq")
     qargs.append(0)
+    append_empty_table(qargs)
     var qframe = build_frame(UInt16(1), UInt16(50), UInt16(10), qargs^)
     _ = svc.handle_frame(UInt64(7), qframe^)
 
@@ -346,7 +363,7 @@ def test_basic_ack_uses_the_addressed_delivery_tag() raises:
         "consume-ok is (60,21)",
     )
     var tag = _tag_from_consume_reply(cresp.value().copy(), "ak")
-    check((tag == 0), "first delivery tag is 0 (engine tag counter)")
+    check((tag == 1), "first wire delivery tag is 1 (1-based per channel)")
 
     # basic.ack: delivery-tag(long-long) + bits octet (multiple = low bit).
     var aargs = List[UInt8]()
@@ -380,11 +397,14 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
     var eargs = reserved()
     write_short_string(eargs, "bx")
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits
+    append_empty_table(eargs)
     var eframe = build_frame(UInt16(1), UInt16(40), UInt16(10), eargs^)
     _ = svc.handle_frame(UInt64(8), eframe^)
     var qargs = reserved()
     write_short_string(qargs, "bq")
     qargs.append(0)
+    append_empty_table(qargs)
     var qframe = build_frame(UInt16(1), UInt16(50), UInt16(10), qargs^)
     _ = svc.handle_frame(UInt64(8), qframe^)
     var bargs = reserved()
@@ -402,7 +422,7 @@ def test_basic_ack_bits_octet_is_not_a_consumer_id() raises:
     )
     var cresp = svc.handle_frame(UInt64(8), cframe^)
     var tag = _tag_from_consume_reply(cresp.value().copy(), "bk")
-    check((tag == 0), "delivery tag available from the flushed deliver")
+    check((tag == 1), "delivery tag available from the flushed deliver")
 
     var aargs = List[UInt8]()
     write_u64(aargs, UInt64(tag))
@@ -478,12 +498,15 @@ def test_basic_get_reports_routing_key_and_ready_count() raises:
     var eargs = reserved()
     write_short_string(eargs, "gx")
     write_short_string(eargs, "direct")
+    eargs.append(0)  # bits
+    append_empty_table(eargs)
     _ = svc.handle_frame(
         UInt64(10), build_frame(UInt16(1), UInt16(40), UInt16(10), eargs^)
     )
     var qargs = reserved()
     write_short_string(qargs, "gq")
     qargs.append(0)
+    append_empty_table(qargs)
     _ = svc.handle_frame(
         UInt64(10), build_frame(UInt16(1), UInt16(50), UInt16(10), qargs^)
     )

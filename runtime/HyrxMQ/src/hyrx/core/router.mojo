@@ -14,6 +14,7 @@
 #   - acknowledge() and reject() operate on the queue's message copy.
 
 from std.collections import List
+from std.time import monotonic
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
@@ -144,6 +145,40 @@ struct Router:
         self._queues[name^] = Queue(name, QueueConfig(capacity))
         return True
 
+    # 0017 T3: full declare-arg translation (the AMQP-side arguments are
+    # decoded in the service and translated here ONCE). durable is stored as
+    # a FLAG only (in-memory; real persistence = milestone 0018).
+    def declare_queue_full(
+        mut self,
+        var name: String,
+        capacity: Int,
+        durable: Bool,
+        ttl_ms: Int,
+        expires_ms: Int,
+        max_length: Int,
+        overflow_reject: Bool,
+        var dlx: String,
+        var dlrk: String,
+    ) raises -> Bool:
+        """Declare a queue carrying the decoded AMQP declare arguments.
+
+        x-expires (`expires_ms`) is recorded for the service's LAZY expiry
+        (no timer subsystem exists in this engine slice; the service
+        evaluates last-activity on next access). Returns True if created,
+        False if the queue exists (the service answers the 406/405 table)."""
+        _ = expires_ms
+        if name in self._queues:
+            return False
+        var cfg = QueueConfig(capacity)
+        cfg._durable = durable
+        cfg._ttl_ms = ttl_ms
+        cfg._max_length = max_length
+        cfg._overflow_reject = overflow_reject
+        cfg._dlx = dlx^
+        cfg._dlrk = dlrk^
+        self._queues[name^] = Queue(name, cfg^)
+        return True
+
     def delete_queue(mut self, name: String) raises -> List[Message]:
         """Delete a queue, reclaiming its live payloads into the pool.
 
@@ -210,6 +245,35 @@ struct Router:
 
     # ---- publishing ---------------------------------------------------
 
+    # 0017 T3: the DEFAULT exchange ("") routing — publish DIRECT to the
+    # queue named by the routing key (amqp0-9-1 normative: the default
+    # exchange is a direct exchange pre-bound to every queue by its name).
+    # Before this slice the "" exchange routed to zero queues (needs-probe
+    # resolved here).
+
+    def publish_to_queue(
+        mut self, var msg: Message, var queue_name: String
+    ) raises -> Int:
+        """Route ONE message DIRECT into a named queue (the default
+        exchange's pre-bound direct binding: exchange="" publishes to the
+        queue named by the routing key).
+
+        Returns 0 when the queue is missing (silently unrouted — the
+        mandatory=1 wire path composes the basic.return; normative)."""
+        if queue_name not in self._queues:
+            var buf = msg.take_payload()
+            self._pool.release(buf^)
+            return 0
+        msg.set_enqueue_ns(monotonic())
+        if self._queues[queue_name].has_capacity():
+            self._queues[queue_name].enqueue_prechecked(msg^)
+            self._reap_queue(queue_name.copy())
+            self._messages_routed += 1
+            return 1
+        var buf = msg.take_payload()
+        self._pool.release(buf^)
+        return 0
+
     # 0017 T1 additions (additive APIs — no existing method replaced):
     #
     # Purpose map (amqp0-9-1 method → Router entry point):
@@ -229,6 +293,100 @@ struct Router:
     def has_exchange(ref self, var name: String) -> Bool:
         """Whether an exchange with this name is declared (404 preflight)."""
         return name in self._exchanges
+
+    # ---- 0017 T3 readouts (declare-ok parity + service preflights) ----
+
+    def queue_depth(ref self, var name: String) -> Int:
+        """Ready message depth of a queue (declare-ok message-count). -1
+        when the queue is missing (the service answers 404)."""
+        if name not in self._queues:
+            return -1
+        try:
+            return self._queues[name].depth()
+        except:
+            return -1
+
+    def queue_consumer_count(ref self, var name: String) -> Int:
+        """Number of live consumers on a queue (declare-ok consumer-count).
+        -1 when the queue is missing."""
+        if name not in self._queues:
+            return -1
+        if name not in self._queue_consumers:
+            return 0
+        try:
+            return len(self._queue_consumers[name])
+        except:
+            return 0
+
+    def exchange_type_of(ref self, var name: String) -> String:
+        """An existing exchange's type name (declare/passive equivalence
+        check). "" = missing exchange."""
+        if name not in self._exchanges:
+            return ""
+        var t = ExchangeType(-1)
+        try:
+            t = self._exchanges[name].exchange_type()
+        except:
+            return ""
+        if t == ExchangeType.direct():
+            return "direct"
+        if t == ExchangeType.fanout():
+            return "fanout"
+        if t == ExchangeType.topic():
+            return "topic"
+        if t == ExchangeType.headers():
+            return "headers"
+        return "direct"
+
+    def exchange_binding_total(ref self, var name: String) -> Int:
+        """Total bindings on an exchange (queue + exchange→exchange). Used
+        for the exchange auto-delete (delete on the LAST unbind). -1 when
+        the exchange is missing."""
+        if name not in self._exchanges:
+            return -1
+        try:
+            return (
+                self._exchanges[name].binding_count()
+                + self._exchanges[name].exchange_binding_count()
+            )
+        except:
+            return -1
+
+    # ---- 0017 T3: dead-lettering ----
+
+    def _dead_letter_one(mut self, var qname: String, var msg: Message) raises:
+        """Route ONE reaped message through its queue's DLX (or drop it).
+
+        x-dead-letter-routing-key overrides the ORIGINAL routing key when
+        set; the message keeps its byte-faithful content props. With no DLX
+        the message is dropped (payload released to the pool). Publish
+        routing is the ONE authority — the DLX is just another exchange."""
+        var dlx = self._queues[qname]._config.dlx_exchange()
+        if len(dlx.bytes()) == 0:
+            var buf = msg.take_payload()
+            self._pool.release(buf^)
+            _ = qname  # consumed only via the queue lookup above
+            return
+        var dlrk = self._queues[qname]._config.dlx_routing_key()
+        var rk = dlrk
+        if len(rk.bytes()) == 0:
+            rk = msg.routing_key()
+        var env = Envelope(MessageID(0), rk.copy(), msg.headers())
+        var flags = msg.content_prop_flags()
+        var pbytes = msg.content_prop_bytes_copy()
+        var payload = msg.take_payload()
+        var dead_msg = Message(env^, payload^, flags, pbytes^)
+        _ = self.publish(dead_msg^, dlx^)
+
+    def _reap_queue(mut self, var qname: String) raises:
+        """Drain and resolve every message the queue reaped on its own
+        (TTL-expired at delivery / x-max-length drop-head trimming)."""
+        if qname not in self._queues:
+            return
+        var dead = self._queues[qname].take_swept()
+        while len(dead) > 0:
+            var m = dead.pop()
+            self._dead_letter_one(qname.copy(), m^)
 
     def purge_queue(mut self, var name: String) raises -> Int:
         """Drop every READY message of a queue; unacked STAY (queue.purge 50,30).
@@ -382,11 +540,13 @@ struct Router:
         var result = False
         if requeue:
             result = self._queues[qname].reject(delivery_tag)
-        else:
-            if self._queues[qname].has_unacked(delivery_tag):
-                var buf = self._queues[qname].drop_unacked(delivery_tag)
-                self._pool.release(buf^)
-                result = True
+        elif self._queues[qname].has_unacked(delivery_tag):
+            # 0017 T3: requeue=false is DROP first, but a queue carrying
+            # x-dead-letter-exchange dead-letters the message instead (the
+            # byte-faithful body + props reroute through the DLX Exchange).
+            var msg = self._queues[qname].take_unacked(delivery_tag)
+            self._dead_letter_one(qname.copy(), msg^)
+            result = True
         if result:
             self._consumers[consumer_id].record_ack()
         return result
@@ -412,11 +572,13 @@ struct Router:
         if requeue:
             n = self._queues[qname].requeue_unacked_through(upper)
         else:
-            var bufs = self._queues[qname].drop_unacked_through(upper)
-            n = len(bufs)
-            while len(bufs) > 0:
-                var buf = bufs.pop()
-                self._pool.release(buf^)
+            # 0017 T3: requeue=false → dead-letter through the DLX when the
+            # queue declares one (whole messages, ack-order), else drop.
+            var msgs = self._queues[qname].take_unacked_through(upper)
+            n = len(msgs)
+            while len(msgs) > 0:
+                var m = msgs.pop()
+                self._dead_letter_one(qname.copy(), m^)
         self._consumers[consumer_id].record_ack()
         return n
 
@@ -438,6 +600,10 @@ struct Router:
         """
         if exchange_name not in self._exchanges:
             return 0
+
+        # 0017 T3: stamp the source message once (x-message-ttl ages from
+        # enqueue; fan-out copies receive the same stamp below).
+        msg.set_enqueue_ns(monotonic())
 
         # Get routing key (borrows from msg, does not consume).
         var queue_names = self._exchanges[exchange_name].match(
@@ -504,6 +670,7 @@ struct Router:
             and self._queues[only_queue].has_capacity()
         ):
             self._queues[only_queue].enqueue_prechecked(msg^)
+            self._reap_queue(only_queue.copy())
             self._messages_routed += 1
             return 1
 
@@ -511,6 +678,10 @@ struct Router:
         # 0017 T2: byte-faithful content props ride into EVERY destination
         # copy (read once, copied per destination fan-out).
         var prop_flags = msg.content_prop_flags()
+        # 0017 T3: the monotonic enqueue stamp rides with the source source
+        # message AND each fan-out copy (x-message-ttl ages from enqueue).
+        var stamp_ns = monotonic()
+        msg.set_enqueue_ns(stamp_ns)
         for i in range(len(queue_names)):
             var qname = queue_names[i]
             # Preflight capacity so we never acquire a pooled buffer for a
@@ -525,10 +696,13 @@ struct Router:
                     env^, payload^, prop_flags,
                     msg.content_prop_bytes_copy(),
                 )
+                cloned.set_enqueue_ns(stamp_ns)
                 self._queues[qname].enqueue_prechecked(cloned^)
                 count += 1
 
         self._messages_routed += count
+        for i in range(len(queue_names)):
+            self._reap_queue(queue_names[i].copy())
         return count
 
     def _fill_destination(
@@ -621,6 +795,9 @@ struct Router:
             return Optional[Delivery]()
 
         var maybe_delivery = self._queues[qname].dequeue()
+        # 0017 T3: x-message-ttl expiry evaluated at delivery time — the
+        # skipped (expired) messages are dead-lettered/resolved here.
+        self._reap_queue(qname.copy())
         if maybe_delivery:
             self._consumers[consumer_id].record_delivery()
             return maybe_delivery^

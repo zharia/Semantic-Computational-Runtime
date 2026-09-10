@@ -42,7 +42,19 @@ operations against RabbitMQ 4.3.5 AND HyrxMQ and comparing outcomes
   reply_to/message_id/timestamp/expiration...) preserved INTO Message and
   OUTBOUND on deliver/get-ok (byte-identical transmit), redelivered bit set
   on actual redeliveries; the flag=0 shortcut removed.
-- **T3 — declare bits + queue arguments**: passive (404 reply on missing),
+- **T3 — DONE** (suite 44/0; conformance 27 rows: 25 PASS + 3 PARTIAL
+  honestly-labeled (durable=flag-only pending 0018; x_message_ttl =
+  delivery-time lazy check, no timer subsystem; x-expires lazy) + 1 DIFF =
+  exclusive.second_conn_declare="$ needs the 0015 event loop's concurrent
+  handshake (flag currently default-OFF) — the row is the Pfern
+  justification for the loop's roll-forward; broker-death class
+  (reactor fd-reuse stale registry during server-initiated/channel closes)
+  found + FIXED via EventPoller.add unconditional-replace + purge-safety:
+  a'already registered NetworkError' can no longer kill the serving process.
+  Also: 7 wire-test declare writers missing arguments table fixed, the
+  read_table semantics kept normative incl. 404/405/406 replies; adapter
+  has_* mut->ref (T2 leftover) fixed by coordinator):  declare bits +
+  queue arguments:: passive (404 reply on missing),
   durable flag stored (in-memory lifecycle;, persistence = 0018),
   exclusive (bind-lifetime conn + auto-delete on conn close),
   auto_delete (delete on last consumer), x-message-ttl (per-message

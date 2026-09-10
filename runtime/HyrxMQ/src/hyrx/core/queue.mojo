@@ -14,24 +14,69 @@
 #   - When outbox is empty, inbox is reversed into outbox
 
 from std.collections import List
+from std.time import monotonic
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.message import Message, MessageID
 
 struct QueueConfig:
-    """Configuration for a message queue."""
+    """Configuration for a message queue.
+
+    0017 T3: the AMQP declare-argument semantics are carried HERE in the
+    queue's own config (single semantics authority). All of them are
+    in-memory flags/limits — durable is FLAG ONLY (no disk persistence;
+    milestone 0018 owns real storage)."""
 
     var _capacity: Int
     var _durable: Bool
+    # x-message-ttl: per-message DELIVERY-TIME expiry in ms (age measured
+    # from the enqueue stamp). 0 = off.
+    var _ttl_ms: Int
+    # x-max-length: queue-length cap. 0 = off (queue keeps its bare capacity).
+    var _max_length: Int
+    # overflow='reject-publish' (else the AMQP default drop-head):
+    # when set, a full x-max-length queue REFUSES new publishes instead of
+    # dropping the oldest message.
+    var _overflow_reject: Bool
+    # x-dead-letter-exchange / x-dead-letter-routing-key. Empty string =
+    # unset (dead-lettering falls back to drop; routing key falls back to
+    # the original message's routing key).
+    var _dlx: String
+    var _dlrk: String
 
     def __init__(out self, capacity: Int):
         self._capacity = capacity
         self._durable = False
+        self._ttl_ms = 0
+        self._max_length = 0
+        self._overflow_reject = False
+        self._dlx = ""
+        self._dlrk = ""
 
     def __copyinit__(out self, existing: Self):
         self._capacity = existing._capacity
         self._durable = existing._durable
+        self._ttl_ms = existing._ttl_ms
+        self._max_length = existing._max_length
+        self._overflow_reject = existing._overflow_reject
+        self._dlx = existing._dlx.copy()
+        self._dlrk = existing._dlrk.copy()
+
+    def ttl_ms(ref self) -> Int:
+        return self._ttl_ms
+
+    def max_length(ref self) -> Int:
+        return self._max_length
+
+    def overflow_reject(ref self) -> Bool:
+        return self._overflow_reject
+
+    def dlx_exchange(ref self) -> String:
+        return self._dlx.copy()
+
+    def dlx_routing_key(ref self) -> String:
+        return self._dlrk.copy()
 
 struct Delivery:
     """A lightweight claim token for a delivered message.
@@ -58,6 +103,12 @@ struct Queue:
     var _unacked_tags: List[UInt64]
     var _config: QueueConfig
     var _next_delivery_tag: UInt64
+    # 0017 T3: messages reaped by the queue itself per AMQP declare-arg
+    # semantics (x-message-ttl timed out at delivery, x-max-length
+    # drop-head trimming). The Router drains this list with take_swept()
+    # right after the triggering operation and dead-letters (DLX set) or
+    # releases each message.
+    var _swept: List[Message]
 
     def __init__(out self, var name: String, var config: QueueConfig):
         self._name = name^
@@ -67,6 +118,7 @@ struct Queue:
         self._unacked_tags = List[UInt64]()
         self._config = config^
         self._next_delivery_tag = 0
+        self._swept = List[Message]()
 
     def name(ref self) -> String:
         return self._name
@@ -84,10 +136,17 @@ struct Queue:
         """Enqueue a message. Returns False if queue is full (backpressure).
 
         Ownership: msg is moved into the queue's inbox.
-        """
+        0017 T3: after the move the x-max-length cap trims (drop-oldest)
+        regardless of the overflow mode (drop-head is the AMQP default);
+        with overflow='reject-publish' the has_capacity preflight refuses
+        BEFORE this call, matching the publish-side refusal."""
         if self._total_count() >= self._config._capacity:
             return False
         self._inbox.append(msg^)
+        if self._config._overflow_reject and self._config._max_length > 0:
+            if self._total_count() > self._config._max_length:
+                return False
+        _ = self._trim_to_max()
         return True
 
     def has_capacity(ref self) -> Bool:
@@ -96,10 +155,19 @@ struct Queue:
         This is a non-consuming preflight for the router's single-destination
         move path. The core is single-threaded, so no concurrent enqueue can
         invalidate the result between this check and the immediate transfer.
+
+        0017 T3: overflow='reject-publish' turns the x-max-length cap into a
+        refusal (the publisher's copy is silently unrouted, as with any
+        capacity reject). Default (drop-head) keeps normal capacity behavior;
+        reaping happens after the enqueue.
         """
+        if self._config._max_length > 0:
+            if self._config._overflow_reject:
+                return self._total_count() < self._config._max_length
+            return self._total_count() <= self._config._max_length
         return self._total_count() < self._config._capacity
 
-    def enqueue_prechecked(mut self, var msg: Message):
+    def enqueue_prechecked(mut self, var msg: Message) raises:
         """Move a message into a Queue proven available by ``has_capacity()``.
 
         Router invokes this immediately after its capacity preflight in the
@@ -108,12 +176,43 @@ struct Queue:
         use the fan-out copy path.
         """
         self._inbox.append(msg^)
+        _ = self._trim_to_max()
+
+    # 0017 T3 readouts (declare-ok parity + service preflights)
+
+    def total_count(ref self) -> Int:
+        """Ready + unacked messages currently held (declare-ok basis is
+        Router.queue_depth; this total feeds the x-max-length cap)."""
+        return self._total_count()
 
     def dequeue(mut self) -> Optional[Delivery]:
         """Move next message to unacked, return delivery token.
 
         Returns None if no messages are available.
-        """
+
+        0017 T3 x-message-ttl: when the queue carries a per-message TTL,
+        every message whose enqueue-age has reached the TTL is reaped into
+        `_swept` (dead-lettered or released by the Router) and skipped —
+        the next live message delivers (or None). This is the only expiry
+        evaluation the engine performs (there is NO timer subsystem; the
+        check happens at delivery time, per the honest PARTIAL framing)."""
+        if self._config._ttl_ms > 0:
+            var ttl_ns = self._config._ttl_ms * 1_000_000
+            while True:
+                if len(self._outbox) == 0:
+                    self._transfer()
+                if len(self._outbox) == 0:
+                    return Optional[Delivery]()
+                var msg = self._outbox.pop()
+                if (monotonic() - msg.enqueue_ns()) >= ttl_ns:
+                    self._swept.append(msg^)
+                    continue
+                msg.increment_delivery_count()
+                var tag = self._next_delivery_tag
+                self._next_delivery_tag += 1
+                self._unacked[tag] = msg^
+                self._unacked_tags.append(tag)
+                return Optional[Delivery](Delivery(tag))
         if len(self._outbox) == 0:
             self._transfer()
         if len(self._outbox) == 0:
@@ -125,6 +224,41 @@ struct Queue:
         self._unacked[tag] = msg^
         self._unacked_tags.append(tag)
         return Optional[Delivery](Delivery(tag))
+
+    # ---- 0017 T3: swept-message reaping (dead-letter / drop by Router) ----
+
+    def take_swept(mut self) raises -> List[Message]:
+        """Drain (and own) every message the queue reaped on its own:
+        TTL-expired at delivery, or trim-dropped by x-max-length drop-head.
+
+        The Router dead-letters each into x-dead-letter-exchange when the
+        queue declares one, otherwise releases the payload."""
+        var out = List[Message]()
+        while len(self._swept) > 0:
+            out.append(self._swept.pop())
+        return out^
+
+    def _trim_to_max(mut self) raises -> Bool:
+        """Enforce x-max-length (drop-oldest on overflow).
+
+        Runs AFTER every enqueue. Returns True when overflow trimming
+        occurred. The engine's default capacity refusal (enqueue returning
+        False on a bare-full queue) is UNCHANGED for queues declared
+        without x-max-length; a queue with x-max-length = N effectively
+        holds N messages and drops the head beyond that (AMQP default
+        overflow='drop-head')."""
+        if self._config._max_length <= 0:
+            return False
+        var trimmed = False
+        while self._total_count() > self._config._max_length:
+            if len(self._outbox) > 0:
+                self._swept.append(self._outbox.pop())
+            elif len(self._inbox) > 0:
+                self._swept.append(self._inbox.pop(0))
+            else:
+                break
+            trimmed = True
+        return trimmed
 
     def read_payload(ref self, delivery_tag: UInt64) raises -> BufferSnapshot:
         """Copy out the payload of an unacked message.
@@ -282,6 +416,31 @@ struct Queue:
         var msg = self._unacked.pop(delivery_tag)
         self._untrack_unacked(delivery_tag)
         return msg.take_payload()
+
+    # ---- 0017 T3: DLX-NACK message-reaping (dead-letter with content) ----
+
+    def take_unacked(mut self, delivery_tag: UInt64) raises -> Message:
+        """basic.nack requeue=false WITH a DLX: hand the whole Message out
+        (owned) so Router rebuilds + reroutes it into the DLX.
+
+        Same preconditions as drop_unacked (Router re-checks has_unacked).
+        """
+        var msg = self._unacked.pop(delivery_tag)
+        self._untrack_unacked(delivery_tag)
+        return msg^
+
+    def take_unacked_through(mut self, delivery_tag: UInt64) raises -> List[Message]:
+        """DLX-NACK multiple=true: every unacked message with tag <= tag,
+        in tag order, handed out owned."""
+        var out = List[Message]()
+        var i = 0
+        while i < len(self._unacked_tags):
+            var t = self._unacked_tags[i]
+            if t > delivery_tag:
+                break
+            _ = self._unacked_tags.pop(i)
+            out.append(self._unacked.pop(t))
+        return out^
 
     def requeue_unacked_through(mut self, delivery_tag: UInt64) raises -> Int:
         """basic.nack requeue=true, multiple=true: requeue every tag <= tag.
