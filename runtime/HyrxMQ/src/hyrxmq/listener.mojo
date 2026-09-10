@@ -29,6 +29,7 @@ from hyrx.transport.transport import TransportConfig, AMQPConn
 from hyrx.transport.tcp import TCPListener, TCPConnection
 from hyrx.transport.uds import UDSListener, UDSConnection
 from hyrx.transport.poll import EventPoller, PollEvent
+from hyrx.transport.wss import WSSListener, WSSConnection, WssConfig
 
 from hyrx.core.feature_flags import event_driven_serving
 
@@ -43,7 +44,7 @@ from hyrx.amqp.constants import (
 
 from hyrxmq.amqp_service import AMQPService
 from hyrxmq.config import HyrxMQConfig
-from hyrx.core.storage import MessageJournal
+from hyrx.core.storage import FileSystemOps, MessageJournal
 from hyrxmq.status import BrokerStatus
 
 
@@ -1140,3 +1141,168 @@ struct UDSAMQPListener:
             _ = poller.remove(fd)
         if token in slot_of_fd:
             _ = slot_of_fd.pop(token)
+
+# ── 0023 T1/T2: the WSS front end (browser transport) ────────────────────
+
+
+def _wss_config_from(ref config: HyrxMQConfig) raises -> WssConfig:
+    """Project the broker config's 0023 WSS fields onto the tier config.
+
+    Origin policy projection (0023): the broker-side allowlist is EMPTY
+    by default, which maps to the tier's allow-all DEFAULT exactly (no
+    configured list = everything allowed — the extensible starting
+    point); a non-empty list switches the tier to list enforcement (any
+    otherwise-originated Origin = the normative HTTP 403 row)."""
+    var wcfg = WssConfig()
+    wcfg.port = config.wss_listen
+    wcfg.tls_mode = config.wss_tls_mode
+    wcfg.tls_cert_path = config.wss_tls_path
+    wcfg.tls_key_path = config.wss_tls_key_path
+    if len(config.wss_origin_allowlist) != 0:
+        wcfg.allow_all = False
+        for i in range(len(config.wss_origin_allowlist)):
+            wcfg.origin_allowlist.append(config.wss_origin_allowlist[i])
+    return wcfg^
+
+
+struct WSSAMQPListener[Ops: FileSystemOps]:
+    """Broker accept-loop over the WSS transport contract (0023 T1/T2).
+
+    Thin WSS front end, structurally the TCP/UDS twins: it owns a
+    WSSListener (bind/start/accept + the TLS setup + the RFC 6455 /
+    RFC 7395 upgrade — ALL of them inside hyrx.transport so THIS file
+    never imports flare) and delegates ALL frame/header/handshake
+    serving to the shared `AMQPConnServing[WSSConnection]`. The on-wire
+    AMQP behavior is byte-identical to the TCP front end; only the byte
+    carrier differs (WS binary frames over WSS/ws).
+
+    Boot shape deviation (HONEST, 0023): this listener runs ONE serving
+    loop at a time, like every tier today — the multi-tier (concurrent
+    TCP + WSS) thread model is a documented NOT-YET on main_listen (see
+    that file). `serve_forever` consults the SAME 0015 serving-model
+    flag as the twins; the event-driven route is REFUSED for this tier:
+    the dose reads the slot's borrowed fd directly (recv(2), a
+    PLAINTEXT seam) — on a TLS carrier that consumes ciphertext. The
+    legacy loop, which reads through `WSSConnection.recv_bytes`
+    (TLS-aware), is the only correct seam here."""
+
+    var _transport: WSSListener[Self.Ops]
+    var _srv: AMQPConnServing[WSSConnection]
+    var _running: Bool
+
+    def __init__(out self, var config: HyrxMQConfig, var ops: Self.Ops) raises:
+        var tcfg = TransportConfig()
+        _fill_tcfg(tcfg, config)
+        var wcfg = _wss_config_from(config)
+        self._transport = WSSListener[Self.Ops](wcfg^, ops^)
+        self._srv = AMQPConnServing[WSSConnection](config^)
+        self._running = False
+
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal before start() (the bootstrap wire)."""
+        self._srv.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine before start()."""
+        return self._srv.recover_journal()
+
+    # ---- lifecycle ----
+
+    def start(mut self) raises -> Bool:
+        """Start the broker service and bind the WSS listener.
+
+        Normative refusals (0023): a tier configured with NO cert source
+        (tls_mode "none" or an unset injected source after the full
+        range of checks) does not start — the raise carries the reason
+        and NOTHING is half-bound. The injected PEM-bytes mode cannot
+        load in this vendor snapshot (see WSSListener.start's
+        NEEDS-PROBE note); it fails before any bind as well."""
+        if self._transport.tls_mode() == "none":
+            raise (
+                "WSSAMQPListener.start: no cert source configured "
+                "(wss_tls_mode=none); the wss tier refuses to start. "
+                "Set wss_tls_mode to injected or path."
+            )
+        self._srv.start_service()
+        var ok = self._transport.start()
+        self._running = ok
+        return ok
+
+    def port(mut self) raises -> Int:
+        """The actual bound port (reflects an ephemeral bind with 0)."""
+        return self._transport.port()
+
+    def transport_kind(ref self) -> String:
+        """Discriminator so callers/tests know which endpoint accessor is
+        valid (the wss analogue of tcp/uds)."""
+        return "wss"
+
+    def stop(mut self):
+        self._running = False
+        self._transport.stop()
+        self._srv.shutdown_service()
+
+    def health(mut self) -> String:
+        return self._srv.health()
+
+    def status(mut self) -> BrokerStatus:
+        return self._srv.status()
+
+    # ---- serving ----
+
+    def active_connections(ref self) -> Int:
+        return self._srv.active_connections()
+
+    def refused_connections(ref self) -> Int:
+        return self._srv.refused_connections()
+
+    def accept_one(mut self) raises -> Int:
+        """Accept + upgrade one connection; return its slot index.
+
+        A connection REJECTED at the upgrade (negotiated 400/403/404 row
+        or a TLS/transport failure) comes back Optional-empty from the
+        transport; it is per-connection damage only — the loop keeps
+        listening and -1 is returned, exactly like a ceiling-refused
+        accept on the other front ends."""
+        var conn = self._transport.accept_connection()
+        if not conn.__bool__():
+            return -1
+        return self._srv.register(conn^)
+
+    def serve_one_frame(mut self, slot: Int) -> Int:
+        """Advance one connection by at most one frame. NEVER raises."""
+        return self._srv.serve_one_frame(slot)
+
+    def accept_and_serve_one(mut self) raises -> Int:
+        """Accept one connection and serve frames until the peer closes."""
+        var slot = self.accept_one()
+        if slot < 0:
+            return 0
+        var served = 0
+        while self._running:
+            var rc = self.serve_one_frame(slot)
+            if rc < 0:
+                break
+            served += rc
+        return served
+
+    def serve_forever(mut self) raises:
+        """The accept loop over the WSS listener.
+
+        The 0015 serving-model flag is CONSULTED here (the same
+        pairing as the TCP/UDS twins), but the event-driven dose is
+        NORMATIVE-REFUSED for this tier: the dose's `_recv_dontwait`
+        reads the borrowed fd (plaintext) and would corrupt a TLS
+        carrier. Raise carries the reason; the legacy loop (reads via
+        `WSSConnection.recv_bytes`) is the served path."""
+        if event_driven_serving():
+            raise (
+                "WSSAMQPListener.serve_forever: event-driven serving "
+                "reads the raw fd (plaintext seam) and is not valid on "
+                "the TLS-carrying wss tier; use the legacy loop "
+                "(event_driven_serving = False)"
+            )
+        while self._running:
+            _ = self.accept_and_serve_one()

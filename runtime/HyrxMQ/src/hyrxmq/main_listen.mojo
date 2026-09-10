@@ -38,7 +38,8 @@ from hyrx.core.storage import (
     STORAGE_MODE_MEMORY,
 )
 from hyrxmq.config import HyrxMQConfig
-from hyrxmq.listener import AMQPListener, UDSAMQPListener
+from hyrxmq.listener import AMQPListener, UDSAMQPListener, WSSAMQPListener
+from hyrx.core.storage import FileSystemOps
 
 
 # _resolve_port: env HYRXMQ_PORT, else argv[1] (when present and non-empty),
@@ -95,6 +96,96 @@ def _attach_storage_journal_uds(mut listener: UDSAMQPListener, mode: Int) raises
     _ = listener.recover_journal()
 
 
+def _attach_storage_journal_wss(
+    mut listener: WSSAMQPListener[SystemFileSystemOps], mode: Int
+) raises:
+    """WSS twin of _attach_storage_journal (the SAME knobs/semantics)."""
+    if mode == STORAGE_MODE_DISABLED():
+        return
+    if mode == STORAGE_MODE_MEMORY():
+        listener.attach_journal(MessageJournal.memory())
+        return
+    var ops = SystemFileSystemOps()
+    var path = getenv("HYRXMQ_STORAGE_PATH", "")
+    listener.attach_journal(MessageJournal.file(path^, ops^))
+    _ = listener.recover_journal()
+
+
+def _resolve_wss_config(mut cfg: HyrxMQConfig) raises:
+    """The 0023 WSS env overrides (additive to the storage bootstrap).
+
+    - HYRXMQ_WSS_LISTEN  : port; 0/absent = tier OFF (byte-identical
+                           boot with it unset);
+    - HYRXMQ_WSS_TLS_MODE: none|injected|path (default none = no cert
+      source => the tier refuses to start when the port is open);
+    - HYRXMQ_WSS_TLS_PATH  / HYRXMQ_WSS_TLS_KEY : the path-model cert
+      chain + key PEM paths (injected mode carries bytes in the tier
+      config directly — no env for bytes);
+    - HYRXMQ_WSS_ORIGIN  : comma-separated allowlist (0023: EXTENSIBLE
+      origin policy — absent = allow-all DEFAULT, an active list
+      restricts to it).
+    Malformed numbers / unknown modes raise (fail loud).
+    """
+    var wssl = getenv("HYRXMQ_WSS_LISTEN", "")
+    if len(wssl.bytes()) > 0:
+        cfg.wss_listen = Int(wssl)
+    cfg.wss_tls_mode = getenv("HYRXMQ_WSS_TLS_MODE", "none")
+    if (
+        cfg.wss_tls_mode != "none"
+        and cfg.wss_tls_mode != "injected"
+        and cfg.wss_tls_mode != "path"
+    ):
+        raise (
+            "main_listen: invalid HYRXMQ_WSS_TLS_MODE '"
+            + cfg.wss_tls_mode
+            + "' (none|injected|path)"
+        )
+    cfg.wss_tls_path = getenv("HYRXMQ_WSS_TLS_PATH", "")
+    cfg.wss_tls_key_path = getenv("HYRXMQ_WSS_TLS_KEY", "")
+    var origins = getenv("HYRXMQ_WSS_ORIGIN", "")
+    if len(origins.bytes()) > 0:
+        var items = origins.split(",")
+        for i in range(len(items)):
+            var t = String(items[i].strip())
+            if len(t.bytes()) != 0:
+                cfg.wss_origin_allowlist.append(t)
+
+
+def _wss_requested(ref cfg: HyrxMQConfig) -> Bool:
+    """True when the WSS tier is configured (port != 0). Called BEFORE
+    any ownership transfer so the legacy tiers keep their byte path."""
+    return cfg.wss_listen != 0
+
+
+def _run_wss_maybe(var cfg: HyrxMQConfig) raises -> Bool:
+    """Start + serve the WSS tier when _wss_requested(cfg) held. Returns
+    whether the tier took over the serving loop.
+
+    Boot shape (0023, HONEST): today's binary serves ONE transport loop
+    at a time (UDS OR TCP); multi-tier concurrency needs a thread model
+    that does not exist on the serving path, so when WSS is configured
+    it becomes the primary (the frontend loop is over WSS, not the TCP
+    default). NOT-YET: running TCP -AND- WSS concurrently — declared in
+    the 0023 receipt, never faked."""
+    var node = cfg.node_name
+    var host = cfg.listen_host
+    var ops = SystemFileSystemOps()
+    var wlistener = WSSAMQPListener[SystemFileSystemOps](cfg^, ops^)
+    _attach_storage_journal_wss(wlistener, _resolve_storage_mode())
+    if not wlistener.start():
+        raise "main_listen: wss listener failed to start"
+    print(
+        "HyrxMQ "
+        + node
+        + " listening on wss://"
+        + host
+        + ":"
+        + String(wlistener.port())
+    )
+    wlistener.serve_forever()
+    return True
+
+
 def main() raises:
     var cfg = HyrxMQConfig()
     cfg.listen_host = getenv("HYRXMQ_HOST", "127.0.0.1")
@@ -130,8 +221,17 @@ def main() raises:
             raise "main_listen: HYRXMQ_STORAGE_MODE=file requires HYRXMQ_STORAGE_PATH"
     else:
         raise "main_listen: invalid HYRXMQ_STORAGE_MODE '" + storage_mode + "' (disabled|memory|file)"
+    # 0023: the WSS tier configuration (env overrides; additive).
+    _resolve_wss_config(cfg)
     cfg.validate()
     var node = cfg.node_name
+    # 0023: the WSS tier, when configured, takes the serving loop (the
+    # ONE serving loop per process; see _run_wss_if_configured and the
+    # NOT-YET multi-tier declaration there). Unconfigured => the tiers
+    # below behave byte-identically to before.
+    if _wss_requested(cfg):
+        _ = _run_wss_maybe(cfg^)
+        return
     # Storage journal (0018): wired ONLY when configured; disabled = no
     # storage class at ALL (both bootstrap branches stay byte-identical).
     # Transport selection (fair UDS benchmark cell): a non-empty

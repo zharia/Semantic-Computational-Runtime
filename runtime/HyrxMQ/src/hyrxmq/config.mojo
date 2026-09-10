@@ -110,6 +110,24 @@ struct HyrxMQConfig:
     var storage_mode: String
     var storage_path: String
 
+    # 0023: OPTIONAL WSS tier (browser transport) + the admin-HTTP tier
+    # key for T3. Defaults are all OFF ("0"/"none") so unconfigured
+    # binaries behave byte-identically to before.
+    var wss_listen: Int
+    var wss_tls_mode: String  # "none" | "injected" | "path"
+    # Path cert model: the cert chain + key PEM paths (injected mode
+    # carries the PEM bytes in the WssConfig struct instead; TLS config
+    # never reaches disk through THIS layer — the tier itself uses the
+    # injected ops seam). wss_tls_path EMPTY = unset (a non-empty value
+    # in the none/injected modes is REJECTED in validate(), same shape
+    # as storage_path above).
+    var wss_tls_path: String
+    var wss_tls_key_path: String
+    # Browser origin allowlist (0023): the recorded extension point.
+    var wss_origin_allowlist: List[String]
+    # T3 (admin HTTP): port, default 0 = OFF.
+    var admin_http_port: Int
+
     def __init__(out self):
         self.listen_host = "0.0.0.0"
         self.port = 5672
@@ -123,6 +141,12 @@ struct HyrxMQConfig:
         self.users.append(UserRecord("admin", "password"))
         self.storage_mode = "disabled"
         self.storage_path = ""
+        self.wss_listen = 0
+        self.wss_tls_mode = "none"
+        self.wss_tls_path = ""
+        self.wss_tls_key_path = ""
+        self.wss_origin_allowlist = List[String]()
+        self.admin_http_port = 0
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -136,6 +160,12 @@ struct HyrxMQConfig:
         self.users = existing.users.copy()
         self.storage_mode = existing.storage_mode
         self.storage_path = existing.storage_path.copy()
+        self.wss_listen = existing.wss_listen
+        self.wss_tls_mode = existing.wss_tls_mode
+        self.wss_tls_path = existing.wss_tls_path.copy()
+        self.wss_tls_key_path = existing.wss_tls_key_path.copy()
+        self.wss_origin_allowlist = existing.wss_origin_allowlist.copy()
+        self.admin_http_port = existing.admin_http_port
 
     def apply(mut self, var key: String, var value: String) raises:
         """Assign one recognized key. Unknown keys are REJECTED (audit §17).
@@ -167,6 +197,31 @@ struct HyrxMQConfig:
             self.storage_mode = m^
         elif key == "storage_path":
             self.storage_path = _require_text(key, value)
+        elif key == "wss_listen":
+            self.wss_listen = _require_int(key, value)
+        elif key == "wss_tls_mode":
+            var tm = _require_text(key, value)
+            if tm != "none" and tm != "injected" and tm != "path":
+                raise "config: invalid wss_tls_mode '" + tm + "' (none|injected|path)"
+            self.wss_tls_mode = tm
+        elif key == "wss_tls_path":
+            self.wss_tls_path = _require_text(key, value)
+        elif key == "wss_tls_key_path":
+            self.wss_tls_key_path = _require_text(key, value)
+        elif key == "wss_origin_allowlist":
+            # Comma-separated list; empty entries are skipped. The broker
+            # tier stays allow-all by default: a configured list only
+            # RESTRICTS origins (0023 extensible origin policy).
+            var raw = _require_text(key, value)
+            var items = raw.split(",")
+            var i = 0
+            for item in items:
+                var t = String(item.strip())
+                if len(t.bytes()) != 0:
+                    self.wss_origin_allowlist.append(t)
+                i += 1
+        elif key == "admin_http_port":
+            self.admin_http_port = _require_int(key, value)
         else:
             raise "config: unknown field '" + key + "'"
 
@@ -248,3 +303,16 @@ struct HyrxMQConfig:
         else:
             if len(self.storage_path.strip().bytes()) != 0:
                 raise "config: storage_path must be empty in the '" + self.storage_mode + "' storage_mode"
+        # 0023: wss + admin-HTTP invariants (OFF-by-default tiers).
+        if self.wss_listen < 0 or self.wss_listen > 65535:
+            raise "config: wss_listen out of range"
+        if self.admin_http_port < 0 or self.admin_http_port > 65535:
+            raise "config: admin_http_port out of range"
+        if self.wss_tls_mode == "path":
+            if len(self.wss_tls_path.strip().bytes()) == 0:
+                raise "config: wss_tls_mode='path' requires a non-empty wss_tls_path (the cert chain PEM)"
+            if len(self.wss_tls_key_path.strip().bytes()) == 0:
+                raise "config: wss_tls_mode='path' requires a non-empty wss_tls_key_path"
+        else:
+            if len(self.wss_tls_path.strip().bytes()) != 0 or len(self.wss_tls_key_path.strip().bytes()) != 0:
+                raise "config: wss_tls_path / wss_tls_key_path must be empty in the '" + self.wss_tls_mode + "' wss_tls_mode"
