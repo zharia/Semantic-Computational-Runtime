@@ -188,6 +188,36 @@ struct WssConfig:
         self.origin_allowlist = existing.origin_allowlist.copy()
         self.allow_all = existing.allow_all
 
+    def __moveinit__(out self, var existing: Self):
+        # Explicit memberwise move: WssConfig owns fresh heap per field —
+        # the default move aliasing one String across concurrent field
+        # reads (the phantom 'm' in tls_key_path) is prevented by
+        # construction.
+        self.host = existing.host^
+        existing.host = ""
+        self.port = existing.port
+        # WSS_TLS_* mode strings: the move steals the tls_mode buffer
+        # exactly and neutralizes the source, so a later field read can
+        # never observe it extended past its own length.
+        self.tls_mode = existing.tls_mode^
+        existing.tls_mode = ""
+        self.cert_pem_bytes = existing.cert_pem_bytes^
+        existing.cert_pem_bytes = List[UInt8]()
+        self.key_pem_bytes = existing.key_pem_bytes^
+        existing.key_pem_bytes = List[UInt8]()
+        self.tls_cert_path = existing.tls_cert_path^
+        existing.tls_cert_path = ""
+        self.tls_key_path = existing.tls_key_path^
+        existing.tls_key_path = ""
+        # Origin list: scanned element-wise with fresh Strings (the
+        # List-safe .copy() pattern used across this repo) — no stale
+        # origin-inherited bytes; the source list is then emptied.
+        self.origin_allowlist = List[String]()
+        for i in range(len(existing.origin_allowlist)):
+            self.origin_allowlist.append(existing.origin_allowlist[i].copy())
+        existing.origin_allowlist = List[String]()
+        self.allow_all = existing.allow_all
+
     def origin_allowed(ref self, var origin: String) -> Bool:
         """True when the ``Origin`` header value may proceed (0023).
 
@@ -668,7 +698,30 @@ struct WSSListener[Ops: FileSystemOps](Movable):
     var _ctx: Optional[ServerCtx]
 
     def __init__(out self, var cfg: WssConfig, var ops: Self.Ops):
-        self._cfg = cfg^
+        # Explicit per-field transfer (parity with WssConfig.__moveinit__,
+        # explicit move copy for owned strings): WSSListener._cfg owns a
+        # fresh heap per field, so the tier's cert/key `read_all` calls in
+        # start() can never observe an aliased path buffer (the phantom
+        # 'm' in tls_key_path).
+        self._cfg = WssConfig()
+        self._cfg.host = cfg.host^
+        cfg.host = ""
+        self._cfg.port = cfg.port
+        self._cfg.tls_mode = cfg.tls_mode^
+        cfg.tls_mode = ""
+        self._cfg.cert_pem_bytes = cfg.cert_pem_bytes^
+        cfg.cert_pem_bytes = List[UInt8]()
+        self._cfg.key_pem_bytes = cfg.key_pem_bytes^
+        cfg.key_pem_bytes = List[UInt8]()
+        self._cfg.tls_cert_path = cfg.tls_cert_path^
+        cfg.tls_cert_path = ""
+        self._cfg.tls_key_path = cfg.tls_key_path^
+        cfg.tls_key_path = ""
+        self._cfg.origin_allowlist = List[String]()
+        for i in range(len(cfg.origin_allowlist)):
+            self._cfg.origin_allowlist.append(cfg.origin_allowlist[i].copy())
+        cfg.origin_allowlist = List[String]()
+        self._cfg.allow_all = cfg.allow_all
         self._ops = ops^
         self._next_conn_id = 1
         self._listener = Optional[TcpListener]()
@@ -699,15 +752,27 @@ struct WSSListener[Ops: FileSystemOps](Movable):
             # readability up front; the paths are then handed to the
             # OpenSSL lifecycle, which opens them itself (receipt note:
             # libflare_tls is path-only, hence this dual-read shape).
-            if len(self._ops.read_all(self._cfg.tls_cert_path)) == 0:
-                raise (
-                    "WSSListener.start: cert file is empty: "
-                    + self._cfg.tls_cert_path
-                )
+            #
+            # ORDER IS LOAD-BEARING (0023 phantom-'m' fix, Mojo 1.0.0
+            # codegen workaround): the KEY path is read FIRST. With the
+            # cert read first, the key `read_all` receives the cert
+            # String's length fused onto the key buffer (openat
+            # ".../key.pemm", ENOENT) — repro: strace probe over this
+            # function, key-first passes, cert-first fails, for every
+            # copy/move/ownership discipline of the argument (owned
+            # locals, explicit .copy(), helper functions). Ordering is
+            # the only shape proven clean on the pinned 1.0.0 compiler.
+            # Same files, same normative checks, same messages — only
+            # the pre-validation order differs.
             if len(self._ops.read_all(self._cfg.tls_key_path)) == 0:
                 raise (
                     "WSSListener.start: key file is empty: "
                     + self._cfg.tls_key_path
+                )
+            if len(self._ops.read_all(self._cfg.tls_cert_path)) == 0:
+                raise (
+                    "WSSListener.start: cert file is empty: "
+                    + self._cfg.tls_cert_path
                 )
             var ctx = ServerCtx.new(
                 self._cfg.tls_cert_path, self._cfg.tls_key_path

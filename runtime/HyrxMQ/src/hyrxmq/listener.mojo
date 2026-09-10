@@ -1148,6 +1148,12 @@ struct UDSAMQPListener:
 def _wss_config_from(ref config: HyrxMQConfig) raises -> WssConfig:
     """Project the broker config's 0023 WSS fields onto the tier config.
 
+    Ownership (0023 fix): explicit move copy for owned strings — every
+    String field is deep-copied here, so the `wcfg^` transfer into the
+    WSSListener rides the per-field WssConfig.__moveinit__ with fresh
+    heaps; no tier field read can observe an aliased path buffer (the
+    phantom 'm' in tls_key_path).
+
     Origin policy projection (0023): the broker-side allowlist is EMPTY
     by default, which maps to the tier's allow-all DEFAULT exactly (no
     configured list = everything allowed — the extensible starting
@@ -1155,13 +1161,13 @@ def _wss_config_from(ref config: HyrxMQConfig) raises -> WssConfig:
     otherwise-originated Origin = the normative HTTP 403 row)."""
     var wcfg = WssConfig()
     wcfg.port = config.wss_listen
-    wcfg.tls_mode = config.wss_tls_mode
-    wcfg.tls_cert_path = config.wss_tls_path
-    wcfg.tls_key_path = config.wss_tls_key_path
+    wcfg.tls_mode = config.wss_tls_mode.copy()
+    wcfg.tls_cert_path = config.wss_tls_path.copy()
+    wcfg.tls_key_path = config.wss_tls_key_path.copy()
     if len(config.wss_origin_allowlist) != 0:
         wcfg.allow_all = False
         for i in range(len(config.wss_origin_allowlist)):
-            wcfg.origin_allowlist.append(config.wss_origin_allowlist[i])
+            wcfg.origin_allowlist.append(config.wss_origin_allowlist[i].copy())
     return wcfg^
 
 
