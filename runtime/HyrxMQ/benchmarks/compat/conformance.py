@@ -1231,3 +1231,10 @@ def main(argv):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+
+
+# 0018-capability note (coordinator): the 0018 commit (fs-free default +
+# injectable fs ops) merges AFTER this file's ground-truth generation; the
+# durability rows in T3 ground truth persist as recorded, and the new
+# storage tier rolls in as PARTIAL until a restart-recovery row is added
+# (2-phase roundtrip planned; see 0018/plan.md Result section).
