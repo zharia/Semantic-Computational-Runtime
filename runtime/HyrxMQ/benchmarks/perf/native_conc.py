@@ -48,6 +48,9 @@ def probe_uds(path):
         return False
 
 
+BATCH = int(os.environ.get("HYRX_BATCH", "1"))
+
+
 def start(broker, env_extra, tag):
     env = dict(os.environ)
     env.update(env_extra)
@@ -88,10 +91,10 @@ def cell_run(broker, env_extra, tag, peer, ready, no_echo, N):
             for _ in range(N):
                 if peer.startswith("@") or peer.startswith("/"):
                     a = [BENCH, "--uds", peer, "--sizes", str(size),
-                         "--count", str(per)]
+                         "--count", str(per)] + (["--batch", str(BATCH)] if BATCH > 1 else [])
                 else:
                     a = [BENCH, peer, "--sizes", str(size),
-                         "--count", str(per)]
+                         "--count", str(per)] + (["--batch", str(BATCH)] if BATCH > 1 else [])
                 if no_echo:
                     a.append("--no-echo")
                 handles.append((per, subprocess.Popen(a, stdout=subprocess.PIPE,
@@ -184,7 +187,8 @@ def cell_run(broker, env_extra, tag, peer, ready, no_echo, N):
             t0 = time.time()
             for _ in range(N):
                 a = [BENCH, str(RABBIT_PORT), "--sizes", str(size),
-                     "--count", str(per), "--no-echo"]
+                     "--count", str(per), "--no-echo"] + (
+                     ["--batch", str(BATCH)] if BATCH > 1 else [])
                 handles.append((per, subprocess.Popen(a, stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL, text=True)))
             total = 0
@@ -223,10 +227,10 @@ def cell_run(broker, env_extra, tag, peer, ready, no_echo, N):
             for _ in range(N):
                 if peer.startswith("@") or peer.startswith("/"):
                     a = [BENCH, "--uds", peer, "--sizes", str(size),
-                         "--count", str(per)]
+                         "--count", str(per)] + (["--batch", str(BATCH)] if BATCH > 1 else [])
                 else:
                     a = [BENCH, peer, "--sizes", str(size),
-                         "--count", str(per)]
+                         "--count", str(per)] + (["--batch", str(BATCH)] if BATCH > 1 else [])
                 if no_echo:
                     a.append("--no-echo")
                 handles.append((per, subprocess.Popen(a, stdout=subprocess.PIPE,
