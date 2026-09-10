@@ -18,10 +18,17 @@
 #     src/hyrxmq/main_listen.mojo &
 # Run — TCP mode (<port> required, byte-identical to the original):
 #   mojo run -I src -I vendor/flare benchmarks/native_cycle_bench.mojo <port> \
-#     [--sizes 64,256,1024,4096,16384,65536,131072] [--count N] [--no-echo]
+#     [--sizes 64,256,1024,4096,16384,65536,131072] [--count N] [--no-echo] \
+#     [--batch K]
 # Run — UDS mode (--uds present, <port> optional and ignored):
 #   mojo run -I src -I vendor/flare benchmarks/native_cycle_bench.mojo \
-#     --uds @hyrxmq_bench_abstract [--sizes ...] [--count N] [--no-echo]
+#     --uds @hyrxmq_bench_abstract [--sizes ...] [--count N] [--no-echo] \
+#     [--batch K]
+# --batch K: each closed-loop cycle publishes K messages (K method+header+body
+# frame groups, then K basic_get frames, one send — same wire bytes as K=1
+# repeated, so batch=1 is byte-identical to the original behavior). --count
+# stays MESSAGE-count: cycles = max(1, count / batch); a get-empty reply
+# counts 0 delivered for that get.
 # --uds accepts a filesystem socket path (/tmp/hyrxmq.sock) or a Linux
 # abstract-namespace name (@name). Both transports drive the SAME measured
 # pipeline: the client wrapper is parameterized on the AMQPConn trait, exactly
@@ -238,9 +245,10 @@ struct Conn[C: AMQPConn]:
         self.last_payload = p^
         return mid^
 
-    def expect_body(mut self, want: List[UInt8]) raises:
+    def expect_body(mut self, want: List[UInt8], verify: Bool) raises:
         """Read the HEADER (+BODY frames) following a content method frame and
-        assert the reassembled body equals `want` (§2.3.5 layout check)."""
+        assert the reassembled body length equals `want` (§2.3.5 layout check);
+        `verify` additionally byte-compares the reassembled body."""
         var hf = self.next_frame()
         check(hf.frame_type == 2, "a content HEADER frame follows the method")
         var hp = hf.payload_copy()
@@ -259,7 +267,8 @@ struct Conn[C: AMQPConn]:
             var bp = bf.payload_copy()
             for i in range(len(bp)):
                 got.append(bp[i])
-        check_bytes(got, want, "delivered body bytes match the published body")
+        if verify:
+            check_bytes(got, want, "delivered body bytes match the published body")
 
     def read_exact(mut self, n: Int) raises -> List[UInt8]:
         """Local copy of TCPConnection.recv_exact (tcp.mojo:135-150).
@@ -368,70 +377,92 @@ def setup_topology[C: AMQPConn](
 # ---- the measured cycle ----
 
 def build_cycle_wire(
-    var ex: String, var q: String, ref body: List[UInt8]
+    var ex: String, var q: String, ref body: List[UInt8], batch: Int
 ) -> List[UInt8]:
-    """One closed-loop cycle on the wire: basic.publish (METHOD + HEADER +
-    1-2 BODY frames, split at MAX_BODY_CHUNK) + basic.get(auto_ack).
+    """One closed-loop batch on the wire: `batch` basic.publish messages
+    (METHOD + HEADER + 1-2 BODY frames each, split at MAX_BODY_CHUNK) followed
+    by `batch` basic.get(auto_ack) frames. batch=1 reproduces the original
+    publish+get bytes exactly, in one send.
 
     Publish/header/body encoding mirrors amqp_over_tcp.mojo::client_wire;
     the get args mirror amqp_service._handle_get (reserved-1, queue, bit)."""
     var wire = List[UInt8]()
 
-    var pargs = List[UInt8]()
-    reserved_short(pargs)
-    write_short_string(pargs, ex)
-    write_short_string(pargs, "bench.key")
-    pargs.append(0)  # bits: mandatory / immediate
-    append_all(wire, request(UInt16(1), BASIC_PUBLISH(), pargs^))
+    for _ in range(batch):
+        var pargs = List[UInt8]()
+        reserved_short(pargs)
+        write_short_string(pargs, ex.copy())
+        write_short_string(pargs, "bench.key")
+        pargs.append(0)  # bits: mandatory / immediate
+        append_all(wire, request(UInt16(1), BASIC_PUBLISH(), pargs^))
 
-    append_all(
-        wire,
-        AMQPFrameCodec.encode_header_frame(
-            UInt16(1), UInt16(60), UInt64(len(body)), UInt16(0), List[UInt8]()
-        ),
-    )
-    var pos = 0
-    var blen = len(body)
-    while pos < blen:
-        var n = MAX_BODY_CHUNK()
-        if pos + n > blen:
-            n = blen - pos
-        var part = List[UInt8]()
-        for i in range(pos, pos + n):
-            part.append(body[i])
-        append_all(wire, AMQPFrameCodec.encode_body_frame(UInt16(1), part^))
-        pos += n
+        append_all(
+            wire,
+            AMQPFrameCodec.encode_header_frame(
+                UInt16(1), UInt16(60), UInt64(len(body)), UInt16(0),
+                List[UInt8](),
+            ),
+        )
+        var pos = 0
+        var blen = len(body)
+        while pos < blen:
+            var n = MAX_BODY_CHUNK()
+            if pos + n > blen:
+                n = blen - pos
+            var part = List[UInt8]()
+            for i in range(pos, pos + n):
+                part.append(body[i])
+            append_all(wire, AMQPFrameCodec.encode_body_frame(UInt16(1), part^))
+            pos += n
 
     var gargs = List[UInt8]()
     reserved_short(gargs)
     write_short_string(gargs, q)
     gargs.append(1)  # bits: auto-ack (the broker acks on delivery)
-    append_all(wire, request(UInt16(1), BASIC_GET(), gargs^))
+    for _ in range(batch):
+        append_all(wire, request(UInt16(1), BASIC_GET(), gargs.copy()))
     return wire^
 
 
-def run_cycle[C: AMQPConn](
-    mut client: Conn[C], ref wire: List[UInt8], ref body: List[UInt8]
-) raises:
-    """Send one publish+get cycle and consume the full get-ok reply.
+def run_batch_cycle[C: AMQPConn](
+    mut client: Conn[C], ref wire: List[UInt8], ref body: List[UInt8],
+    batch: Int,
+) raises -> Int:
+    """Send one batched publish+drain cycle and consume every get reply.
 
-    A get-empty reply (or any size/byte mismatch inside expect_body) raises
-    through hyrx.testing.check — a wrong delivery fails the bench, loudly."""
+    Returns the number of delivered messages: a basic.get-ok counts 1, a
+    basic.get-empty counts 0 for that get. The FIRST get-ok is byte-compared
+    (the harness body check); later ones are length-checked only. Any size or
+    byte mismatch inside expect_body raises through hyrx.testing.check — a
+    wrong delivery fails the bench, loudly."""
     client.send(wire.copy())
-    check(client.next_method() == BASIC_GET_OK(), "basic.get-ok received")
-    client.expect_body(body.copy())
+    var consumed = 0
+    var compared = False
+    for _ in range(batch):
+        var mid = client.next_method()
+        if mid == BASIC_GET_OK():
+            client.expect_body(body.copy(), not compared)
+            compared = True
+            consumed += 1
+        else:
+            check(
+                mid == MethodID(60, 72),  # BASIC_GET_EMPTY()
+                "basic.get-ok or basic.get-empty received",
+            )
+    return consumed
 
 
 # ---- per-size driver ----
 
 def run_size[C: AMQPConn](
-    mut client: Conn[C], size: Int, count: Int, echo: Bool
+    mut client: Conn[C], size: Int, count: Int, echo: Bool, batch: Int
 ) raises:
     """The measured run for one payload size on an ALREADY-CONNECTED client.
 
     Connection setup is the caller's (run_size_tcp / run_size_uds) because the
     two transports have different connect signatures; everything timed here is
-    identical for both."""
+    identical for both. `count` stays MESSAGE-count:
+    cycles = max(1, count / batch)."""
     var body = List[UInt8]()
     for i in range(size):
         body.append(UInt8(i & 0xFF))
@@ -446,47 +477,60 @@ def run_size[C: AMQPConn](
     open_channel[C](client)
     setup_topology[C](client, ex.copy(), q.copy())
 
-    var wire = build_cycle_wire(ex.copy(), q.copy(), body)
+    # Floor at one cycle: --batch may exceed --count (e.g. --count 16 --batch
+    # 32); never let count / batch truncate the measured window to zero.
+    var cycles = count / batch
+    if cycles < 1:
+        cycles = 1
+
+    var wire = build_cycle_wire(ex.copy(), q.copy(), body, batch)
 
     var warm = 50
-    if count < warm:
-        warm = count
+    if cycles < warm:
+        warm = cycles
     for _ in range(warm):
-        run_cycle[C](client, wire, body)
+        run_batch_cycle[C](client, wire, body, batch)
 
     var t0 = perf_counter_ns()
-    for _ in range(count):
-        run_cycle[C](client, wire, body)
+    var consumed = 0
+    for _ in range(cycles):
+        consumed += run_batch_cycle[C](client, wire, body, batch)
     var elapsed = Int(perf_counter_ns() - t0)
     check(elapsed > 0, "timer advanced during the measured window")
+    check(consumed > 0, "at least one message delivered in the measurement")
 
-    var rate = (count * 1000000000) / elapsed
-    var us = Float64(elapsed) / (Float64(count) * 1000.0)
+    var rate = (consumed * 1000000000) / elapsed
+    var us = Float64(elapsed) / (Float64(consumed) * 1000.0)
     print(
         "NATIVE_BENCH size=" + String(size)
-        + " count=" + String(count)
+        + " count=" + String(consumed)
         + " rate=" + String(rate)
         + " us_per_msg=" + String(Float64(Int(us * 1000.0)) / 1000.0)
+        + " batch=" + String(batch)
     )
 
     client.close()
 
 
-def run_size_tcp(port: Int, size: Int, count: Int, echo: Bool) raises:
+def run_size_tcp(
+    port: Int, size: Int, count: Int, echo: Bool, batch: Int
+) raises:
     """Fresh TCP connection (127.0.0.1:<port>) -> the shared measured run."""
     var conn = TCPConnection.connect("127.0.0.1", port)
     var client = Conn[TCPConnection](conn^)
-    run_size[TCPConnection](client, size, count, echo)
+    run_size[TCPConnection](client, size, count, echo, batch)
 
 
-def run_size_uds(path: String, size: Int, count: Int, echo: Bool) raises:
+def run_size_uds(
+    path: String, size: Int, count: Int, echo: Bool, batch: Int
+) raises:
     """Fresh UDS connection (pathname or @abstract) -> the shared run.
 
     Connect idiom copied from tests/integration/broker_uds_e2e.mojo:266 /
     uds_abstract.mojo:269: UDSConnection.connect(path.copy())."""
     var conn = UDSConnection.connect(path.copy())
     var client = Conn[UDSConnection](conn^)
-    run_size[UDSConnection](client, size, count, echo)
+    run_size[UDSConnection](client, size, count, echo, batch)
 
 
 # ---- CLI (argv style from src/hyrxmq/main_listen.mojo) ----
@@ -515,13 +559,14 @@ def main() raises:
     check(
         len(args) > 1,
         "usage: native_cycle_bench [<port>] [--uds @name|/path.sock]"
-        + " [--sizes s,s,...] [--count N] [--no-echo]",
+        + " [--sizes s,s,...] [--count N] [--no-echo] [--batch K]",
     )
     var port = 0
     var have_port = False
     var uds_path = ""
     var sizes = List[Int]([64, 256, 1024, 4096, 16384, 65536, 131072])
     var forced = -1
+    var batch = 1
     var echo = True
     var i = 1
     while i < len(args):
@@ -541,6 +586,11 @@ def main() raises:
             check(i < len(args), "--count needs a value")
             forced = Int(args[i])
             check(forced > 0, "--count must be positive")
+        elif args[i] == "--batch":
+            i += 1
+            check(i < len(args), "--batch needs a value")
+            batch = Int(args[i])
+            check(batch > 0, "--batch must be positive")
         elif args[i] == "--no-echo":
             echo = False
         elif not have_port:
@@ -566,8 +616,8 @@ def main() raises:
         if forced > 0:
             count = forced
         if uds:
-            run_size_uds(uds_path.copy(), size, count, echo)
+            run_size_uds(uds_path.copy(), size, count, echo, batch)
         else:
-            run_size_tcp(port, size, count, echo)
+            run_size_tcp(port, size, count, echo, batch)
 
     print("NATIVE_BENCH=PASS")
