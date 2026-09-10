@@ -210,6 +210,7 @@ from hyrx.amqp.connection_state import (
 
 from hyrx.core.queue import Delivery
 from hyrxmq.broker import HyrxMQBroker
+from hyrx.core.storage import MessageJournal
 from hyrxmq.config import HyrxMQConfig, UserRecord
 from hyrxmq.status import BrokerStatus
 
@@ -453,6 +454,15 @@ def write_table(mut out: List[UInt8], ref ft: FieldTable) raises:
     var body = ft.to_bytes()
     for i in range(len(body)):
         out.append(body[i])
+
+
+def write_string_field(mut out: List[UInt8], var key: String, var value: String):
+    """Append one field-table entry with a long-string ('S') value:
+    short-str key + type octet 'S' + u32 len + bytes (the encoding
+    FieldTable.to_bytes uses for its string values)."""
+    write_short_string(out, key^)
+    out.append(UInt8(83))  # 'S' = long string
+    write_long_string(out, value^)
 
 
 struct ByteReader:
@@ -1156,6 +1166,18 @@ struct AMQPService:
 
     # ---- lifecycle / broker delegation ----
 
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal into the broker's engine (the boot
+        bootstrap wire; the service holds no fs logic of its own)."""
+        self._broker.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine (the durable
+        recovery at the listener's service start)."""
+        return self._broker.recover_journal()
+
     def start(mut self) raises:
         self._broker.start()
 
@@ -1208,23 +1230,65 @@ struct AMQPService:
 
     # ---- connection negotiation (server→client frames the listener sends) ----
 
-    def connection_start_frame(ref self) -> List[UInt8]:
+    def connection_start_frame(ref self) raises -> List[UInt8]:
         """Encode the connection.start (10,10) server frame (channel 0).
 
         Wire arguments, big-endian, exactly per amqp0-9-1.xml:
           version-major(octet)=0, version-minor(octet)=9,
-          server-properties(table)=empty (U32 0),
+          server-properties(field table)=u32 len + entries,
           mechanisms(longstr)="PLAIN", locales(longstr)="en_US".
 
+        server-properties mirrors rabbit 4.3.5's shape: `capabilities` is a
+        NESTED field table (type 'F' = u32 len + body, per the hard-coded
+        field types) carrying ONLY the optional classes this dispatch
+        actually serves — publisher_confirms (confirm.select 85,10),
+        exchange_exchange_bindings (exchange.bind 40,30), basic.nack
+        (60,120), consumer_cancel_notify (basic.cancel 60,30) and
+        authentication_failure_close (the 403 connection.close emitted on a
+        refused login) — plus the app-label strings product/version/platform/
+        cluster_name/copyright/information ('S'). The former empty table made
+        pika reject confirm.select with
+        MethodNotImplemented("Confirm.Select not Supported by Server"): the
+        client gates the extension on the advertised capability, not on the
+        broker's actual dispatch.
+
         The listener sends this as the first server frame after echoing the
-        8-octet protocol header. A later revision may enrich server-properties
-        with product/version/platform; the empty table is spec-legal and is what
-        a synchronous client is unblocked by.
+        8-octet protocol header.
         """
         var args = List[UInt8]()
         args.append(UInt8(0))  # version-major
         args.append(UInt8(9))  # version-minor
-        write_u32(args, 0)  # server-properties: empty field table
+
+        # capabilities: nested field table, bools per the FieldTable 't'
+        # writer (set_bool → to_bytes emits u32 len + body = the 'F' value).
+        var caps = FieldTable()
+        caps.set_bool("publisher_confirms", True)
+        caps.set_bool("exchange_exchange_bindings", True)
+        caps.set_bool("basic.nack", True)
+        caps.set_bool("consumer_cancel_notify", True)
+        caps.set_bool("authentication_failure_close", True)
+
+        # server-properties table body: built first (u32 len + body boundary
+        # is written after the length is known — amqp0-9-1 §1.1.1.1.1).
+        var props = List[UInt8]()
+        write_short_string(props, "capabilities")
+        props.append(UInt8(70))  # 'F' = nested field table
+        write_table(props, caps)
+        write_string_field(props, "cluster_name", self._broker.node_name())
+        write_string_field(props, "product", "HyrxMQ")
+        write_string_field(props, "version", "4.3.5")
+        write_string_field(props, "platform", "Mojo")
+        write_string_field(
+            props, "copyright", "Copyright (C) 2026 HyrxMQ contributors."
+        )
+        write_string_field(
+            props,
+            "information",
+            "HyrxMQ — SCR AMQP 0-9-1 broker (RabbitMQ-compatible wire dialect).",
+        )
+        write_u32(args, UInt32(len(props)))
+        _concat(args, props^)
+
         write_long_string(args, "PLAIN")  # mechanisms (longstr)
         write_long_string(args, "en_US")  # locales (longstr)
         return AMQPFrameCodec.encode_method_frame(

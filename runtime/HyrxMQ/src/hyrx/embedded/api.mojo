@@ -13,6 +13,7 @@ from hyrx.core.message import Message
 from hyrx.core.exchange import ExchangeType
 from hyrx.core.queue import Delivery
 from hyrx.core.router import Router
+from hyrx.core.storage import MessageJournal
 
 struct HyrxConfig:
     """Configuration for an embedded Hyrx instance."""
@@ -98,6 +99,25 @@ struct HyrxEngine:
         self._messages_delivered = 0
         self._messages_acknowledged = 0
         self._messages_rejected = 0
+
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal into the engine's single Router.
+
+        The embedded API holds no storage logic: the injection is the one
+        wire the Router's write hooks run on (disabled DEFAULT = no storage
+        class at all)."""
+        self._router.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine. Returns the number
+        of recovered messages."""
+        return self._router.recover()
+
+    def journal_mode(ref self) -> Int:
+        """The engine's active storage mode."""
+        return self._router.journal_mode()
 
     # ---- topology ----
 

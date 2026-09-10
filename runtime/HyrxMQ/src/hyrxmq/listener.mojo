@@ -40,6 +40,7 @@ from hyrx.amqp.constants import (
 
 from hyrxmq.amqp_service import AMQPService
 from hyrxmq.config import HyrxMQConfig
+from hyrx.core.storage import MessageJournal
 from hyrxmq.status import BrokerStatus
 
 
@@ -208,6 +209,17 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._refused = 0
 
     # ---- broker service lifecycle (transport start/stop is the wrapper's) ----
+
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal into the broker FRONT-END (the
+        bootstrap wire; no fs access happens here)."""
+        self._service.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine before serving."""
+        return self._service.recover_journal()
 
     def start_service(mut self) raises:
         self._service.start()
@@ -500,6 +512,16 @@ struct AMQPListener:
         self._srv = AMQPConnServing[TCPConnection](config^)
         self._running = False
 
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal before start() (the bootstrap wire)."""
+        self._srv.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine before start()."""
+        return self._srv.recover_journal()
+
     # ---- lifecycle ----
 
     def start(mut self) raises -> Bool:
@@ -740,6 +762,16 @@ struct UDSAMQPListener:
         self._transport = UDSListener(path^, tcfg^)
         self._srv = AMQPConnServing[UDSConnection](config^)
         self._running = False
+
+    # ---- 0018: pluggable storage pass-throughs (additive) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal before start() (the bootstrap wire)."""
+        self._srv.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine before start()."""
+        return self._srv.recover_journal()
 
     # ---- lifecycle ----
 

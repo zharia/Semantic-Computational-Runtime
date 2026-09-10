@@ -20,6 +20,7 @@ from hyrx.amqp.adapter import AMQPAdapter
 
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.status import BrokerStatus
+from hyrx.core.storage import MessageJournal
 
 
 # Broker lifecycle states.
@@ -58,6 +59,19 @@ struct HyrxMQBroker:
         self._started = False
 
     # ---- lifecycle ----
+
+    # ---- 0018: pluggable storage (the single journal wire ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the storage journal into the engine (the single Router).
+        No fs access happens here: the journal owns the (already-validated)
+        FileSystemOps."""
+        self._engine.attach_journal(journal^)
+
+    def recover_journal(mut self) raises -> Int:
+        """Replay the injected journal into the engine. Returns the number
+        of recovered messages."""
+        return self._engine.recover_journal()
 
     def start(mut self) raises:
         """Validate config and mark the broker ready (in-process, NOT bound)."""

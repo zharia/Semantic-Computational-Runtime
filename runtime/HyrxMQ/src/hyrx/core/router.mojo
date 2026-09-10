@@ -24,6 +24,11 @@ from hyrx.core.queue import Queue, QueueConfig, Delivery
 from hyrx.core.consumer import Consumer
 from hyrx.core.buffer_pool import BufferPool
 from hyrx.core.pool_stats import PoolStats
+from hyrx.core.storage import (
+    MessageJournal,
+    RecoveryBuilder,
+    props_delivery_mode,
+)
 
 
 # Upper bound on exchange→exchange chain hops walked by one publish
@@ -68,6 +73,14 @@ struct Router:
     #     can drop E2E bindings pointing at the deleted exchange.
     var _queue_consumers: Dict[String, List[UInt64]]
     var _exchange_index: List[String]
+    # 0018: the injected storage journal (the DEFAULT tier is DISABLED — no
+    # storage class activity of any kind). Every fs byte flows through the
+    # journal's own FileSystemOps; the Router itself touches no file.
+    var _journal: MessageJournal
+    # 0018: the recovery materialization's recursion flag — no journal write
+    # may fire for a recovered entity (an EXISTS check would otherwise
+    # re-journal each declare inside the replay).
+    var _recovering: Bool
 
     def __init__(out self):
         self._pool = BufferPool(4096, 64)
@@ -79,6 +92,8 @@ struct Router:
         self._messages_routed = 0
         self._queue_consumers = Dict[String, List[UInt64]]()
         self._exchange_index = List[String]()
+        self._journal = MessageJournal()
+        self._recovering = False
 
     def __init__(
         out self, max_class: Int, max_pooled: Int, pool_enabled: Bool
@@ -92,6 +107,179 @@ struct Router:
         self._messages_routed = 0
         self._queue_consumers = Dict[String, List[UInt64]]()
         self._exchange_index = List[String]()
+        self._journal = MessageJournal()
+        self._recovering = False
+
+    # ---- 0018: pluggable storage (the single fs seam stays injected) ----
+
+    def attach_journal(mut self, var journal: MessageJournal):
+        """Inject the (pre-validated) storage journal.
+
+        The Router NEVER opens/reads/truncates a file itself: every record
+        routes through the journal, whose write path is either the RAM WAL
+        (memory tier) or the SUPPLIED FileSystemOps (file tier)."""
+        self._journal = journal^
+
+    def journal_mode(ref self) -> Int:
+        """The active storage mode (0=disabled default)."""
+        return self._journal.mode()
+
+    def journal_pages_copy(ref self) raises -> List[UInt8]:
+        """Owned copy of the journal's RAM pages (a fresh-engine recovery
+        fixture for the test harness; the disabled tier yields empty)."""
+        return self._journal.mem_pages()
+
+    def _journalize_enqueue(mut self, var qname: String, ref msg: Message) raises -> Int:
+        """WRITE-AHEAD the MSG record for a durable-queue publish with
+        delivery_mode=2 and STAMP the message with the journal seq.
+
+        Skips: the disabled tier, a non-durable destination, a transient
+        (delivery_mode != 2) publish, a recovery materialization. Returns
+        the seq (record ordinal) or -1."""
+        if self._recovering or not self._journal.enabled():
+            return -1
+        if qname not in self._queues:
+            return -1
+        if not self._queues[qname].durable():
+            return -1
+        var pflags = msg.content_prop_flags()
+        var pbytes = msg.content_prop_bytes_copy()
+        if props_delivery_mode(pflags, pbytes^) != 2:
+            return -1
+        var payload = msg.payload().to_bytes()
+        var seq = self._journal.write_enqueue(
+            qname^, msg.routing_key(), pflags, pbytes^, payload^,
+            msg.enqueue_ns(),
+        )
+        return seq
+
+    def _journalize_tombstone(mut self, seq: Int, kind: Int) raises:
+        """Write a tombstone: 0=ACK (the delivery state goes fresh-empty),
+        1=REDELIVER bump (requeue acceptance), 2=REMOVE (an expiry /
+        dead-letter / purge-drop outcome must not resurrect)."""
+        if seq < 0:
+            return
+        if self._recovering or not self._journal.enabled():
+            return
+        if kind == 0:
+            _ = self._journal.write_ack(seq)
+        elif kind == 1:
+            _ = self._journal.write_redeliver(seq)
+        else:
+            _ = self._journal.write_remove(seq)
+
+    @staticmethod
+    def _TOMB_ACK() -> Int:
+        return 0
+
+    @staticmethod
+    def _TOMB_REDELIVER() -> Int:
+        return 1
+
+    @staticmethod
+    def _TOMB_REMOVE() -> Int:
+        return 2
+
+    def _journalize_seqs(mut self, qname: String, var seqs: List[Int], kind: Int) raises:
+        """Tombstone every journal seq in the list (bulk resolution order)."""
+        if self._recovering or not self._journal.enabled():
+            while len(seqs) > 0:
+                _ = seqs.pop()
+            return
+        while len(seqs) > 0:
+            var seq = seqs.pop(0)
+            self._journalize_tombstone(seq, kind)
+
+    # ---- 0018: journal recovery ----------------------------------------
+
+    def recover(mut self) raises -> Int:
+        """Replay the injected journal and materialize the recovered engine.
+
+        Ordered replay through the RecoveryBuilder: durable queues (+ the
+        decoded x-args), exchanges, bindings, still-live persistent messages
+        (every tombstoned seq already resolved), and finally the recovered
+        messages with the redelivered approximation (delivery_count >= 1 so
+        the FIRST recovered dequeue carries the AMQP redelivered bit).
+
+        ZERO journal writes fire during the materialization (the recovery
+        flag gates the write hooks). Recovered messages bypass the capacity
+        preflight/x-max-length trim (the next publish-side enqueue
+        reasserts them — the LIMITS note). Returns the recovered message
+        count."""
+        self._recovering = True
+        var parsed = self._journal.replay()
+        var builder = RecoveryBuilder()
+        builder.apply(parsed^)
+        var topo = builder.finalize()
+        # exchanges first (bindings need them)
+        var total_ex = len(topo.exchanges)
+        for i in range(total_ex):
+            var name = topo.exchanges[i].name.copy()
+            var tcode = topo.exchanges[i].type_code
+            if name not in self._exchanges:
+                var etype = ExchangeType(tcode)
+                self._exchange_index.append(name.copy())
+                var key = name.copy()
+                self._exchanges[key] = Exchange(key, etype^)
+        # queues (last-declare configuration wins)
+        var total_q = len(topo.queues)
+        for i in range(total_q):
+            var qname = topo.queues[i].name.copy()
+            if qname not in self._queues:
+                if topo.queues[i].durable:
+                    var cfg = QueueConfig(topo.queues[i].capacity)
+                    cfg._durable = True
+                    cfg._ttl_ms = topo.queues[i].ttl_ms
+                    cfg._max_length = topo.queues[i].max_length
+                    cfg._overflow_reject = topo.queues[i].overflow_reject
+                    cfg._dlx = topo.queues[i].dlx.copy()
+                    cfg._dlrk = topo.queues[i].dlrk.copy()
+                    self._queues[qname^] = Queue(qname, cfg^)
+        # bindings (both endpoints must exist)
+        var total_b = len(topo.bindings)
+        for i in range(total_b):
+            var dest = topo.bindings[i].destination.copy()
+            var exn = topo.bindings[i].exchange.copy()
+            var rk = topo.bindings[i].routing_key.copy()
+            if topo.bindings[i].e2e:
+                if dest in self._exchanges and exn in self._exchanges:
+                    var bargs = Dict[String, String]()
+                    var bbinding = Binding(dest, rk^, bargs^)
+                    self._exchanges[exn].add_exchange_binding(bbinding^)
+            else:
+                if dest in self._queues and exn in self._exchanges:
+                    var qargs = Dict[String, String]()
+                    var qbinding = Binding(dest, rk^, qargs^)
+                    self._exchanges[exn].add_binding(qbinding^)
+        # recovered messages: fresh inbox entries with the recovered
+        # redelivered state
+        var recovered = topo.recovered_messages
+        for i in range(total_q):
+            var qname = topo.queues[i].name
+            if qname not in self._queues:
+                continue
+            var jm = len(topo.queues[i].msgs)
+            for j in range(jm):
+                var rk = topo.queues[i].msgs[j].routing_key.copy()
+                var flags = topo.queues[i].msgs[j].prop_flags
+                var pb = topo.queues[i].msgs[j].prop_bytes.copy()
+                var pay = topo.queues[i].msgs[j].payload.copy()
+                var bump = topo.queues[i].msgs[j].bumps
+                var seqv = topo.queues[i].msgs[j].seq
+                var env = Envelope(
+                    MessageID(0), rk^, Dict[String, String]()
+                )
+                var buf = Buffer(len(pay))
+                buf.resize(len(pay))
+                for k in range(len(pay)):
+                    buf[k] = pay[k]
+                var msg = Message(env^, buf^, flags, pb^)
+                msg.set_storage_seq(Int(seqv))
+                msg.set_delivery_count(1 + bump)
+                msg.set_enqueue_ns(monotonic())
+                self._queues[qname].recover_message(msg^)
+        self._recovering = False
+        return recovered
 
     def pool_stats(ref self) -> PoolStats:
         """Pool allocation snapshot (surfaced via the engine's stats())."""
@@ -105,6 +293,18 @@ struct Router:
         """Declare an exchange. Returns True if created, False if exists."""
         if name in self._exchanges:
             return False
+        # 0018: read the type code BEFORE the Exchange consumes it; the
+        # declared exchange is recorded when the journal runs (topology
+        # recovery; a redeclare is a no-op — no record).
+        var tcode = 0
+        if exchange_type == ExchangeType.fanout():
+            tcode = 1
+        elif exchange_type == ExchangeType.topic():
+            tcode = 2
+        elif exchange_type == ExchangeType.headers():
+            tcode = 3
+        if not self._recovering:
+            _ = self._journal.write_exchange_declare(name.copy(), tcode)
         self._exchange_index.append(name.copy())
         var key = name.copy()
         self._exchanges[key] = Exchange(key, exchange_type^)
@@ -169,6 +369,13 @@ struct Router:
         _ = expires_ms
         if name in self._queues:
             return False
+        if durable and not self._recovering:
+            # 0018: WRITE-AHEAD the durable DECLARE_QUEUE (+ x-args) record
+            # before the declare consumes the strings.
+            _ = self._journal.write_queue_declare(
+                name.copy(), durable, capacity, ttl_ms, max_length,
+                overflow_reject, dlx.copy(), dlrk.copy(),
+            )
         var cfg = QueueConfig(capacity)
         cfg._durable = durable
         cfg._ttl_ms = ttl_ms
@@ -195,6 +402,9 @@ struct Router:
                 var m = drained.pop()
                 var buf = m.take_payload()
                 self._pool.release(buf^)
+            # 0018: the queue deletion is journaled (its messages + bindings
+            # drop with it on recovery).
+            _ = self._journal.write_delete_queue(name.copy())
         return result^
 
     # ---- binding management -------------------------------------------
@@ -213,6 +423,15 @@ struct Router:
             return False
         if exchange_name not in self._exchanges:
             return False
+        # 0018: bindings of DURABLE queues are journaled (the recovered
+        # binding becomes a no-op when the queue was not durable) — written
+        # BEFORE the Binding consumes the routing key.
+        if not self._recovering and queue_name in self._queues:
+            if self._queues[queue_name].durable():
+                _ = self._journal.write_bind(
+                    exchange_name.copy(), queue_name.copy(),
+                    routing_key.copy(), False,
+                )
         var args = Dict[String, String]()
         var binding = Binding(queue_name, routing_key^, args^)
         self._exchanges[exchange_name].add_binding(binding^)
@@ -266,6 +485,12 @@ struct Router:
             return 0
         msg.set_enqueue_ns(monotonic())
         if self._queues[queue_name].has_capacity():
+            # 0018: WRITE-AHEAD the durable MSG record (a skipped journal
+            # keeps the enqueue path untouched — the disabled tier stays
+            # byte-identical).
+            var journal_seq = self._journalize_enqueue(queue_name, msg)
+            if journal_seq >= 0:
+                msg.set_storage_seq(journal_seq)
             self._queues[queue_name].enqueue_prechecked(msg^)
             self._reap_queue(queue_name.copy())
             self._messages_routed += 1
@@ -357,10 +582,17 @@ struct Router:
     def _dead_letter_one(mut self, var qname: String, var msg: Message) raises:
         """Route ONE reaped message through its queue's DLX (or drop it).
 
+        0018: the YES tombstone journal: the removal marker (a requeued-
+        removal marker verbatim) so a recovery never resurrects the reaped
+        message while it lived on this queue. The DLX reroute below is a
+        separate publish — a DURABLE DLX destination automatically journals
+        its own fresh MSG record.
+
         x-dead-letter-routing-key overrides the ORIGINAL routing key when
         set; the message keeps its byte-faithful content props. With no DLX
         the message is dropped (payload released to the pool). Publish
         routing is the ONE authority — the DLX is just another exchange."""
+        self._journalize_tombstone(msg.storage_seq(), self._TOMB_REMOVE())
         var dlx = self._queues[qname]._config.dlx_exchange()
         if len(dlx.bytes()) == 0:
             var buf = msg.take_payload()
@@ -403,6 +635,10 @@ struct Router:
             var m = msgs.pop()
             var buf = m.take_payload()
             self._pool.release(buf^)
+        # 0018: the purge tombstone (a recovered purge state does not
+        # resurrect the purged set again).
+        if n > 0:
+            _ = self._journal.write_purge(name.copy())
         return n
 
     # delete_queue_checked sentinels (negative = refused, no side effects):
@@ -439,6 +675,8 @@ struct Router:
             var m = drained.pop()
             var buf = m.take_payload()
             self._pool.release(buf^)
+        # 0018: DELETE_QUEUE tombstone (bindings vanish with the queue).
+        _ = self._journal.write_delete_queue(name.copy())
         return n
 
     # delete_exchange_checked sentinels:
@@ -457,6 +695,8 @@ struct Router:
         if if_unused and self._exchanges[name].binding_count() + self._exchanges[name].exchange_binding_count() > 0:
             return -2
         _ = self.delete_exchange(name.copy())
+        # 0018: the exchange deletion is journaled.
+        _ = self._journal.write_exchange_delete(name.copy())
         return 1
 
     def bind_exchange(
@@ -476,6 +716,11 @@ struct Router:
             return False
         if destination not in self._exchanges:
             return False
+        # 0018: the E2E binding is journaled (e2e=1 record flag) BEFORE the
+        # Binding consumes the routing key.
+        _ = self._journal.write_bind(
+            source.copy(), destination.copy(), routing_key.copy(), True,
+        )
         var args = Dict[String, String]()
         var binding = Binding(destination, routing_key^, args^)
         self._exchanges[source].add_exchange_binding(binding^)
@@ -511,6 +756,10 @@ struct Router:
         var qname = self._consumers[consumer_id].queue_name()
         if qname not in self._queues:
             return 0
+        # 0018: journal every ACK tombstone BEFORE the reclaim destroys the
+        # delivery states.
+        var seqs = self._queues[qname].ack_seqs_through(upper)
+        self._journalize_seqs(qname^, seqs^, self._TOMB_ACK())
         var bufs = self._queues[qname].ack_reclaim_through(upper)
         var n = len(bufs)
         while len(bufs) > 0:
@@ -537,6 +786,7 @@ struct Router:
         var qname = self._consumers[consumer_id].queue_name()
         if qname not in self._queues:
             return False
+        var journal_seq = self._queues[qname].persist_seq_of(delivery_tag)
         var result = False
         if requeue:
             result = self._queues[qname].reject(delivery_tag)
@@ -548,6 +798,12 @@ struct Router:
             self._dead_letter_one(qname.copy(), msg^)
             result = True
         if result:
+            # 0018: a requeued requeue acceptance is REDELIVER; a drop is
+            # tombstoned inside _dead_letter_one (REMOVE).
+            if requeue:
+                self._journalize_tombstone(
+                    journal_seq, self._TOMB_REDELIVER()
+                )
             self._consumers[consumer_id].record_ack()
         return result
 
@@ -568,8 +824,12 @@ struct Router:
         var qname = self._consumers[consumer_id].queue_name()
         if qname not in self._queues:
             return 0
+        # 0018: journal the REDELIVER bumps BEFORE the requeue moves the
+        # unacked set.
+        var seqs = self._queues[qname].ack_seqs_through(upper)
         var n = 0
         if requeue:
+            self._journalize_seqs(qname^, seqs^, self._TOMB_REDELIVER())
             n = self._queues[qname].requeue_unacked_through(upper)
         else:
             # 0017 T3: requeue=false → dead-letter through the DLX when the
@@ -669,6 +929,9 @@ struct Router:
             eligible_count == 1
             and self._queues[only_queue].has_capacity()
         ):
+            var journal_seq = self._journalize_enqueue(only_queue, msg)
+            if journal_seq >= 0:
+                msg.set_storage_seq(journal_seq)
             self._queues[only_queue].enqueue_prechecked(msg^)
             self._reap_queue(only_queue.copy())
             self._messages_routed += 1
@@ -692,11 +955,16 @@ struct Router:
                     msg.message_id(), msg.routing_key(), msg.headers()
                 )
                 var payload = self._fill_destination(msg, payload_len)
+                var props_copy = msg.content_prop_bytes_copy()
                 var cloned = Message(
                     env^, payload^, prop_flags,
-                    msg.content_prop_bytes_copy(),
+                    props_copy^,
                 )
                 cloned.set_enqueue_ns(stamp_ns)
+                # 0018: WRITE-AHEAD the durable MSG record per destination.
+                var jseq = self._journalize_enqueue(qname, cloned)
+                if jseq >= 0:
+                    cloned.set_storage_seq(jseq)
                 self._queues[qname].enqueue_prechecked(cloned^)
                 count += 1
 
@@ -771,7 +1039,14 @@ struct Router:
         _ = self._consumers.pop(consumer_id)
         self._deindex_consumer(qname, consumer_id)
         if qname in self._queues:
+            # 0018: a disconnect-requeue keeps every unacked delivery in the
+            # RECOVERED set (still-live redelivered messages — the journal
+            # bumps the REDELIVER approximation for the durable ones).
+            var seqs = self._queues[qname].ack_seqs_through(
+                UInt64(18446744073709551615)
+            )
             _ = self._queues[qname].requeue_unacked()
+            self._journalize_seqs(qname^, seqs^, self._TOMB_REDELIVER())
         return True
 
     # ---- consuming ----------------------------------------------------
@@ -818,6 +1093,10 @@ struct Router:
             return False
         if not self._queues[qname].has_unacked(delivery_tag):
             return False
+        # 0018: pre-read the journal identity; the ACK tombstone drops the
+        # persisted message's live state at recovery (a fresh-empty state).
+        var journal_seq = self._queues[qname].persist_seq_of(delivery_tag)
+        self._journalize_tombstone(journal_seq, self._TOMB_ACK())
         # Reclaim the dead message's payload and return it to the pool. `release`
         # is a no-op for non-pooled buffers (single-dest moves and direct copies),
         # so with the pool disabled or for non-pooled payloads this matches the old
@@ -839,8 +1118,12 @@ struct Router:
         var qname = self._consumers[consumer_id].queue_name()
         if qname not in self._queues:
             return False
+        var journal_seq = self._queues[qname].persist_seq_of(delivery_tag)
         var result = self._queues[qname].reject(delivery_tag)
         if result:
+            # 0018: the requeue acceptance bumps the journal's recovered
+            # redelivered approximation (REDELIVER marker).
+            self._journalize_tombstone(journal_seq, self._TOMB_REDELIVER())
             self._consumers[consumer_id].record_ack()
         return result
 

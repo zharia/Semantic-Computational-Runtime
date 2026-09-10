@@ -99,6 +99,10 @@ struct Message:
     # 0017 T2: byte-faithful inbound content properties (AMQP flag word +
     # raw property-list slice). Empty (flags 0) for engine-internal messages.
     var _props: ContentProps
+    # 0018: the journal record ordinal this message was persisted under
+    # (-1 = never persisted / the disabled storage tier). The tombstone
+    # records (ACK/REDELIVER/REMOVE) address the message BY THIS SEQ.
+    var _storage_seq: Int
 
     def __init__(out self, var envelope: Envelope, var payload: Buffer):
         """Construct a message, taking ownership of the payload buffer.
@@ -110,6 +114,7 @@ struct Message:
         self._delivery_count = 0
         self._enqueue_ns = 0
         self._props = ContentProps()
+        self._storage_seq = -1
 
     # 0017 T2 additive constructor: same message but carrying content props.
     def __init__(
@@ -124,6 +129,16 @@ struct Message:
         self._delivery_count = 0
         self._enqueue_ns = 0
         self._props = ContentProps(prop_flags, prop_bytes^)
+        self._storage_seq = -1
+
+    # 0018: journal identity readouts (the tombstone seq / the durable
+    # persistence identity). -1 = never persisted.
+
+    def set_storage_seq(mut self, seq: Int):
+        self._storage_seq = seq
+
+    def storage_seq(ref self) -> Int:
+        return self._storage_seq
 
     # 0017 T3: enqueue-time stamp (the Queue/Router side calls this once at
     # enqueue; the delivery path evaluates the age against x-message-ttl).
@@ -213,3 +228,9 @@ struct Message:
 
     def delivery_count(self) -> Int:
         return self._delivery_count
+
+    # 0018: the recovery materialization seeds the recovered-redelivered
+    # approximation exactly once (delivery_count = 1 + bumps so the FIRST
+    # recovered dequeue already carries the AMQP redelivered bit).
+    def set_delivery_count(mut self, value: Int):
+        self._delivery_count = value

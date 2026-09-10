@@ -102,6 +102,13 @@ struct HyrxMQConfig:
     var node_name: String
     # 0017 T4: SASL PLAIN credentials table (default: admin/password).
     var users: List[UserRecord]
+    # 0018: pluggable storage. DEFAULT = "disabled" (zero fs writes/reads
+    # anywhere); "memory" = the byte-identical RAM WAL; "file" = the
+    # injectable WAL through the supplied FileSystemOps (storage_path
+    # required). storage_path EMPTY = unset (a non-empty value in the
+    # disabled/memory tiers is REJECTED in validate()).
+    var storage_mode: String
+    var storage_path: String
 
     def __init__(out self):
         self.listen_host = "0.0.0.0"
@@ -114,6 +121,8 @@ struct HyrxMQConfig:
         self.node_name = "hyrxmq@localhost"
         self.users = List[UserRecord]()
         self.users.append(UserRecord("admin", "password"))
+        self.storage_mode = "disabled"
+        self.storage_path = ""
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -125,6 +134,8 @@ struct HyrxMQConfig:
         self.vhost = existing.vhost
         self.node_name = existing.node_name
         self.users = existing.users.copy()
+        self.storage_mode = existing.storage_mode
+        self.storage_path = existing.storage_path.copy()
 
     def apply(mut self, var key: String, var value: String) raises:
         """Assign one recognized key. Unknown keys are REJECTED (audit §17).
@@ -149,6 +160,13 @@ struct HyrxMQConfig:
             self.vhost = _require_text(key, value)
         elif key == "node_name":
             self.node_name = _require_text(key, value)
+        elif key == "storage_mode":
+            var m = _require_text(key, value)
+            if m != "disabled" and m != "memory" and m != "file":
+                raise "config: invalid storage_mode '" + m + "' (disabled|memory|file)"
+            self.storage_mode = m^
+        elif key == "storage_path":
+            self.storage_path = _require_text(key, value)
         else:
             raise "config: unknown field '" + key + "'"
 
@@ -223,3 +241,10 @@ struct HyrxMQConfig:
         for i in range(len(self.users)):
             if len(self.users[i].username.bytes()) == 0:
                 raise "config: user entry has an empty username"
+        # 0018: storage invariants (the disabled tier MUST stay fs-free).
+        if self.storage_mode == "file":
+            if len(self.storage_path.strip().bytes()) == 0:
+                raise "config: file storage_mode requires a non-empty storage_path"
+        else:
+            if len(self.storage_path.strip().bytes()) != 0:
+                raise "config: storage_path must be empty in the '" + self.storage_mode + "' storage_mode"

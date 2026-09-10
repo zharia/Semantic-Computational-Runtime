@@ -66,6 +66,10 @@ struct QueueConfig:
     def ttl_ms(ref self) -> Int:
         return self._ttl_ms
 
+    # 0018: the durable flag readout (the Router's journal gating).
+    def durable(ref self) -> Bool:
+        return self._durable
+
     def max_length(ref self) -> Int:
         return self._max_length
 
@@ -122,6 +126,10 @@ struct Queue:
 
     def name(ref self) -> String:
         return self._name
+
+    # 0018: the durable-flag readout (the Router's journal gating).
+    def durable(ref self) -> Bool:
+        return self._config._durable
 
     def _total_count(ref self) -> Int:
         """Total messages: pending (inbox + outbox) + unacked."""
@@ -371,6 +379,19 @@ struct Queue:
     # Delivery tags are per-queue ascending dequeue order, so "all unacked tags
     # ≤ T" is exactly the prefix of _unacked_tags up to the first tag > T.
 
+    def ack_seqs_through(mut self, delivery_tag: UInt64) raises -> List[Int]:
+        """0018: the journal identities of every tag <= delivery_tag, in
+        tag order (the non-consuming preflight the Router tombstones with
+        BEFORE the reclaim destroys the delivery states)."""
+        var out = List[Int]()
+        for i in range(len(self._unacked_tags)):
+            var t = self._unacked_tags[i]
+            if t > delivery_tag:
+                break
+            if t in self._unacked:
+                out.append(self._unacked[t].storage_seq())
+        return out^
+
     def _take_reclaim_through(
         mut self, delivery_tag: UInt64
     ) raises -> List[Buffer]:
@@ -464,6 +485,25 @@ struct Queue:
         return n
 
     # ---- queue.purge (amqp 50,30; 0017 T1) ----
+
+    # 0018: crash-recovery materialization + the persist-identity readout.
+
+    def recover_message(mut self, var msg: Message) raises:
+        """Materialize one RECOVERED durable message straight into the inbox.
+
+        Deliberately BYPASSES the capacity preflight and the x-max-length
+        trim: recovery must not lose a journal-reported message at the
+        moment it comes back (the next publish-side enqueue reasserts the
+        x-args). The caller (Router.recover) pre-marks the recovered
+        redelivered approximation and the storage seq."""
+        self._inbox.append(msg^)
+
+    def persist_seq_of(mut self, delivery_tag: UInt64) raises -> Int:
+        """The journal identity of a delivery's message (-1 = never
+        persisted). Non-consuming preflight for the Router's tombstones."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].storage_seq()
+        return -1
 
     def purge_ready(mut self) raises -> List[Message]:
         """Remove every READY message (inbox + outbox); UNACKED untouched.

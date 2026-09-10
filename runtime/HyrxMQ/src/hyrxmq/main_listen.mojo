@@ -30,6 +30,13 @@
 from std.os import getenv
 from std.sys import argv
 
+from hyrx.core.storage import (
+    MessageJournal,
+    SystemFileSystemOps,
+    STORAGE_MODE_DISABLED,
+    STORAGE_MODE_FILE,
+    STORAGE_MODE_MEMORY,
+)
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.listener import AMQPListener, UDSAMQPListener
 
@@ -45,6 +52,47 @@ def _resolve_port() raises -> Int:
     if len(args) > 1 and len(args[1].bytes()) > 0:
         return Int(args[1])
     return 5673
+
+
+def _resolve_storage_mode() -> Int:
+    """The configured storage mode (DISABLED by default — zero fs use)."""
+    var getter = getenv("HYRXMQ_STORAGE_MODE", "disabled")
+    if getter == "memory":
+        return STORAGE_MODE_MEMORY()
+    if getter == "file":
+        return STORAGE_MODE_FILE()
+    return STORAGE_MODE_DISABLED()
+
+
+def _attach_storage_journal(mut listener: AMQPListener, mode: Int) raises:
+    """Wire the storage journal into the TCP listener (the bootstrap wire).
+
+    disabled = NO storage class at all (zero fs activity — the default tier
+    is untouched); memory = the RAM WAL; file = the WAL through the supplied
+    SystemFileSystemOps. Recovery replays ONLY in file mode (a memory-tier
+    restart survives nothing by definition)."""
+    if mode == STORAGE_MODE_DISABLED():
+        return
+    if mode == STORAGE_MODE_MEMORY():
+        listener.attach_journal(MessageJournal.memory())
+        return
+    var ops = SystemFileSystemOps()
+    var path = getenv("HYRXMQ_STORAGE_PATH", "")
+    listener.attach_journal(MessageJournal.file(path^, ops^))
+    _ = listener.recover_journal()
+
+
+def _attach_storage_journal_uds(mut listener: UDSAMQPListener, mode: Int) raises:
+    """UDS twin of _attach_storage_journal (the SAME knobs/semantics)."""
+    if mode == STORAGE_MODE_DISABLED():
+        return
+    if mode == STORAGE_MODE_MEMORY():
+        listener.attach_journal(MessageJournal.memory())
+        return
+    var ops = SystemFileSystemOps()
+    var path = getenv("HYRXMQ_STORAGE_PATH", "")
+    listener.attach_journal(MessageJournal.file(path^, ops^))
+    _ = listener.recover_journal()
 
 
 def main() raises:
@@ -65,13 +113,33 @@ def main() raises:
         if frame_max < 4096:
             raise "main_listen: HYRXMQ_FRAME_MAX below the AMQP frame_min 4096"
         cfg.frame_max = frame_max
+    # 0018: pluggable storage bootstrap (the DEFAULT tier is disabled —
+    # byte-identical serving with NO fs activity anywhere). HYRXMQ_STORAGE
+    # _MODE in {disabled, memory, file}; a file mode REQUIRES a non-empty
+    # $HYRXMQ_STORAGE_PATH and wires the WAL through the supplied
+    # SystemFileSystemOps (the ONLY fs-seam impl used by the listen binary).
+    var storage_mode = getenv("HYRXMQ_STORAGE_MODE", "disabled")
+    if storage_mode == "disabled":
+        cfg.storage_mode = "disabled"
+    elif storage_mode == "memory":
+        cfg.storage_mode = "memory"
+    elif storage_mode == "file":
+        cfg.storage_mode = "file"
+        cfg.storage_path = getenv("HYRXMQ_STORAGE_PATH", "")
+        if len(cfg.storage_path.strip().bytes()) == 0:
+            raise "main_listen: HYRXMQ_STORAGE_MODE=file requires HYRXMQ_STORAGE_PATH"
+    else:
+        raise "main_listen: invalid HYRXMQ_STORAGE_MODE '" + storage_mode + "' (disabled|memory|file)"
     cfg.validate()
     var node = cfg.node_name
+    # Storage journal (0018): wired ONLY when configured; disabled = no
+    # storage class at ALL (both bootstrap branches stay byte-identical).
     # Transport selection (fair UDS benchmark cell): a non-empty
     # $HYRXMQ_UDS_PATH binds the UDS front end; otherwise TCP exactly as before.
     var uds_path = getenv("HYRXMQ_UDS_PATH", "")
     if len(uds_path.bytes()) > 0:
         var ulistener = UDSAMQPListener(uds_path^, cfg^)
+        _attach_storage_journal_uds(ulistener, _resolve_storage_mode())
         if not ulistener.start():
             raise "main_listen: uds listener failed to start"
         print("HyrxMQ " + node + " listening on uds:" + ulistener.path())
@@ -79,6 +147,7 @@ def main() raises:
         return
     var host = cfg.listen_host
     var listener = AMQPListener(cfg^)
+    _attach_storage_journal(listener, _resolve_storage_mode())
     if not listener.start():
         raise "main_listen: listener failed to start"
     print(
