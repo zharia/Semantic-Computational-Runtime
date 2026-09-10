@@ -835,3 +835,46 @@ The following must be resolved by the Semantic Transition Calculus rather than b
 10. computational-field criterion.
 
 These questions are the next formalization work.
+
+---
+
+## 31. STC-001 Formalization Results (Lean)
+
+Increment `STC-001` formalized the Semantic Transition Calculus in
+`SCRFormal/SCR/STC{,Laws,Examples,Counterexamples}.lean` and tested the
+kernel of §3 as a hypothesis. Machine-checked outcomes:
+
+1. **Sound but not minimal-complete.** The tuple
+   \(SMM=\langle\mathcal S,\mathcal C,\mathcal T,\mathcal K,\mathcal O,\equiv\rangle\)
+   survives for applicability, admissibility, rejection, outcome
+   relations, determinism, nondeterminism, partiality, contextual
+   equivalence and probe-observation. It is **insufficient** for
+   composition and independence.
+2. **`Admissible ⇒ Applicable` (§8) is a theorem**, not an axiom, once
+   admissibility is defined as `applicable ∧ consented`; both conjuncts
+   are independently falsifiable (proven in the Counter machine).
+3. **The set-valued outcome model (§10) is required.** The functional
+   transition model is refuted for nondeterminism (counterexample
+   `ndet_no_single_valued_realization`).
+4. **The failure taxonomy (§11) is representable** for rows 1–2
+   (rejection vs semantic failure, separated by proof); rows 3–4
+   (realization, physical) are inexpressible in the kernel **by
+   design** — the §26 provider firewall holds formally.
+5. **Composition requires a result-state relation** (gap G1: two legal
+   result-state structures over identical kernel data diverge).
+6. **Independence requires footprint structure** (gap G3: two
+   deterministic, total machines with identical outcome shape commute
+   or do not). Semantic concurrency remains distinct from physical
+   parallelism; no scheduling object enters the kernel.
+7. **Context-indexed equivalence (§16) is required**; bare data equality
+   is representation-sensitive (counterexample `cxeqv`). This refines
+   §30 item 1 and the earlier `SCR.Equivalence` definition.
+
+Refinements introduced: `ResultState` (§9, G1), `Footprint`/`Overlap`
+(§12, G3). Deferred to STC-002: state/transition-level equivalence with
+congruence laws (gap G4, blocking full composition-determinism), the
+general commutation law, and causal/temporal relations (§30 items 4, 9).
+
+Full crosswalk and evidence:
+`program_increments/v0.0.1/milestones/002_semantic_machine/`
+(`crosswalk.md`, `report.md`).

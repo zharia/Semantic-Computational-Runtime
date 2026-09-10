@@ -6,3 +6,7 @@ import SCR.Transformation
 import SCR.Equivalence
 import SCR.Invariants
 import SCR.Field
+import SCR.STC
+import SCR.STCLaws
+import SCR.STCExamples
+import SCR.STCCounterexamples

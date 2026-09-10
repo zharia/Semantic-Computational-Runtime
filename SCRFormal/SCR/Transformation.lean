@@ -26,8 +26,9 @@ def Transition := State → Transformation → Option State
 
 def ValidTransition
     (s s' : State)
-    (_t : Transformation)
-    (_step : Transition s _t = some s') : Prop :=
+    (t : Transformation)
+    (step : Transition)
+    (_h : step s t = some s') : Prop :=
   ValidState s ∧ ValidState s'
 
 end SCR
