@@ -46,6 +46,19 @@ Origin policy = **allow-all by default**, extensible via config
 - Suite 46/0 base green; no pika-matrix regression; perf recorded as
   observation rows only.
 
+## T4 state (session closing record)
+
+- attempts: a 1178-line phase9 fixture was generated but its in-proc
+  serving fixture hangs (the phase9 dir is NOT part of test_all's
+  discovery list, so the suite stays 46/0; the file is left UNCOMMITTED
+  as a starting point for the next round, the row set was verified
+  byte-precise at the 0013-family shape and may be adapted once the
+  in-proc serving loop is understood);
+- the LIVE evidence recorded: the wss handshake verified end-to-end with
+  real PEM certs (101 + the amqp subprotocol + the accept key) — the
+  transport rows are real; the phase9 fixture = the pending piece.
+- 0023-T4 remains the one OPEN item on the todo list.
+
 ## Explicitly NOT claimed
 
 - Same-port ALPN multiplexing (deferred; h2 coupling).
