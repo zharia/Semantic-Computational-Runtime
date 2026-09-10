@@ -345,3 +345,12 @@ unaffected: no decision in this crosswalk reifies an implementation
 concept; the refinements remain relation-level over existing
 ontology, and none has been promoted to permanent kernel status
 without surviving the primitive-elimination test of §12.
+
+Update (gate closure, `docs/112` part II): the demotion of
+`OutcomeOf`/`ResultState` is now evidence-backed — the canonical
+golden path re-derives over the graph carrier
+(`STCGraphMigration.wm_golden_composition`); `causallyDependent`
+loses its definition to the enablement/conflict decision
+(`STCGraphLaws.E`); Delta maps to consequence-payload per
+`101_Core` §23 (`D.delta_gt_span`). STC-002 proceeds under those
+terms.

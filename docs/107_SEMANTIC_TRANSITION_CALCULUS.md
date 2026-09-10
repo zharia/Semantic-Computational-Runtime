@@ -755,5 +755,12 @@ establishes equivalence/congruence, the causal definition, the
 Delta mapping, and the golden-path re-derivation over the graph
 carrier.
 
-**STC-002 is BLOCKED** pending the remaining gate clauses of
-`docs/112` (§17, §19).
+**STC-002 gate: RELEASED.** The gate clauses were discharged in
+`SCRFormal/SCR/STCGraphLaws.lean` /
+`STCGraphMigration.lean` (evidence table: `docs/112`, "Gate Closure"
+part): composition determinism proven (closing old G4/O-2), the
+causality decision made with three machine-checked separations, the
+Delta mapping resolved per `101_Core` §23, and the golden path
+re-derived over the graph carrier. Two items continue INSIDE STC-002:
+continuation-congruence (open — no padded class exists) and the
+hyperedge endpoint bridge.

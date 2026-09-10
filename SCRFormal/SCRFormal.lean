@@ -11,3 +11,5 @@ import SCR.STCLaws
 import SCR.STCExamples
 import SCR.STCCounterexamples
 import SCR.STCGraphCounterexamples
+import SCR.STCGraphLaws
+import SCR.STCGraphMigration

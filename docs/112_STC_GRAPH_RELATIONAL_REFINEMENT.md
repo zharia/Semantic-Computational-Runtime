@@ -393,3 +393,32 @@ Abstractions removed by this increment: four rejected, two demoted
 to projections pending STC-002 re-derivation; none deleted from the
 codebase (STC-001 preserved; the instruction's completion condition
 is honoured).
+
+---
+
+# Gate Closure (STC-002 part 1 — Lawful Equivalence & Migration)
+
+Executed in `SCRFormal/SCR/STCGraphLaws.lean` and
+`SCRFormal/SCR/STCGraphMigration.lean` (full build green; axioms:
+propext/Quot.sound, Classical.choice only in two case-analysis
+witnesses; zero `sorry`). Each §17/§19 gate clause: resolved status
+with machine-checked evidence.
+
+| Gate clause | Status | Evidence |
+|---|---|---|
+| Composition determinism (old G4 / O-2) | CLOSED | `gCompose_deterministic` (+ `gCompose_deterministic_sym`, `compose_value_deterministic`): proven from named machine conditions `stepDet`, `succFunOnClass`; non-vacuity via `tickA_stepDet`/`tickA_succFun` (hold) vs `coin_not_stepDet` (fails) |
+| Consequence equivalence + congruences | CLOSED (value, successor); OPEN (continuation) | `GConsEquiv`/`GConsSetoid`/`GConsValueCongruent` used in theorems; continuation-congruence statement deferred INSIDE STC-002 (no padding class exists — deliberate) |
+| Path equivalence | CLOSED (span+label pair) | `Chain`, `chain_append` (composition by append); spans for behaviour, label sequences for identity (CXG20) |
+| Causality decision | RESOLVED with evidence | `E.sep_order_no_conflict`, `E.sep_conflict_no_order`, `E.sep_enablement_no_order`: conflict, enablement, and successor order-sensitivity pairwise independent. DECISION: causal dependence := enablement ∪ conflict; successor order-sensitivity is a shadow (SEP 3 proves under-reporting). STC-001's `causallyDependent := ¬independent` formally out |
+| Delta ↔ `101_Core` §23 mapping | RESOLVED | `D.delta_gt_span`: equal endpoint spans, unequal semantic deltas — delta rides the consequence (payload), span is its graph-level projection; CORE-INV-012 hierarchy preserved; consequence = STC carrier of `S₁ = S₀ ⊕ Δ` |
+| Context-typed input domains | RESOLVED | `SW.domains_derive` + CXG7: extensional typed domains derive from the edge; consents remain irreducible (refusal ≠ dangling). Verdict: typing captures domains, NOT refusals |
+| Golden path re-derivation over graph carrier | CLOSED | `Migration.wm_golden_composition` (steps 1–2 via `toG`), `wm_golden_observation` (step 3), committed `SCR.State` ontology carried verbatim. Demotion of `OutcomeOf`/`ResultState` is now EVIDENCE-BACKED REFINEMENT; STC-001 retained (refine, not delete) |
+| Hypergraph endpoints (203_Graph bridge) | PARTIAL | the migrated states ARE entity/relationship structures — endpoints carry semantic graphs; a dedicated hyperedge machine is scheduled inside STC-002 |
+
+**Gate decision: RELEASED for STC-002 adoption proper** (kernel
+promotion, continuation congruence, richer causality algebra,
+deprecation decisions on `SCR.STC` pair). The anti-gate conditions
+that produced this outcome stand: no kernel was silently redefined;
+every surviving primitive (`Applicable`, `Consents`, edge, labels,
+typed outputs, footprint-as-interference) survived explicit
+elimination tests (§14 matrix extended by E1–E3, D, SW results).
