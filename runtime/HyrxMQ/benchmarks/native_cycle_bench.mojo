@@ -29,6 +29,14 @@
 # repeated, so batch=1 is byte-identical to the original behavior). --count
 # stays MESSAGE-count: cycles = max(1, count / batch); a get-empty reply
 # counts 0 delivered for that get.
+#
+# The one-send burst is exactly the 0015 event-tier wedge repro: with the
+# pre-fix broker the burst's tail frames stranded in the codec backlog (or
+# the loop parked in a blocking recv) while the client waited for the get
+# replies. The broker-side dose fix (listener.mojo recv(2)+MSG_DONTWAIT in
+# serve_slot_dose) makes the batched UDS/TCP path complete; nothing here
+# changed — this client side already threads the batch correctly for both
+# transports.
 # --uds accepts a filesystem socket path (/tmp/hyrxmq.sock) or a Linux
 # abstract-namespace name (@name). Both transports drive the SAME measured
 # pipeline: the client wrapper is parameterized on the AMQPConn trait, exactly
@@ -215,8 +223,9 @@ struct Conn[C: AMQPConn]:
                     f.value().channel,
                     f.value().payload_copy(),
                 )
-            # Read no more than the codec can still hold (listener.mojo:277-285):
-            # an oversized read would reject a well-behaved peer.
+            # Read no more than the codec can still hold (listener.mojo
+            # _serve_step's room clamp): an oversized read would reject a
+            # well-behaved peer.
             var want = 65536
             var room = (
                 self.codec.frame_limit()

@@ -22,6 +22,9 @@
 
 from std.collections import Dict, List, Optional
 
+from std.ffi import c_int, c_size_t, c_ssize_t, external_call, get_errno, ErrNo
+from std.sys.info import CompilationTarget
+
 from hyrx.transport.transport import TransportConfig, AMQPConn
 from hyrx.transport.tcp import TCPListener, TCPConnection
 from hyrx.transport.uds import UDSListener, UDSConnection
@@ -150,19 +153,100 @@ def SERVE_FAILED() -> Int:
     return -2
 
 
-# Fairness dose (0015): the max number of frames served from ONE slot in a
-# single ready-cycle before the loop rotates to the next ready fd. Under a
-# burst the slot is simply re-fired by the level-triggered poller right
-# after, so throughput is unharmed but other ready connections get a turn
-# within one deadline window.
+# Fairness dose (0015): the max number of RECEIVING reads (recv(2)/
+# recv(2)+MSG_DONTWAIT) issued against ONE slot in a single ready-cycle
+# before the loop rotates to the next ready fd. Under a burst the slot is
+# re-fired by the level-triggered poller right after, so throughput is
+# unharmed but other ready connections get a turn within one deadline
+# window.
+#
+# 0015 dose-wedge fix: the dose budget now counts READS, not frames. A
+# single read can coalesce many frames (the batched client sends its whole
+# burst in one write), and the last read leaves those frames in the
+# CODEC's user-space backlog — at which point the kernel buffer is empty
+# and level-triggered epoll will NOT re-fire: a frame-count dose with a
+# dry fd strands complete frames in the backlog forever (the propagated
+# epoll_wait(100)=0 wedge). Parseable backlog frames are therefore drained
+# without counting against the read budget, up to the absolute frame cap
+# below.
+#
+# NOT the following (bounded below): parse-only frame dispatch after the
+# read budget is exhausted. The absolute frame cap bounds how much work
+# one dose can perform; a hostile 7-octet-heartbeat flood can still strand
+# (defer indefinitely), which is the same per-connection damage class the
+# FAIL path already accepts — the cap keeps the dose from becoming an
+# unbounded always-serve loop.
 def _FAIRNESS_DOSE() -> Int:
     return 8
+
+
+# The absolute frame cap per dose: 8 reads can coalesce at most ~576
+# KB into the backlog; one max-sized find_burst (32 x frame_max(131072)
+# publish groups + gets) is <= ~160 frames, so the cap only bites on
+# pathological micro-frame input.
+def _DOSE_FRAME_CAP() -> Int:
+    return 4096
 
 
 # Poll timeout (0015): the readiness wait is bounded so `_running` (stop())
 # stays responsive while idle.
 def _POLL_TIMEOUT_MS() -> Int:
     return 100
+
+
+# ---- 0015 dose-wedge fix: the event tier's non-blocking read seam ----
+
+# recv(2) per-call non-blocking flag (MSG_DONTWAIT, Linux 0x40 / macOS 0x80).
+# The socket's own state is NEVER changed (the fd stays blocking), so the
+# legacy tier's recv(2) — flags 0 — is untouched; only the dose path opts
+# into a would-block-able read, per call, like flare does for its batched
+# drains. Retained as a comptime constant in the flare POSIX-handler style
+# (listener.mojo imports no flare symbol; this is a local libc binding of
+# the one syscall the dose needs).
+def _MSG_DONTWAIT() -> Int:
+    if CompilationTarget.is_linux():
+        return 0x40
+    return 0x80
+
+
+def _recv_dontwait(fd: Int, buf: UnsafePointer[UInt8, _], want: Int) raises -> Int:
+    """One recv(2) with MSG_DONTWAIT on the slot's borrowed fd. NEVER blocks.
+
+    Outcome codes (the EAGAIN escalation path):
+    - ``> 0``: that many bytes were received (written into ``buf``).
+    - ``0``  : orderly EOF — the caller closes the slot (same semantics as
+      a 0-byte blocking read today).
+    - ``-1`` : EAGAIN/EWOULDBLOCK — the kernel buffer is dry. This is the
+      poller's job, not the dose's: the caller returns SERVE_PARTIAL and
+      the LEVEL-TRIGGERED registry re-fires the fd when the peer's next
+      bytes arrive. No spin: the registry only fires on actual readiness.
+    - every other failure raises (EINTR is retried in-line); the
+      serve_one_frame try/except then fails the connection closed, as the
+      blocking path already does.
+
+    ADR-0005 note: the fd is the transport's own (poll_fd()), owned and
+    closed by the connection — this call only ever READS from it, the same
+    borrowed-fd shape the poller already uses for readiness.
+    """
+    while True:
+        var got = external_call["recv", c_ssize_t](
+            c_int(fd),
+            buf.unsafe_bitcast[NoneType](),
+            c_size_t(want),
+            c_int(_MSG_DONTWAIT()),
+        )
+        if got >= 0:
+            return Int(got)
+        var e = get_errno()
+        if e == ErrNo.EINTR:
+            continue
+        if e == ErrNo.EAGAIN or e == ErrNo.EWOULDBLOCK:
+            return -1
+        raise (
+            "AMQPConnServing: event-dose recv failed on fd "
+            + String(fd)
+            + " (errno " + String(Int(e.value)) + ")"
+        )
 
 
 struct AMQPConnServing[Conn: AMQPConn]:
@@ -188,6 +272,11 @@ struct AMQPConnServing[Conn: AMQPConn]:
     var _max_connections: Int
     var _active: Int
     var _refused: Int
+    # 0015 dose-wedge fix: transient per-serve flag read by serve_slot_dose
+    # after each dose iteration — True when the last serve frame step issued
+    # a socket READ (a frame served purely from the codec backlog leaves it
+    # False, so parse-only dispatches do not consume the read budget).
+    var _last_serve_read: Bool
 
     def __init__(out self, var config: HyrxMQConfig):
         # Enforced ceiling handed to every per-connection codec AND advertised in
@@ -207,6 +296,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._hdrbuf = List[List[UInt8]]()
         self._active = 0
         self._refused = 0
+        self._last_serve_read = False
 
     # ---- broker service lifecycle (transport start/stop is the wrapper's) ----
 
@@ -306,23 +396,57 @@ struct AMQPConnServing[Conn: AMQPConn]:
         return self._conns[slot].value().poll_fd()
 
     def serve_slot_dose(mut self, slot: Int) -> Int:
-        """Serve up to _FAIRNESS_DOSE() frames from ONE slot. NEVER raises.
+        """Serve ONE readiness event's work from a slot. NEVER raises,
+        NEVER blocks on a peer that is not sending (0015 dose-wedge fix).
 
-        The readiness-rotation dose: serve_one_frame() repeatedly while it
-        returns SERVE_DISPATCHED, bounded by the dose constant so a
-        burst-y connection cannot starve other ready connections. Returns
-        the last outcome code (SERVE_DISPATCHED means the dose budget ran
-        out with the slot still dispatching — the level-triggered poller
-        re-fires it right after; SERVE_PARTIAL/teardown codes end the dose
-        naturally). Teardown itself is left to the caller (the loop owns
-        the registry).
+        Loop shape:
+        - every iteration serves one frame step through `_serve_dose_frame`
+          (the try/except wrapper of `_serve_step` in NON-BLOCKING mode:
+          reads are recv(2)+MSG_DONTWAIT on the slot's borrowed fd);
+        - a step that completes a frame from the codec BACKLOG (no socket
+          read) is "parse-only": it does not consume the read budget;
+        - a step that actually READS consumes one of _FAIRNESS_DOSE()
+          reads;
+        - parse-only dispatches continue up to _DOSE_FRAME_CAP() frames so
+          a burst the fd already delivered into the backlog is fully
+          drained even when the kernel buffer is now empty (level-
+          triggered epoll cannot re-fire a dry fd);
+        - the loop ends on _recv_dontwait's EAGAIN => SERVE_PARTIAL: the
+          single-threaded loop RETURNS and the readiness registry re-fires
+          the fd when the peer's next bytes arrive — exactly the deferred
+          shape the dose was designed for, with no fd asleep inside the
+          loop and no other connection starved.
+
+        Returns the last outcome code (SERVE_DISPATCHED only when the
+        READ budget ran out mid-burst with kernel data still pending —
+        the poller re-fires that right after; SERVE_PARTIAL is the
+        would-block yield; teardown codes end the dose). Teardown itself
+        is left to the caller (the loop owns the registry).
         """
         var last = SERVE_DISPATCHED()
-        for _ in range(_FAIRNESS_DOSE()):
-            last = self.serve_one_frame(slot)
+        var frames = 0
+        var reads = 0
+        while frames < _DOSE_FRAME_CAP() and reads < _FAIRNESS_DOSE():
+            last = self._serve_dose_frame(slot)
             if last != SERVE_DISPATCHED():
                 break
+            frames += 1
+            if self._last_serve_read:
+                reads += 1
         return last
+
+    def _serve_dose_frame(mut self, slot: Int) -> Int:
+        """The event-tier dose's one-frame step: serve_one_frame's try/
+        except containment with `_serve_step` resolved to its NON-BLOCKING
+        read mode (additive to 0015; the public serve_one_frame — the
+        LEGACY tier's entry point — keeps its blocking read semantics
+        unchanged)."""
+        try:
+            return self._serve_step(slot, True)
+        except:
+            if slot >= 0 and slot < len(self._closed):
+                self._close_slot(slot)
+            return SERVE_FAILED()
 
     # ---- serving (the one frame/header/handshake state machine) ----
 
@@ -338,26 +462,32 @@ struct AMQPConnServing[Conn: AMQPConn]:
         can reach the accept loop or terminate the process.
         """
         try:
-            return self._serve_step(slot)
+            return self._serve_step(slot, False)
         except:
             if slot >= 0 and slot < len(self._closed):
                 self._close_slot(slot)
             return SERVE_FAILED()
 
-    def _serve_step(mut self, slot: Int) raises -> Int:
-        """The one-frame step; every error is the caller's to fail closed."""
+    def _serve_step(mut self, slot: Int, nb_event: Bool) raises -> Int:
+        """The one-frame step; every error is the caller's to fail closed.
+
+        ``nb_event`` selects the read seam: False (the LEGACY tier — the
+        blocking `recv_bytes` path, byte-identical to before) or True (the
+        event-driven dose — `_recv_dontwait`, which yields SERVE_PARTIAL
+        on EAGAIN instead of parking the whole loop on a dry fd)."""
         if slot < 0 or slot >= len(self._conns):
             raise "AMQPConnServing.serve_one_frame: bad slot"
         if self._closed[slot]:
             return SERVE_CLOSED()
         if not self._conns[slot].__bool__():
             return SERVE_CLOSED()
+        self._last_serve_read = False
 
         # Pre-frame handshake stage: the 8-octet protocol header is consumed
         # HERE, never fed to the codec (its first octet 'A'=0x41 is not a legal
         # frame_type and would be rejected as a bad frame).
         if self._phases[slot] == PHASE_HEADER():
-            return self._step_header(slot)
+            return self._step_header(slot, nb_event)
 
         # Ownership note (Mojo 1.0): non-copyable values are reached through
         # chained calls on the containers, never bound to `var` (implicit copy).
@@ -374,10 +504,40 @@ struct AMQPConnServing[Conn: AMQPConn]:
             )
             if want > room:
                 want = room
-            var chunk = self._conns[slot].value().recv_bytes(want)
-            if len(chunk) == 0:
-                self._close_slot(slot)
-                return SERVE_CLOSED()
+
+            var chunk: List[UInt8]
+            if nb_event:
+                # Event-tier read (0015 dose-wedge fix): recv(2) with
+                # MSG_DONTWAIT. EAGAIN => SERVE_PARTIAL yield: the dose
+                # RETURNS instead of parking the single-threaded loop on
+                # a dry fd; the level-triggered registry re-fires the fd
+                # when more bytes arrive. want <= 0 mirrors the blocking
+                # path's recv_bytes-fails-closed behavior below.
+                if want <= 0:
+                    self._close_slot(slot)
+                    return SERVE_CLOSED()
+                var buf = List[UInt8](unsafe_uninit_length=want)
+                var got = _recv_dontwait(
+                    self._conns[slot].value().poll_fd(),
+                    buf.unsafe_ptr(),
+                    want,
+                )
+                if got == -1:
+                    return SERVE_PARTIAL()
+                if got == 0:
+                    self._close_slot(slot)
+                    return SERVE_CLOSED()
+                self._last_serve_read = True
+                if got < want:
+                    buf.resize(unsafe_uninit_length=got)
+                chunk = buf^
+            else:
+                # LEGACY tier: the blocking read, byte-identical to before.
+                chunk = self._conns[slot].value().recv_bytes(want)
+                self._last_serve_read = True
+                if len(chunk) == 0:
+                    self._close_slot(slot)
+                    return SERVE_CLOSED()
             self._codecs[slot].feed_bytes(chunk^)
             frame = self._codecs[slot].try_parse_frame()
             if not frame.__bool__():
@@ -448,7 +608,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
             self._close_slot(slot)
         return SERVE_DISPATCHED()
 
-    def _step_header(mut self, slot: Int) raises -> Int:
+    def _step_header(mut self, slot: Int, nb_event: Bool) raises -> Int:
         """Consume the 8-octet protocol header, then send start.
 
         Accumulates raw bytes across steps until 8 are held (so a client that
@@ -457,13 +617,38 @@ struct AMQPConnServing[Conn: AMQPConn]:
         mismatch the connection is failed closed (audit §14/§36: the header is
         a mandatory, non-negotiable preamble — a wrong header is a protocol
         error, not a frame error) while the broker keeps accepting.
+
+        ``nb_event`` selects the read seam exactly as in `_serve_step`: in
+        the event tier the header read is recv(2)+MSG_DONTWAIT, so a drib-
+        bling client cannot park the loop inside the dose; EAGAIN here is
+        the SERVE_PARTIAL yield and LEVEL-TRIGGERED re-fire supplies the
+        rest of the header octets later.
         """
+        self._last_serve_read = False
         while len(self._hdrbuf[slot]) < PROTOCOL_HEADER_LEN():
             var need = PROTOCOL_HEADER_LEN() - len(self._hdrbuf[slot])
-            var chunk = self._conns[slot].value().recv_bytes(need)
-            if len(chunk) == 0:
-                self._close_slot(slot)
-                return SERVE_CLOSED()
+            var chunk: List[UInt8]
+            if nb_event:
+                var buf = List[UInt8](unsafe_uninit_length=need)
+                var got = _recv_dontwait(
+                    self._conns[slot].value().poll_fd(),
+                    buf.unsafe_ptr(),
+                    need,
+                )
+                if got == -1:
+                    return SERVE_PARTIAL()
+                if got <= 0:
+                    self._close_slot(slot)
+                    return SERVE_CLOSED()
+                self._last_serve_read = True
+                buf.resize(unsafe_uninit_length=got)
+                chunk = buf^
+            else:
+                chunk = self._conns[slot].value().recv_bytes(need)
+                self._last_serve_read = True
+                if len(chunk) == 0:
+                    self._close_slot(slot)
+                    return SERVE_CLOSED()
             for i in range(len(chunk)):
                 self._hdrbuf[slot].append(chunk[i])
 
