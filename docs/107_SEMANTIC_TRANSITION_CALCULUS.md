@@ -764,3 +764,15 @@ Delta mapping resolved per `101_Core` §23, and the golden path
 re-derived over the graph carrier. Two items continue INSIDE STC-002:
 continuation-congruence (open — no padded class exists) and the
 hyperedge endpoint bridge.
+
+---
+
+## 31. Kernel Adoption
+
+Per docs/106 §32 the calculus is stated on the adopted `GMKernel`:
+typed labelled edge carrier, reused admissibility, derived
+continuation congruence (`STCGraphCongruence`), structural
+associativity, data-flow causal dependence. The §3–§24 material
+remains the historical development and its falsification record;
+`OutcomeOf`/`ResultState`-style judgements continue to compile as
+deprecated compatibility forms.

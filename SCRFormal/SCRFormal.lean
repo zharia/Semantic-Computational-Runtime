@@ -17,3 +17,4 @@ import SCR.Schema
 import SCR.Conformance
 import SCR.Canonical
 import SCR.SchemaBridge
+import SCR.STCGraphCongruence

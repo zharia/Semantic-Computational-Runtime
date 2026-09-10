@@ -352,5 +352,9 @@ golden path re-derives over the graph carrier
 (`STCGraphMigration.wm_golden_composition`); `causallyDependent`
 loses its definition to the enablement/conflict decision
 (`STCGraphLaws.E`); Delta maps to consequence-payload per
-`101_Core` §23 (`D.delta_gt_span`). STC-002 proceeds under those
-terms.
+`101_Core` §23 (`D.delta_gt_span`). Kernel ADOPTED
+(docs/106 §32): the graph carrier is normative;
+`OutcomeOf`/`ResultState` are deprecated-for-new-development
+compatibility forms; continuation congruence is DERIVED
+(`STCGraphCongruence.continuation_congruence`) with its driving law
+proved non-vacuous (`CV`).

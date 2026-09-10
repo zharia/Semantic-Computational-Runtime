@@ -878,3 +878,47 @@ general commutation law, and causal/temporal relations (§30 items 4, 9).
 Full crosswalk and evidence:
 `program_increments/v0.0.1/milestones/002_semantic_machine/`
 (`crosswalk.md`, `report.md`).
+
+---
+
+## 32. Adopted Kernel (post-STC-002 gate, 2026-09-10)
+
+The counterexample program (§31, `docs/112`, `STCGraph*` modules)
+settled the transition-carrier question. The SEMANTIC MACHINE's
+minimal kernel is now stated on the typed graph carrier:
+
+```text
+GMKernel
+  domains         T  transformations
+                  S  states          (SCR.State is one instance)
+                  C  interpretation contexts
+                  K  constraint environments
+  admissibility   Applicable (T S C)          ← REUSED from STC-001,
+                  Consents  (T S C K)            unchanged, irreducible
+                                                   (CV/CXG7: refusal is
+                                                   not absence-of-edge)
+  carrier         Out  : T → Type                     (typed consequences)
+                  edge : ∀ τ, K → S → C → Out τ → Prop (the single relation)
+  well-formedness edge ⇒ admissible                    (GWellFormed)
+  equivalence     consE per (τ, c) + setoid + value congruence
+                                                    + successor congruence;
+                  continuation congruence is DERIVED, not assumed
+                                                    (STCGraphCongruence)
+  composition     relational (gCompose through successors); associativity
+                  STRUCTURAL, not a per-machine law
+  order/flow      causal dependence := enablement ∪ conflict (data-flow);
+                  footprint = interference annotation;
+                  successor order-sensitivity = observational shadow only
+  observation     derived from edges + equivalence (probe/value
+                  distinctions); always context-indexed
+  provenance      paths through labelled edges; derived, not machinery
+```
+
+`⟨S, C, T, K, O, ≡⟩` (§3) is retained as the historical hypothesis and
+its falsification record; `OutcomeOf`/`ResultState` are **DEPRECATED
+FOR NEW DEVELOPMENT** (retained compiling, with `SchemaBridge`
+characterizing exactly their surviving content: the
+deterministic-total fragment). This amendment follows from
+demonstrated contradictions with expressiveness requirements — the
+§26 firewall discipline is unchanged and was itself re-proven
+(physical failure remains inexpressible in-kernel).

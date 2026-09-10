@@ -68,7 +68,8 @@ SCRFormal/            Lean v4.19.0, Batteries, `lake build` ≈ 1 s
 │   │                                      ← calculus kernel, laws, machines, falsifications
 │   ├── STCGraphCounterexamples.lean STCGraphLaws.lean STCGraphMigration.lean
 │   │                                      ← graph carrier, lawful equivalence, migration
-│   └── SchemaBridge.lean               ← NEW: schema ⇄ calculus reconciliation theorems
+│   ├── SchemaBridge.lean               ← schema ⇄ calculus reconciliation theorems
+│   └── STCGraphCongruence.lean         ← derived continuation congruence + non-vacuity
 ```
 
 Layering rule (now also enforced by imports): `Schema*` never imports
