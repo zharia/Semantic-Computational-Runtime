@@ -71,8 +71,9 @@ SCR defines an implementation-independent abstract machine boundary, but it is n
 | Component | Status |
 |-----------|--------|
 | Lean Formal Model | ✅ 12 theorems, BUILD PASS |
-| Mojo Semantic Kernel | ✅ 47 tests PASS |
-| Reference Executor | ✅ 35 tests PASS |
+| STC Formalization (Lean) | ✅ STC-001 + graph refinement, BUILD PASS |
+| Mojo Semantic Kernel | ✅ 55 tests PASS |
+| Reference Executor | ✅ 28 tests PASS |
 | Semantic Equivalence | ✅ 15 tests PASS |
 | Multi-Entity Support | ✅ 14 tests PASS |
 | MLIR Representation | ✅ Verified, lowered, executed |
@@ -82,11 +83,14 @@ SCR defines an implementation-independent abstract machine boundary, but it is n
 # Lean
 lake build SCRFormal              # BUILD PASS (8882 jobs)
 
-# Mojo (82 tests total)
+// Mojo (98 tests total, re-counted 2026-09-10)
 uv run mojo run -I src tests/     # ALL PASS
 
 # MLIR → Execution
 bash test_differential.sh         # 2/2 PASS
+
+# STC formal calculus (Lean 4.19 project)
+cd SCRFormal && lake build        # BUILD PASS (185 jobs)
 ```
 
 ---
@@ -100,7 +104,7 @@ bash test_differential.sh         # 2/2 PASS
 | **Reference** | Mojo 1.0 | Semantic oracle (ground truth) |
 | **Representation** | MLIR (LLVM 22) | Canonical computational representation |
 | **Lowering** | mlir-opt, llc, gcc | MLIR → executable code |
-| **Testing** | Mojo TestSuite | 82 tests + 2 differential execution |
+| **Testing** | Mojo TestSuite | 98 tests + 2 differential execution |
 
 ---
 
@@ -138,10 +142,10 @@ SCR/
 │   ├── constraint.mojo
 │   ├── context.mojo
 │   ├── observation.mojo
-│   └── tests/            # 47 kernel tests
+│   └── tests/            # 55 kernel tests
 ├── runtime/Reference_Executor/
 │   ├── src/scr_reference/  # Reference Executor
-│   └── tests/              # 35 RE + equivalence tests
+│   └── tests/              # 28 RE + 15 equivalence tests
 ├── seed/                 # Foundational semantic knowledge
 ├── docs/                 # System specifications
 └── program_increments/v0.0.1/
@@ -240,9 +244,9 @@ Observe: c1=8, c2=8
     ↓
 Lean Verification (12 theorems)
     ↓
-Mojo Implementation (47 tests)
+Mojo Implementation (55 tests)
     ↓
-Reference Executor (35 tests)
+Reference Executor (28 tests)
     ↓
 Semantic Equivalence (15 tests)
     ↓
