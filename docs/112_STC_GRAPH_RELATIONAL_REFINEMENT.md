@@ -422,3 +422,24 @@ that produced this outcome stand: no kernel was silently redefined;
 every surviving primitive (`Applicable`, `Consents`, edge, labels,
 typed outputs, footprint-as-interference) survived explicit
 elimination tests (§14 matrix extended by E1–E3, D, SW results).
+
+---
+
+# Follow-through (1c, 1d, 1e) — Remaining Items Closed
+
+| Item (§17 line) | Was | Now | Evidence |
+|---|---|---|---|
+| Causal-dependence algebra | decision + successor-shadow only | **algebra separated**: successor-shadow and value-TRACE shadow are INCOMPARABLE; both distinct from conflict and enablement; the structural account (enablement ∪ conflict) confirmed observationally incomplete BY DESIGN, shadows are witnesses not definitions | `STCGraphCausality` — `CA.trace_sees_what_succ_shadow_misses`, `CA.succ_shadow_blind`, `Z.shadows_incomparable_1`, `CF.conflict_structural`, `CF.cf_trace_blind` |
+| Schema witness strengthening | `CanonicalConstraint := v = v` (historical record) | **bound-constraint schema witness added**: decidable non-negativity, tryEvolve success/failure on real arithmetic, non-vacuous preservation law | `SCR/Canonical.lean` — `tryEvolve_bound_success`, `tryEvolve_bound_failure`, `shift_preserves_bound` |
+| Hyperedge endpoints | PARTIAL | **closed additively**: graph machine over `SCR.State` endpoints (relationship-preserving entity edges, total); and one consequence spanning three distinct successors — multi-endpoint edges already representable in the relational-successor carrier (design vindicated; the fan-out breaks `succFunOnClass` exactly as the laws predict) | `STCGraphHyperedges` — `HEG.total`, `HEG.relationships_preserved`, `FAN.hyperedge_fanout`, `FAN.not_succFun` |
+
+Still open (named, unchanged): continuation-congruence generalization beyond
+successor congruence (1a showed it needs nothing more — CLOSED as
+derivation); internal hypergraph incidence structure inside states —
+executable-hypergraph milestone scope, not kernel scope; the
+"sensitivity without any read/write overlap" reverse separation —
+CONJECTURE open.
+
+Build: ALL green. Axioms: propext/Quot.sound only, no choice, no
+sorry. Kernel (docs/106 §32) unchanged by these items — they
+complete the trajectory's STC-002 remainder.

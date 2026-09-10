@@ -18,3 +18,5 @@ import SCR.Conformance
 import SCR.Canonical
 import SCR.SchemaBridge
 import SCR.STCGraphCongruence
+import SCR.STCGraphCausality
+import SCR.STCGraphHyperedges
