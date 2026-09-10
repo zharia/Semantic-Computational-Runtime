@@ -13,3 +13,7 @@ import SCR.STCCounterexamples
 import SCR.STCGraphCounterexamples
 import SCR.STCGraphLaws
 import SCR.STCGraphMigration
+import SCR.Schema
+import SCR.Conformance
+import SCR.Canonical
+import SCR.SchemaBridge

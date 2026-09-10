@@ -70,8 +70,7 @@ SCR defines an implementation-independent abstract machine boundary, but it is n
 
 | Component | Status |
 |-----------|--------|
-| Lean Formal Model | ✅ 12 theorems, BUILD PASS |
-| STC Formalization (Lean) | ✅ STC-001 + graph refinement, BUILD PASS |
+| Lean Formal Model (merged) | ✅ schema (12 theorems) + calculus (STC-001/002 corpus), BUILD PASS |
 | Mojo Semantic Kernel | ✅ 55 tests PASS |
 | Reference Executor | ✅ 28 tests PASS |
 | Semantic Equivalence | ✅ 15 tests PASS |
@@ -80,17 +79,16 @@ SCR defines an implementation-independent abstract machine boundary, but it is n
 | Differential Execution | ✅ MLIR ≡ Mojo ≡ Reference Executor |
 
 ```bash
-# Lean
-lake build SCRFormal              # BUILD PASS (8882 jobs)
+# Lean (single project; see docs/113_FORMAL_ONTOLOGY_MERGE.md)
+cd SCRFormal && lake build        # BUILD PASS (all modules: schema + STC calculus)
 
-// Mojo (98 tests total, re-counted 2026-09-10)
-uv run mojo run -I src tests/     # ALL PASS
+# Mojo kernel + Reference Executor (98 tests; run per file)
+cd lib/scr_kernel && uv run mojo run -I .. tests/test_multi_entity.mojo
+cd ../runtime/Reference_Executor/v0.0.1-0A-Reference_Executor_Mojo
+uv run mojo run -I src -I ../../../lib tests/test_reference_executor.mojo
 
 # MLIR → Execution
-bash test_differential.sh         # 2/2 PASS
-
-# STC formal calculus (Lean 4.19 project)
-cd SCRFormal && lake build        # BUILD PASS (185 jobs)
+bash program_increments/v0.0.1/milestones/001_semantic-kernel/test_differential.sh  # 2/2 PASS
 ```
 
 ---
@@ -115,8 +113,8 @@ cd SCRFormal && lake build        # BUILD PASS (185 jobs)
 git clone https://github.com/zharia/Semantic-Computational-Runtime.git
 cd Semantic-Computational-Runtime
 
-# Lean build
-lake build SCRFormal
+# Lean build (single formal project)
+cd SCRFormal && lake build
 
 # Mojo tests
 cd runtime/Reference_Executor/v0.0.1-0A-Reference_Executor_Mojo
@@ -132,7 +130,8 @@ bash program_increments/v0.0.1/milestones/001_semantic-kernel/test_differential.
 
 ```text
 SCR/
-├── formal/SCR/           # Lean formal model (Basic.lean, Canonical.lean)
+├── SCRFormal/SCR/        # Lean formal model — schema layer (Schema/Canonical),
+│                         # data ontology (Basic/State/...), calculus (STC*/Graph*)
 ├── lib/scr_kernel/       # Mojo semantic kernel
 │   ├── entity.mojo       # Entity
 │   ├── entity_definition.mojo
@@ -310,6 +309,10 @@ If MLIR execution disagrees with the Reference Executor:
 | `106_semantic_kernel_contract.md` | Semantic kernel contract |
 | `AGENTS.md` | Agent operating policy |
 | `reports/005/` | Milestone 005 verification |
+| `docs/106_SEMANTIC_MACHINE_MODEL.md` | Semantic Machine Model (authoritative) |
+| `docs/107_SEMANTIC_TRANSITION_CALCULUS.md` | Transition calculus + status |
+| `docs/112_STC_GRAPH_RELATIONAL_REFINEMENT.md` | Graph carrier: hypothesis, results, gate |
+| `docs/113_FORMAL_ONTOLOGY_MERGE.md` | Merge audit: schema ⊔ calculus = one structure |
 
 ---
 

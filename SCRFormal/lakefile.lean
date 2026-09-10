@@ -14,4 +14,5 @@ lean_lib «SCRFormal» where
     `SCR.STC, `SCR.STCLaws, `SCR.STCExamples, `SCR.STCCounterexamples,
     `SCR.STCGraphCounterexamples,
     `SCR.STCGraphLaws,
-    `SCR.STCGraphMigration]
+    `SCR.STCGraphMigration,
+    `SCR.Schema, `SCR.Conformance, `SCR.Canonical, `SCR.SchemaBridge]

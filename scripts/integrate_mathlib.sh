@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+# DEPRECATED (2026-09-10): superseded by the SCRFormal merge (docs/113_FORMAL_ONTOLOGY_MERGE.md).
+
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

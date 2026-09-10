@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+# DEPRECATED (2026-09-10): the root formal/ + Mathlib-master project was merged
+# into ./SCRFormal (Lean v4.19, Batteries-only). See docs/113_FORMAL_ONTOLOGY_MERGE.md.
+# Build the formal development with: cd SCRFormal && lake build
+
 
 ###############################################################################
 # SCR — Mathlib / Lean Formal Substrate Bootstrap
