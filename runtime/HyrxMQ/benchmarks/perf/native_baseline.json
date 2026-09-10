@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "started_utc": "2026-09-10T11:32:55Z",
+  "loadavg_1m": 4.83,
+  "wall_s": 92.2,
+  "client": "native mojo closed loop, 1 in flight",
+  "cells": {
+    "hyrx-tcp": {
+      "64": {
+        "rate_median": 38666.0,
+        "rate_max": 40337.0,
+        "us_median": 25.862,
+        "reps": 3
+      },
+      "256": {
+        "rate_median": 36090.0,
+        "rate_max": 38577.0,
+        "us_median": 27.707,
+        "reps": 3
+      },
+      "1024": {
+        "rate_median": 30087.0,
+        "rate_max": 32360.0,
+        "us_median": 33.236,
+        "reps": 3
+      },
+      "4096": {
+        "rate_median": 21134.0,
+        "rate_max": 21813.0,
+        "us_median": 47.315,
+        "reps": 3
+      },
+      "16384": {
+        "rate_median": 8395.0,
+        "rate_max": 8642.0,
+        "us_median": 119.109,
+        "reps": 3
+      },
+      "65536": {
+        "rate_median": 2721.0,
+        "rate_max": 2730.0,
+        "us_median": 367.474,
+        "reps": 3
+      },
+      "131072": {
+        "rate_median": 1346.0,
+        "rate_max": 1368.0,
+        "us_median": 742.724,
+        "reps": 3
+      }
+    },
+    "hyrx-uds": {
+      "64": {
+        "rate_median": 51397.0,
+        "rate_max": 52615.0,
+        "us_median": 19.456,
+        "reps": 3
+      },
+      "256": {
+        "rate_median": 55482.0,
+        "rate_max": 62236.0,
+        "us_median": 18.023,
+        "reps": 3
+      },
+      "1024": {
+        "rate_median": 49827.0,
+        "rate_max": 53217.0,
+        "us_median": 20.069,
+        "reps": 3
+      },
+      "4096": {
+        "rate_median": 28824.0,
+        "rate_max": 30203.0,
+        "us_median": 34.692,
+        "reps": 3
+      },
+      "16384": {
+        "rate_median": 11879.0,
+        "rate_max": 11908.0,
+        "us_median": 84.177,
+        "reps": 3
+      },
+      "65536": {
+        "rate_median": 3393.0,
+        "rate_max": 3407.0,
+        "us_median": 294.682,
+        "reps": 3
+      },
+      "131072": {
+        "rate_median": 1703.0,
+        "rate_max": 1746.0,
+        "us_median": 586.979,
+        "reps": 3
+      }
+    },
+    "rabbit": {
+      "64": {
+        "rate_median": 8602.0,
+        "rate_max": 8959.0,
+        "us_median": 116.243
+      },
+      "256": {
+        "rate_median": 8651.0,
+        "rate_max": 8706.0,
+        "us_median": 115.589
+      },
+      "1024": {
+        "rate_median": 8275.0,
+        "rate_max": 8432.0,
+        "us_median": 120.833
+      },
+      "4096": {
+        "rate_median": 7022.0,
+        "rate_max": 7156.0,
+        "us_median": 142.392
+      },
+      "16384": {
+        "rate_median": 4696.0,
+        "rate_max": 4701.0,
+        "us_median": 212.902
+      },
+      "65536": {
+        "rate_median": 2053.0,
+        "rate_max": 2067.0,
+        "us_median": 486.992
+      },
+      "131072": {
+        "rate_median": 1252.0,
+        "rate_max": 1263.0,
+        "us_median": 798.569
+      }
+    }
+  },
+  "note": "observation tier for PLATFORM-CAPACITY; the pika gate number lives in results.json"
+}
