@@ -151,6 +151,50 @@ def _resolve_wss_config(mut cfg: HyrxMQConfig) raises:
                 cfg.wss_origin_allowlist.append(t)
 
 
+def _resolve_admin_http(mut cfg: HyrxMQConfig) raises:
+    """The 0023 T3 admin-HTTP env override (additive to the WSS one).
+
+    - HYRXMQ_ADMIN_HTTP: port; 0/absent = tier OFF (byte-identical boot
+      with it unset; the plan default port 25673 must be written
+      EXPLICITLY to turn the tier on).
+    Malformed numbers raise (fail loud, never silently bind elsewhere).
+    The config-file key (admin_http_port) is the T1/T2 surface; this env
+    var is the entry-point override, the same pairing as HYRXMQ_WSS_LISTEN.
+    """
+    var admin = getenv("HYRXMQ_ADMIN_HTTP", "")
+    if len(admin.bytes()) > 0:
+        cfg.admin_http_port = Int(admin)
+
+
+def _admin_http_requested(ref cfg: HyrxMQConfig) -> Bool:
+    """True when the admin-HTTP tier is configured (port != 0). Called
+    BEFORE any bind so the legacy tiers keep their byte path."""
+    return cfg.admin_http_port != 0
+
+
+def _refuse_admin_http(ref cfg: HyrxMQConfig) raises:
+    """The 0023 T3 HONEST NOT-YET boot state: fail loud, bind nothing.
+
+    Why the configured admin tier cannot start in this build (the SAME
+    single-loop reality the WSS tier declared): the binary serves ONE
+    blocking serving loop per process (TCP OR UDS OR WSS), and the
+    broker's live counters (messages/queues/consumers) live inside that
+    loop's AMQPService with no synchronized cross-loop read. Serving the
+    admin reactor concurrently needs the thread model + a synchronized
+    snapshot handoff — a needs-probe item, recorded in the T3 receipt,
+    never faked here (no bound-but-unserved port, no multi-listener
+    passthrough). The AdminHttpListener surface
+    (src/hyrx/transport/http_admin.mojo) is complete and is exercised
+    standalone by the T4 conformance rows."""
+    raise (
+        "main_listen: admin-HTTP tier configured (port "
+        + String(cfg.admin_http_port)
+        + ") but the serving loop is single-tier in this build; "
+        "concurrent admin-HTTP + primary serving is NOT-YET (0023 T3 "
+        "receipt). Nothing was bound."
+    )
+
+
 def _wss_requested(ref cfg: HyrxMQConfig) -> Bool:
     """True when the WSS tier is configured (port != 0). Called BEFORE
     any ownership transfer so the legacy tiers keep their byte path."""
@@ -223,8 +267,17 @@ def main() raises:
         raise "main_listen: invalid HYRXMQ_STORAGE_MODE '" + storage_mode + "' (disabled|memory|file)"
     # 0023: the WSS tier configuration (env overrides; additive).
     _resolve_wss_config(cfg)
+    # 0023 T3: the admin-HTTP tier configuration (env override; additive).
+    _resolve_admin_http(cfg)
     cfg.validate()
     var node = cfg.node_name
+    # 0023 T3: the admin-HTTP tier, when configured, FAILS LOUD here —
+    # before ANY bind (including the WSS tier's) — because the serving
+    # loop is single-tier in this build (see _refuse_admin_http and the
+    # T3 receipt). Unconfigured => the tiers below behave byte-identically
+    # to before.
+    if _admin_http_requested(cfg):
+        _refuse_admin_http(cfg)
     # 0023: the WSS tier, when configured, takes the serving loop (the
     # ONE serving loop per process; see _run_wss_if_configured and the
     # NOT-YET multi-tier declaration there). Unconfigured => the tiers
