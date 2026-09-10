@@ -21,10 +21,15 @@
 # - frame_max / channel_max NEGOTIATION: tune advertises the configured ceiling
 #   and the codec keeps it; a client tune-ok that requests a smaller value is
 #   recorded but not re-enforced, and an oversized request is not clamped here.
-# - heartbeat (frame type 8) send/receive timers: tune advertises heartbeat=0
-#   (no heartbeats), so the synchronous path never waits on one.
-# - authentication: credentials are parsed from the SASL PLAIN response but NOT
-#   validated (no auth backend).
+# - heartbeat (frame type 8): tune (10,30) ADVERTISES the configured value
+#   (0017 T4) and tune-ok NEGOTIATES (min via AMQPService) into _heartbeat;
+#   the minimal client ping-pong echo runs in the listener serving loop.
+#   Server-CYCLIC heartbeats and the 2x-miss close remain NOT IMPLEMENTED
+#   (no timer subsystem; recorded as PARTIAL in the 0017 T4 matrix).
+# - authentication: credentials ARE validated since 0017 T4 (SASL PLAIN
+#   authcid/passwd against HyrxMQConfig.users; failure = the normative
+#   connection.close 403 ACCESS_REFUSED emitted from the connection.start-ok
+#   handler BEFORE serving anything else).
 # The states below are therefore reachable by the negotiated handshake as well
 # as by direct set_state() calls from the service layer.
 
