@@ -700,3 +700,33 @@ The existence of a:
 does not establish that the concept belongs in SMM.
 
 A primitive requires a semantic necessity, demonstrated by a counterexample against the existing calculus.
+
+---
+
+## 29. STC-001 Status Against §27 Exit Criteria
+
+Formalization (Lean, `SCRFormal/SCR/STC{,Laws,Examples,Counterexamples}.lean`, milestone `002_semantic_machine`):
+
+| §27 criterion | Status | Evidence |
+|---|---|---|
+| Core relations formally defined | MET | kernel classes, `STC.lean` |
+| Deterministic behaviour expressible | MET | `Counter.inc_deterministic` |
+| Nondeterministic behaviour expressible | MET | `Choice.toss_nondeterministic`; functional alias refuted (`CX-NDet`) |
+| Semantic rejection distinct from realization failure | MET | `Prov.realization_down_is_partial_not_rejected` (realization failure enters only as context-elevated partiality); rejection≠semantic-failure: `Div.div_zero_is_semantic_failure` + `rejected_no_outcome` |
+| Composition defined | MET | `composeOutcome` over `ResultState` (G1 refinement); laws `compose_exists`, `rejected_compose_none`; witness composition `Witness.step4_compose` |
+| Independence/conflict defined | MET | `Footprint`/`Overlap` (G3 refinement); `Pair` independence+commutation; conflict witness `IFO` (order-sensitive, 8 ≠ 7) |
+| Temporal and causal ordering distinguishable | MET (minimal) | `causallyDependent` = footprint overlap (recorded as falsifiable hypothesis); temporal-without-causal: `Pair`; causal-and-order-sensitive: `IFO` |
+| Observation/equivalence defined | MET | probe-derived state observation `probeDistinction` + `Probe` machine both directions; context-indexed `Equiv` (`EquivLaws`), `CX-EQV` refutes equality |
+| Identity obligations expressible | MET | `Witness.step6_identity` via `SCR.SameIdentity` across transitions |
+| Reference Executor as conforming realization | MET | `Laws.Oracle`: `Realization ρ`; tryEvolve-shape proven a realization; RE remains evidence, not authority |
+| Existing SCR witness described entirely in STC terms | MET | `Examples.Witness` reproduces the multi-entity golden path over the committed `SCR.State` ontology |
+
+Open items retained for STC-002 (§28 anti-expansion unchanged): G4
+state/transition-level equivalence + congruences (composition
+determinism, recorded as unprovable-from-kernel with the exact
+missing structure, not laundered); general commutation law for
+arbitrary `FootprintsSound` machines (O-1); richer causality beyond
+the overlap hypothesis. Kernel additions remain relation-level:
+`ResultState`, `Footprint`, `Overlap`, `causallyDependent` — no new
+carriers, no runtime ontology (spec §41 respected: zero
+scheduler/provider/storage constructs).

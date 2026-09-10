@@ -21,10 +21,11 @@ Machine-checked in `SCRFormal/SCR/STC{,Laws,Examples,Counterexamples}.lean`:
   (CX-NDet); (iii) committed `SCR.Equivalence` (= bare `=`) as semantic
   equivalence (CX-EQV); (iv) `SCR.Invariants.Deterministic` as
   non-vacuous (trivially true for functions — §32 violation).
-- **UNCERTAIN (OPEN O-1..O-4):** full commutation law for footprint-
-  independent transitions; composition-determinism congruence package
-  (GAP G4); causality/temporal relations as kernel relations; identity
-  obligations across transitions.
+- **UNCERTAIN (OPEN O-1, O-2, O-4 + G4):** full commutation law for
+  footprint-independent transitions; composition-determinism
+  congruence package (GAP G4); identity obligations beyond the
+  witness case. Causality/temporal (former O-3) resolved in minimal
+  form (see §12).
 
 ## 2. Baseline
 
@@ -85,6 +86,13 @@ abstract: `admissible_imp_applicable`, `rejected_no_outcome`,
 `deterministic_of_empty`, `rejected_compose_none`, `compose_exists`,
 `nondet_witness_distinguish`, `singleton_outcomes_of_subsingleton`.
 
+Extended after the completion audit (all machine-checked):
+`AppObs.outcomes_equal_applicability_differs` — applicability is NOT
+recoverable from outcome observation (spec §7 Q7): two well-formed
+machines with identical empty outcome relations differ in
+applicability. Consequently `Loop`-style partiality and rejection
+stay formally disjoint.
+
 ## 7. STC Formal Model
 
 Kernel classes: `Applicable`, `Consents`, `OutcomeOf` (O as `outParam`),
@@ -121,9 +129,15 @@ UNPROVABLE without additional assumptions: composition-determinism
   (pair ≡) — structure to define in STC-002.
 - O-2/G4: state-level ≡ + congruence of {applicable, consents,
   outcomeOf, result} — the STC-002 increment.
-- O-3: causality (docs/107 §13) and temporal relations (§14) — not
-  yet attempted; no blocker found (they are relational over derived
-  transitions, expected expressible).
+- O-3 RESOLVED (minimal form): causal dependence defined in the
+  kernel as footprint overlap (`STC.causallyDependent`). Witness
+  pair machine-checked: `Pair.independent_witness` +
+  `Pair.pair_commutes` (temporally ordered run of CAUSALLY
+  INDEPENDENT transitions — order-safe) vs
+  `IFO.ifo_causal_and_order_sensitive` (causally dependent AND
+  order-sensitive: 8 ≠ 7). Definition recorded as falsifiable
+  hypothesis: a machine where dependent transitions have disjoint
+  footprints would refute it.
 - O-4: identity obligations across transitions (docs/107 §16) —
   `SCR.Identity` compatible; no formal statement produced yet.
 - docs/106 §30 items 1,2,4,7,8,9,10: PARTIALLY answered (state vs
@@ -140,9 +154,23 @@ Position fixed per spec §20: RE = one conforming witness
 source of semantics. The Counter machine here is the Lean mirror of
 the golden-path witness; `Counter.compose_success` reproduces the
 canonical pipeline step in STC terms (spec §27 exit criterion
-"existing SCR witness described in STC terms" — partially met:
-transformation application covered; multi-entity/provenance legs of
-the witness not yet re-expressed). RE was NOT used as ontology
+"existing SCR witness described in STC terms").
+Criterion met for the canonical witness: the multi-entity golden
+path (c1 = 5, c2 = 10, LINKS, +3 / −2, observe 8/8) is now
+described ENTIRELY in STC terms in `Examples.Witness` over the
+COMMITTED ontology (`SCR.State`, `SCR.Entity`,
+`SCR.Relationship`, `SCR.SameIdentity`, `SCR.ValidState`):
+admissibility (`step1_admissible`), outcome (`step2_outcome`),
+validity preservation across transitions (`step3_valid` via
+id-invariance lemmas), composition (`step4_compose`), observation
+(`step5_observe`), identity obligations (`step6_identity`). The
+executor-shape conformance itself is formalized abstractly:
+`Laws.Oracle` defines `Realization ρ` (implementation outcomes
+transport to equivalent machine outcomes) and proves the
+tryEvolve/TransformResult pattern IS a `Realization`
+(`oracle_agrees_with_semantics`, `tryEvolve_is_realization`) —
+successes ↔ machine outcomes, failures ↔ rejections.
+RE was NOT used as ontology
 justification anywhere in this increment.
 
 ## 11. Representation Independence
@@ -163,7 +191,16 @@ layers; spec §43 trajectory).
   zero scheduler/thread/queue/parallelism vocabulary (spec §15 clean).
 - Semantic order ≠ scheduler order: preserved structurally — STC has
   no scheduling object at all (nothing to collapse into).
-- Temporal/causal: deferred (§9 O-3).
+- Temporal/causal: MINIMAL formalization landed
+  (`causallyDependent` = footprint overlap; Pair/IFO witnesses);
+  richer causal algebra remains STC-002.
+
+Causal/temporal separation (spec §16–§17, exit-criterion 7):
+`causallyDependent` := footprint overlap (kernel def);
+`Pair` run = ordered but causally independent (commutes both
+orders); `IFO` = ordered AND dependent (non-commuting) — both
+machine-checked. Semantic ordering ≠ scheduling: still true by
+absence — the kernel contains no scheduler notion to conflate.
 
 ## 13. Failure and Outcome Semantics
 
@@ -173,9 +210,15 @@ semantic failure = outcome with `IsFailure` (`Div`: admissible ∧
 outcome `fail` ∧ failure — row 1 vs row 2 separated by PROOF, not
 prose); partiality = admissible ∧ no outcomes (`Loop.run_partial`,
 requires `OutcomeAdmissible` one-directionality — confirmed the
-correct axiom orientation); realization/physical failure =
-INEXPRESSIBLE in kernel (no O-construct, no provider parameter —
-firewall holds by construction, spec §11).
+correct axiom orientation).
+Realization failure is representable ONLY through semantic
+elevation: machine `Prov` models provider availability as field
+context data, where down-provider manifests as `partialTransition`
+(admissible, no outcome) and is proven disjoint from rejection
+(`realization_down_is_partial_not_rejected`) — the
+docs/107 §27 criterion 4 gap is closed. Physical failure (power
+loss, segfault) remains inexpressible in the kernel BY DESIGN (no
+carrier, no parameter); its home is the provider/EGS layers.
 
 ## 14. Documentation Changes
 
@@ -194,6 +237,12 @@ firewall holds by construction, spec §11).
 - Planned with this increment's acceptance: `docs/106_SEMANTIC_MACHINE_
   MODEL.md` §30 status annotation (per spec §36 "formal argument
   established" now satisfied).
+- docs/107_SEMANTIC_TRANSITION_CALCULUS.md: new §29 recording
+  exit-criteria status against docs/107 §27 after STC-001.
+- docs/106_SEMANTIC_MACHINE_MODEL.md §31: kernel falsification
+  results (G1 ResultState, G3 Footprint/Overlap, G4 deferred) —
+  already present; extended with causal-dependence definition
+  note.
 
 ## 15. Validation (exact, recorded post-completion)
 
@@ -203,13 +252,19 @@ firewall holds by construction, spec §11).
   no-op re-run 1.2 s. Zero `error:` lines.
 - `lake build SCRFormal` (root `formal/`, Lean v4.34):
   **"Build completed successfully (8882 jobs)"** — unchanged, 8 s.
-- Mojo kernel (47) + Reference Executor (35) + equivalence (15) +
-  multi-entity (14) + differential (2): NOT re-run — zero files touched
-  under `lib/`, `runtime/`, `formal/` (FACT: `git status` shows changes
-  only in `SCRFormal/`, `docs/106`, this milestone dir, and root
-  README/docs from the prior documentation increment). Spec §31
-  "relevant tests": the relevant suite is the formal one; both formal
-  projects are green.
+- Mojo suites EXECUTED post-formalization (per-file `mojo run`,
+  include paths `-I src -I ../../../lib` / `-I ..`):
+  kernel `lib/scr_kernel/tests`: canonical_program 13,
+  end_to_end_witness 8, kernel_properties 20, multi_entity 14
+  — **55 passed, 0 failed**.
+  Reference Executor `tests/`: canonical_program_re 7,
+  end_to_end_witness_re 8, reference_executor 13,
+  canonical_equivalence 8, equivalence 7 — **43 passed, 0 failed**.
+- Differential: `test_differential.sh` — **2/2 PASS** (MLIR ≡ Mojo ≡
+  RE unchanged).
+- Note (IMPLEMENTATIONAL, spec §34): README's "82 tests" count is
+  stale vs current 98; test files themselves are untouched by this
+  increment — zero overlap with Lean-only changes.
 - Axiom audit (`#print axioms` on headline results): all depend only
   on standard `propext`/`Quot.sound` (via `simp`/`omega`), none on
   `Classical.choice`, no custom axioms, zero `sorry`/`admit` in any

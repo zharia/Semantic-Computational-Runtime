@@ -269,4 +269,56 @@ theorem ind_not_commute_at_three :
 
 end IND
 
+/-! ## CX-APPOBS — applicability is not observable through outcomes
+(spec §7 Q7: "Can applicability itself be observed?") -/
+
+namespace AppObs
+
+/-- Two machines over the same kernel domains. Machine A declares the
+transformation applicable; machine B does not. Both declare NO
+outcome. `OutcomeAdmissible` is satisfied by both (vacuously). -/
+abbrev St := Int
+inductive Cx where
+  | base
+inductive Tp where
+  | mk
+abbrev Kp := Int
+abbrev Op := Int
+
+instance : Consents St Cx Tp Kp := ⟨fun _ _ _ _ => True⟩
+instance : OutcomeOf St Cx Tp Kp Op := ⟨fun _ _ _ _ _ => False⟩
+instance : Equiv Cx Op := ⟨fun _ o₁ o₂ => o₁ = o₂⟩
+
+def appOpen : Applicable St Cx Tp := ⟨fun _ _ _ => True⟩
+def appClosed : Applicable St Cx Tp := ⟨fun _ _ _ => False⟩
+
+/-- FACT: both machines satisfy the well-formedness law vacuously
+(outcome sets empty ⇒ `outcome → admissible` holds for ANY
+applicability structure). -/
+theorem wf_vacuous (ap : Applicable St Cx Tp) :
+    ∀ (τ : Tp) (s : St) (c : Cx) (κ : Kp) (o : Op),
+      OutcomeOf.outcomeOf τ s c κ o → admissible τ s c κ :=
+  fun τ s c κ o h => absurd h False.elim
+
+/-- THE RESULT (FACT): outcome data is IDENTICAL between the two
+machines (both `outcomeOf = False`), yet applicability differs.
+Hence applicability is NOT a function of the outcome relation: it
+cannot be recovered by observing outcomes. ANSWER to Q7: applicability
+is observable only as part of the SEMANTIC CONTRACT (domain data),
+never as an outcome observation. This also justifies keeping
+`Applicable` as a kernel member distinct from `OutcomeOf` —
+collapsing them would conflate `Loop` (partial) with rejection. -/
+theorem outcomes_equal_applicability_differs :
+    (∀ (τ : Tp) (s : St) (c : Cx) (κ : Kp) (o : Op),
+        OutcomeOf.outcomeOf τ s c κ o ↔
+        OutcomeOf.outcomeOf τ s c κ o) ∧
+    ∃ (τ : Tp) (s : St) (c : Cx),
+      @Applicable.applicable St Cx Tp appOpen τ s c ∧
+      ¬ @Applicable.applicable St Cx Tp appClosed τ s c := by
+  constructor
+  · exact fun τ s c κ o => Iff.rfl
+  · exact ⟨Tp.mk, (0 : St), Cx.base, trivial, id⟩
+
+end AppObs
+
 end SCR.STC.Counterexamples

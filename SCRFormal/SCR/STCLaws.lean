@@ -100,4 +100,131 @@ the failed attempt requires writing `Equiv.equiv c s₂ s₂'` for
 STATES — a proposition that does not typecheck in the kernel at all.
 Type-level absence IS the gap. -/
 
+/-! ## Exit-criterion 10 (docs/107 §27): conformance relation -/
+
+/--
+  DEFINITION (spec §13, §20): `ρ` realizes machine `out` from
+  implementation outcomes `OI` when every implementation outcome
+  transports to an equivalent machine outcome.
+-/
+structure Realization {S C T K O OI : Type u}
+    [outI : OutcomeOf S C T K OI] [out : OutcomeOf S C T K O]
+    [Equiv C O] (ρ : OI → O) : Prop where
+  preserves :
+    ∀ (τ : T) (s : S) (c : C) (κ : K) (o : OI),
+      outI.outcomeOf τ s c κ o →
+      ∃ (o' : O), out.outcomeOf τ s c κ o' ∧
+        Equiv.equiv c (ρ o) o'
+
+/-! The `tryEvolve` oracle shape used by the Reference Executor and
+the root formal model (Milestone 005): apply, check constraint,
+succeed-or-fail. Mirrored locally because the root v4.34 project
+cannot be imported into v4.19 — this is a SHAPE correspondence
+witness, not a cross-project proof. -/
+namespace Oracle
+
+abbrev State := Int
+inductive Ctx where
+  | base
+def ctx : Ctx := Ctx.base
+inductive Op where
+  | add (n : Int)
+abbrev Bound := Int
+/-- Semantic outcomes (the machine). -/
+abbrev Outcome := Int
+/-- Executor-shaped outcomes (the implementation). -/
+inductive Res where
+  | ok (v : Int)
+  | fail
+
+instance : Applicable State Ctx Op := ⟨fun _ _ _ => True⟩
+instance oCon : Consents State Ctx Op Bound :=
+  ⟨fun κ τ s _ => match τ with
+    | Op.add n => s + n ≥ κ⟩
+
+/-- The semantic machine: outcome iff admissible, with the value. -/
+instance oM : OutcomeOf State Ctx Op Bound Outcome :=
+  ⟨fun τ s _ κ o => match τ with
+    | Op.add n => s + n ≥ κ ∧ o = s + n⟩
+
+instance : OutcomeAdmissible State Ctx Op Bound Outcome := ⟨by
+  intro τ s _ κ o h
+  cases τ with
+  | add n =>
+    have h' : s + n ≥ κ ∧ o = s + n := h
+    exact ⟨trivial, h'.1⟩⟩
+
+/-- The implementation shape: tryEvolve (the RE pattern). -/
+def tryEvolve : Bound → Op → State → Res
+  | κ, Op.add n, s => if s + n ≥ κ then .ok (s + n) else .fail
+
+/-- The implementation outcome machine. NOT an instance: `OutcomeOf`
+keys on (S,C,T,K) and the semantic machine `oM` already occupies it —
+the implementation is passed explicitly wherever needed. (FACT: this
+is what the outParam design enforces — one semantic machine per
+kernel tuple.) -/
+def oI : OutcomeOf State Ctx Op Bound Res :=
+  ⟨fun τ s _ κ o => ∃ v, tryEvolve κ τ s = .ok v ∧ o = .ok v⟩
+
+/-- The reading map from executor results to semantic values. -/
+def ρ : Res → Outcome
+  | .ok v => v
+  | .fail => 0
+
+instance : Equiv Ctx Outcome := ⟨fun _ o₁ o₂ => o₁ = o₂⟩
+
+/-- FACT: the oracle's successes are exactly the machine outcomes and
+its failures are exactly the rejections. -/
+theorem oracle_agrees_with_semantics :
+    (∀ (n : Int) (s : State) (κ : Bound) (v : Int),
+        oM.outcomeOf (Op.add n) s ctx κ v →
+        ∃ o, oI.outcomeOf (Op.add n) s ctx κ o) ∧
+    (∀ (n : Int) (s : State) (κ : Bound),
+        rejected (Op.add n) s ctx κ →
+        ¬ ∃ o, oI.outcomeOf (Op.add n) s ctx κ o) := by
+  constructor
+  · intro n s κ v h
+    have hv : s + n ≥ κ ∧ v = s + n := h
+    refine ⟨.ok v, ⟨v, ?_, rfl⟩⟩
+    simp only [tryEvolve]
+    rw [if_pos hv.1, hv.2]
+  · intro n s κ hr
+    rintro ⟨o, ⟨v, ht, ho⟩⟩
+    apply hr
+    refine ⟨trivial, ?_⟩
+    by_cases hge : s + n ≥ κ
+    · exact hge
+    · rw [tryEvolve, if_neg hge] at ht
+      exact absurd ht (by simp [Res])
+
+/-- FACT: every executor success transports to an equivalent machine
+outcome (the field statement, proven directly). -/
+theorem realization_field :
+    ∀ (τ : Op) (s : State) (c : Ctx) (κ : Bound) (o : Res),
+      oI.outcomeOf τ s c κ o →
+      ∃ o' : Outcome, oM.outcomeOf τ s c κ o' ∧ ρ o = o' := by
+  intro τ s c κ o h
+  cases τ with
+  | add n =>
+  obtain ⟨v, ht, rfl⟩ := h
+  by_cases hge : s + n ≥ κ
+  · refine ⟨v, ⟨hge, ?_⟩, rfl⟩
+    rw [tryEvolve, if_pos hge] at ht
+    injection ht with hv
+    exact hv.symm
+  · exfalso
+    rw [tryEvolve, if_neg hge] at ht
+    exact absurd ht (by simp [Res])
+
+/-- FACT (docs/107 §27 criterion 10): the executor-shaped machine is
+a formal `Realization` of the semantic machine — RE-style witnesses
+are conforming realizations: evidence, not authority. -/
+theorem tryEvolve_is_realization :
+    @Realization State Ctx Op Bound Outcome Res oI oM
+      (by infer_instance : Equiv Ctx Outcome) ρ :=
+  @Realization.mk State Ctx Op Bound Outcome Res oI oM
+    (by infer_instance : Equiv Ctx Outcome) ρ realization_field
+
+end Oracle
+
 end SCR.STC.Laws

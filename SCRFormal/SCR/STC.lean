@@ -257,6 +257,18 @@ class Overlap (P : Type u) where
 def independent [Footprint T P] [Overlap P] (τ₁ τ₂ : T) : Prop :=
   ∀ (p₁ p₂ : P), Footprint.touches τ₁ p₁ →
     Footprint.touches τ₂ p₂ → ¬ Overlap.overlaps p₁ p₂
+/--
+  DERIVED (spec §17, docs/107 §13): causal dependence as footprint
+  overlap. DEFINITIONAL CHOICE (FACT): an alternative reads causality
+  through provenance chains; overlap is the conservative minimal
+  relation that the CX-IND machine pair separates from temporal
+  ordering (see `Examples.IFO` + `Pair`). Recorded: the definition is
+  a hypothesis, falsifiable by a future machine where dependent
+  transitions have disjoint footprints.
+-/
+def causallyDependent [Footprint T P] [Overlap P] (τ₁ τ₂ : T) : Prop :=
+  ¬ independent τ₁ τ₂
+
 /-- ASSUMPTION (machine soundness, spec §15, docs/106 §12):
 independence, when it holds, must support reordering of the realized
 outcome sequences. Stated structurally here; discharged per machine
