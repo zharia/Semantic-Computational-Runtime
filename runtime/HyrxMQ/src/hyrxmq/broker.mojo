@@ -108,6 +108,44 @@ struct HyrxMQBroker:
             self._engine, routing_key^, body^, exchange^
         )
 
+    # ---- 0017 T2: publish with byte-faithful content props ----
+
+    def publish_with_props(
+        mut self,
+        var exchange: String,
+        var routing_key: String,
+        var body: List[UInt8],
+        prop_flags: UInt16,
+        var prop_bytes: List[UInt8],
+    ) raises -> Int:
+        """Publish a body + the publisher's own content header (flag word +
+        raw property-list slice). Returns number of queues routed."""
+        return self._adapter.publish_with_props(
+            self._engine, routing_key^, body^, exchange^,
+            prop_flags, prop_bytes^,
+        )
+
+    def content_prop_flags(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> UInt16:
+        """Read an unacked delivery's raw AMQP property-flag word."""
+        return self._adapter.queue_content_prop_flags(
+            self._engine, consumer_id, delivery_tag
+        )
+
+    def content_prop_bytes_copy(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> List[UInt8]:
+        """Read an owned copy of an unacked delivery's raw AMQP property-list
+        bytes (the publisher's slice — transmitted outbound byte-identically)."""
+        return self._adapter.queue_content_prop_bytes_copy(
+            self._engine, consumer_id, delivery_tag
+        )
+
+    def redelivered(mut self, consumer_id: UInt64, delivery_tag: UInt64) raises -> Bool:
+        """Whether an unacked delivery is a re-delivery (AMQP redelivered bit)."""
+        return self._adapter.queue_redelivered(self._engine, consumer_id, delivery_tag)
+
     def consume_register(mut self, var queue: String) raises -> UInt64:
         """Register a consumer on a queue. Returns consumer_id (issued by the
         engine, the single routing authority)."""

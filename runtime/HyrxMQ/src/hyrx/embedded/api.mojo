@@ -171,6 +171,27 @@ struct HyrxEngine:
         """Return the consumer queue's pending (ready) message count."""
         return self._router.queue_message_count(consumer_id)
 
+    # ---- 0017 T2 readouts (content props + redelivery per unacked tag) ----
+
+    def queue_prop_flags(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> UInt16:
+        """Read an unacked delivery's raw AMQP property-flag word."""
+        return self._router.queue_prop_flags(consumer_id, delivery_tag)
+
+    def queue_prop_bytes_copy(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> List[UInt8]:
+        """Read an owned copy of an unacked delivery's raw AMQP property-list
+        bytes (the publisher's transmitted slice)."""
+        return self._router.queue_prop_bytes_copy(consumer_id, delivery_tag)
+
+    def queue_redelivery(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Bool:
+        """Whether an unacked claim is a re-delivery (redelivered AMQP bit)."""
+        return self._router.queue_redelivery(consumer_id, delivery_tag)
+
     def acknowledge(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> Bool:

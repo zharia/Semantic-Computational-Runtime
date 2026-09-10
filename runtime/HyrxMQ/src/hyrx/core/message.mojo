@@ -9,10 +9,38 @@
 # Mojo 1.0 requires explicit move semantics for non-trivial types.
 # All constructors accept owned (var) parameters and transfer with ^.
 
+from std.collections import List
+
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.feature_flags import contiguous_batch_enabled
 from std.memory import unsafe_memcpy
+
+
+# 0017 T2: byte-faithful AMQP content properties.
+#
+# A publisher's content HEADER frame is stored AS RECEIVED: the property-flag
+# word plus the RAW property-list bytes that follow it. Per amqp0-9-1 §2.3.5.2
+# the flag-list bits encode WHICH properties follow, and the bytes after the
+# flags are exactly the per-property values in spec order. Transmitting
+# (flag word, slice) verbatim reproduces the publisher's attributes
+# byte-identically; no re-serialization happens anywhere (the only transmitted
+# parts that are re-written are the frame envelope fields, which the codec
+# owns). Individual property values are DERIVED at parse time (decode plane),
+# never stored: storing them would double-represent the same semantics.
+struct ContentProps:
+    """Byte-faithful AMQP content properties (raw + flag word)."""
+
+    var flags: UInt16
+    var bytes: List[UInt8]
+
+    def __init__(out self):
+        self.flags = 0
+        self.bytes = List[UInt8]()
+
+    def __init__(out self, prop_flags: UInt16, var prop_bytes: List[UInt8]):
+        self.flags = prop_flags
+        self.bytes = prop_bytes^
 
 struct MessageID:
     """Globally unique message identifier. Opaque 64-bit value."""
@@ -65,6 +93,9 @@ struct Message:
     var _envelope: Envelope
     var _payload: Buffer
     var _delivery_count: Int
+    # 0017 T2: byte-faithful inbound content properties (AMQP flag word +
+    # raw property-list slice). Empty (flags 0) for engine-internal messages.
+    var _props: ContentProps
 
     def __init__(out self, var envelope: Envelope, var payload: Buffer):
         """Construct a message, taking ownership of the payload buffer.
@@ -74,6 +105,31 @@ struct Message:
         self._envelope = envelope^
         self._payload = payload^
         self._delivery_count = 0
+        self._props = ContentProps()
+
+    # 0017 T2 additive constructor: same message but carrying content props.
+    def __init__(
+        out self,
+        var envelope: Envelope,
+        var payload: Buffer,
+        prop_flags: UInt16,
+        var prop_bytes: List[UInt8],
+    ):
+        self._envelope = envelope^
+        self._payload = payload^
+        self._delivery_count = 0
+        self._props = ContentProps(prop_flags, prop_bytes^)
+
+    def content_prop_flags(ref self) -> UInt16:
+        """The raw AMQP property-flag word the publisher sent."""
+        return self._props.flags
+
+    def content_prop_bytes_copy(ref self) -> List[UInt8]:
+        """An owned copy of the raw AMQP property-list bytes."""
+        return self._props.bytes.copy()
+
+    def has_content_props(ref self) -> Bool:
+        return self._props.flags != 0 or len(self._props.bytes) != 0
 
     def envelope(self) -> Envelope:
         """Return a copy of the envelope metadata."""

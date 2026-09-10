@@ -162,6 +162,33 @@ struct Queue:
             return self._unacked[delivery_tag].headers()
         return Dict[String, String]()
 
+    # ---- 0017 T2: content-property + redelivery readouts per unacked tag ----
+
+    def read_prop_flags(ref self, delivery_tag: UInt64) raises -> UInt16:
+        """The raw AMQP property-flag word of an unacked message."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].content_prop_flags()
+        return 0
+
+    def read_prop_bytes_copy(ref self, delivery_tag: UInt64) raises -> List[UInt8]:
+        """An owned copy of the raw AMQP property-list bytes of an unacked
+        message (empty when the publisher declared no properties)."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].content_prop_bytes_copy()
+        return List[UInt8]()
+
+    def is_redelivery(ref self, delivery_tag: UInt64) raises -> Bool:
+        """Whether this unacked claim is a REDELIVERY (delivery_count > 1).
+
+        A message dequeued for the first time counts exactly one delivery
+        (Queue.dequeue increments before returning the token), so the
+        redelivered AMQP bit is True only when the message was requeued by a
+        nack/reject/disconnect and dequeued again.
+        """
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].delivery_count() > 1
+        return False
+
     def _untrack_unacked(mut self, delivery_tag: UInt64):
         """Remove a tag from the unacked-order list (find + index-pop)."""
         var i = 0

@@ -35,10 +35,22 @@
 #   remains NOT implemented; credentials are parsed but NOT validated.
 # - frame_max / heartbeat renegotiation and heartbeat timers (tune advertises
 #   heartbeat=0; non-zero heartbeats are NOT IMPLEMENTED).
-# - INBOUND content properties: the HEADER frame's body-size is read for
-#   reassembly, but the property-list bytes are NOT decoded (T2). OUTBOUND
-#   properties are sent as property-flags=0 + empty property-list, so a real
-#   client sees every property as None — property fidelity is NOT PROVEN.
+# - INBOUND content properties (0017 T2): NOW IMPLEMENTED byte-faithfully —
+#   the publisher's property-flag word + RAW property-list bytes are stored
+#   (PendingPublish.prop_flags + _pending_prop_bytes) and re-emitted verbatim
+#   on basic.deliver / basic.get-ok / basic.return (no re-serialization; the
+#   flag word is transmitted as part of the same decode plane). Per-property
+#   VALUES are decoded only at the client (pika) — the service derives,
+#   never stores, them.
+# - delivery-tags are now PER-CHANNEL (0017 T2): get-consumer and
+#   push-consumer deliveries share one namespace per (connection, channel);
+#   ack/nack resolve through the service map, ON TOP of unchanged engine tags.
+#   Legacy engine-tag fallback kept for compatibility.
+# - unknown-exchange publish → channel.close 404 NOT_FOUND (normative); 312
+#   NO_ROUTE basic.return stays for a REAL exchange whose ROUTE misses with
+#   mandatory=1. The default exchange "" is treated as present (normative) :
+#   it routes to zero queues in this engine slice (needs-probe: direct
+#   queue-name routing onto the default exchange).
 # - the declare `arguments` field tables are read by length (read_table_skip),
 #   not interpreted (T3); x-dead-letter-exchange requeue-false routing lands in
 #   T3 (requeue=false currently DROPS, which is the normative T1 behavior).
@@ -399,9 +411,12 @@ def BASIC_GET_BIT_NO_ACK() -> UInt8:
 # or more BODY frames, all concatenated into a single byte list (the listener
 # writes the returned list in one send). Wire rules (amqp0-9-1.xml §2.3.5):
 #   - the HEADER frame carries class-id 60, weight 0 (inside encode_header_frame)
-#     body-size = len(body), property-flags = 0 + EMPTY property-list: a real
-#     client then reads every content property as None (property fidelity is
-#     NOT PROVEN, see the module header).
+#     body-size = len(body); the property-flags word + property-list bytes are
+#     the message's OWN stored content header (0017 T2): the publisher's
+#     property slice is re-emitted byte-identically (flag word + slice are
+#     stored as received and handed back verbatim). Zero flags + empty list is
+#     the exact `flags=0` empty header (a publish through the engine with no
+#     properties).
 #   - BODY frames carry at most `frame_max - 8` payload octets each (the 8 is
 #     the frame overhead: type(1) channel(2) size(4) end(1)); a larger body is
 #     split across several frames whose payload lengths sum to body-size.
@@ -412,13 +427,15 @@ def emit_message_frames(
     var args: List[UInt8],
     var body: List[UInt8],
     frame_max: Int,
+    prop_flags: UInt16,
+    var prop_list: List[UInt8],
 ) raises -> List[UInt8]:
     var out = AMQPFrameCodec.encode_method_frame(
         chan, mid.class_id, mid.method_id, args^
     )
     var body_len = len(body)
     var hdr = AMQPFrameCodec.encode_header_frame(
-        chan, mid.class_id, UInt64(body_len), UInt16(0), List[UInt8]()
+        chan, mid.class_id, UInt64(body_len), prop_flags, prop_list^
     )
     var old_len = len(out)
     out.resize(unsafe_uninit_length=old_len + len(hdr))
@@ -458,6 +475,61 @@ def emit_message_frames(
     return out^
 
 
+# Per-channel delivery-tag namespace (0017 T2).
+#
+# ONE tag counter + outstanding-tag map per (connection, channel) NAMESPACE —
+# STANDARD amqp scope. get-consumer AND push-consumer deliveries live there
+# together; the service maps its own delivery-tags ON TOP of the engine's tags:
+# the engine keeps its own per-queue ascending tags (single authority — NEVER
+# altered here); the wire tag the client sees is THIS map's tag. basic.ack /
+# basic.nack tags resolve THROUGH this map (service tag -> consumer id +
+# ENGINE tag), so forged/foreign engine tags do not resolve to a channel that
+# never saw them.
+#
+# The counter starts at 1 (Rabbit numbering) and is monotonic for the whole
+# life of the channel: it is NOT rewound when the last outstanding tag is
+# resolved, so every delivery event gets a fresh tag (a redelivery must not
+# reuse the tag the client already saw).
+#
+# channel_ids = conn_id * 65536 + channel; collision-safe for any single
+# broker's conn ids and channel numbers < 65536.
+struct _ChanTagMapMember:
+    """Consumer id + ENGINE delivery tag a service tag maps to. Copyable."""
+    var consumer_id: UInt64
+    var engine_tag: UInt64
+
+    def __init__(out self, cid: UInt64, etag: UInt64):
+        self.consumer_id = cid
+        self.engine_tag = etag
+
+
+def _chan_key(conn_id: UInt64, chan: UInt16) -> UInt64:
+    """One interning key per (connection, channel) tag namespace."""
+    return conn_id * 65536 + UInt64(chan)
+
+
+struct _ChanTagMap:
+    """Per (connection, channel) delivery-tag namespace:
+
+    - next_tag: the next wire delivery-tag issued for this channel;
+    - consumer_by_tag / engine_tag_by_tag: outstanding service tag →
+      (engine consumer id, engine tag);
+    - tags: outstanding service tags in allocation order (bulk resolution
+      walks this prefix in tag order — Dict has no key-iteration here).
+    """
+
+    var next_tag: UInt64
+    var consumer_by_tag: Dict[UInt64, UInt64]
+    var engine_tag_by_tag: Dict[UInt64, UInt64]
+    var tags: List[UInt64]
+
+    def __init__(out self):
+        self.next_tag = 1
+        self.consumer_by_tag = Dict[UInt64, UInt64]()
+        self.engine_tag_by_tag = Dict[UInt64, UInt64]()
+        self.tags = List[UInt64]()
+
+
 struct PendingPublish:
     """In-flight inbound content for ONE connection (method -> header -> body).
 
@@ -476,7 +548,10 @@ struct PendingPublish:
     # -1 = METHOD seen, HEADER not yet arrived; >= 0 = declared body size.
     var mandatory: Int
     var body_size: Int
-
+    # 0017 T2: the publisher's AMQP property-flag word. The raw property-list
+    # slice travels in the service's parallel `_pending_prop_bytes` map
+    # (List[UInt8] is not Copyable so it cannot live in this struct).
+    var prop_flags: UInt16
 
     def __init__(out self, var ex: String, var rk: String, chan: UInt16, mandatory: Int):
         self.exchange = ex^
@@ -484,12 +559,16 @@ struct PendingPublish:
         self.channel = chan
         self.mandatory = mandatory
         self.body_size = -1
+        self.prop_flags = 0
 
     # Mojo 1.0: mutate the stored value through a chained call on the Dict
     # (`self._pending[conn].set_body_size(n)`) — an implicit struct copy out of
     # the Dict is rejected, so in-place mutator methods are the pattern.
     def set_body_size(mut self, size: Int):
         self.body_size = size
+
+    def set_prop_flags(mut self, flags: UInt16):
+        self.prop_flags = flags
 
 
 struct AMQPService:
@@ -503,6 +582,16 @@ struct AMQPService:
     # connection, matching the one-frame-in/one-reply-out dispatch contract).
     var _pending: Dict[UInt64, PendingPublish]
     var _pending_bodies: Dict[UInt64, List[UInt8]]
+    # 0017 T2: the in-flight publish's raw property-list bytes (parallel to
+    # `_pending`, which can only carry the Copyable flag word).
+    var _pending_prop_bytes: Dict[UInt64, List[UInt8]]
+    # 0017 T2: per-(connection, channel) delivery-tag namespaces (the WIRE tag
+    # layer, superimposed on the engine's own per-queue tags — see
+    # _ChanTagMap above).
+    var _chan_maps: Dict[UInt64, _ChanTagMap]
+    # Issued channel keys (conn*65536+channel), so per-connection teardown can
+    # find the connection's tag namespaces without a key-iterating Dict walk.
+    var _chan_key_list: List[UInt64]
     # Per-connection basic.get bookkeeping: the engine consumer registered for
     # gets (and the queue it was registered on) plus the last get delivery tag,
     # so a subsequent basic.ack can address it.
@@ -530,6 +619,9 @@ struct AMQPService:
         self._consumers = Dict[UInt64, UInt64]()
         self._pending = Dict[UInt64, PendingPublish]()
         self._pending_bodies = Dict[UInt64, List[UInt8]]()
+        self._pending_prop_bytes = Dict[UInt64, List[UInt8]]()
+        self._chan_maps = Dict[UInt64, _ChanTagMap]()
+        self._chan_key_list = List[UInt64]()
         self._get_cids = Dict[UInt64, UInt64]()
         self._get_queues = Dict[UInt64, String]()
         self._get_tags = Dict[UInt64, UInt64]()
@@ -540,6 +632,96 @@ struct AMQPService:
         # codec ceiling by the listener. config.frame_max is validated >= 4096
         # (see HyrxMQConfig.frame_max / validate).
         self._frame_max = fm
+
+    # ---- 0017 T2: per-channel delivery-tag namespaces ----
+
+    def _chan_alloc_tag(
+        mut self, conn_id: UInt64, chan: UInt16, cid: UInt64, etag: UInt64
+    ) raises -> UInt64:
+        """Issue ONE wire delivery-tag from the channel's own namespace.
+
+        Records the mapping service_tag -> (consumer id, ENGINE tag) so a
+        later basic.ack/nack resolves THROUGH this map. The ENGINE tag stays
+        queued side but the wire carries the service tag.
+
+        THE TAG IS ALLOCATED PER DELIVERY EVENT, never per queued message: a
+        redelivery (engine-tag reuse) gets a FRESH wire tag, the old binding
+        is left alone. Overlap immunity comes from the channel's monotonic
+        counter — this never looks up, and never reissues, a tag already in
+        `tags`.
+        """
+        var key = _chan_key(conn_id, chan)
+        var st = _ChanTagMap()
+        if key in self._chan_maps:
+            st = self._chan_maps.pop(key)
+        else:
+            self._chan_key_list.append(key)
+        var t = st.next_tag
+        st.next_tag += 1
+        st.consumer_by_tag[t] = cid
+        st.engine_tag_by_tag[t] = etag
+        st.tags.append(t)
+        self._chan_maps[key] = st^
+        return t
+
+    def _chan_take(
+        mut self, conn_id: UInt64, chan: UInt16, stag: UInt64
+    ) raises -> Optional[_ChanTagMapMember]:
+        """Resolve + remove ONE outstanding service tag (single-tag ack/nack)."""
+        var key = _chan_key(conn_id, chan)
+        if key not in self._chan_maps:
+            return Optional[_ChanTagMapMember]()
+        var st = self._chan_maps.pop(key)
+        if (stag not in st.consumer_by_tag) or (stag not in st.engine_tag_by_tag):
+            self._chan_maps[key] = st^
+            return Optional[_ChanTagMapMember]()
+        var cid = st.consumer_by_tag[stag]
+        var etag = st.engine_tag_by_tag[stag]
+        _ = st.consumer_by_tag.pop(stag)
+        _ = st.engine_tag_by_tag.pop(stag)
+        var i = 0
+        while i < len(st.tags):
+            if st.tags[i] == stag:
+                _ = st.tags.pop(i)
+                break
+            i += 1
+        # The NAMESPACE outlives its last outstanding tag: the counter stays
+        # monotonic for the channel's life, so the next delivery — a redelivery
+        # reuses the ENGINE tag — allocates a FRESH wire tag instead of
+        # restarting the numbering and recycling the earlier wire tag.
+        self._chan_maps[key] = st^
+        return Optional[_ChanTagMapMember](_ChanTagMapMember(cid, etag))
+
+    def _chan_take_through(
+        mut self, conn_id: UInt64, chan: UInt16, upper: UInt64
+    ) raises -> List[_ChanTagMapMember]:
+        """Resolve + remove EVERY outstanding service tag <= `upper` in tag
+        order (`upper == 0` = all outstanding, per AMQP multiple semantics)."""
+        var key = _chan_key(conn_id, chan)
+        var out = List[_ChanTagMapMember]()
+        if key not in self._chan_maps:
+            return out^
+        var st = self._chan_maps.pop(key)
+        var i = 0
+        while i < len(st.tags):
+            var t = st.tags[i]
+            if t > upper:
+                break
+            if (t in st.consumer_by_tag) and (t in st.engine_tag_by_tag):
+                out.append(_ChanTagMapMember(st.consumer_by_tag[t], st.engine_tag_by_tag[t]))
+                _ = st.consumer_by_tag.pop(t)
+                _ = st.engine_tag_by_tag.pop(t)
+            _ = st.tags.pop(i)
+        # Keep the (possibly emptied) namespace: see _chan_take — the counter
+        # must not restart, or a later delivery reissues an already-used tag.
+        self._chan_maps[key] = st^
+        return out^
+
+    def _chan_drop(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Drop a channel's whole tag namespace (channel close)."""
+        var key = _chan_key(conn_id, chan)
+        if key in self._chan_maps:
+            _ = self._chan_maps.pop(key)
 
     # ---- lifecycle / broker delegation ----
 
@@ -802,6 +984,8 @@ struct AMQPService:
             _ = reader.read_short()
             _ = reader.read_short()
             self._mark_channel_closed(conn_id, chan)
+            # 0017 T2: the channel's whole delivery-tag namespace dies with it.
+            self._chan_drop(conn_id, chan)
             # close-ok (20,41) carries NO arguments per amqp0-9-1.xml.
             return self._reply(
                 chan,
@@ -936,7 +1120,7 @@ struct AMQPService:
                 cargs^,
             )
             var no_ack = (cbits & BASIC_CONSUME_BIT_NO_ACK()) != 0
-            reply = self._flush_deliveries(chan, cid, reply^, no_ack)
+            reply = self._flush_deliveries(conn_id, chan, cid, reply^, no_ack)
             return Optional[List[UInt8]](reply^)
 
         # ---- basic get (60,70): synchronous — answer get-ok or get-empty ----
@@ -951,7 +1135,13 @@ struct AMQPService:
         if mid == BASIC_REJECT():
             var rtag = reader.read_long_long()
             _ = reader.read_octet()  # requeue (the engine always requeues)
-            if conn_id in self._consumers:
+            # 0017 T2: resolve through the per-channel tag map first.
+            var rentry = self._chan_take(conn_id, chan, rtag)
+            if rentry.__bool__():
+                var r_cid = rentry.value().consumer_id
+                var r_tag = rentry.value().engine_tag
+                _ = self._broker.reject(r_cid, r_tag)
+            elif conn_id in self._consumers:
                 _ = self._broker.reject(self._consumers[conn_id], rtag)
             return Optional[List[UInt8]]()
 
@@ -969,6 +1159,15 @@ struct AMQPService:
             var ack_bits = reader.read_octet()
             var multiple = (ack_bits & BASIC_ACK_BIT_MULTIPLE()) != 0
             if multiple:
+                # 0017 T2: resolve per-channel prefix first (tag order; tag 0
+                # = every outstanding tag in this channel's namespace).
+                var bulk = self._chan_take_through(conn_id, chan, tag)
+                if len(bulk) > 0:
+                    for i in range(len(bulk)):
+                        var b_cid = bulk[i].consumer_id
+                        var b_tag = bulk[i].engine_tag
+                        _ = self._broker.ack(b_cid, b_tag)
+                    return Optional[List[UInt8]]()
                 if conn_id in self._consumers:
                     _ = self._broker.bulk_ack(self._consumers[conn_id], tag)
                 if conn_id in self._get_cids:
@@ -981,7 +1180,15 @@ struct AMQPService:
             # resolves a tag through the consumer's queue, so the right
             # consumer id matters).
             var done = False
-            if conn_id in self._consumers:
+            # 0017 T2: resolve THROUGH the per-channel tag map first.
+            var entry = self._chan_take(conn_id, chan, tag)
+            if entry.__bool__():
+                var e_cid = entry.value().consumer_id
+                var e_tag = entry.value().engine_tag
+                done = self._broker.ack(e_cid, e_tag)
+            # Legacy engine-tag fallback (tags issued before the map, or
+            # engine tags addressed via the old bookkeeping):
+            if not done and conn_id in self._consumers:
                 done = self._broker.ack(self._consumers[conn_id], tag)
             if (
                 not done
@@ -1012,6 +1219,14 @@ struct AMQPService:
             var n_multiple = (nbits & BASIC_NACK_BIT_MULTIPLE()) != 0
             var n_requeue = (nbits & BASIC_NACK_BIT_REQUEUE()) != 0
             if n_multiple:
+                # 0017 T2: per-channel prefix first (tag order; tag 0 = all).
+                var nbulk = self._chan_take_through(conn_id, chan, ntag)
+                if len(nbulk) > 0:
+                    for i in range(len(nbulk)):
+                        var b_cid = nbulk[i].consumer_id
+                        var b_tag = nbulk[i].engine_tag
+                        _ = self._broker.nack(b_cid, b_tag, n_requeue)
+                    return Optional[List[UInt8]]()
                 if conn_id in self._consumers:
                     _ = self._broker.nack_through(
                         self._consumers[conn_id], ntag, n_requeue
@@ -1022,7 +1237,13 @@ struct AMQPService:
                     )
             else:
                 var resolved = False
-                if conn_id in self._consumers:
+                # 0017 T2: resolve THROUGH the per-channel tag map first.
+                var nentry = self._chan_take(conn_id, chan, ntag)
+                if nentry.__bool__():
+                    var n_cid = nentry.value().consumer_id
+                    var n_tag = nentry.value().engine_tag
+                    resolved = self._broker.nack(n_cid, n_tag, n_requeue)
+                if not resolved and conn_id in self._consumers:
                     resolved = self._broker.nack(self._consumers[conn_id], ntag, n_requeue)
                 if (
                     not resolved
@@ -1267,6 +1488,9 @@ struct AMQPService:
             _ = self._pending.pop(conn_id)
         if conn_id in self._pending_bodies:
             _ = self._pending_bodies.pop(conn_id)
+        # 0017 T2: the stored property slice dies with the publish state.
+        if conn_id in self._pending_prop_bytes:
+            _ = self._pending_prop_bytes.pop(conn_id)
 
     def _fail_content(mut self, conn_id: UInt64, var why: String) raises:
         """A content frame violated §2.3.5 ordering/bounds.
@@ -1342,6 +1566,16 @@ struct AMQPService:
         if conn_id in self._get_queues:
             _ = self._get_queues.pop(conn_id)
         self._clear_pending(conn_id)
+        # 0017 T2: drop the connection's per-channel delivery-tag namespaces.
+        var i = 0
+        while i < len(self._chan_key_list):
+            var key = self._chan_key_list[i]
+            if key // 65536 == conn_id:
+                if key in self._chan_maps:
+                    _ = self._chan_maps.pop(key)
+                _ = self._chan_key_list.pop(i)
+            else:
+                i += 1
         if conn_id in self._closed_channels:
             _ = self._closed_channels.pop(conn_id)
 
@@ -1410,6 +1644,13 @@ struct AMQPService:
             )
             return Optional[List[UInt8]]()
         self._pending[conn_id].set_body_size(size)
+        # 0017 T2: STORE the byte-faithful content header as received — the
+        # property-flag word goes onto the pending record; the RAW property
+        # LIST bytes go into the parallel slice map. Outbound transmit uses
+        # both verbatim (see _publish_pending / emit_message_frames): the
+        # per-property field values are never re-encoded in this service.
+        self._pending[conn_id].set_prop_flags(hdr.property_flags)
+        self._pending_prop_bytes[conn_id] = hdr.properties.copy()
         if size == 0:
             # Zero-length body: exactly ZERO body frames follow (§2.3.5.3).
             return self._publish_pending(conn_id)
@@ -1475,11 +1716,36 @@ struct AMQPService:
             return Optional[List[UInt8]]()
         var p = self._pending.pop(conn_id)
         var body = self._pending_bodies.pop(conn_id)
-        var routed = self._broker.publish(p.exchange.copy(), p.routing_key.copy(), body.copy())
+        # 0017 T2: the raw property-list slice rides beside the flag word.
+        var props = List[UInt8]()
+        if conn_id in self._pending_prop_bytes:
+            props = self._pending_prop_bytes.pop(conn_id)
+        # 0017 T2: unknown-exchange publish → channel.close 404 NOT_FOUND
+        # (Rabbit normative) — replacing the old 312-no-route path. The
+        # default exchange "" is NOT unknown (normative; always present):
+        # it routes to nothing in this engine slice (needs-probe: direct
+        # queue-name routing), so a mandatory=1 "" publish behaves per the
+        # route-miss path below. Unknown exchange WITH mandatory=0 also gets
+        # the 404.
+        if len(p.exchange.bytes()) != 0 and not self._broker.has_exchange(p.exchange.copy()):
+            self._mark_channel_closed(conn_id, p.channel)
+            var emsg = "NOT_FOUND - no exchange '" + p.exchange.copy() + "' in vhost '/'"
+            return self._channel_error(
+                p.channel,
+                REPLY_NOT_FOUND(),
+                emsg^,
+                BASIC_PUBLISH(),
+            )
+        var routed = self._broker.publish_with_props(
+            p.exchange.copy(), p.routing_key.copy(), body.copy(),
+            p.prop_flags, props.copy(),
+        )
         if p.mandatory == 1 and routed <= 0:
             # basic.return (60,50) args: reply-code(short)=312 + reply-text
             # (shortstr)="NO_ROUTE" + exchange(shortstr) + routing-key
             # (shortstr) — followed by the message content (HEADER+BODY).
+            # The content echoes the publisher's OWN stored header (flag
+            # word + raw slice) byte-identically.
             var rargs = List[UInt8]()
             write_u16(rargs, REPLY_NO_ROUTE())
             write_short_string(rargs, "NO_ROUTE")
@@ -1487,7 +1753,8 @@ struct AMQPService:
             write_short_string(rargs, p.routing_key)
             return Optional[List[UInt8]](
                 emit_message_frames(
-                    p.channel, BASIC_RETURN(), rargs^, body^, self._frame_max
+                    p.channel, BASIC_RETURN(), rargs^, body^, self._frame_max,
+                    p.prop_flags, props.copy(),
                 )^
             )
         return Optional[List[UInt8]]()
@@ -1524,38 +1791,60 @@ struct AMQPService:
                 BASIC_GET_EMPTY().method_id,
                 eargs^,
             )
-        var tag = d.value().delivery_tag()
-        var payload = self._broker.read_payload(cid, tag)
-        var routing_key = self._broker.queue_routing_key(cid, tag)
+        var etag = d.value().delivery_tag()
+        var payload = self._broker.read_payload(cid, etag)
+        var routing_key = self._broker.queue_routing_key(cid, etag)
         var message_count = self._broker.queue_message_count(cid)
-        # get-ok args: delivery-tag long-long + redelivered bit(0) + exchange
+        # 0017 T2: redelivered bit (engine delivery counter > 1) + the stored
+        # content header (flag word + raw slice).
+        var redelivered = self._broker.redelivered(cid, etag)
+        var prop_flags = self._broker.content_prop_flags(cid, etag)
+        var prop_bytes = self._broker.content_prop_bytes_copy(cid, etag)
+        # 0017 T2: the WIRE delivery-tag comes from the channel's namespace
+        # (get-consumer and push-consumer tags live in ONE namespace). The
+        # engine tag is kept only inside the resolution map; queue basis for
+        # the message-count stays engine-side.
+        var tag = self._chan_alloc_tag(conn_id, chan, cid, etag)
+        # get-ok args: delivery-tag long-long + redelivered bit + exchange
         # shortstr + routing-key shortstr + message-count long.
         var gargs = List[UInt8]()
         write_u64(gargs, tag)
-        gargs.append(0)  # redelivered bit
+        if redelivered:
+            gargs.append(1)  # redelivered bit
+        else:
+            gargs.append(0)  # redelivered bit
         write_short_string(gargs, "")  # exchange (Delivery carries none)
         write_short_string(gargs, routing_key^)
         write_u32(gargs, UInt32(message_count))
-        self._get_tags[conn_id] = tag
+        self._get_tags[conn_id] = etag
         if (bits & BASIC_GET_BIT_NO_ACK()) != 0:
-            _ = self._broker.ack(cid, tag)
+            _ = self._broker.ack(cid, etag)
         return Optional[List[UInt8]](
             emit_message_frames(
-                chan, BASIC_GET_OK(), gargs^, payload^, self._frame_max
+                chan, BASIC_GET_OK(), gargs^, payload^, self._frame_max,
+                prop_flags, prop_bytes^,
             )^
         )
 
     # ---- reply encoders ----
 
     def _flush_deliveries(
-        mut self, chan: UInt16, cid: UInt64, var dst: List[UInt8], auto_ack: Bool
+        mut self,
+        conn_id: UInt64,
+        chan: UInt16,
+        cid: UInt64,
+        var dst: List[UInt8],
+        auto_ack: Bool,
     ) raises -> List[UInt8]:
         """Append full basic.deliver content for messages queued for cid.
 
         Each message becomes METHOD + HEADER + BODY frames via
-        emit_message_frames (the real §2.3.5 layout, replacing the former
-        inline-body hack). Bounded by _CONSUME_FLUSH_MAX per reply; `dst`
-        round-trips (ownership: consumed in, returned).
+        emit_message_frames. 0017 T2: the wire delivery-tag comes from the
+        channel's OWN namespace (mapped on top of the engine's tags, see
+        _chan_alloc_tag); the redelivered bit + the stored content header
+        (flag word + raw slice) ride per message. Bounded by
+        _CONSUME_FLUSH_MAX per reply; `dst` round-trips (ownership: consumed
+        in, returned).
         """
         var ctag = String(cid)
         if cid in self._ctags:
@@ -1565,19 +1854,30 @@ struct AMQPService:
             var d = self._broker.deliver(cid)
             if not d.__bool__():
                 return dst^
-            var tag = d.value().delivery_tag()
-            var payload = self._broker.read_payload(cid, tag)
-            var routing_key = self._broker.queue_routing_key(cid, tag)
+            var etag = d.value().delivery_tag()
+            var payload = self._broker.read_payload(cid, etag)
+            var routing_key = self._broker.queue_routing_key(cid, etag)
+            # 0017 T2: redelivered = the engine's delivery counter > 1; the
+            # content header is the stored publisher slice, re-emitted
+            # byte-identically.
+            var redelivered = self._broker.redelivered(cid, etag)
+            var prop_flags = self._broker.content_prop_flags(cid, etag)
+            var prop_bytes = self._broker.content_prop_bytes_copy(cid, etag)
+            var tag = self._chan_alloc_tag(conn_id, chan, cid, etag)
             # deliver args: consumer-tag shortstr + delivery-tag long-long +
             # redelivered bit + exchange shortstr + routing-key shortstr.
             var args = List[UInt8]()
             write_short_string(args, ctag.copy())
             write_u64(args, tag)
-            args.append(0)  # redelivered bit
+            if redelivered:
+                args.append(1)  # redelivered bit
+            else:
+                args.append(0)  # redelivered bit
             write_short_string(args, "")  # exchange (Delivery carries none)
             write_short_string(args, routing_key^)
             var wire = emit_message_frames(
-                chan, BASIC_DELIVER(), args^, payload^, self._frame_max
+                chan, BASIC_DELIVER(), args^, payload^, self._frame_max,
+                prop_flags, prop_bytes^,
             )
             var dst_old_len = len(dst)
             dst.resize(unsafe_uninit_length=dst_old_len + len(wire))
@@ -1587,7 +1887,7 @@ struct AMQPService:
                 count=len(wire),
             )
             if auto_ack:
-                _ = self._broker.ack(cid, tag)
+                _ = self._broker.ack(cid, etag)
             n += 1
         return dst^
 

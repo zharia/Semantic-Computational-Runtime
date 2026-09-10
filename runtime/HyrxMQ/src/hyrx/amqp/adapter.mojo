@@ -114,6 +114,52 @@ struct AMQPAdapter:
         var msg = Message(env^, buf^)
         return engine.publish(msg^, exchange_name^)
 
+    # 0017 T2: publish WITH the byte-faithful content properties.
+    def publish_with_props(
+        mut self,
+        mut engine: HyrxEngine,
+        var routing_key: String,
+        var body: List[UInt8],
+        var exchange_name: String,
+        prop_flags: UInt16,
+        var prop_bytes: List[UInt8],
+    ) raises -> Int:
+        """Translate AMQP basic.publish carrying the publisher's own content
+        header (flag word + raw property-list slice). Transmitted outbound
+        byte-identically on deliver/get-ok."""
+        var headers = Dict[String, String]()
+        var env = Envelope(MessageID(0), routing_key^, headers^)
+        var buf = Buffer(len(body))
+        buf.resize_uninit(len(body))
+        unsafe_memcpy(
+            dest=buf._data.unsafe_ptr(),
+            src=body.unsafe_ptr(),
+            count=len(body),
+        )
+        var msg = Message(env^, buf^, prop_flags, prop_bytes^)
+        return engine.publish(msg^, exchange_name^)
+
+    # ---- 0017 T2 readouts ----
+
+    def queue_content_prop_flags(
+        ref self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> UInt16:
+        """Translate the raw AMQP property-flag word of an unacked delivery."""
+        return engine.queue_prop_flags(consumer_id, delivery_tag)
+
+    def queue_content_prop_bytes_copy(
+        ref self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> List[UInt8]:
+        """Translate the raw AMQP property-list chars of an unacked delivery
+        (owned copy of the publisher's slice)."""
+        return engine.queue_prop_bytes_copy(consumer_id, delivery_tag)
+
+    def queue_redelivered(
+        ref self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Bool:
+        """Translate the redelivered AMQP bit of an unacked delivery."""
+        return engine.queue_redelivery(consumer_id, delivery_tag)
+
     def consume(
         mut self, mut engine: HyrxEngine, var queue_name: String
     ) raises -> UInt64:
@@ -180,11 +226,11 @@ struct AMQPAdapter:
 
     # ---- 0017 T1 translations (additive; single routing authority = engine) ----
 
-    def has_queue(ref self, mut engine: HyrxEngine, var name: String) -> Bool:
+    def has_queue(ref self, ref engine: HyrxEngine, var name: String) -> Bool:
         """Queue presence preflight before queue.purge/delete (404 table)."""
         return engine.has_queue(name^)
 
-    def has_exchange(ref self, mut engine: HyrxEngine, var name: String) -> Bool:
+    def has_exchange(ref self, ref engine: HyrxEngine, var name: String) -> Bool:
         """Exchange presence preflight before delete (404 table)."""
         return engine.has_exchange(name^)
 

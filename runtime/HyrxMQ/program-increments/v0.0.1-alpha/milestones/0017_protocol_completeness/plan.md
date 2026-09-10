@@ -27,7 +27,17 @@ operations against RabbitMQ 4.3.5 AND HyrxMQ and comparing outcomes
   queue.purge, queue.delete, exchange.delete, exchange.bind/unbind,
   queue.unbind; composer *_ok replies for each. e2e: close-ok latency (no
   20 s hang), nack-requeue, purge audience count.
-- **T2 — content properties**: inbound header decode (property list bytes:
+- **T2 — DONE** (their conformance.py: ONE runner, same ops table on
+  rabbit (ground truth, 5673 bench rabbit) + hyrx; rows: 19/19 PASS —
+  13 property round-trip fields + redelivered.first/nack_requeue +
+  tags.no_collision/per_channel + unknown_exchange.404 + mandatory_312.
+  Tag numbering corrected to the 1-based per-channel
+  spec via a root-caused namespace-lifetime fix (the map deleted itself when
+  empty, resetting the counter to 1 after em).
+  Coordinator integration fixes: adapter has_* signatures mut->ref (rvalue
+  binding errors), per-row unique queue names in the props rows (the Rabbit
+  exclusive-queue 405 across rows));
+  content properties = T2):: inbound header decode (property list bytes:
   content_type/content_encoding/headers/user-id/delivery_mode/priority/
   reply_to/message_id/timestamp/expiration...) preserved INTO Message and
   OUTBOUND on deliver/get-ok (byte-identical transmit), redelivered bit set

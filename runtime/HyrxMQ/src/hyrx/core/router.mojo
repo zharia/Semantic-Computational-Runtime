@@ -508,6 +508,9 @@ struct Router:
             return 1
 
         var payload_len = msg.payload_size()
+        # 0017 T2: byte-faithful content props ride into EVERY destination
+        # copy (read once, copied per destination fan-out).
+        var prop_flags = msg.content_prop_flags()
         for i in range(len(queue_names)):
             var qname = queue_names[i]
             # Preflight capacity so we never acquire a pooled buffer for a
@@ -518,7 +521,10 @@ struct Router:
                     msg.message_id(), msg.routing_key(), msg.headers()
                 )
                 var payload = self._fill_destination(msg, payload_len)
-                var cloned = Message(env^, payload^)
+                var cloned = Message(
+                    env^, payload^, prop_flags,
+                    msg.content_prop_bytes_copy(),
+                )
                 self._queues[qname].enqueue_prechecked(cloned^)
                 count += 1
 
@@ -710,6 +716,28 @@ struct Router:
         """Read an owned copy of an unacked message's preserved headers."""
         var qname = self._consumers[consumer_id].queue_name()
         return self._queues[qname].read_headers(delivery_tag)
+
+    # ---- 0017 T2 readouts (content props + redelivery per unacked tag) ----
+
+    def queue_prop_flags(ref self, consumer_id: UInt64, delivery_tag: UInt64) raises -> UInt16:
+        """Read an unacked delivery's raw AMQP property-flag word."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].read_prop_flags(delivery_tag)
+
+    def queue_prop_bytes_copy(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> List[UInt8]:
+        """Read an owned copy of an unacked delivery's raw AMQP property-list
+        bytes (the publisher's transmitted slice)."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].read_prop_bytes_copy(delivery_tag)
+
+    def queue_redelivery(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Bool:
+        """Whether an unacked claim is a re-delivery (redelivered AMQP bit)."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].is_redelivery(delivery_tag)
 
     # ---- stats --------------------------------------------------------
 
