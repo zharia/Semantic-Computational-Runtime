@@ -85,7 +85,23 @@ Encoding and text semantics MUST remain explicit. A Unicode encoding such as UTF
 
 Where user-perceived characters are required, the runtime SHOULD operate over grapheme clusters rather than code units or bytes.
 
-## 10. Simulation Requirements
+## 10. Indexing
+
+Indexing semantics MUST specify whether indexes address elements, code units, bytes, graphemes, or another declared unit. An implementation MUST NOT substitute one indexing domain for another.
+
+## 11. Views
+
+A sequence view MAY reference another sequence without copying. A view MUST carry sufficient lifetime/ownership semantics to prevent invalid access.
+
+## 12. Binary and Text
+
+Binary data and text data MUST be distinguishable at the semantic boundary. An encoding transformation establishes a relationship between them; arbitrary byte interpretation MUST NOT be assumed to be text.
+
+## 13. Interoperability
+
+When interfacing with C-style APIs, NUL-terminated buffers MAY be materialised as an interoperability representation. The terminator MUST NOT become part of the SCR string value unless explicitly declared.
+
+## 14. Simulation Requirements
 
 High-frequency mutable sequences SHOULD exploit:
 
@@ -97,7 +113,7 @@ High-frequency mutable sequences SHOULD exploit:
 - locality-aware storage;
 - adaptive representation selection.
 
-## 11. Invariants
+## 15. Invariants
 
 - **SEQ-001:** Sequence semantics are independent of storage representation.
 - **SEQ-002:** Logical length is distinct from physical capacity.
@@ -110,6 +126,6 @@ High-frequency mutable sequences SHOULD exploit:
 - **SEQ-009:** Reserve operations MUST NOT alter logical length.
 - **SEQ-010:** Runtime optimisation MUST NOT change semantic identity.
 
-## 12. Governing Principle
+## 16. Governing Principle
 
 **Semantics determine what a value is. Execution policy determines how efficiently that value is embodied.**

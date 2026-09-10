@@ -1336,11 +1336,11 @@ The documents therefore form a deliberate hierarchy:
         │
         │ How is it structured?
         ▼
-005_NUMERIC_SEMANTICS.md
+docs/semantics/005_NUMERIC_SEMANTICS.md
         │
         │ What numerical meaning is normative?
         ▼
-docs/NUMERIC_EXECUTION.md
+docs/105_NUMERIC_EXECUTION.md
         │
         │ How is it executed?
         ▼

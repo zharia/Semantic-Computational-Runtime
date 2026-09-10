@@ -30,15 +30,30 @@ SCR SHOULD model numeric values through semantic domains such as:
 - probability/distribution;
 - vector/tensor-valued numeric structures.
 
-Machine types such as `i32`, `i64`, `f32`, and `f64` are representations, not semantic identities.
+Machine types such as `i32`, `i64`, `f32`, `f64` are representations, not semantic identities.
 
-## 3. Normalisation
+## 3. Numeric Descriptor
+
+A numeric value SHOULD be understood through a descriptor containing, where applicable:
+
+- domain (per §2);
+- unit and dimensionality;
+- scale and offset;
+- precision and accuracy requirements;
+- admissible error;
+- range and overflow policy;
+- special-value semantics;
+- rounding mode;
+- determinism requirements;
+- representation constraints.
+
+## 4. Normalisation
 
 Equivalent values SHOULD be normalised to a canonical semantic form before crossing architectural boundaries. Normalisation includes domain, unit, scale, sign convention, precision metadata, and special-value policy.
 
 The runtime MUST NOT silently change semantic meaning merely to obtain a cheaper representation.
 
-## 4. Quantisation
+## 5. Quantisation
 
 Quantisation is the deliberate reduction of representation precision or dynamic range subject to an explicit error budget.
 
@@ -55,23 +70,40 @@ Quantisation policy SHOULD consider:
 
 A value MAY be represented at lower precision when the resulting error remains within its semantic tolerance.
 
-## 5. Error Semantics
+## 6. Error Semantics
 
 Approximate numeric values MUST carry sufficient semantic information for the runtime to reason about admissible error. Exactness, tolerance, interval bounds, and quantisation state are distinct concepts.
 
-## 6. Special Values
+## 7. Special Values
 
 NaN, infinity, signed zero, overflow, underflow, saturation, and invalid-domain results MUST have explicitly defined semantics where the underlying representation supports them.
 
-## 7. Unit Semantics
+## 8. Unit Semantics
 
 Physical quantities SHOULD be represented as a numeric magnitude plus explicit dimensional/unit semantics. Unit conversion MUST be semantic, not inferred solely from field names.
 
-## 8. Runtime Selection
+## 9. Runtime Selection
 
 The runtime SHOULD select representations adaptively according to semantic constraints and workload. A single universal machine precision MUST NOT be assumed optimal.
 
-## 9. Invariants
+## 10. Numeric Hierarchy
+
+```text
+Quantity
+ └── Numeric Value
+      ├── Scalar
+      │    ├── Integer
+      │    ├── Rational
+      │    ├── Fixed/Decimal
+      │    └── Approximate Real
+      ├── Complex
+      ├── Interval/Bounded
+      └── Distribution
+```
+
+Structured numeric values such as vectors, matrices and tensors are compositions of numeric values plus shape, indexing and algebraic semantics; they are not merely large scalars.
+
+## 11. Invariants
 
 - **NUM-001:** Semantic numeric type is distinct from physical representation.
 - **NUM-002:** Representation changes MUST preserve declared semantics.

@@ -50,6 +50,8 @@ where:
 - \(O\): observations/events;
 - \(M\): manifestations/representations.
 
+> **\(M\) is a realization dimension. It MUST NOT be interpreted as the source of semantic meaning.**
+
 This tuple is descriptive rather than prescriptive. Implementations need not materialise it as one data structure.
 
 The field may be finite or open-ended, static or evolving, local or distributed, discrete or continuous, depending on the semantic domain.

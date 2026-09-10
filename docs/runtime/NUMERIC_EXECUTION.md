@@ -1,8 +1,12 @@
 # Numeric Execution
 
+**Status:** Normative summary — full specification in `docs/105_NUMERIC_EXECUTION.md`
+
+This is a condensed summary of the normative numeric execution guidance. For the authoritative specification see `docs/105_NUMERIC_EXECUTION.md`; the numeric semantic contract itself is `docs/semantics/005_NUMERIC_SEMANTICS.md`.
+
 ## 1. Purpose
 
-This document defines how numeric semantics become executable representations while preserving the numeric contract in `005_NUMERIC_SEMANTICS.md`.
+This document defines how numeric semantics become executable representations while preserving the numeric contract in `docs/semantics/005_NUMERIC_SEMANTICS.md`.
 
 ## 2. Execution precision
 

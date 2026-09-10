@@ -384,7 +384,35 @@ This invariant is the operational form of the project's engineering principle:
 
 ---
 
-## 50. Verification Requirements
+## 50. SI-047 — Abstract Machine Boundary
+
+> Semantic Machine semantics MUST remain independent of physical realization.
+
+The Semantic Machine induced by a computational Semantic Field (`106_SEMANTIC_MACHINE_MODEL.md`) is defined independently of any physical realization of it.
+
+---
+
+## 51. SI-048 — Realization Transparency
+
+> Replacing a physical provider with another provider satisfying the same semantic capability MUST NOT require modification of the semantic computation.
+
+---
+
+## 52. SI-049 — Conformance by Observation
+
+> Implementations are judged by semantic observation and equivalence, not by implementation structure.
+
+---
+
+## 53. SI-050 — No Infrastructure-Derived Ontology
+
+> Runtime components MUST NOT become semantic primitives merely because implementations contain components with corresponding names.
+
+A new semantic primitive requires a demonstrated semantic counterexample showing that the existing semantic vocabulary and transition calculus cannot express the required behaviour (falsification before expansion).
+
+---
+
+## 54. Verification Requirements
 
 Every major SCR component SHOULD identify:
 

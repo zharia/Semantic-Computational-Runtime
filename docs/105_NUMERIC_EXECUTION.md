@@ -1,6 +1,6 @@
 # Numeric Execution
 
-**Document:** `docs/NUMERIC_EXECUTION.md`
+**Document:** `docs/105_NUMERIC_EXECUTION.md`
 **Version:** 1.0.0
 **Status:** Foundational / Normative Implementation Guidance
 **Scope:** MLIR, compiler, provider, runtime, storage, transport, and hardware realisation of SCR Numeric Semantics
@@ -12,7 +12,7 @@
 This document defines how the numeric semantics established by:
 
 ```text
-005_NUMERIC_SEMANTICS.md
+semantics/005_NUMERIC_SEMANTICS.md
 ```
 
 are realised through the SCR execution architecture.
@@ -46,7 +46,7 @@ It does not redefine the semantic meaning of numerical quantities.
 The governing relationship is:
 
 ```text
-005_NUMERIC_SEMANTICS.md
+semantics/005_NUMERIC_SEMANTICS.md
         ↓
 Semantic Requirements
         ↓
@@ -253,7 +253,7 @@ Before introducing an SCR-specific mechanism, implementation must evaluate:
 7. MLIR pattern rewrite;
 8. MLIR conversion framework;
 9. MLIR pass infrastructure;
-10. SCR dialect extension.
+10. SCR dialect extension — only via the SCR MLIR-first decision order (`001_agents/06_mlir_policy.md`), i.e. only where semantics are genuinely not expressible through existing mechanisms.
 
 The following are prohibited:
 
@@ -264,6 +264,8 @@ SCR Numeric SSA
 SCR Numeric Graph
 parallel numeric type system
 ```
+
+SCR MUST NOT maintain a parallel semantic IR; MLIR is the sole canonical compiler IR, so the "representation" layer in this document is an MLIR representation of SCR semantics, not a separate notation.
 
 ---
 
@@ -302,6 +304,7 @@ Conceptually:
 scr.numeric.normalize
 ```
 
+Here and in the quantization/dequantization sections, `scr.numeric.*` names are conceptual placeholders for the semantic transformation, not committed MLIR dialect names. Per SCR MLIR policy, no custom `scr.*` MLIR dialect is being created; such semantics are expressed through existing MLIR mechanisms, and any dialect extension requires architectural approval under the SCR MLIR-first decision order.
 may express:
 
 ```text
@@ -2679,7 +2682,7 @@ The semantic value remains invariant while its physical representation may chang
 
 # 101. Final Statement
 
-`005_NUMERIC_SEMANTICS.md` defines **what numerical representation means within SCR**.
+`semantics/005_NUMERIC_SEMANTICS.md` defines **what numerical representation means within SCR**.
 
 This document defines **how that meaning is realised and optimised during execution**.
 

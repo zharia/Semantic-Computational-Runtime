@@ -33,19 +33,29 @@ docs/
 ├── 102_ARCHITECTURE.md
 ├── 103_SEMANTIC_MODEL.md
 ├── 104_SEMANTIC_INVARIANTS.md
-├── 005_NUMERIC_SEMANTICS.md
-├── 006_SEQUENCE_AND_TEXT_SEMANTICS.md
+├── 105_NUMERIC_EXECUTION.md
+├── 106_SEMANTIC_MACHINE_MODEL.md
+├── 107_SEMANTIC_TRANSITION_CALCULUS.md
+├── 108_EXECUTION_MANIFESTATION_AND_CONFORMANCE.md
+├── 109_SMM_LIBRARY_CROSSWALK.md
+├── 110_SMM_REPOSITORY_UPDATE.md
+├── 111_SMM_TERMINOLOGY_AND_DECISIONS.md
+├── BOOTSTRAP_SEMANTIC_FOUNDATION.md
+├── SEED_CONFORMANCE.md
 ├── architecture/
-│   └── 001_SPEC_DEPENDENCY_GRAPH.md
+│   ├── 001_SPEC_DEPENDENCY_GRAPH.md
+│   └── 006_SEMANTIC_FIELD.md
 ├── semantics/
 │   ├── 001_SEMANTIC_TYPES.md
 │   ├── 002_RELATIONSHIPS_AND_TOPOLOGY.md
-│   └── 003_TRANSFORMATION_AND_REFINEMENT.md
+│   ├── 003_TRANSFORMATION_AND_REFINEMENT.md
+│   ├── 005_NUMERIC_SEMANTICS.md
+│   └── 006_SEQUENCE_AND_TEXT_SEMANTICS.md
 ├── runtime/
-│   ├── NUMERIC_EXECUTION.md
-│   ├── 007_MEMORY_ALLOCATION_SUBSTRATE.md
 │   ├── 002_EXECUTION_MODEL.md
-│   └── 003_RESOURCE_MODEL.md
+│   ├── 003_RESOURCE_MODEL.md
+│   ├── 007_MEMORY_ALLOCATION_SUBSTRATE.md
+│   └── NUMERIC_EXECUTION.md
 ├── messaging/
 │   ├── 001_MESSAGE_SEMANTICS.md
 │   └── 002_AMQP_MODEL.md
@@ -62,5 +72,9 @@ docs/
     ├── 001_GLOSSARY.md
     └── 002_EXTERNAL_STANDARDS.md
 ```
+
+The `106`–`111` series (Semantic Machine Model chain) are normative architectural drafts: the Semantic Machine boundary, its transition calculus, the manifestation/conformance boundary, the library crosswalk, repository update notes, and terminology decisions.
+
+`docs/runtime/NUMERIC_EXECUTION.md` realises the numeric contract in `semantics/005_NUMERIC_SEMANTICS.md`; `105_NUMERIC_EXECUTION.md` is the full execution-level specification.
 
 `technical-references/` remains implementation/reference material and is intentionally not reproduced by this package.

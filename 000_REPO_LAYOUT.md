@@ -16,13 +16,11 @@
 │   │   └── ...
 │   │
 │   ├── semantics/
-│   │   ├── 001_CORE_SEMANTICS.md
-│   │   ├── 002_VALUE_SEMANTICS.md
-│   │   ├── 003_TYPE_SEMANTICS.md
-│   │   ├── 004_NUMERIC_SEMANTICS.md
-│   │   ├── 005_NUMERIC_EXECUTION.md
-│   │   ├── 006_SEQUENCE_AND_TEXT_SEMANTICS.md
-│   │   └── ...
+│   │   ├── 001_SEMANTIC_TYPES.md
+│   │   ├── 002_RELATIONSHIPS_AND_TOPOLOGY.md
+│   │   ├── 003_TRANSFORMATION_AND_REFINEMENT.md
+│   │   ├── 005_NUMERIC_SEMANTICS.md
+│   │   └── 006_SEQUENCE_AND_TEXT_SEMANTICS.md
 │   │
 │   ├── runtime/
 │   │   ├── ALLOCATION_SUBSTRATE.md

@@ -32,25 +32,35 @@ The Semantic Computational Runtime (SCR) is a computational architecture where *
 
 SCR models computation as the **transformation of semantic structure within a Semantic Field** — not as instruction sequences on passive memory.
 
+A computational Semantic Field induces an implementation-independent **Semantic Machine**. The Semantic Machine defines the semantic state, context, transformations, constraints, outcomes, and equivalence relations that determine what computation means.
+
+Physical implementations are realizations of that abstract machine. The **Reference Executor** is a canonical executable witness; **EGS** is the operational execution environment; **providers** realize semantic capabilities; **MLIR** represents and lowers computation; and **Mojo** implements semantic contracts.
+
+**Meaning precedes representation. Representation precedes physical realization.**
+
 ```text
-Semantic Definition
-       ↓
-Lean Formal Verification
-       ↓
-Mojo Semantic Implementation
-       ↓
-Reference Executor
-       ↓
-Semantic Equivalence
-       ↓
-Canonical MLIR Representation
-       ↓
-MLIR Lowering
-       ↓
-Executable Code
-       ↓
-Observation
+Semantic Field
+      ↓
+Semantic Machine Model
+      ↓
+Semantic Transition Calculus
+      ↓
+Executable Semantic Hypergraph
+      ↓
+Reference Executor / Conforming Implementations
+      ↓
+EGS
+      ↓
+Capability Resolution
+      ↓
+Providers
+      ↓
+Physical Manifestation
 ```
+
+### Abstract Machine Boundary
+
+SCR defines an implementation-independent abstract machine boundary, but it is not reducible to a conventional virtual machine architecture. JVM, CLR, ECMAScript, and RISC-V provide useful precedents for separating machine semantics from implementation; SCR generalizes the principle to semantic hypergraphs and Semantic Fields.
 
 ---
 
@@ -158,7 +168,13 @@ $$
 * **C** — context
 * **S** — state
 * **K** — constraints
-* **M** — physical manifestations
+* **M** — manifestation / physical realization
+
+> **M** is a realization dimension. It must not be interpreted as the source of semantic meaning.
+
+### Semantic Machine
+
+A computational Semantic Field induces an implementation-independent Semantic Machine: the semantic state, context, transformations, constraints, outcomes, and equivalence relations that determine what computation means. Physical implementations are realizations of that abstract machine.
 
 ### Semantic Primacy
 
@@ -259,6 +275,26 @@ If MLIR execution disagrees with the Reference Executor:
 3. Correct the incorrect implementation
 4. Add regression test
 
+### Abstract Machine Boundary
+
+> Semantic Machine semantics MUST remain independent of physical realization.
+
+### Realization Transparency
+
+> Replacing a physical provider with another provider satisfying the same semantic capability MUST NOT require modification of the semantic computation.
+
+### Conformance by Observation
+
+> Implementations are judged by semantic observation and equivalence, not by implementation structure.
+
+### No Infrastructure-Derived Ontology
+
+> Runtime components MUST NOT become semantic primitives merely because implementations contain components with corresponding names.
+
+### Falsification Before Expansion
+
+> A new semantic primitive requires a demonstrated semantic counterexample showing that the existing semantic vocabulary and transition calculus cannot express the required behaviour.
+
 ---
 
 ## Documentation
@@ -283,6 +319,8 @@ SCR is not fundamentally:
 * a programming language
 
 SCR may contain or use all of these. None of them defines SCR.
+
+> SCR does define an abstract machine semantics, but that abstract machine is not itself a conventional VM implementation.
 
 ---
 

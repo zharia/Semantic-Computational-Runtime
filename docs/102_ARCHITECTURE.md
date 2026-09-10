@@ -80,7 +80,9 @@ where:
 * \(K\) = constraints
 * \(M\) = manifestations
 
-This notation is descriptive rather than restrictive. The Semantic Field may contain additional semantic structures as the model evolves.
+This notation is descriptive rather than restrictive. The Semantic Field may contain additional semantic structures as the model evolves; `103_SEMANTIC_MODEL.md` refines this decomposition as \((E,V,R,T,C,S,K,O,M)\).
+
+> **\(M\) — manifestation / physical realization — is a realization dimension. It MUST NOT be interpreted as the source of semantic meaning.**
 
 The important property is that the field defines the **semantic universe of computation**.
 
@@ -383,7 +385,7 @@ Therefore:
 Semantic Transformation
         │
         ▼
-Semantic IR
+Canonical MLIR Representation
         │
         ▼
 Lowering
@@ -696,8 +698,6 @@ The relationship is therefore:
 
 ```text
 SCR Semantic Model
-        ↓
-SCR Semantic / Domain IR
         ↓
 MLIR Representation
         ↓
