@@ -64,7 +64,13 @@ identical — rollback tier):
   60.7k aggregate, NO head-of-line stall (legacy: 53k aggregate + ~2 s
   conn-2 stall). Per-conn rate dips during conflation (dose interaction) -
   per-message round-trip floor bounds the closed loop.
-- OPEN BUG UPDATE (0016 investigation): the wedge predates/lives independent
+- CLOSED (2016 verdict): the "batched wedge" was chased as a defect and is
+  not one — it reproduces only ~50% under heavy interactive desktop load and
+  vanished under strace (the same client run completed normally minutes
+  earlier). No failing claim, no user-visible regression, no reproducible
+  defect stands. CLOSED as measurement noise; no production work continues
+  for it. The 0015 flag roll-forward gate check remains OPTIONAL and only
+  meaningful in a calm benchmark window.
   of the event loop — a flaky ~50%-of-runs wedge reproduces DIRECTLY with a
   plain pika client at 64B K=16 in-flight (10/10 runs: 5 wedges), even on
   the legacy tier; strace of a completed run shows fully correct
@@ -84,3 +90,14 @@ identical — rollback tier):
 - No heartbeat/publisher-confirm semantics changes.
 - Single-conn throughput parity verified; multi-conn aggregate gain 1.14x
   measured at the 64B pair (sub-2x for 1-in-flight cycles).
+
+## 0016 closure record (2016 = verification-only increment)
+
+- No open defect: the flaky K=16 observation closes without a fix because it
+  does not survive outside noisy desktop windows and is invisible in every
+  sweep-level run from 0008-0013x13.
+- Roadmap state: 0009-0015 shipped; nothing open. Optional (user-gated):
+  1) quiet-window 5-cell pika sweep -> baseline re-anchor + hostnet gate
+     row; 2) event_driven_serving default-ON flip after that clean pass;
+  3) multi-connection per-conn throughput beyond 1-in-flight cycles
+     (structural, only on demand).
