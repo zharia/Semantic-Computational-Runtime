@@ -730,3 +730,30 @@ the overlap hypothesis. Kernel additions remain relation-level:
 `ResultState`, `Footprint`, `Overlap`, `causallyDependent` — no new
 carriers, no runtime ontology (spec §41 respected: zero
 scheduler/provider/storage constructs).
+
+---
+
+## 30. Graph-Relational Refinement Status (pre-STC-002 gate)
+
+The graph-relational hypothesis — semantic computation as a typed
+graph relation `I --τ--> O`, `R_τ ⊆ I_τ × O_τ` — was tested
+counterexample-by-counterexample in
+`SCRFormal/SCR/STCGraphCounterexamples.lean` and reported in
+`docs/112_STC_GRAPH_RELATIONAL_REFINEMENT.md`.
+
+Outcome: the hypothesis SURVIVES as the transition carrier (typed,
+labelled, relational consequences); `OutcomeOf` and `ResultState`
+are DEMOTED to projections of the edge (retained in `SCR.STC` for
+compatibility, not re-promoted); `causallyDependent :=
+¬independent` is REJECTED in favour of an open, edge-only
+order-sensitivity candidate; consents/applicability are reused
+UNCHANGED (irreducible per CX-GRAPH-007).
+
+The kernel of this document (§3–§28) is NOT silently redefined: the
+demotion/rejection decisions stand provisionally until STC-002
+establishes equivalence/congruence, the causal definition, the
+Delta mapping, and the golden-path re-derivation over the graph
+carrier.
+
+**STC-002 is BLOCKED** pending the remaining gate clauses of
+`docs/112` (§17, §19).

@@ -10,3 +10,4 @@ import SCR.STC
 import SCR.STCLaws
 import SCR.STCExamples
 import SCR.STCCounterexamples
+import SCR.STCGraphCounterexamples

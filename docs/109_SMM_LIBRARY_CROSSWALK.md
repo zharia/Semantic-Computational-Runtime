@@ -329,3 +329,19 @@ For every proposed new SMM type, ask:
 7. Does removing it make a valid semantic case inexpressible?
 
 Only a demonstrated "yes" to the final question is sufficient evidence for a new primitive.
+
+---
+
+## 13. Provisional status after the graph-relational refinement
+
+Per `docs/112` (STC-001.5): the STC-001 additions mapped in §2
+(`ResultState`, `Footprint`, `Overlap`, `causallyDependent`) are
+PROVISIONAL. `ResultState`/`OutcomeOf` are candidates for demotion to
+projections of a single typed edge relation; `causallyDependent :=
+¬independent` is REJECTED pending the order-sensitivity candidate.
+`Applicable`/`Consents` are reused unchanged and are NOT provisional
+(irreducible by CX-GRAPH-007). The reuse rules of §1–§12 are
+unaffected: no decision in this crosswalk reifies an implementation
+concept; the refinements remain relation-level over existing
+ontology, and none has been promoted to permanent kernel status
+without surviving the primitive-elimination test of §12.

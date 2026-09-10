@@ -11,4 +11,5 @@ require mathlib from git
 lean_lib «SCRFormal» where
   roots := #[`SCRFormal, `SCR.Basic, `SCR.Seed, `SCR.State, `SCR.Identity, `SCR.Relationship,
     `SCR.Equivalence, `SCR.Field, `SCR.Invariants, `SCR.Transformation,
-    `SCR.STC, `SCR.STCLaws, `SCR.STCExamples, `SCR.STCCounterexamples]
+    `SCR.STC, `SCR.STCLaws, `SCR.STCExamples, `SCR.STCCounterexamples,
+    `SCR.STCGraphCounterexamples]
