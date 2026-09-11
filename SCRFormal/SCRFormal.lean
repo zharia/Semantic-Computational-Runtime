@@ -21,3 +21,4 @@ import SCR.STCGraphCongruence
 import SCR.STCGraphCausality
 import SCR.STCGraphHyperedges
 import SCR.REConformance
+import SCR.Hypergraph

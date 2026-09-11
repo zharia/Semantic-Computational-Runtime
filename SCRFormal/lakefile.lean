@@ -19,4 +19,5 @@ lean_lib «SCRFormal» where
     `SCR.STCGraphCongruence,
     `SCR.STCGraphCausality,
     `SCR.STCGraphHyperedges,
-    `SCR.REConformance]
+    `SCR.REConformance,
+    `SCR.Hypergraph]
