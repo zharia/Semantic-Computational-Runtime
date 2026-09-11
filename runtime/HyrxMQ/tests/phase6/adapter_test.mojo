@@ -12,6 +12,7 @@ from std.collections import List
 from hyrx.amqp.adapter import AMQPAdapter, exchange_type_from_name
 from hyrx.core.exchange import ExchangeType
 from hyrx.embedded.api import HyrxEngine, HyrxConfig
+from hyrx.core.exchange import HeaderArgs
 
 
 from hyrx.testing import check
@@ -82,16 +83,16 @@ def test_bind_queue() raises:
     var adapter = AMQPAdapter()
     check(adapter.declare_exchange(engine, "amq.direct", "direct", durable=True), "setupL46")
     check(adapter.declare_queue(engine, "orders", durable=True), "setupL47")
-    check((adapter.bind_queue(engine, "orders", "amq.direct", "orders.new")), "L43")
+    check((adapter.bind_queue(engine, "orders", "amq.direct", "orders.new", HeaderArgs())), "L43")
 
     # Bind to missing exchange returns False
     check(
-        (adapter.bind_queue(engine, "orders", "nonexistent", "key") == False), "L46"
+        (adapter.bind_queue(engine, "orders", "nonexistent", "key", HeaderArgs()) == False), "L46"
     )
 
     # Bind missing queue returns False (the engine authority rejects unknown queues)
     check(
-        (adapter.bind_queue(engine, "nonexistent", "amq.direct", "key") == False),
+        (adapter.bind_queue(engine, "nonexistent", "amq.direct", "key", HeaderArgs()) == False),
         "L49",
     )
 
@@ -102,7 +103,7 @@ def test_publish_and_consume() raises:
     var adapter = AMQPAdapter()
     check(adapter.declare_exchange(engine, "ex", "direct", durable=False), "setupL60")
     check(adapter.declare_queue(engine, "q", durable=False), "setupL61")
-    check(adapter.bind_queue(engine, "q", "ex", "test.key"), "setupL62")
+    check(adapter.bind_queue(engine, "q", "ex", "test.key", HeaderArgs()), "setupL62")
 
     # Publish
     var body = List[UInt8]()
@@ -123,7 +124,7 @@ def test_acknowledge() raises:
     var adapter = AMQPAdapter()
     check(adapter.declare_exchange(engine, "ex", "direct", durable=False), "setupL80")
     check(adapter.declare_queue(engine, "q", durable=False), "setupL81")
-    check(adapter.bind_queue(engine, "q", "ex", "key"), "setupL82")
+    check(adapter.bind_queue(engine, "q", "ex", "key", HeaderArgs()), "setupL82")
 
     var body = List[UInt8]()
     body.append(0x01)
@@ -147,7 +148,7 @@ def test_reject_redeliver() raises:
     var adapter = AMQPAdapter()
     check(adapter.declare_exchange(engine, "ex", "direct", durable=False), "setupL103")
     check(adapter.declare_queue(engine, "q", durable=False), "setupL104")
-    check(adapter.bind_queue(engine, "q", "ex", "key"), "setupL105")
+    check(adapter.bind_queue(engine, "q", "ex", "key", HeaderArgs()), "setupL105")
 
     var body = List[UInt8]()
     body.append(0xAA)
@@ -173,8 +174,8 @@ def test_fanout_publish() raises:
     check(adapter.declare_exchange(engine, "fan", "fanout", durable=False), "setupL127")
     check(adapter.declare_queue(engine, "q1", durable=False), "setupL128")
     check(adapter.declare_queue(engine, "q2", durable=False), "setupL129")
-    check(adapter.bind_queue(engine, "q1", "fan", ""), "setupL130")
-    check(adapter.bind_queue(engine, "q2", "fan", ""), "setupL131")
+    check(adapter.bind_queue(engine, "q1", "fan", "", HeaderArgs()), "setupL130")
+    check(adapter.bind_queue(engine, "q2", "fan", "", HeaderArgs()), "setupL131")
 
     var body = List[UInt8]()
     body.append(0xFF)
@@ -197,8 +198,8 @@ def test_topic_publish() raises:
     check(adapter.declare_exchange(engine, "topic", "topic", durable=False), "setupL150")
     check(adapter.declare_queue(engine, "orders", durable=False), "setupL151")
     check(adapter.declare_queue(engine, "logs", durable=False), "setupL152")
-    check(adapter.bind_queue(engine, "orders", "topic", "orders.*"), "setupL153")
-    check(adapter.bind_queue(engine, "logs", "topic", "logs.#"), "setupL154")
+    check(adapter.bind_queue(engine, "orders", "topic", "orders.*", HeaderArgs()), "setupL153")
+    check(adapter.bind_queue(engine, "logs", "topic", "logs.#", HeaderArgs()), "setupL154")
 
     var body1 = List[UInt8]()
     body1.append(1)
@@ -242,7 +243,7 @@ def test_adapter_writes_only_into_the_injected_engine() raises:
 
     check(adapter.declare_exchange(engine, "one", "direct", durable=False), "declare ex")
     check(adapter.declare_queue(engine, "one-q", durable=False), "declare q")
-    check(adapter.bind_queue(engine, "one-q", "one", "k"), "bind")
+    check(adapter.bind_queue(engine, "one-q", "one", "k", HeaderArgs()), "bind")
     var body = List[UInt8]()
     body.append(0x07)
     check((adapter.publish(engine, "k", body^, "one") == 1), "publish routed")

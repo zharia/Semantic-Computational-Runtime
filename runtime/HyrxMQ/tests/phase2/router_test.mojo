@@ -6,7 +6,7 @@
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
-from hyrx.core.exchange import ExchangeType
+from hyrx.core.exchange import ExchangeType, HeaderArgs
 from hyrx.core.router import Router
 
 from hyrx.testing import check
@@ -25,7 +25,7 @@ def test_declare_and_bind() raises:
     var router = Router()
     check(router.declare_exchange("amq.direct", ExchangeType.direct()), "L24 expect: router.declare_exchange('amq.direct', ExchangeType.direct())")
     check(router.declare_queue("orders", 100), "L25 expect: router.declare_queue('orders', 100)")
-    check(router.bind_queue("orders", "amq.direct", "orders.new"), "L26 expect: router.bind_queue('orders', 'amq.direct', 'orders.new')")
+    check(router.bind_queue("orders", "amq.direct", "orders.new", HeaderArgs()), "L26 expect: router.bind_queue('orders', 'amq.direct', 'orders.new')")
     check(router.exchange_count() == 1, "L27 expect: router.exchange_count() == 1")
     check(router.queue_count() == 1, "L28 expect: router.queue_count() == 1")
 
@@ -38,7 +38,7 @@ def test_publish_route_deliver_ack() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 100)
-    router.bind_queue("q", "ex", "test.key")
+    router.bind_queue("q", "ex", "test.key", HeaderArgs())
 
     var msg = _make_msg("test.key", 0x01)
     var routed = router.publish(msg^, "ex")
@@ -67,7 +67,7 @@ def test_publish_route_reject_redeliver() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 100)
-    router.bind_queue("q", "ex", "key")
+    router.bind_queue("q", "ex", "key", HeaderArgs())
 
     var msg = _make_msg("key", 0xAA)
     router.publish(msg^, "ex")
@@ -92,7 +92,7 @@ def test_consumer_unregister() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.fanout())
     router.declare_queue("q", 100)
-    router.bind_queue("q", "ex", "")
+    router.bind_queue("q", "ex", "", HeaderArgs())
 
     var cid = router.register_consumer("q", 0)
     check(router.consumer_count() == 1, "L96 expect: router.consumer_count() == 1")
@@ -112,7 +112,7 @@ def test_backpressure() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 2)  # Capacity 2
-    router.bind_queue("q", "ex", "key")
+    router.bind_queue("q", "ex", "key", HeaderArgs())
 
     router.publish(_make_msg("key", 1)^, "ex")
     router.publish(_make_msg("key", 2)^, "ex")
@@ -128,9 +128,9 @@ def test_fanout_routing() raises:
     router.declare_queue("q1", 10)
     router.declare_queue("q2", 10)
     router.declare_queue("q3", 10)
-    router.bind_queue("q1", "fan", "")
-    router.bind_queue("q2", "fan", "")
-    router.bind_queue("q3", "fan", "")
+    router.bind_queue("q1", "fan", "", HeaderArgs())
+    router.bind_queue("q2", "fan", "", HeaderArgs())
+    router.bind_queue("q3", "fan", "", HeaderArgs())
 
     var msg = _make_msg("anything", 0xFF)
     var routed = router.publish(msg^, "fan")
@@ -154,8 +154,8 @@ def test_topic_routing() raises:
     router.declare_exchange("topic", ExchangeType.topic())
     router.declare_queue("orders", 10)
     router.declare_queue("logs", 10)
-    router.bind_queue("orders", "topic", "orders.*")
-    router.bind_queue("logs", "topic", "logs.#")
+    router.bind_queue("orders", "topic", "orders.*", HeaderArgs())
+    router.bind_queue("logs", "topic", "logs.#", HeaderArgs())
 
     router.publish(_make_msg("orders.new", 1)^, "topic")
     router.publish(_make_msg("logs.error", 2)^, "topic")
@@ -183,7 +183,7 @@ def test_prefetch_limit() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 10)
-    router.bind_queue("q", "ex", "key")
+    router.bind_queue("q", "ex", "key", HeaderArgs())
 
     router.publish(_make_msg("key", 1)^, "ex")
     router.publish(_make_msg("key", 2)^, "ex")

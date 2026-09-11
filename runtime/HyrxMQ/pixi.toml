@@ -8,13 +8,14 @@ platforms = ["linux-64"]
 
 [dependencies]
 mojo = ">=1.0.0,<2"
+openssl = ">=3"
 
 # Phase 0 intentionally keeps dependencies minimal.
 # Add dependencies only after documenting purpose, license, maintenance,
 # security, performance, and build/deployment implications.
 
 # Vendored flare (vendor/flare, ADR-0005) compiles/runs TCP+UDS with no extra
-# conda deps on Linux (verified). Add openssl/zlib only when TLS is wired (Phase 11).
+# conda deps on Linux (verified). OpenSSL wired for TCP-tier TLS (Phase 11).
 
 [tasks]
 build = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx"

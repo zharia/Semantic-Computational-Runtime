@@ -405,3 +405,81 @@ emit 14.1%, realloc 15.3%, extend 12.9%); the wall is dominated by
 change; suite unchanged 44/0; revisit only if the architecture changes
 (e.g. batched consume pipelines).
 Evidence: `program-increments/v0.0.1-alpha/milestones/0012_persistent_codec_buffers/reports/measurement_probe.md`.
+
+---
+
+# Copy/Allocation Ledger — v0.0.2 Baseline
+
+**Date:** 2026-09-11
+**Commit:** 4ec2a06
+
+## Message path stages
+
+```
+publish → protocol decode → canonical message → routing → queue → delivery → consumer → protocol encode → transport
+```
+
+## Per-stage ledger
+
+| Stage | Copy? | Allocation? | Ownership transfer? | Reference? | Serialization? | Reason | Avoidable? |
+|-------|-------|-------------|---------------------|------------|----------------|--------|------------|
+| **Producer creates Buffer** | — | Buffer(n) allocates | — | — | — | Fresh payload | No |
+| **Message(env, payload)** | — | — | Moved into Message | — | — | Value semantics | No |
+| **Router.publish(msg, ex)** | — | — | Moved into publish (var param) | — | — | Single ownership | No |
+| **Exchange.match(key)** | Key string copied | — | — | Read-only borrow of routing_key | — | Pure matching function | No |
+| **Single-dest enqueue** | **ZERO copies** | — | Message moved into Queue._inbox | — | — | Optimal path | Already optimal |
+| **Multi-dest: Envelope clone** | routing_key copied, headers copied | New Envelope per dest | — | — | — | Fan-out independence | No |
+| **Multi-dest: payload clone** | **1 copy of payload per dest** | New Buffer per dest | — | — | — | Independent ownership per queue | No (by design) |
+| **Multi-dest: content props** | prop_bytes copied per dest | — | — | — | — | Byte-faithful reproduction | No |
+| **Queue.enqueue(msg)** | — | — | Moved into _inbox | — | — | Queue owns message | No |
+| **Queue.dequeue()** | — | — | Moved from _outbox to _unacked[tag] | — | — | Delivery claim | No |
+| **Queue.read_payload(tag)** | **1 copy of payload** | BufferSnapshot allocated | — | — | — | Consumer reads without taking ownership | No (message must stay in queue) |
+| **Queue.read_routing_key** | routing_key string copied | — | — | — | — | Read-only access | No |
+| **Queue.read_headers** | headers dict copied | — | — | — | — | Read-only access | No |
+| **acknowledge(tag)** | — | — | Message destroyed from _unacked | — | — | Death site: payload freed | No |
+| **reject(tag)** | — | — | Moved from _unacked to _inbox | — | — | Requeue; no re-copy | Already optimal |
+| **ack_reclaim(tag)** | — | — | Payload Buffer extracted from Message | — | — | Pool reclaim path | No |
+| **Pool.release(buf)** | — | — | Buffer returned to free list (if pooled) | — | — | Reuse; no-op for non-pooled | Already optimal |
+| **AMQP encode (deliver)** | payload copied into frame | List[UInt8] allocated for frame | — | — | Yes: AMQP framing | Wire format | No |
+| **TCP send** | — | — | bytes written to kernel | — | Yes: kernel copy | Transport | No |
+
+## Summary per publish→get round-trip (single destination)
+
+| Metric | Value |
+|--------|-------|
+| Payload copies (publish to consumer read) | 2 (1 enqueue + 1 read_payload) |
+| Envelope copies | 0 (moved) |
+| Allocations | 2 Buffer + 1 BufferSnapshot |
+| Ownership transfers | 3 (producer→Router, Router→Queue, Queue→consumer read) |
+
+## Summary per publish→get round-trip (fan-out to N queues)
+
+| Metric | Value |
+|--------|-------|
+| Payload copies (total) | N (enqueue) + N (read_payload) = 2N |
+| Envelope copies | N (routing_key + headers per dest) |
+| Allocations | N Buffer + N BufferSnapshot |
+| Ownership transfers | 1 (producer→Router) + N (Router→Queue) + N (Queue→consumer read) |
+
+## Pool impact
+
+| Scenario | With pool (enabled) | Without pool (default) |
+|----------|--------------------|-----------------------|
+| Buffer acquisition | Reused from free list | Fresh allocation per message |
+| Buffer release | Returned to free list | Freed on drop |
+| Throughput impact | 0.79-1.00x vs direct (no win) | Baseline |
+| Decision | OFF by default (rule 17) | — |
+
+## Justification summary
+
+Every copy and allocation on the hot path has an identified semantic or physical justification:
+
+1. **Payload copy on enqueue (fan-out):** Independent ownership per queue — acking in queue A must not affect queue B
+2. **Payload copy on read_payload:** Consumer reads without taking ownership — message must stay in queue for ack/reject
+3. **Envelope copy on fan-out:** Each destination needs its own routing_key and headers for independent routing
+4. **BufferSnapshot (not a view):** Mojo 1.0 has no safe borrowed-view type for async contexts; snapshot ensures correctness
+5. **Frame encoding copies:** AMQP wire format requires serialization into frame buffers
+
+**No avoidable copies identified on the default (pool-disabled) path.**
+
+**With pool enabled:** No additional copies; pool changes allocation reuse, not copy count.

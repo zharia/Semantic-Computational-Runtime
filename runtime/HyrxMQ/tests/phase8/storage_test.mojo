@@ -34,6 +34,7 @@ from hyrx.core.storage import (
     props_delivery_mode,
     _crc32,
 )
+from hyrx.core.exchange import HeaderArgs
 from hyrx.testing import check
 
 
@@ -399,7 +400,7 @@ def engine_recovery_cycle() raises:
     )
     check(created, "router: the durable queue declare runs")
     _ = r1.declare_exchange("top-ex", ExchangeType.direct())
-    check(r1.bind_queue("durable-q", "top-ex", "durable-rk"), "router: bound")
+    check(r1.bind_queue("durable-q", "top-ex", "durable-rk", HeaderArgs()), "router: bound")
     var headers = Dict[String, String]()
     var env = Envelope(MessageID(77), "durable-rk", headers^)
     var props = List[UInt8]()

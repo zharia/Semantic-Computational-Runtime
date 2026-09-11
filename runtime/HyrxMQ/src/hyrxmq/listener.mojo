@@ -312,6 +312,10 @@ struct AMQPConnServing[Conn: AMQPConn]:
         """Replay the injected journal into the engine before serving."""
         return self._service.recover_journal()
 
+    def flush_storage(mut self) raises:
+        """Flush the injected journal (graceful-shutdown durability seam)."""
+        self._service.flush_storage()
+
     def start_service(mut self) raises:
         self._service.start()
 
@@ -684,11 +688,16 @@ struct AMQPListener:
     Thin TCP front end: it owns the TCPListener and delegates all frame,
     header and handshake serving to a shared AMQPConnServing[TCPConnection], so
     the on-wire AMQP behavior is byte-identical to the pre-UDS implementation.
-    """
+
+    Optional TLS: when ``HyrxMQConfig.tls_enabled`` is True with valid
+    cert/key paths, ``configure_tls()`` loads the OpenSSL SSL_CTX and
+    every accepted connection is wrapped before AMQP negotiation.
+    Plaintext remains the default when TLS is not configured."""
 
     var _transport: TCPListener
     var _srv: AMQPConnServing[TCPConnection]
     var _running: Bool
+    var _journal_attached: Bool
 
     def __init__(out self, var config: HyrxMQConfig):
         var tcfg = TransportConfig()
@@ -697,12 +706,23 @@ struct AMQPListener:
         self._transport = TCPListener(config.listen_host, config.port, tcfg^)
         self._srv = AMQPConnServing[TCPConnection](config^)
         self._running = False
+        self._journal_attached = False
+
+    def configure_tls(
+        mut self, cert_path: String, key_path: String
+    ) raises:
+        """Load the server TLS context. Must be called before start().
+
+        Raises if the cert/key cannot be loaded (bad PEM, key mismatch,
+        etc.) — the listener stays in plaintext if this is never called."""
+        self._transport.set_tls_config(cert_path, key_path)
 
     # ---- 0018: pluggable storage pass-throughs (additive) ----
 
     def attach_journal(mut self, var journal: MessageJournal):
         """Inject the storage journal before start() (the bootstrap wire)."""
         self._srv.attach_journal(journal^)
+        self._journal_attached = True
 
     def recover_journal(mut self) raises -> Int:
         """Replay the injected journal into the engine before start()."""
@@ -732,6 +752,30 @@ struct AMQPListener:
         self._running = False
         self._transport.stop()
         self._srv.shutdown_service()
+
+    # ---- 0024: in-process graceful-shutdown seam ----
+    #
+    # Signal delivery is PROCESS-LEVEL: systemd (SIGTERM) stops the unit,
+    # and Mojo 1.0 exposes no portable in-process signal/sleep seam here, so
+    # this listener installs NO OS signal handler. These primitives are the
+    # seam the (future) signal bridge calls: begin_shutdown() asks the accept
+    # loop to exit at its next iteration, flush_storage() makes the attached
+    # journal durable. The event-driven loop's 100 ms poll timeout keeps
+    # begin_shutdown() responsive while idle.
+
+    def begin_shutdown(mut self):
+        """Ask serve_forever()/serve_event_driven() to exit at the next
+        loop iteration (does NOT close the socket or the service)."""
+        self._running = False
+
+    def flush_storage(mut self) raises:
+        """Flush the attached journal; a no-op when none was attached."""
+        if self._journal_attached:
+            self._srv.flush_storage()
+
+    def running(ref self) -> Bool:
+        """Whether the accept loop is currently marked running."""
+        return self._running
 
     def health(mut self) -> String:
         return self._srv.health()

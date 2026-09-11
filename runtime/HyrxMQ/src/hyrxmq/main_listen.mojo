@@ -111,6 +111,27 @@ def _attach_storage_journal_wss(
     _ = listener.recover_journal()
 
 
+def _resolve_tls_config(mut cfg: HyrxMQConfig) raises:
+    """The TCP-tier TLS env overrides (additive, OFF by default).
+
+    - HYRXMQ_TLS_ENABLED : true|false|1|0 (default absent = OFF, so an
+      unconfigured boot is byte-identical to before);
+    - HYRXMQ_TLS_CERT    : path to the server certificate chain PEM;
+    - HYRXMQ_TLS_KEY     : path to the server private key PEM.
+    Enabling TLS requires both paths; validate() enforces the invariant.
+    """
+    var enabled = getenv("HYRXMQ_TLS_ENABLED", "")
+    if len(enabled.bytes()) > 0:
+        if enabled == "true" or enabled == "1":
+            cfg.tls_enabled = True
+        elif enabled == "false" or enabled == "0":
+            cfg.tls_enabled = False
+        else:
+            raise "main_listen: invalid HYRXMQ_TLS_ENABLED '" + enabled + "' (true|false|1|0)"
+    cfg.tls_cert_path = getenv("HYRXMQ_TLS_CERT", "")
+    cfg.tls_key_path = getenv("HYRXMQ_TLS_KEY", "")
+
+
 def _resolve_wss_config(mut cfg: HyrxMQConfig) raises:
     """The 0023 WSS env overrides (additive to the storage bootstrap).
 
@@ -265,6 +286,8 @@ def main() raises:
             raise "main_listen: HYRXMQ_STORAGE_MODE=file requires HYRXMQ_STORAGE_PATH"
     else:
         raise "main_listen: invalid HYRXMQ_STORAGE_MODE '" + storage_mode + "' (disabled|memory|file)"
+    # TCP-tier TLS (env overrides; additive, OFF by default).
+    _resolve_tls_config(cfg)
     # 0023: the WSS tier configuration (env overrides; additive).
     _resolve_wss_config(cfg)
     # 0023 T3: the admin-HTTP tier configuration (env override; additive).
@@ -299,8 +322,17 @@ def main() raises:
         ulistener.serve_forever()
         return
     var host = cfg.listen_host
+    # Read the TLS settings BEFORE cfg is consumed by the listener ctor.
+    var tls_on = cfg.tls_enabled
+    var tls_cert = cfg.tls_cert_path.copy()
+    var tls_key = cfg.tls_key_path.copy()
     var listener = AMQPListener(cfg^)
     _attach_storage_journal(listener, _resolve_storage_mode())
+    # TCP-tier TLS (optional): enabled via config tls_enabled + cert/key
+    # paths. Plaintext remains the default (unconfigured => byte-identical).
+    if tls_on:
+        listener.configure_tls(tls_cert, tls_key)
+        print("HyrxMQ " + node + " TCP TLS enabled")
     if not listener.start():
         raise "main_listen: listener failed to start"
     print(

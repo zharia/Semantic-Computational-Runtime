@@ -5,6 +5,7 @@ from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.exchange import ExchangeType
 from hyrx.embedded.api import HyrxEngine, HyrxConfig
+from hyrx.core.exchange import HeaderArgs
 
 from hyrx.testing import check
 
@@ -25,7 +26,7 @@ def test_topology() raises:
     check(ok, "L23 expect: ok")
     ok = engine.declare_queue("order_queue")
     check(ok, "L25 expect: ok")
-    ok = engine.bind_queue("order_queue", "orders", "order.new")
+    ok = engine.bind_queue("order_queue", "orders", "order.new", HeaderArgs())
     check(ok, "L27 expect: ok")
     print("  topology: OK")
 
@@ -34,7 +35,7 @@ def test_publish_consume() raises:
     var engine = HyrxEngine(config^)
     _ = engine.declare_exchange("ex", ExchangeType.direct())
     _ = engine.declare_queue("q1")
-    _ = engine.bind_queue("q1", "ex", "key.a")
+    _ = engine.bind_queue("q1", "ex", "key.a", HeaderArgs())
 
     var headers = Dict[String, String]()
     headers["content-type"] = "text/plain"
@@ -63,7 +64,7 @@ def test_ack_reject() raises:
     var engine = HyrxEngine(config^)
     _ = engine.declare_exchange("ex", ExchangeType.direct())
     _ = engine.declare_queue("q1")
-    _ = engine.bind_queue("q1", "ex", "k")
+    _ = engine.bind_queue("q1", "ex", "k", HeaderArgs())
 
     var headers = Dict[String, String]()
     var env = Envelope(MessageID(1), "k", headers^)
@@ -94,7 +95,7 @@ def test_stats_tracking() raises:
     var engine = HyrxEngine(config^)
     _ = engine.declare_exchange("ex", ExchangeType.direct())
     _ = engine.declare_queue("q1")
-    _ = engine.bind_queue("q1", "ex", "k")
+    _ = engine.bind_queue("q1", "ex", "k", HeaderArgs())
 
     for i in range(5):
         var headers = Dict[String, String]()
@@ -113,8 +114,8 @@ def test_fanout_exchange() raises:
     _ = engine.declare_exchange("fan", ExchangeType.fanout())
     _ = engine.declare_queue("q1")
     _ = engine.declare_queue("q2")
-    _ = engine.bind_queue("q1", "fan", "")
-    _ = engine.bind_queue("q2", "fan", "")
+    _ = engine.bind_queue("q1", "fan", "", HeaderArgs())
+    _ = engine.bind_queue("q2", "fan", "", HeaderArgs())
 
     var headers = Dict[String, String]()
     var env = Envelope(MessageID(1), "", headers^)
@@ -141,7 +142,7 @@ def test_queue_empty() raises:
     var engine = HyrxEngine(config^)
     _ = engine.declare_exchange("ex", ExchangeType.direct())
     _ = engine.declare_queue("q1")
-    _ = engine.bind_queue("q1", "ex", "k")
+    _ = engine.bind_queue("q1", "ex", "k", HeaderArgs())
 
     var cid = engine.consume("q1", 1)
     var delivery = engine.next_message(cid)
@@ -153,7 +154,7 @@ def test_multiple_messages() raises:
     var engine = HyrxEngine(config^)
     _ = engine.declare_exchange("ex", ExchangeType.direct())
     _ = engine.declare_queue("q1")
-    _ = engine.bind_queue("q1", "ex", "k")
+    _ = engine.bind_queue("q1", "ex", "k", HeaderArgs())
 
     for i in range(10):
         var headers = Dict[String, String]()

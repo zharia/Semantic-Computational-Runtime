@@ -1,81 +1,62 @@
-# HyrxMQ — Phase 0 Seed
+# HyrxMQ — AMQP 0-9-1 broker (Mojo)
 
-This archive is the **Phase 0 repository and toolchain groundwork** for Hyrx/HyrxMQ.
+**HyrxMQ** is a reference implementation of an AMQP 0-9-1 message broker written in
+Mojo, built on the Hyrx messaging core. It began as a Phase 0 toolchain seed and now
+implements a working broker vertical slice.
 
-Phase 0 is deliberately non-functional as a broker. Its purpose is to establish a
-clean, reproducible, evidence-driven engineering substrate before implementing
-messaging semantics.
+## Current status (v0.0.3)
 
-## Phase 0 objective
+- **Test suite:** 52/0 PASS (`pixi run test`)
+- **External interop:** pika 1.4.4 completes AMQP handshake/publish/consume/get/ack
+- **TCP TLS:** proven (TLS 1.3 handshake + AMQP-over-TLS; `scripts/interop/tls_probe.py`)
+- **Persistence:** WAL journal + recovery, validated by crash/corruption/IO-failure tests
+- **Performance:** ~1.43x RabbitMQ 4.3.5 in the closed-loop benchmark
 
-A fresh GNU/Linux checkout must be able to:
+Canonical engineering state:
+`docs/engineering/CURRENT_STATE.md` and
+`docs/engineering/FINAL_ENGINEERING_ASSESSMENT_v0.0.3.md`.
 
-1. identify and validate the project/toolchain environment;
-2. build/run the minimal Mojo seed;
-3. execute the Phase 0 verification suite;
-4. run formatting and repository checks;
-5. produce deterministic seed/configuration output;
-6. execute the benchmark harness skeleton;
-7. expose explicit architecture invariants and decision records;
-8. make no unsupported claims about AMQP, performance, or Mojo APIs.
+Programme increments: `program-increments/v0.0.2/` and `program-increments/v0.0.3/`.
 
-## What Phase 0 does NOT implement
+## What HyrxMQ implements
 
-- AMQP 0-9-1
-- TCP broker
-- queues/exchanges
-- routing
-- persistence
-- authentication
-- management API
-- clustering
-- distributed consensus
-- simulation-specific concepts
+- AMQP 0-9-1: connection/channel lifecycle, exchange/queue declare+bind, publish,
+  consume, get, ack/nack/reject, QoS, publisher confirms, transactions, TTL,
+  dead-letter, x-max-length, exchange-to-exchange, headers exchange matching
+- Transports: TCP (+ optional TLS), UDS (incl. abstract namespace), WSS
+- Persistence: disabled / memory WAL / file WAL tiers with recovery
+- Operations: Prometheus/JSON metrics, structured JSON logging, shutdown seam
 
-Those belong to later phases.
+## What HyrxMQ does NOT implement
+
+- Per-resource authorization (ACLs / multiple vhosts)
+- Connection / I/O timeouts and connection limits
+- HTTP `/metrics` endpoint, latency histograms, tracing
+- TLS on UDS; async push-after-subscribe; server cyclic heartbeats
+- Distributed clustering; WAL compaction
+
+## Quick start
+
+```sh
+pixi run test        # 52/0 PASS
+pixi run bench-direct
+```
 
 ## Repository shape
 
 ```text
 .
 ├── README.md
-├── LICENSE
-├── .gitignore
-├── .editorconfig
-├── docs/
-│   ├── PHASE_0.md
-│   ├── ARCHITECTURE_INVARIANTS.md
-│   ├── DEVELOPMENT.md
-│   ├── TOOLCHAIN.md
-│   ├── TESTING.md
-│   ├── BENCHMARKING.md
-│   ├── COMPATIBILITY_POLICY.md
-│   ├── QUALITY_GATES.md
-│   └── decisions/
-├── src/
-│   └── hyrx/
-├── tests/
-│   └── phase0/
-├── examples/
-├── tools/
-├── scripts/
-├── config/
-├── assets/
-├── benchmarks/
-├── schemas/
-├── packaging/
-│   └── systemd/
-├── .github/workflows/
-└── mojo.toml
+├── docs/               # design, engineering gates, semantic invariants
+│   └── engineering/    # CURRENT_STATE, GATE_01..06, final assessments
+├── src/hyrx/           # Hyrx core, transports, AMQP adapter
+├── src/hyrxmq/         # broker product (config, listener, service, status)
+├── tests/phase0..10/    # phase test suites
+├── tests/integration/   # end-to-end transport tests
+├── benchmarks/          # performance harness
+├── scripts/interop/     # external client proofs (pika, TLS)
+└── program-increments/  # v0.0.1-alpha, v0.0.2, v0.0.3 programmes
 ```
-
-## Phase 0 exit criterion
-
-Phase 0 is complete only when the repository's actual environment has been
-validated and the checks in `docs/PHASE_0.md` have been executed successfully.
-
-The seed files are **not evidence of completion**. They are the starting point
-from which the development agent must establish evidence.
 
 ## Naming
 

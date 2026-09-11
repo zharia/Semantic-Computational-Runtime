@@ -10,7 +10,7 @@
 from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
 from hyrx.core.queue import Queue, QueueConfig
-from hyrx.core.exchange import ExchangeType, Exchange, Binding
+from hyrx.core.exchange import ExchangeType, Exchange, Binding, HeaderArgs
 from hyrx.core.router import Router
 
 from hyrx.testing import check
@@ -105,8 +105,8 @@ def test_publish_path_has_no_size_ceiling() raises:
     router.declare_exchange("f", ExchangeType.fanout())
     router.declare_queue("a", 5)
     router.declare_queue("b", 5)
-    router.bind_queue("a", "f", "")
-    router.bind_queue("b", "f", "")
+    router.bind_queue("a", "f", "", HeaderArgs())
+    router.bind_queue("b", "f", "", HeaderArgs())
     var headers = Dict[String, String]()
     var env = Envelope(MessageID(1), "k", headers^)
     var buf = Buffer(262144)
@@ -127,7 +127,7 @@ def test_unacked_count_is_unbounded() raises:
     var router = Router()
     router.declare_exchange("f", ExchangeType.fanout())
     router.declare_queue("q", 500)
-    router.bind_queue("q", "f", "")
+    router.bind_queue("q", "f", "", HeaderArgs())
     for i in range(500):
         router.publish(_msg(UInt8(i % 251))^, "f")
     check(router.messages_routed() == 500, "500 messages published")
@@ -144,7 +144,7 @@ def test_prefetch_is_the_only_per_consumer_bound() raises:
     var router = Router()
     router.declare_exchange("f", ExchangeType.fanout())
     router.declare_queue("q", 100)
-    router.bind_queue("q", "f", "")
+    router.bind_queue("q", "f", "", HeaderArgs())
     for i in range(10):
         router.publish(_msg(UInt8(0xC0 + i))^, "f")
     var capped = router.register_consumer("q", 3)
@@ -179,7 +179,7 @@ def test_bindings_per_exchange_are_unbounded() raises:
     """NO LIMIT on bindings held by an exchange."""
     var ex = Exchange("wide", ExchangeType.direct())
     for i in range(500):
-        ex.add_binding(Binding("q" + String(i), "k" + String(i), Dict[String, String]()))
+        ex.add_binding(Binding("q" + String(i), "k" + String(i), HeaderArgs()))
     check(ex.binding_count() == 500, "500 bindings stored")
 
 # ---- resource 8: unknown handles (error surface) ----------------------
@@ -232,7 +232,7 @@ def test_delete_queue_destroys_messages_and_returns_none_of_them() raises:
     var router = Router()
     router.declare_queue("doomed", 10)
     router.declare_exchange("f", ExchangeType.fanout())
-    router.bind_queue("doomed", "f", "")
+    router.bind_queue("doomed", "f", "", HeaderArgs())
     check(router.publish(_msg(0x01)^, "f") == 1, "one message queued")
     var leftover = router.delete_queue("doomed")
     check(len(leftover) == 0, "returned list is EMPTY (docstring says otherwise)")

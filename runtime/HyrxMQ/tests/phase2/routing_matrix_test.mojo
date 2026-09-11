@@ -18,7 +18,7 @@
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
-from hyrx.core.exchange import Binding, Exchange, ExchangeType
+from hyrx.core.exchange import Binding, Exchange, ExchangeType, HeaderArgs
 from hyrx.core.router import Router
 
 from hyrx.testing import check
@@ -33,7 +33,7 @@ def _msg(var key: String, val: UInt8) raises -> Message:
     return Message(env^, buf^)
 
 def _binding(var queue_name: String, var routing_key: String) -> Binding:
-    var args = Dict[String, String]()
+    var args = HeaderArgs()
     return Binding(queue_name^, routing_key^, args^)
 
 def _fanout(var ex_name: String, var qnames: List[String], capacity: Int) raises -> Router:
@@ -42,7 +42,7 @@ def _fanout(var ex_name: String, var qnames: List[String], capacity: Int) raises
     router.declare_exchange(ex_name, ExchangeType.fanout())
     for i in range(len(qnames)):
         router.declare_queue(qnames[i], capacity)
-        router.bind_queue(qnames[i], ex_name, "")
+        router.bind_queue(qnames[i], ex_name, "", HeaderArgs())
     return router^
 
 def _drain_payloads(mut router: Router, consumer_id: UInt64, var want: Int) raises -> Int:
@@ -67,7 +67,7 @@ def test_one_pub_one_queue() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("orders", 100)
-    router.bind_queue("orders", "ex", "orders.new")
+    router.bind_queue("orders", "ex", "orders.new", HeaderArgs())
 
     var routed = router.publish(_msg("orders.new", 0x01)^, "ex")
     check(routed == 1, "1pub->1q: routed == 1")
@@ -91,7 +91,7 @@ def test_publish_consumes_the_source_message() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 10)
-    router.bind_queue("q", "ex", "k")
+    router.bind_queue("q", "ex", "k", HeaderArgs())
     var headers = Dict[String, String]()
     headers["prio"] = "high"
     var rk = "k"
@@ -122,7 +122,7 @@ def test_metadata_fidelity_preserved_on_fanout() raises:
     router.declare_exchange("f", ExchangeType.fanout())
     for n in ["a", "b", "c"]:
         router.declare_queue(n, 100)
-        router.bind_queue(n, "f", "")
+        router.bind_queue(n, "f", "", HeaderArgs())
 
     var mid_val = UInt64(0xCAFE)
     var headers = Dict[String, String]()
@@ -155,7 +155,7 @@ def test_metadata_fidelity_single_destination_move() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("only", 10)
-    router.bind_queue("only", "ex", "k")
+    router.bind_queue("only", "ex", "k", HeaderArgs())
     var mid_val = UInt64(0x1234)
     var headers = Dict[String, String]()
     headers["x"] = "one"
@@ -350,7 +350,7 @@ def test_unroutable_publish() raises:
     var router = Router()
     router.declare_exchange("ex", ExchangeType.direct())
     router.declare_queue("q", 100)
-    router.bind_queue("q", "ex", "a.b")
+    router.bind_queue("q", "ex", "a.b", HeaderArgs())
 
     var routed = router.publish(_msg("no.match", 0x09)^, "ex")
     check(routed == 0, "unroutable: routed == 0")
@@ -369,9 +369,9 @@ def test_bind_to_missing_names_returns_false() raises:
     """Bind validation: missing queue or exchange returns False (no raise)."""
     var router = Router()
     router.declare_exchange("e", ExchangeType.direct())
-    check(not router.bind_queue("ghost", "e", "k"), "bind with missing queue returns False")
+    check(not router.bind_queue("ghost", "e", "k", HeaderArgs()), "bind with missing queue returns False")
     router.declare_queue("real", 10)
-    check(not router.bind_queue("real", "ghost-ex", "k"), "bind with missing exchange returns False")
+    check(not router.bind_queue("real", "ghost-ex", "k", HeaderArgs()), "bind with missing exchange returns False")
     check(router.publish(_msg("k", 0x01)^, "e") == 0, "queue bound to nothing is unroutable")
 
 # ---- card 7: multiple matching bindings -------------------------------
@@ -381,7 +381,7 @@ def test_multiple_matching_bindings_different_queues() raises:
     var ex = Exchange("t", ExchangeType.topic())
     ex.add_binding(_binding("all", "#"))
     ex.add_binding(_binding("orders", "orders.#"))
-    var matched = ex.match("orders.new")
+    var matched = ex.match_no_headers("orders.new")
     check(len(matched) == 2, "match set: two distinct queues")
     check(matched[0] == "all", "match set: first-in-binding-order")
     check(matched[1] == "orders", "match set: second")
@@ -390,15 +390,15 @@ def test_multiple_matching_bindings_different_queues() raises:
     router.declare_exchange("t", ExchangeType.topic())
     router.declare_queue("all", 10)
     router.declare_queue("orders", 10)
-    router.bind_queue("all", "t", "#")
-    router.bind_queue("orders", "t", "orders.#")
+    router.bind_queue("all", "t", "#", HeaderArgs())
+    router.bind_queue("orders", "t", "orders.#", HeaderArgs())
     check(router.publish(_msg("orders.new", 0x0B)^, "t") == 2,
           "multi-match across queues: two copies (one per queue)")
 
 def test_multiple_matching_bindings_same_queue_one_copy() raises:
     """AUDIT §6 FIX: a queue bound by TWO matching patterns gets ONE copy.
 
-    Observed BEFORE the fix: Exchange.match() returned a destination LIST
+    Observed BEFORE the fix: Exchange.match_no_headers() returned a destination LIST
     with the queue repeated, and publish() enqueued 2 owned copies into the
     same queue (routed == 2). docs/ROUTING.md:4 requires AMQP-compatible
     duplication behaviour (RabbitMQ: "each queue receives exactly one copy"),
@@ -408,15 +408,15 @@ def test_multiple_matching_bindings_same_queue_one_copy() raises:
     var ex = Exchange("t", ExchangeType.topic())
     ex.add_binding(_binding("hot", "stock.*"))
     ex.add_binding(_binding("hot", "#"))
-    var matched = ex.match("stock.us")
+    var matched = ex.match_no_headers("stock.us")
     check(len(matched) == 1, "destination set: the queue is listed once")
     check(matched[0] == "hot", "destination set: correct queue name")
 
     var router = Router()
     router.declare_exchange("t", ExchangeType.topic())
     router.declare_queue("hot", 10)
-    router.bind_queue("hot", "t", "stock.*")
-    router.bind_queue("hot", "t", "#")
+    router.bind_queue("hot", "t", "stock.*", HeaderArgs())
+    router.bind_queue("hot", "t", "#", HeaderArgs())
     check(router.publish(_msg("stock.us", 0x0C)^, "t") == 1, "one routed copy for one queue")
     var cid = router.register_consumer("hot", 0)
     var only = router.consume(cid)
@@ -430,8 +430,8 @@ def test_direct_same_queue_multiple_keys() raises:
     var router = Router()
     router.declare_exchange("d", ExchangeType.direct())
     router.declare_queue("multi", 10)
-    router.bind_queue("multi", "d", "k1")
-    router.bind_queue("multi", "d", "k2")
+    router.bind_queue("multi", "d", "k1", HeaderArgs())
+    router.bind_queue("multi", "d", "k2", HeaderArgs())
     check(router.publish(_msg("k2", 0x11)^, "d") == 1, "direct: matching key routes once")
     check(router.publish(_msg("k3", 0x12)^, "d") == 0, "direct: non-matching key routes nowhere")
     var cid = router.register_consumer("multi", 0)
@@ -448,13 +448,13 @@ def test_duplicate_binding_is_idempotent() raises:
     ex.add_binding(_binding("q", "a.b"))
     ex.add_binding(_binding("q", "a.b"))
     check(ex.binding_count() == 1, "duplicate binding not stored")
-    check(len(ex.match("a.b")) == 1, "duplicate binding yields one destination")
+    check(len(ex.match_no_headers("a.b")) == 1, "duplicate binding yields one destination")
 
     var router = Router()
     router.declare_exchange("f", ExchangeType.fanout())
     router.declare_queue("q", 10)
-    check(router.bind_queue("q", "f", ""), "first bind")
-    check(router.bind_queue("q", "f", ""), "identical second bind accepted but ignored")
+    check(router.bind_queue("q", "f", "", HeaderArgs()), "first bind")
+    check(router.bind_queue("q", "f", "", HeaderArgs()), "identical second bind accepted but ignored")
     check(router.publish(_msg("k", 0x0D)^, "f") == 1, "duplicate binding: one copy only")
     var cid = router.register_consumer("q", 0)
     var only_dup = router.consume(cid)
@@ -466,7 +466,7 @@ def test_unbind_removes_destination() raises:
     var router = Router()
     router.declare_exchange("d", ExchangeType.direct())
     router.declare_queue("q", 10)
-    router.bind_queue("q", "d", "k")
+    router.bind_queue("q", "d", "k", HeaderArgs())
     check(router.unbind_queue("q", "d", "k"), "unbind existing binding")
     check(router.publish(_msg("k", 0x0E)^, "d") == 0, "after unbind: unroutable")
     check(not router.unbind_queue("q", "d", "k"), "unbind twice returns False")
@@ -477,25 +477,25 @@ def test_match_sets_by_type() raises:
     """direct / fanout / topic match sets, including non-matches."""
     var direct = Exchange("d", ExchangeType.direct())
     direct.add_binding(_binding("dq", "exact.key"))
-    check(len(direct.match("exact.key")) == 1, "direct: exact key matches")
-    check(len(direct.match("exact.keys")) == 0, "direct: word-prefix is not a match")
-    check(len(direct.match("other")) == 0, "direct: unrelated key matches nothing")
+    check(len(direct.match_no_headers("exact.key")) == 1, "direct: exact key matches")
+    check(len(direct.match_no_headers("exact.keys")) == 0, "direct: word-prefix is not a match")
+    check(len(direct.match_no_headers("other")) == 0, "direct: unrelated key matches nothing")
 
     var fanout = Exchange("fo", ExchangeType.fanout())
     fanout.add_binding(_binding("fq", "ignored"))
-    check(len(fanout.match("anything")) == 1, "fanout: routing key ignored")
-    check(len(fanout.match("")) == 1, "fanout: empty routing key still matches")
+    check(len(fanout.match_no_headers("anything")) == 1, "fanout: routing key ignored")
+    check(len(fanout.match_no_headers("")) == 1, "fanout: empty routing key still matches")
 
     var topic = Exchange("to", ExchangeType.topic())
     topic.add_binding(_binding("star", "*.info"))
     topic.add_binding(_binding("hash", "sys.#"))
-    check(len(topic.match("app.info")) == 1, "topic: * matches exactly one word")
-    check(topic.match("app.info")[0] == "star", "topic: the * queue is selected")
-    check(len(topic.match("app.more.info")) == 0, "topic: * never spans two words")
-    check(len(topic.match("sys")) == 1, "topic: # matches zero words")
-    check(topic.match("sys")[0] == "hash", "topic: # queue selected for zero-word tail")
-    check(len(topic.match("sys.a.b")) == 1, "topic: # matches many words")
-    check(len(topic.match("none")) == 0, "topic: unrelated key matches nothing")
+    check(len(topic.match_no_headers("app.info")) == 1, "topic: * matches exactly one word")
+    check(topic.match_no_headers("app.info")[0] == "star", "topic: the * queue is selected")
+    check(len(topic.match_no_headers("app.more.info")) == 0, "topic: * never spans two words")
+    check(len(topic.match_no_headers("sys")) == 1, "topic: # matches zero words")
+    check(topic.match_no_headers("sys")[0] == "hash", "topic: # queue selected for zero-word tail")
+    check(len(topic.match_no_headers("sys.a.b")) == 1, "topic: # matches many words")
+    check(len(topic.match_no_headers("none")) == 0, "topic: unrelated key matches nothing")
 
 def test_headers_exchange_is_a_stub() raises:
     """REPORTED: headers matching is unimplemented; the stub matches all.
@@ -506,7 +506,7 @@ def test_headers_exchange_is_a_stub() raises:
     """
     var ex = Exchange("h", ExchangeType.headers())
     ex.add_binding(_binding("hq", "some.key"))
-    check(len(ex.match("completely.unrelated")) == 1,
+    check(len(ex.match_no_headers("completely.unrelated")) == 1,
           "headers STUB: matches every key regardless of headers")
 
 # ---- failed delivery / redelivery ownership ---------------------------
@@ -546,8 +546,8 @@ def test_failed_enqueue_drops_only_that_copy() raises:
     router.declare_exchange("f", ExchangeType.fanout())
     router.declare_queue("small", 1)
     router.declare_queue("big", 5)
-    router.bind_queue("small", "f", "")
-    router.bind_queue("big", "f", "")
+    router.bind_queue("small", "f", "", HeaderArgs())
+    router.bind_queue("big", "f", "", HeaderArgs())
     check(router.publish(_msg("k", 0xB1)^, "f") == 2, "first fanout: both queues accept")
     check(router.publish(_msg("k", 0xB2)^, "f") == 1,
           "second fanout: full queue silently drops its copy -> routed == 1")

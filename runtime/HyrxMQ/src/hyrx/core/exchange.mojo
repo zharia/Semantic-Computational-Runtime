@@ -14,7 +14,32 @@
 #     (audit §6 / AMQP: "each queue receives exactly one copy" — a queue
 #     bound by two matching patterns must not be double-delivered.)
 
-from std.collections import List
+from std.collections import List, Dict
+
+
+struct HeaderArgs:
+    """Simple key-value pairs for headers exchange binding arguments.
+
+    Stores as parallel lists to support iteration (Dict has no key iteration).
+    Keys are header names, values are expected header values.
+    """
+    var keys: List[String]
+    var values: List[String]
+
+    def __init__(out self):
+        self.keys = List[String]()
+        self.values = List[String]()
+
+    def __init__(out self, var k: List[String], var v: List[String]):
+        self.keys = k^
+        self.values = v^
+
+    def add(mut self, var key: String, var value: String):
+        self.keys.append(key^)
+        self.values.append(value^)
+
+    def len(ref self) -> Int:
+        return len(self.keys)
 
 struct ExchangeType:
     """Enum for exchange types. 0=direct, 1=fanout, 2=topic, 3=headers."""
@@ -51,13 +76,13 @@ struct Binding:
 
     var _queue_name: String
     var _routing_key: String
-    var _arguments: Dict[String, String]
+    var _arguments: HeaderArgs
 
     def __init__(
         out self,
         var queue_name: String,
         var routing_key: String,
-        var arguments: Dict[String, String],
+        var arguments: HeaderArgs,
     ):
         self._queue_name = queue_name^
         self._routing_key = routing_key^
@@ -124,6 +149,37 @@ def _already_present(result: List[String], queue_name: String) -> Bool:
         if result[i] == queue_name:
             return True
     return False
+
+def _headers_match(
+    ref args: HeaderArgs,
+    ref msg_headers: Dict[String, String],
+) raises -> Bool:
+    """Check if message headers match binding arguments.
+
+    args contains x-match and header key-value pairs.
+    x-match="all" (default): ALL non-x-match entries must match.
+    x-match="any": ANY non-x-match entry must match.
+    A missing header in the message never matches.
+    """
+    var is_all = True
+    var found_any = False
+    for i in range(len(args.keys)):
+        var hk = args.keys[i]
+        var hv = args.values[i]
+        if hk == "x-match":
+            is_all = hv == "all"
+            continue
+        if hk in msg_headers:
+            if msg_headers[hk] == hv:
+                if not is_all:
+                    found_any = True
+                    break
+            elif is_all:
+                return False
+        elif is_all:
+            return False
+
+    return is_all or found_any
 
 def _binding_exists(bindings: List[Binding], queue_name: String, routing_key: String) -> Bool:
     """Check if a binding already exists for the given queue and routing key."""
@@ -212,11 +268,11 @@ struct Exchange:
                 i += 1
         return dropped
 
-    def match_exchanges(ref self, routing_key: String) -> List[String]:
+    def match_exchanges(ref self, routing_key: String, ref msg_headers: Dict[String, String]) raises -> List[String]:
         """Destination SET of EXCHANGE names matching for a publish (40,30).
 
         Same matching rules as match() (direct exact / fanout all / topic
-        wildcards / headers stub), evaluated on the E2E binding table.
+        wildcards / headers matching), evaluated on the E2E binding table.
         Duplicates removed."""
         var result = List[String]()
 
@@ -238,11 +294,11 @@ struct Exchange:
                     if not _already_present(result, d):
                         result.append(d)
         elif self._type == ExchangeType.headers():
-            # Stub: return all bound exchanges (mirrors the queue stub).
             for i in range(len(self._dest_exchanges)):
-                var d = self._dest_exchanges[i]._queue_name
-                if not _already_present(result, d):
-                    result.append(d)
+                if _headers_match(self._dest_exchanges[i]._arguments, msg_headers):
+                    var d = self._dest_exchanges[i]._queue_name
+                    if not _already_present(result, d):
+                        result.append(d)
 
         return result^
 
@@ -261,7 +317,7 @@ struct Exchange:
                 return True
         return False
 
-    def match(ref self, routing_key: String) -> List[String]:
+    def match(ref self, routing_key: String, ref msg_headers: Dict[String, String]) raises -> List[String]:
         """Return the destination SET of queue names matching the routing key.
 
         Duplicates are removed: one queue bound by several matching
@@ -270,7 +326,7 @@ struct Exchange:
         Direct: exact match on routing_key.
         Fanout: all bound queues.
         Topic: wildcard pattern match.
-        Headers: all bound queues (stub).
+        Headers: match on message headers (x-match=all/any).
         """
         var result = List[String]()
 
@@ -292,13 +348,18 @@ struct Exchange:
                     if not _already_present(result, qname_t):
                         result.append(qname_t)
         elif self._type == ExchangeType.headers():
-            # Stub: return all bound queues
             for i in range(len(self._bindings)):
-                var qname_h = self._bindings[i]._queue_name
-                if not _already_present(result, qname_h):
-                    result.append(qname_h)
+                if _headers_match(self._bindings[i]._arguments, msg_headers):
+                    var qname_h = self._bindings[i]._queue_name
+                    if not _already_present(result, qname_h):
+                        result.append(qname_h)
 
         return result^
+
+    def match_no_headers(ref self, routing_key: String) raises -> List[String]:
+        """Backward-compatible overload: match without message headers."""
+        var empty = Dict[String, String]()
+        return self.match(routing_key, empty)
 
     def binding_count(ref self) -> Int:
         return len(self._bindings)

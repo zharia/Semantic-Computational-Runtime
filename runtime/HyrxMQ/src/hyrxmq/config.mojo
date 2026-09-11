@@ -110,9 +110,17 @@ struct HyrxMQConfig:
     var storage_mode: String
     var storage_path: String
 
+    # TCP-tier TLS (optional, off by default). When tls_enabled is True
+    # and cert/key paths are set, accepted TCP connections are wrapped
+    # with OpenSSL TLS before AMQP negotiation. Plaintext remains the
+    # default so unconfigured binaries are byte-identical to before.
+    var tls_enabled: Bool
+    var tls_cert_path: String
+    var tls_key_path: String
+
     # 0023: OPTIONAL WSS tier (browser transport) + the admin-HTTP tier
     # key for T3. Defaults are all OFF ("0"/"none") so unconfigured
-    # binaries behave byte-identically to before.
+    # binaries behave byte-identical to before.
     var wss_listen: Int
     var wss_tls_mode: String  # "none" | "injected" | "path"
     # Path cert model: the cert chain + key PEM paths (injected mode
@@ -141,6 +149,9 @@ struct HyrxMQConfig:
         self.users.append(UserRecord("admin", "password"))
         self.storage_mode = "disabled"
         self.storage_path = ""
+        self.tls_enabled = False
+        self.tls_cert_path = ""
+        self.tls_key_path = ""
         self.wss_listen = 0
         self.wss_tls_mode = "none"
         self.wss_tls_path = ""
@@ -160,6 +171,9 @@ struct HyrxMQConfig:
         self.users = existing.users.copy()
         self.storage_mode = existing.storage_mode
         self.storage_path = existing.storage_path.copy()
+        self.tls_enabled = existing.tls_enabled
+        self.tls_cert_path = existing.tls_cert_path.copy()
+        self.tls_key_path = existing.tls_key_path.copy()
         self.wss_listen = existing.wss_listen
         self.wss_tls_mode = existing.wss_tls_mode
         self.wss_tls_path = existing.wss_tls_path.copy()
@@ -197,6 +211,18 @@ struct HyrxMQConfig:
             self.storage_mode = m^
         elif key == "storage_path":
             self.storage_path = _require_text(key, value)
+        elif key == "tls_enabled":
+            var t = value.strip()
+            if t == "true" or t == "1":
+                self.tls_enabled = True
+            elif t == "false" or t == "0":
+                self.tls_enabled = False
+            else:
+                raise "config: invalid tls_enabled '" + t + "' (true|false|1|0)"
+        elif key == "tls_cert_path":
+            self.tls_cert_path = _require_text(key, value)
+        elif key == "tls_key_path":
+            self.tls_key_path = _require_text(key, value)
         elif key == "wss_listen":
             self.wss_listen = _require_int(key, value)
         elif key == "wss_tls_mode":
@@ -303,6 +329,16 @@ struct HyrxMQConfig:
         else:
             if len(self.storage_path.strip().bytes()) != 0:
                 raise "config: storage_path must be empty in the '" + self.storage_mode + "' storage_mode"
+        # TCP-tier TLS invariants: tls_enabled=True requires both cert and key;
+        # tls_enabled=False requires both paths empty.
+        if self.tls_enabled:
+            if len(self.tls_cert_path.strip().bytes()) == 0:
+                raise "config: tls_enabled=true requires a non-empty tls_cert_path"
+            if len(self.tls_key_path.strip().bytes()) == 0:
+                raise "config: tls_enabled=true requires a non-empty tls_key_path"
+        else:
+            if len(self.tls_cert_path.strip().bytes()) != 0 or len(self.tls_key_path.strip().bytes()) != 0:
+                raise "config: tls_cert_path / tls_key_path must be empty when tls_enabled is false"
         # 0023: wss + admin-HTTP invariants (OFF-by-default tiers).
         if self.wss_listen < 0 or self.wss_listen > 65535:
             raise "config: wss_listen out of range"

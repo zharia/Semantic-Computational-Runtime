@@ -8,6 +8,7 @@ from std.collections import List
 
 
 from hyrx.testing import check
+from hyrx.core.exchange import HeaderArgs
 
 def test_status_defaults() raises:
     var s = BrokerStatus()
@@ -51,8 +52,8 @@ def test_status_counts_track_engine() raises:
     _ = broker.declare_exchange("ex", "fanout")
     _ = broker.declare_queue("a")
     _ = broker.declare_queue("b")
-    _ = broker.bind_queue("a", "ex", "")
-    _ = broker.bind_queue("b", "ex", "")
+    _ = broker.bind_queue("a", "ex", "", HeaderArgs())
+    _ = broker.bind_queue("b", "ex", "", HeaderArgs())
 
     var body = List[UInt8]()
     body.append(7)

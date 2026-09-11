@@ -19,7 +19,7 @@ from std.time import monotonic
 from hyrx.core.buffer import Buffer
 from hyrx.core.buffer_snapshot import BufferSnapshot
 from hyrx.core.message import Message, MessageID, Envelope
-from hyrx.core.exchange import Exchange, ExchangeType, Binding
+from hyrx.core.exchange import Exchange, ExchangeType, Binding, HeaderArgs
 from hyrx.core.queue import Queue, QueueConfig, Delivery
 from hyrx.core.consumer import Consumer
 from hyrx.core.buffer_pool import BufferPool
@@ -128,6 +128,11 @@ struct Router:
         """Owned copy of the journal's RAM pages (a fresh-engine recovery
         fixture for the test harness; the disabled tier yields empty)."""
         return self._journal.mem_pages()
+
+    def sync_journal(mut self) raises:
+        """Durability flush of the attached journal (a no-op for the
+        disabled/memory tiers; the file WAL flushes through its ops)."""
+        self._journal.sync()
 
     def _journalize_enqueue(mut self, var qname: String, ref msg: Message) raises -> Int:
         """WRITE-AHEAD the MSG record for a durable-queue publish with
@@ -243,12 +248,12 @@ struct Router:
             var rk = topo.bindings[i].routing_key.copy()
             if topo.bindings[i].e2e:
                 if dest in self._exchanges and exn in self._exchanges:
-                    var bargs = Dict[String, String]()
+                    var bargs = HeaderArgs()
                     var bbinding = Binding(dest, rk^, bargs^)
                     self._exchanges[exn].add_exchange_binding(bbinding^)
             else:
                 if dest in self._queues and exn in self._exchanges:
-                    var qargs = Dict[String, String]()
+                    var qargs = HeaderArgs()
                     var qbinding = Binding(dest, rk^, qargs^)
                     self._exchanges[exn].add_binding(qbinding^)
         # recovered messages: fresh inbox entries with the recovered
@@ -414,8 +419,9 @@ struct Router:
         queue_name: String,
         exchange_name: String,
         var routing_key: String,
+        var arguments: HeaderArgs,
     ) raises -> Bool:
-        """Bind a queue to an exchange with a routing key pattern.
+        """Bind a queue to an exchange with a routing key.
 
         Returns True if bound, False if queue or exchange not found.
         """
@@ -432,8 +438,7 @@ struct Router:
                     exchange_name.copy(), queue_name.copy(),
                     routing_key.copy(), False,
                 )
-        var args = Dict[String, String]()
-        var binding = Binding(queue_name, routing_key^, args^)
+        var binding = Binding(queue_name, routing_key^, arguments^)
         self._exchanges[exchange_name].add_binding(binding^)
         return True
 
@@ -721,7 +726,7 @@ struct Router:
         _ = self._journal.write_bind(
             source.copy(), destination.copy(), routing_key.copy(), True,
         )
-        var args = Dict[String, String]()
+        var args = HeaderArgs()
         var binding = Binding(destination, routing_key^, args^)
         self._exchanges[source].add_exchange_binding(binding^)
         return True
@@ -865,9 +870,10 @@ struct Router:
         # enqueue; fan-out copies receive the same stamp below).
         msg.set_enqueue_ns(monotonic())
 
-        # Get routing key (borrows from msg, does not consume).
+        # Get routing key and headers (borrows from msg, does not consume).
+        var hdrs = msg.headers()
         var queue_names = self._exchanges[exchange_name].match(
-            msg.routing_key()
+            msg.routing_key(), hdrs
         )
         # Exchange→exchange chain expansion (exchange.bind, 40,30): when the
         # source has E2E bindings for this routing key, walk them (bounded,
@@ -892,10 +898,10 @@ struct Router:
                     var src = frontier[i]
                     if src not in self._exchanges:
                         continue
-                    var outgoing = self._exchanges[src].match(msg.routing_key())
+                    var outgoing = self._exchanges[src].match(msg.routing_key(), hdrs)
                     for j in range(len(outgoing)):
                         _ = _router_dedup_append(merged, outgoing[j].copy())
-                    var downstream = self._exchanges[src].match_exchanges(msg.routing_key())
+                    var downstream = self._exchanges[src].match_exchanges(msg.routing_key(), hdrs)
                     for j in range(len(downstream)):
                         var d = downstream[j].copy()
                         if d == src:

@@ -10,6 +10,7 @@ from hyrxmq.broker import HyrxMQBroker
 
 
 from hyrx.testing import check
+from hyrx.core.exchange import HeaderArgs
 
 def test_health_transition() raises:
     var cfg = HyrxMQConfig()
@@ -29,7 +30,7 @@ def test_publish_routes_to_bound_queue() raises:
     broker.start()
     check(broker.declare_exchange("ex", "direct"), "declare exchange")
     check(broker.declare_queue("q"), "declare queue")
-    check(broker.bind_queue("q", "ex", "key.a"), "bind queue")
+    check(broker.bind_queue("q", "ex", "key.a", HeaderArgs()), "bind queue")
 
     var body = List[UInt8]()
     body.append(1)
@@ -51,7 +52,7 @@ def test_deliver_and_ack() raises:
     broker.start()
     _ = broker.declare_exchange("ex", "direct")
     _ = broker.declare_queue("q")
-    _ = broker.bind_queue("q", "ex", "k")
+    _ = broker.bind_queue("q", "ex", "k", HeaderArgs())
 
     var body = List[UInt8]()
     body.append(0xAA)

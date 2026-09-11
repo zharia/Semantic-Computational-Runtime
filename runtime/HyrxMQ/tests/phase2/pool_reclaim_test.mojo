@@ -6,7 +6,7 @@ from std.collections import Dict
 
 from hyrx.core.buffer import Buffer
 from hyrx.core.message import Message, MessageID, Envelope
-from hyrx.core.exchange import ExchangeType
+from hyrx.core.exchange import ExchangeType, HeaderArgs
 from hyrx.core.router import Router
 
 from hyrx.testing import check
@@ -28,8 +28,8 @@ def test_fanout_reuse_no_stale() raises:
     router.declare_exchange("ex", ExchangeType.fanout())
     router.declare_queue("qa", 100)
     router.declare_queue("qb", 100)
-    router.bind_queue("qa", "ex", "")
-    router.bind_queue("qb", "ex", "")
+    router.bind_queue("qa", "ex", "", HeaderArgs())
+    router.bind_queue("qb", "ex", "", HeaderArgs())
     var ca = router.register_consumer("qa", 0)
     var cb = router.register_consumer("qb", 0)
 
@@ -66,7 +66,7 @@ def test_no_leak_balance() raises:
     router.declare_exchange("ex", ExchangeType.fanout())
     for k in range(4):
         router.declare_queue("q" + String(k), 100)
-        router.bind_queue("q" + String(k), "ex", "")
+        router.bind_queue("q" + String(k), "ex", "", HeaderArgs())
     check(router.pool_stats().in_use == 0, "start idle")
 
     var m = make_msg(1, 200)
@@ -87,8 +87,8 @@ def test_delete_queue_reclaims() raises:
     router.declare_exchange("ex", ExchangeType.fanout())
     router.declare_queue("qa", 100)
     router.declare_queue("qb", 100)
-    router.bind_queue("qa", "ex", "")
-    router.bind_queue("qb", "ex", "")
+    router.bind_queue("qa", "ex", "", HeaderArgs())
+    router.bind_queue("qb", "ex", "", HeaderArgs())
     var m = make_msg(7, 300)
     check(router.publish(m^, "ex") == 2, "fanned to 2, no consume/ack")
     check(router.pool_stats().in_use == 2, "2 pooled buffers live in queues")
@@ -105,8 +105,8 @@ def test_d8_requeue_no_leak() raises:
     router.declare_exchange("ex", ExchangeType.fanout())
     router.declare_queue("qa", 100)
     router.declare_queue("qb", 100)
-    router.bind_queue("qa", "ex", "")
-    router.bind_queue("qb", "ex", "")
+    router.bind_queue("qa", "ex", "", HeaderArgs())
+    router.bind_queue("qb", "ex", "", HeaderArgs())
     var ca = router.register_consumer("qa", 0)
     var cb = router.register_consumer("qb", 0)
     var m = make_msg(3, 256)

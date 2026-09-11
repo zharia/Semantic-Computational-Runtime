@@ -18,6 +18,7 @@ from hyrx.core.exchange import ExchangeType
 from hyrx.core.buffer import Buffer
 from hyrx.core.queue import Delivery
 from hyrx.embedded.api import HyrxEngine
+from hyrx.core.exchange import HeaderArgs
 from std.memory import unsafe_memcpy
 
 
@@ -120,9 +121,10 @@ struct AMQPAdapter:
         var queue: String,
         var exchange: String,
         var routing_key: String,
+        var arguments: HeaderArgs,
     ) raises -> Bool:
         """Translate AMQP queue.bind to Hyrx."""
-        return engine.bind_queue(queue^, exchange^, routing_key^)
+        return engine.bind_queue(queue^, exchange^, routing_key^, arguments^)
 
     def publish(
         mut self,

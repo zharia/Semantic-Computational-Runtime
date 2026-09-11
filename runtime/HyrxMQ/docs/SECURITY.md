@@ -4,6 +4,20 @@
 
 Security is part of product correctness.
 
+## Implementation status (v0.0.3)
+
+| Control | Status | Evidence |
+|---------|--------|----------|
+| SASL PLAIN authentication | IMPLEMENTED | users table; negative-password test |
+| TCP TLS | PROVEN | TLS 1.3 handshake, AMQP-over-TLS (`scripts/interop/tls_probe.py`) |
+| TLS certificate validation | IMPLEMENTED | server loads cert/key; config validated |
+| Frame size enforcement | IMPLEMENTED | `frame_max` ceiling; `tests/phase6/frame_codec_bounds.mojo` |
+| Hostile input fuzzing | IMPLEMENTED | `tests/phase10/frame_fuzz_test.mojo` |
+| Authorization (ACLs/vhosts) | NOT IMPLEMENTED | single vhost, all authenticated users full access |
+| Connection/I/O timeouts | NOT IMPLEMENTED | — |
+| Connection limits | NOT IMPLEMENTED | single synchronous serving |
+| TLS on UDS | NOT IMPLEMENTED | — |
+
 ## Network security
 
 - TLS

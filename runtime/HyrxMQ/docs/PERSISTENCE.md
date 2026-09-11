@@ -29,19 +29,23 @@ Exact semantics must be specified before implementation.
 
 ## Recovery requirements
 
-Test:
+Validated by `tests/phase8/storage_test.mojo` and
+`tests/phase10/persistence_crash_test.mojo`:
 
-- clean shutdown
-- crash during append
-- crash during rotation
-- crash during checkpoint
-- partial final record
-- corrupted record
-- missing segment
-- disk full
-- permission failure
-- interrupted fsync
-- replay after unclean termination
+- clean shutdown — **TESTED** (sync-before-replay equivalence; v0.0.3)
+- crash during append — **TESTED** (torn-tail detection + truncation)
+- crash during rotation — **NOT TESTED** (no segment rotation)
+- crash during checkpoint — **NOT TESTED** (no checkpoint mechanism)
+- partial final record — **TESTED** (test_crash_tail_recovery + phase10 framing corruption)
+- corrupted record — **TESTED** (CRC-32 rejection; phase10 body-byte flip fails closed)
+- missing segment — **NOT TESTED** (no segment rotation)
+- disk full — **PARTIALLY TESTED** (phase10 FailingOps raises on append; cleaner error path)
+- permission failure — **NOT TESTED**
+- interrupted fsync — **NOT TESTED** (FakeOps.sync is a no-op)
+- replay after unclean termination — **TESTED** (idempotent replay after truncation)
+- WAL write-ahead (unrouted message recovered) — **TESTED** (phase10)
+- ack / remove tombstones — **TESTED** (phase10)
+- multi-queue persistence — **TESTED** (phase10; durable recovered, non-durable not materialized)
 
 ## Performance
 

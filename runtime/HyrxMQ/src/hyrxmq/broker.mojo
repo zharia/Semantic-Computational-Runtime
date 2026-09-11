@@ -21,6 +21,7 @@ from hyrx.amqp.adapter import AMQPAdapter
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.status import BrokerStatus
 from hyrx.core.storage import MessageJournal
+from hyrx.core.exchange import HeaderArgs
 
 
 # Broker lifecycle states.
@@ -72,6 +73,10 @@ struct HyrxMQBroker:
         """Replay the injected journal into the engine. Returns the number
         of recovered messages."""
         return self._engine.recover_journal()
+
+    def sync_storage(mut self) raises:
+        """Flush the engine's attached journal (graceful-shutdown seam)."""
+        self._engine.sync_journal()
 
     def start(mut self) raises:
         """Validate config and mark the broker ready (in-process, NOT bound)."""
@@ -138,10 +143,11 @@ struct HyrxMQBroker:
         var queue: String,
         var exchange: String,
         var routing_key: String,
+        var arguments: HeaderArgs,
     ) raises -> Bool:
         """Bind a queue to an exchange with a routing key."""
         return self._adapter.bind_queue(
-            self._engine, queue^, exchange^, routing_key^
+            self._engine, queue^, exchange^, routing_key^, arguments^
         )
 
     # ---- messaging ----
@@ -385,7 +391,7 @@ struct HyrxMQBroker:
             return False
         if not self._adapter.declare_queue(self._engine, "ps-q", durable=False):
             return False
-        if not self._adapter.bind_queue(self._engine, "ps-q", "ps-ex", "ps-k"):
+        if not self._adapter.bind_queue(self._engine, "ps-q", "ps-ex", "ps-k", HeaderArgs()):
             return False
         var body = List[UInt8]()
         body.append(0x50)  # 'P'

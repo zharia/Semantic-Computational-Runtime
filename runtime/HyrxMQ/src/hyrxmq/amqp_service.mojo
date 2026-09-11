@@ -135,6 +135,7 @@ from hyrx.amqp.frame_codec import (
     parse_header_frame_payload,
 )
 from hyrx.amqp.field_table import FieldTable
+from hyrx.core.exchange import HeaderArgs
 from hyrx.core.feature_flags import contiguous_batch_enabled
 from hyrx.amqp.constants import (
     FRAME_METHOD,
@@ -1178,6 +1179,11 @@ struct AMQPService:
         recovery at the listener's service start)."""
         return self._broker.recover_journal()
 
+    def flush_storage(mut self) raises:
+        """Flush the injected journal through the broker (graceful-
+        shutdown durability; a no-op for the disabled/memory tiers)."""
+        self._broker.sync_storage()
+
     def start(mut self) raises:
         self._broker.start()
 
@@ -1830,7 +1836,7 @@ struct AMQPService:
             var bq = reader.read_short_string()
             var be = reader.read_short_string()
             var brk = reader.read_short_string()
-            _ = self._broker.bind_queue(bq^, be^, brk^)
+            _ = self._broker.bind_queue(bq^, be^, brk^, HeaderArgs())
             return self._reply(
                 chan,
                 QUEUE_BIND_OK().class_id,

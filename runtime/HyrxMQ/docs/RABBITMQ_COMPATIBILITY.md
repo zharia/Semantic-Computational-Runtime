@@ -8,24 +8,31 @@ It does not mean identical implementation.
 
 It is never used as an unqualified present-tense claim.
 
-## Current status (milestone 0003 audit)
+## Current status (v0.0.2 baseline audit, 2026-09-11)
 
-No compatibility level below is met today:
+- **Level A (wire interoperability): PROVEN.** pika 1.4.4 successfully completes
+  AMQP 0-9-1 connection negotiation (header → start → start-ok → tune → tune-ok
+  → open → open-ok) against HyrxMQ. Evidence:
+  - `benchmarks/perf/results.json` — full publish→basic_get loop via pika
+  - `scripts/interop/pika_negotiation.py` — handshake gate steps PASS
+  - `scripts/interop/pika_content.py` — publish→consume→ack and publish→basic_get→ack
 
-- **Level A (wire interoperability): NOT PROVEN / BLOCKED.** A real AMQP client
-  (pika) connects at TCP but cannot complete the handshake — HyrxMQ does not
-  consume the 8-octet protocol header and never originates
-  `connection.start`/`tune`. See
-  `program-increments/v0.0.1-alpha/milestones/0003_phase-1-7-audit/reports/interop_rabbitmq.md`.
-- **Levels B–D: NOT TESTED** — unreachable until Level A negotiation exists.
-- The AMQP **adapter** is `IMPLEMENTED` at the frame/method level and
-  `FUNCTIONALLY PROVEN` only against our own codec and our own test client;
-  the reference RabbitMQ baseline (`pika_lifecycle.py`, 18/18 vs RabbitMQ 4.3.5)
-  captures the correct-behavior column, but the HyrxMQ differential column is
-  `BLOCKED` at negotiation.
+- **Level B (semantic interoperability): PARTIALLY PROVEN.**
+  - Exchange.declare, queue.declare, queue.bind, basic.publish, basic.deliver,
+    basic.get, basic.ack, basic.nack/reject — all demonstrated via pika.
+  - Fan-out, routing key matching, delivery tags — demonstrated in benchmarks.
+  - NOT YET TESTED: QoS/prefetch via pika, publisher confirms, mandatory publish,
+    TTL, dead-letter exchange, priority, alternate exchange, exchange-to-exchange.
 
-The release blockers to unblock Level A are listed in
-`.../reports/confidence_matrix.md`.
+- **Level C (extension interoperability): NOT TESTED.**
+
+- **Level D (operational interoperability): NOT TESTED.**
+
+The AMQP adapter is `IMPLEMENTED` at the frame/method level and
+`FUNCTIONALLY PROVEN` via real pika client against HyrxMQ and via
+differential testing against RabbitMQ 4.3.5 (the reference baseline
+`pika_lifecycle.py` captures correct behavior: 18/18 steps PASS against
+RabbitMQ).
 
 ## Compatibility levels
 

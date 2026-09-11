@@ -1,0 +1,327 @@
+# Invariant/Evidence Registry — Hyrx Core
+# Generated: 2026-09-11
+# Commit: 4ec2a06
+
+invariants:
+  # --- Message identity ---
+  - id: M1
+    category: message-identity
+    statement: "A message has a canonical identity"
+    implementation: "src/hyrx/core/message.mojo:45-57"
+    tests: "tests/phase1/message_test.mojo"
+    status: proven
+    evidence: "MessageID struct with equality; exercised in message_test"
+    known_limitations: "ID is UInt64 — no UUID, no collision resistance guarantee"
+
+  - id: M2
+    category: message-identity
+    statement: "Routing does not change message identity"
+    implementation: "src/hyrx/core/router.mojo:954-955"
+    tests: "tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "msg.message_id() copied into per-destination envelope"
+    known_limitations: ""
+
+  - id: M3
+    category: message-identity
+    statement: "Fan-out does not silently mutate message identity"
+    implementation: "src/hyrx/core/router.mojo:954-955"
+    tests: "tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "test_metadata_fidelity_preserved_on_fanout, test_metadata_fidelity_single_destination_move"
+    known_limitations: ""
+
+  - id: M4
+    category: message-identity
+    statement: "Payload identity is preserved through routing"
+    implementation: "src/hyrx/core/buffer.mojo:82-101, src/hyrx/core/router.mojo:957"
+    tests: "tests/phase2/routing_matrix_test.mojo, tests/phase8/byte_path_test.mojo"
+    status: proven
+    evidence: "Exact-length copy via Buffer.from_buffer_copy; byte-exact verification"
+    known_limitations: "Copy is by design — no zero-copy fan-out (single-dest move path is zero-copy)"
+
+  - id: M5
+    category: message-identity
+    statement: "Message metadata survives routing and delivery"
+    implementation: "src/hyrx/core/router.mojo:954-955, src/hyrx/core/queue.mojo:287-305"
+    tests: "tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "routing_key and headers preserved through fan-out; read-back via Queue.read_routing_key/read_headers"
+    known_limitations: "headers is a Dict[String, String] — no AMQP field table fidelity"
+
+  # --- Envelope and delivery identity ---
+  - id: D1
+    category: delivery-identity
+    statement: "A delivery is distinguishable from the underlying message"
+    implementation: "src/hyrx/core/queue.mojo:85-98"
+    tests: "tests/phase2/queue_test.mojo, tests/phase2/consumer_test.mojo"
+    status: proven
+    evidence: "Delivery carries UInt64 tag only; message stays in Queue._unacked"
+    known_limitations: ""
+
+  - id: D2
+    category: delivery-identity
+    statement: "Every delivery has a defined lifecycle"
+    implementation: "src/hyrx/core/queue.mojo:100-572"
+    tests: "tests/phase2/queue_test.mojo, tests/phase2/consumer_test.mojo, tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "inbox→outbox→unacked→ack/reject transitions tested"
+    known_limitations: "No timer-based expiry at delivery (TTL checked at dequeue only)"
+
+  - id: D3
+    category: delivery-identity
+    statement: "Acknowledgement refers to a specific delivery"
+    implementation: "src/hyrx/core/queue.mojo:343-349"
+    tests: "tests/phase2/queue_test.mojo, tests/phase2/consumer_test.mojo"
+    status: proven
+    evidence: "acknowledge(delivery_tag) pops exactly one _unacked entry"
+    known_limitations: ""
+
+  - id: D4
+    category: delivery-identity
+    statement: "Duplicate acknowledgement has deterministic semantics"
+    implementation: "src/hyrx/core/queue.mojo:348-349, src/hyrx/core/router.mojo:1094-1095"
+    tests: "tests/phase2/queue_test.mojo"
+    status: proven
+    evidence: "Returns False for unknown tag; no side effect"
+    known_limitations: ""
+
+  - id: D5
+    category: delivery-identity
+    statement: "Delivery cancellation/rejection has defined semantics"
+    implementation: "src/hyrx/core/queue.mojo:368-375"
+    tests: "tests/phase2/queue_test.mojo, tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "reject moves message from _unacked to _inbox; delivery_count incremented on re-dequeue"
+    known_limitations: "Requeues to TAIL (D9), not head like RabbitMQ"
+
+  # --- Routing ---
+  - id: R1
+    category: routing
+    statement: "Routing is deterministic for a fixed topology and input"
+    implementation: "src/hyrx/core/exchange.mojo:264-301"
+    tests: "tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "Exchange.match is pure function of bindings + routing_key"
+    known_limitations: ""
+
+  - id: R2
+    category: routing
+    statement: "Routing does not silently lose metadata"
+    implementation: "src/hyrx/core/router.mojo:954-955"
+    tests: "tests/phase2/routing_matrix_test.mojo"
+    status: proven
+    evidence: "Same as M2/M5"
+    known_limitations: ""
+
+  - id: R3
+    category: routing
+    statement: "Routing does not introduce unintended duplication"
+    implementation: "src/hyrx/core/exchange.mojo:121-126, src/hyrx/core/router.mojo:42-50"
+    tests: "tests/phase2/routing_matrix_test.mojo::test_multiple_matching_bindings_same_queue_one_copy"
+    status: proven
+    evidence: "Destination-set dedup: _already_present + _router_dedup_append"
+    known_limitations: ""
+
+  - id: R4
+    category: routing
+    statement: "Binding changes have defined visibility semantics"
+    implementation: "src/hyrx/core/exchange.mojo:159-164, 253-262"
+    tests: "tests/phase2/routing_matrix_test.mojo::test_unbind_removes_destination"
+    status: proven
+    evidence: "Immediate effect; single-threaded so no visibility gap"
+    known_limitations: ""
+
+  - id: R5
+    category: routing
+    statement: "Topology mutation cannot corrupt in-flight routing"
+    implementation: "Architectural: single-threaded Router"
+    tests: "Implicit (no multi-threaded tests)"
+    status: implemented
+    evidence: "Single-threaded event loop; no concurrent access to Router"
+    known_limitations: "Not explicitly tested with concurrent mutation"
+
+  - id: R6
+    category: routing
+    statement: "Headers exchange matching follows explicit x-match semantics"
+    implementation: "_headers_match in src/hyrx/core/exchange.mojo; HeaderArgs binding arguments"
+    tests: "tests/phase2/exchange_test.mojo (x-match=all/any/partial/none/default/extra)"
+    status: proven
+    evidence: "D10 resolved in v0.0.3; headers stub replaced by real matching"
+    known_limitations: "Only string-valued header arguments are compared"
+
+  # --- Queue semantics ---
+  - id: Q1
+    category: queue-semantics
+    statement: "Queue state transitions are deterministic"
+    implementation: "src/hyrx/core/queue.mojo:100-572"
+    tests: "tests/phase2/queue_test.mojo"
+    status: proven
+    evidence: "Deterministic state machine: _inbox, _outbox, _unacked"
+    known_limitations: ""
+
+  - id: Q2
+    category: queue-semantics
+    statement: "Enqueue/dequeue semantics are explicit"
+    implementation: "src/hyrx/core/queue.mojo:143-234"
+    tests: "tests/phase2/queue_test.mojo"
+    status: proven
+    evidence: "Two-stack FIFO with explicit transfer; dequeue increments delivery_count"
+    known_limitations: ""
+
+  - id: Q3
+    category: queue-semantics
+    statement: "Queue limits are enforced"
+    implementation: "src/hyrx/core/queue.mojo:143-177, 249-269"
+    tests: "tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "Queue depth enforced; x-max-length enforced with drop-head"
+    known_limitations: "Message size not bounded; unacked total not bounded"
+
+  - id: Q4
+    category: queue-semantics
+    statement: "Queue exhaustion has defined behaviour"
+    implementation: "src/hyrx/core/queue.mojo:151-152, src/hyrx/core/router.mojo:952-953"
+    tests: "tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "enqueue returns False; Router destroys message copy"
+    known_limitations: ""
+
+  - id: Q5
+    category: queue-semantics
+    statement: "Consumer lifecycle cannot corrupt queue state"
+    implementation: "src/hyrx/core/router.mojo:993-1050, src/hyrx/core/queue.mojo:542-558"
+    tests: "tests/phase2/consumer_test.mojo, tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "Register/unregister modify index only; unregister requeues unacked"
+    known_limitations: ""
+
+  # --- Consumer/delivery semantics ---
+  - id: C1
+    category: consumer-semantics
+    statement: "Consumers have explicit lifecycle states"
+    implementation: "src/hyrx/core/consumer.mojo:10-61"
+    tests: "tests/phase2/consumer_test.mojo"
+    status: proven
+    evidence: "register→active→prefetch-limit→unregister; record_delivery/record_ack"
+    known_limitations: ""
+
+  - id: C2
+    category: consumer-semantics
+    statement: "Delivery ownership is explicit"
+    implementation: "src/hyrx/core/queue.mojo:228-234"
+    tests: "tests/phase2/queue_test.mojo, tests/phase2/consumer_test.mojo"
+    status: proven
+    evidence: "Message moves to _unacked[tag]; consumer gets Delivery(tag)"
+    known_limitations: ""
+
+  - id: C3
+    category: consumer-semantics
+    statement: "Disconnect semantics are defined"
+    implementation: "src/hyrx/core/router.mojo:1028-1050, src/hyrx/core/queue.mojo:542-558"
+    tests: "tests/phase2/bounded_resource_test.mojo::test_unregister_leaves_unacked_message_owned_by_queue"
+    status: proven
+    evidence: "unregister_consumer requeues all unacked messages"
+    known_limitations: ""
+
+  - id: C4
+    category: consumer-semantics
+    statement: "Unacknowledged delivery behaviour is defined"
+    implementation: "src/hyrx/core/queue.mojo:351-353"
+    tests: "tests/phase2/consumer_test.mojo, tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "Messages persist in _unacked until ack/reject/disconnect"
+    known_limitations: "No automatic timeout for unacked messages"
+
+  - id: C5
+    category: consumer-semantics
+    statement: "Consumer cancellation cannot lose or duplicate messages unexpectedly"
+    implementation: "src/hyrx/core/queue.mojo:542-558"
+    tests: "tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "requeue_unacked moves every unacked message back to inbox"
+    known_limitations: ""
+
+  # --- Resource boundedness ---
+  - id: RB1
+    category: resource-boundedness
+    statement: "Queue depth is bounded by capacity"
+    implementation: "src/hyrx/core/queue.mojo:151-152"
+    tests: "tests/phase2/bounded_resource_test.mojo"
+    status: proven
+    evidence: "enqueue returns False at capacity"
+    known_limitations: ""
+
+  - id: RB2
+    category: resource-boundedness
+    statement: "Per-consumer prefetch is bounded"
+    implementation: "src/hyrx/core/consumer.mojo:41-49, src/hyrx/core/queue.mojo:196-234"
+    tests: "tests/phase2/consumer_test.mojo"
+    status: proven
+    evidence: "can_deliver() checks active_deliveries < prefetch"
+    known_limitations: "prefetch=0 means unlimited"
+
+  - id: RB3
+    category: resource-boundedness
+    statement: "Message size is bounded"
+    implementation: "None"
+    tests: "None"
+    status: not-proven
+    evidence: ""
+    known_limitations: "No message size limit enforced anywhere"
+
+  - id: RB4
+    category: resource-boundedness
+    statement: "Global consumer count is bounded"
+    implementation: "None"
+    tests: "None"
+    status: not-proven
+    evidence: ""
+    known_limitations: "No global limit; only per-queue via prefetch"
+
+  - id: RB5
+    category: resource-boundedness
+    statement: "Global queue count is bounded"
+    implementation: "None"
+    tests: "None"
+    status: not-proven
+    evidence: ""
+    known_limitations: "Unlimited queue declaration"
+
+  - id: RB6
+    category: resource-boundedness
+    statement: "Global exchange count is bounded"
+    implementation: "None"
+    tests: "None"
+    status: not-proven
+    evidence: ""
+    known_limitations: "Unlimited exchange declaration"
+
+  # --- Storage integrity (v0.0.3) ---
+  - id: P1
+    category: storage-integrity
+    statement: "Journal corruption is fail-closed"
+    implementation: "MessageJournal.replay validates CRC-32; truncates to last good record"
+    tests: "tests/phase10/persistence_crash_test.mojo (CRC + framing corruption)"
+    status: proven
+    evidence: "Body-byte flip and framing corruption both yield 0 accepted records"
+    known_limitations: "No mid-journal recovery; corrupt prefix stops replay"
+
+  - id: P2
+    category: storage-integrity
+    statement: "Write-ahead ordering precedes enqueue"
+    implementation: "Router.publish journalizes the MSG record before queue enqueue"
+    tests: "tests/phase10/persistence_crash_test.mojo::test_write_ahead_recovers_unrouted_msg"
+    status: proven
+    evidence: "MSG-only journal recovers via bare-queue materialization"
+    known_limitations: "Durable gating only; transient destinations are not journaled"
+
+  # --- Transport integrity (v0.0.3) ---
+  - id: T1
+    category: transport-integrity
+    statement: "TLS transport confidentiality is opt-in and explicit"
+    implementation: "TCPListener.set_tls_config + TCPConnection TLS I/O (OpenSSL via flare)"
+    tests: "scripts/interop/tls_probe.py; tests/phase10/tcp_tls_test.mojo"
+    status: proven
+    evidence: "TLS 1.3 handshake + AMQP connection.start over TLS (6/6 external probe)"
+    known_limitations: "TCP only; no TLS on UDS; no client cert (mTLS) config surface"

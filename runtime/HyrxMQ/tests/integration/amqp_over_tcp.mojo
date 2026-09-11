@@ -41,6 +41,7 @@ from hyrxmq.amqp_service import ByteReader, write_short_string
 
 
 from hyrx.testing import check
+from hyrx.core.exchange import HeaderArgs
 
 def bytes_of(s: String) -> List[UInt8]:
     """UTF-8 bytes of a short ASCII string."""
@@ -275,7 +276,7 @@ def server_apply(
         var bind_key = reader.read_short_string()
         check(
             adapter.bind_queue(
-                engine, bind_queue^, bind_exchange^, bind_key^
+                engine, bind_queue^, bind_exchange^, bind_key^, HeaderArgs()
             ),
             "queue.bind",
         )

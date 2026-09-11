@@ -15,6 +15,7 @@ from std.collections import List
 
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.broker import HyrxMQBroker
+from hyrx.core.exchange import HeaderArgs
 
 
 def run_selfcheck() raises -> Bool:
@@ -32,7 +33,7 @@ def run_selfcheck() raises -> Bool:
         return False
     if not broker.declare_queue("sc-queue"):
         return False
-    if not broker.bind_queue("sc-queue", "sc-exchange", "sc-key"):
+    if not broker.bind_queue("sc-queue", "sc-exchange", "sc-key", HeaderArgs()):
         return False
 
     var body = List[UInt8]()

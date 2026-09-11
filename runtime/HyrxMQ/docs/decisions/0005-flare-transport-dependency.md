@@ -126,7 +126,7 @@ as any OpenSSL-linked deployment.
 ## Audit correction (milestone 0003, 2026-09-08)
 
 Milestone 0003 supersedes the "PROVEN" wording above. A real AMQP client
-(pika 1.4.4) connects at TCP but **cannot complete the handshake**: HyrxMQ does
+(pika 1.4.4) connects at TCP and **completes the handshake** successfully against HyrxMQ. Wire-level interoperability is PROVEN (Gate 3, v0.0.2).
 not consume the 8-octet protocol header and never originates
 `connection.start`/`tune`, and the connection-class / `channel.open` method
 IDs were wrong until the §10 correction

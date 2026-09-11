@@ -13,6 +13,7 @@ from hyrx.core.message import Message
 from hyrx.core.exchange import ExchangeType
 from hyrx.core.queue import Delivery
 from hyrx.core.router import Router
+from hyrx.core.exchange import HeaderArgs
 from hyrx.core.storage import MessageJournal
 
 struct HyrxConfig:
@@ -119,6 +120,10 @@ struct HyrxEngine:
         """The engine's active storage mode."""
         return self._router.journal_mode()
 
+    def sync_journal(mut self) raises:
+        """Flush the attached journal (graceful-shutdown durability seam)."""
+        self._router.sync_journal()
+
     # ---- topology ----
 
     def declare_exchange(
@@ -179,9 +184,10 @@ struct HyrxEngine:
         queue_name: String,
         exchange_name: String,
         var routing_key: String,
+        var arguments: HeaderArgs,
     ) raises -> Bool:
         """Bind a queue to an exchange with a routing key."""
-        return self._router.bind_queue(queue_name, exchange_name, routing_key^)
+        return self._router.bind_queue(queue_name, exchange_name, routing_key^, arguments^)
 
     # ---- messaging ----
 

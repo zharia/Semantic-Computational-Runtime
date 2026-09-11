@@ -122,6 +122,12 @@ struct FieldTable:
     def has_key(ref self, key: String) -> Bool:
         return key in self._data
 
+    def get_string_or(ref self, key: String, default: String) -> String:
+        """Non-raising string lookup. Returns default if missing or non-string."""
+        if key not in self._data or not self._data[key].is_string():
+            return default
+        return self._data[key].get_string()
+
     def size(ref self) -> Int:
         return len(self._keys)
 
