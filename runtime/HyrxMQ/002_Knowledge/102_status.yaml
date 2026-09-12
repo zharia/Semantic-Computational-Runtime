@@ -1,0 +1,13 @@
+---
+domain: sdp.knowledge.hyrxmq
+entity_id: SDP-KB-HYRXMQ
+entity_type: knowledge_base
+name: HyrxMQ Project Knowledge Base
+parent: SDP-PROJ-HYRXMQ
+status: specified
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+record_store: knowledge.yaml
+record_count: 14

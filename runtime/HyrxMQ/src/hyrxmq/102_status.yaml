@@ -1,0 +1,47 @@
+---
+domain: sdp.application.hyrxmq
+entity_id: SDP-APP-HYRXMQ
+entity_type: application
+name: hyrxmq
+parent: SDP-PROJ-HYRXMQ
+status: implemented
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+source_topology:
+  - path: src/hyrxmq/amqp_service.mojo
+    role: amqp_method_service
+  - path: src/hyrxmq/broker.mojo
+    role: broker_assembly
+  - path: src/hyrxmq/listener.mojo
+    role: transport_listener
+  - path: src/hyrxmq/config.mojo
+    role: configuration
+  - path: src/hyrxmq/logging.mojo
+    role: structured_logging
+  - path: src/hyrxmq/status.mojo
+    role: status_readout
+  - path: src/hyrxmq/main.mojo
+    role: selfcheck_entrypoint
+  - path: src/hyrxmq/main_listen.mojo
+    role: service_entrypoint
+
+entrypoints:
+  - source: src/hyrxmq/main.mojo
+    artifact: build/hyrxmq
+    lifecycle: self-check
+    built_by: manual
+  - source: src/hyrxmq/main_listen.mojo
+    artifact: build/hyrxmq-listen
+    lifecycle: service
+    built_by: manual
+    deployed_as: /usr/local/bin/hyrxmq-listen
+
+dependencies:
+  internal:
+    - entity_id: SDP-APP-HYRX
+      relation: DEPENDS_ON
+  external: []
+
+unknowns:

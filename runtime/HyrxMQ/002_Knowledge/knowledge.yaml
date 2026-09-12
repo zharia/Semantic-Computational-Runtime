@@ -1,0 +1,104 @@
+schema_version: 0.1.0
+project: SDP-PROJ-HYRXMQ
+adopted_by: SDP-ADOPT-HYRXMQ-0001
+classification_labels:
+- established_definition
+- formal_result
+- derived_consequence
+- counterexample
+- analogy
+- conjecture
+- unresolved_question
+records:
+- id: KB-HYRXMQ-0001
+  statement: Hyrx is a self-contained native Mojo messaging engine; HyrxMQ is the
+    standalone independently deployable AMQP 0-9-1 broker product built on that engine.
+  classification: established_definition
+  source: docs/PROJECT.md:13, docs/NAMING.md:5-7
+  status: accepted
+- id: KB-HYRXMQ-0002
+  statement: 'Dependency direction is one-way: hyrxmq depends on hyrx; no hyrx module
+    imports hyrxmq.'
+  classification: established_definition
+  source: src/hyrxmq/__init__.mojo:7; import-graph scan
+  status: accepted
+- id: KB-HYRXMQ-0003
+  statement: Hyrx SHALL NOT require a simulation, agent ontology, game engine, semantic-world
+    model, RabbitMQ, Erlang/OTP, internal AMQP framing, or network availability for
+    in-process use.
+  classification: established_definition
+  source: docs/PROJECT.md:17-27
+  status: accepted
+- id: KB-HYRXMQ-0004
+  statement: HyrxMQ is not a simulation component; it is independently deployable
+    and usable by unrelated applications.
+  classification: established_definition
+  source: docs/PROJECT.md:37-39
+  status: accepted
+- id: KB-HYRXMQ-0005
+  statement: The architecture has six layers (0 Hyrx Core, 1 Embedded, 2 Local, 3
+    Network, 4 Protocol adapters, 5 HyrxMQ product). AMQP is a boundary adapter, not
+    the internal canonical representation.
+  classification: established_definition
+  source: docs/ARCHITECTURE.md:5-83
+  status: accepted
+- id: KB-HYRXMQ-0006
+  statement: 'Hyrx exposes an embeddable in-process API: HyrxConfig, HyrxStats, HyrxEngine,
+    with journal, topology, publish/consume, ack/reject/nack, and readouts.'
+  classification: established_definition
+  source: src/hyrx/embedded/api.mojo
+  status: accepted
+- id: KB-HYRXMQ-0007
+  statement: The correctness suite is claimed at 52/0 PASS via `pixi run test`; the
+    runner executes tests/phase0..phase10 and tests/integration only.
+  classification: derived_consequence
+  source: docs/engineering/CURRENT_STATE.md:6; scripts/test_all.sh:51-58
+  status: accepted
+- id: KB-HYRXMQ-0008
+  statement: 'Quality-gate verdicts: G1 semantic correctness CONDITIONAL PASS; G2
+    ownership/memory PASS; G3 AMQP interoperability PARTIAL PASS; G4 persistence/recovery
+    PASS; G5 security/isolation PASS (implemented scope); G6 operations/observability
+    PARTIAL PASS.'
+  classification: derived_consequence
+  source: docs/engineering/GATE_01..GATE_06
+  status: accepted
+- id: KB-HYRXMQ-0009
+  statement: Headline performance ratio is 1.430 versus RabbitMQ 4.3.5; production
+    readiness remains NOT PROVEN. Performance provenance is inconsistent (benchmark
+    record cites a different commit than the engineering docs).
+  classification: derived_consequence
+  source: docs/engineering/CURRENT_STATE.md:222,242; docs/engineering/FINAL_ENGINEERING_ASSESSMENT_v0.0.3.md
+  status: accepted
+- id: KB-HYRXMQ-0010
+  statement: TLS 1.3 over TCP is proven; ACLs/vhosts, connection and I/O timeouts,
+    client-certificate validation, and TLS-on-UDS are NOT implemented or NOT proven.
+  classification: established_definition
+  source: docs/SECURITY.md:11-19; docs/engineering/GATE_05
+  status: accepted
+- id: KB-HYRXMQ-0011
+  statement: Persistence uses a go-forward WAL with CRC-32 framing; a 10-case recovery
+    matrix passes, but no true SIGKILL process-crash test and no WAL compaction exist.
+  classification: derived_consequence
+  source: docs/engineering/GATE_04:53-66,101-108
+  status: accepted
+- id: KB-HYRXMQ-0012
+  statement: 'The invariant registry contains 35 entries: 30 proven, 4 not-proven,
+    1 implemented.'
+  classification: derived_consequence
+  source: docs/invariants/registry.yaml
+  status: accepted
+- id: KB-HYRXMQ-0013
+  statement: "The project license is Apache-2.0 with full license text now included\
+    \ in LICENSE (previously documented as incomplete stub \u2014 now resolved by\
+    \ adding complete Apache License 2.0 text). The vendored flare transport submodule\
+    \ is MIT-licensed."
+  classification: established_definition
+  source: LICENSE:1-7; vendor/flare/LICENSE
+  status: accepted
+- id: KB-HYRXMQ-0014
+  statement: No provenance or adoption record existed before this SDP adoption, and
+    engineering docs cite commits (4ec2a06, 01e60b6) that differ from the benchmark
+    record (c6fb4cc) and HEAD (98bcf9c).
+  classification: unresolved_question
+  source: adoption investigation; UNK-HYRXMQ-004
+  status: open

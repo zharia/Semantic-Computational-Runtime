@@ -1,0 +1,76 @@
+---
+domain: sdp.project.hyrxmq
+entity_id: SDP-PROJ-HYRXMQ
+entity_type: project
+name: HyrxMQ
+status: implemented
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+source_topology:
+  - entity_id: SDP-APP-HYRX
+    path: src/hyrx
+    role: application
+    caveat: "engine/library with seed executable; Application classification UNKNOWN (UNK-HYRXMQ-001)"
+  - entity_id: SDP-APP-HYRXMQ
+    path: src/hyrxmq
+    role: application
+  - path: docs
+    role: normative_project_specification
+  - path: tests
+    role: validation_evidence
+  - path: program-increments
+    role: development_history
+  - path: benchmarks
+    role: performance_evidence
+
+baseline:
+  adoption_event: SDP-ADOPT-HYRXMQ-0001
+  baseline_commit: 98bcf9c
+  canonical_version: 0.1.0-dev
+  current_increment: v0.0.3
+  first_commit: 6739fef
+  commit_count_at_adoption: 86
+
+implementation:
+  language: mojo
+  toolchain: "mojo 1.0.0 (ed45d567)"
+  platform: linux-64
+  build_system: pixi
+  license: Apache-2.0
+  license_complete: false
+  vendored:
+    - name: flare
+      path: vendor/flare
+      license: MIT
+      version: v0.10.0-2-g07dbfcb
+
+evidence:
+  tests:
+    command: pixi run test
+    claimed: "52/0 PASS"
+    source: docs/engineering/CURRENT_STATE.md:6
+    run_by_suite: "tests/phase0..phase10, tests/integration"
+    not_run_by_suite: "tests/fuzz, tests/performance, tests/unit, tests/_selftest"
+  gates:
+    G1_semantic_correctness: conditional-pass
+    G2_ownership_memory: pass
+    G3_amqp_interop: partial-pass
+    G4_persistence_recovery: pass
+    G5_security_isolation: pass-implemented-scope
+    G6_operations_observability: partial-pass
+  performance:
+    headline_ratio: 1.430
+    source: docs/engineering/CURRENT_STATE.md:222
+    production_ready: not-proven
+
+unknowns:
+  - id: UNK-HYRXMQ-001
+    statement: "Application classification of src/hyrx (engine/library vs application)"
+  - id: UNK-HYRXMQ-002
+    statement: "Upstream/fork lineage is not recorded"
+  - id: UNK-HYRXMQ-003
+    statement: "SDP identity/relationship conventions absent in repository before adoption"
+  - id: UNK-HYRXMQ-004
+    statement: "Provenance mismatch across engineering and benchmark documents"

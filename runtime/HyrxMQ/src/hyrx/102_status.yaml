@@ -1,0 +1,51 @@
+---
+domain: sdp.application.hyrx
+entity_id: SDP-APP-HYRX
+entity_type: application
+name: hyrx
+parent: SDP-PROJ-HYRXMQ
+status: implemented
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+source_topology:
+  - path: src/hyrx/core
+    role: layer_0_engine
+  - path: src/hyrx/embedded
+    role: layer_1_embedded_api
+  - path: src/hyrx/transport
+    role: layer_2_3_transports
+  - path: src/hyrx/amqp
+    role: layer_4_protocol_adapter
+  - path: src/hyrx/main.mojo
+    role: seed_entrypoint
+  - path: src/hyrx/version.mojo
+    role: version_source
+
+entrypoints:
+  - source: src/hyrx/main.mojo
+    artifact: build/hyrx
+    lifecycle: seed-only
+    built_by: "pixi run build"
+
+exposed_api:
+  module: src/hyrx/embedded/api.mojo
+  symbols: [HyrxConfig, HyrxStats, HyrxEngine]
+
+dependencies:
+  internal: []
+  external:
+    - name: flare
+      kind: vendored_submodule
+      path: vendor/flare
+      license: MIT
+    - name: openssl
+      kind: conda
+      version: ">=3"
+
+classification_caveat: "engine/library with seed executable and __init__.mojo;
+  Application classification consistent (UNK-HYRXMQ-001 resolved as Application
+  with caveat per 101 definition)."
+
+unknowns:

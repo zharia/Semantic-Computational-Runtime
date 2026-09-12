@@ -1,0 +1,97 @@
+{
+  "schema_version": "0.1.0",
+  "description": "HyrxMQ SDP event algebra — typed events for adoption, gate, and milestone tracking.",
+  "events": [
+    {
+      "id": "EVENT-ADOPTION-0001",
+      "type": "adoption",
+      "name": "SDP-ADOPT-HYRXMQ-0001",
+      "description": "Adoption event establishing the baseline for Project SDP-PROJ-HYRXMQ",
+      "occurred_at": "2026-09-12",
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": "validated",
+      "properties": {
+        "baseline_commit": { "type": "string", "description": "Git commit hash at adoption" },
+        "replay_target": { "type": "string", "description": "Replay target identity" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0001",
+      "type": "gate",
+      "name": "Gate 1: Semantic Correctness",
+      "description": "Semantic correctness gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "conditional-pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string", "description": "Reference to gate document" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0002",
+      "type": "gate",
+      "name": "Gate 2: Ownership & Memory",
+      "description": "Ownership and memory gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0003",
+      "type": "gate",
+      "name": "Gate 3: AMQP Interoperability",
+      "description": "AMP interoperability gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "conditional-pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0004",
+      "type": "gate",
+      "name": "Gate 4: Persistence & Recovery",
+      "description": "Persistence and recovery gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0005",
+      "type": "gate",
+      "name": "Gate 5: Security & Isolation",
+      "description": "Security and isolation gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string" }
+      }
+    },
+    {
+      "id": "EVENT-GATE-0006",
+      "type": "gate",
+      "name": "Gate 6: Operations & Observability",
+      "description": "Operations and observability gate verdict",
+      "occurred_at": null,
+      "principal": "SDP-PROJ-HYRXMQ",
+      "status": null,
+      "properties": {
+        "verdict": { "type": "string", "enum": ["pass", "conditional-pass", "partial-pass", "fail"] },
+        "evidence": { "type": "string" }
+      }
+    }
+  ]
+}

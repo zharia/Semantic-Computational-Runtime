@@ -1,7 +1,155 @@
-Apache License 2.0
+Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1. Definitions.
+
+"License" means the terms and conditions for use, reproduction, and distribution
+as defined by this License.
+
+"Licensor" means the copyright owner or entity authorized by the copyright owner
+that is granting the License.
+
+"Legal Entity" means the union of the acting entity and all other entities that
+control, are controlled by, or are under common control with that entity. For
+the purposes of this definition, "control" means (i) the power, direct or
+indirect, to cause the direction or management of such entity, whether by
+contract or otherwise, or (ii) ownership of fifty percent (50%) or more of the
+outstanding shares, voting shares, or other ownership interest in such entity.
+
+"You" (or "your") means an individual or Legal Entity exercising permissions
+granted by this License.
+
+"Source" form means the preferred form for making modifications, including but
+not limited to software source code, documentation source, and configuration
+files.
+
+"Object" form means any Source form resulting from mechanical transformation
+or translation of the Source form, including but not limited to compiled
+object code, generated documentation, and other media.
+
+"Work" means the work of authorship, whether in Source or Object form, made
+available under the License.
+
+"Derivative Work" means any work, whether in Source or Object form, that is
+based on (or derived from) the Work and whose modifications represent an
+adaptation, or translation, or transformation, or adaptation of the Work.
+
+"Contributor" means Licensor and any individual or Legal Entity that
+distributes the Work or Derivative Works thereon.
+
+"Contributor Copyright" means the copyright ownership held by each Contributor
+that, if such ownership is not in the Public Domain, is granted under this
+License.
+
+"Contributor License" means the grant of rights granted to You by each
+Contributor under this License.
+
+"Attribution" means the display of all copyright notices and, if present, a
+license notice in all copies of the Work or Derivative Works that You
+distribute.
+
+"Patent" means any patent claim(s), now or hereafter held, including but not
+limited to claims referenced, unless you do not have a patent claim that is
+necessary for the exercise of the rights granted under this License.
+
+2. Grant of Copyright License. Subject to the terms and conditions of
+this License, each Contributor grants to You a perpetual, worldwide,
+non-exclusive, no-charge, royalty-free, irrevocable copyright license to
+reproduce, prepare Derivative Works of, publicly display, publicly perform,
+sublicense, and distribute the Work and such Derivative Works in Source or
+Object form.
+
+3. Grant of Patent License. Subject to the terms and conditions of
+this License, each Contributor grants to You a perpetual, worldwide,
+non-exclusive, no-charge, royalty-free, irrevocable (except as stated in
+this section) patent license to make, have made, use, offer to sell,
+sell, import, and otherwise transfer the Work, where applicable. If you
+institute patent litigation against any party alleging that the Work or a
+Derivative Work infringes such party's patent, then the patent license to
+the Work under this License shall terminate for that party.
+
+4. Redistribution. You may reproduce and distribute the Work or
+Derivative Works in any medium, with or without Modifications, and in
+Source or Object form, provided that You meet the following conditions:
+
+(a) You must give any other recipients of the Work or Derivative Works
+a copy of this License; and
+
+(b) You must cause any modified files to carry prominent notices
+stating that you changed the files; and
+
+(c) You must retain all copyright, patent, trademark, and attribution
+notices that are original in the Work; and
+
+(d) You may not add any own that has not been approved by the
+community.
+
+5. Derivative Works. If you create a Derivative Work, you must:
+
+(a) carry prominent notices stating that you changed the files; and
+
+(b) carry prominent notices stating the Work and Derivative Work
+are licensed under this License; and
+
+(c) attached, as a file, the text of this License; and
+
+(d) If a "NOTICE" text file is included in the Work, then any
+ Derivative Works that you distribute must include a readable copy
+ of the attribution notices contained such NOTICE file, and cannot
+ contain or be limited to only the list of such notices.
+
+For the purposes of this section, Derivative Works does not include
+works that link with the Work by means of a client library or similar
+means that merely interact with the Work through its defined interface.
+
+6. Submission of Contributions. Unless you explicitly state otherwise,
+any Contribution intentionally submitted for inclusion in the Work
+by you to the Licensor shall be under the terms and conditions of
+this License, without any additional terms or conditions. Notwithstanding
+the above, nothing herein shall supersede or modify the terms of any
+separate license agreement you may have executed with such Licensor regarding
+such Contribution.
+
+7. Trademarks. This License does not grant permission to use the trade
+trademarks, service marks, or product names of the Licensor, except as
+required to comply with Section 4(c) above.
+
+8. No Warranty. Unless required by applicable law or agreed to in
+writing, Licensor provides the Work (and each Contributor provides
+its contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+OF ANY KIND, either express or implied, including, without limitation, any
+implied warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY,
+or FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for
+determining the appropriateness of using or redistributing the Work and
+assume any risks associated with your exercise of permissions under this
+License.
+
+9. Limitation of Liability. Under no circumstances and under no legal
+theory, whether in tort (including negligence), contract, or otherwise,
+shall any Contributor be liable to you for damages, including any direct,
+indirect, incidental, special, consequential, or exemplary damages, arising
+from the use or inability to use the Work (even if such Contributor has been
+advised of the possibility of such damages).
+
+10. Accepting Warranty or Additional Liability. While redistributing
+the Work or Derivative Works, you may choose to offer, and charge a
+fee for, acceptance of support, warranty, indemnity, or other liability
+obligations consistent with this License. However, in accepting such
+responsibilities, you may act only on your own behalf and on your own
+behalf, not on behalf of any other Contributor, and only if you agree to
+indemnify, defend, and hold each Contributor harmless for any liability
+incurred by, or claims against, such Contributor by reason of your
+deciding to accept such warranty or additional liability.
+
+END OF TERMS AND CONDITIONS
 
 Copyright 2026 HyrxMQ contributors.
 
-This seed uses the Apache License, Version 2.0. The complete license text should
-be added before the first distributable release if this repository is not already
-licensed by the parent project.
+This product is licensed under the Apache License, Version 2.0.
+See the full license text above for details.
+
+The vendored flare transport submodule is separately licensed under MIT.
+See vendor/flare/LICENSE for details.

@@ -19,6 +19,8 @@ openssl = ">=3"
 
 [tasks]
 build = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx"
+hyrxmq = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrxmq/main.mojo -o build/hyrxmq"
+hyrxmq-listen = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen"
 test = "bash scripts/test_all.sh"
 
 # Benchmark suite (audit §19/§20/§21). Not part of scripts/test_all.sh — these

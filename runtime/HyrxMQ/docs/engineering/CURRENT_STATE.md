@@ -3,7 +3,7 @@
 **Date:** 2026-09-11
 **Commit:** 4ec2a0650807777d61a02b3a0242ccd2cc9b9eb0
 **Toolchain:** Mojo >=1.0.0,<2 (pixi env, conda-forge + Modular channels)
-**Test suite:** 52/0 PASS (phase0-phase10 + integration)
+**Test suite:** `pixi run test` runs phase0-phase10 + integration. Full suite verdicts: G1 conditional-pass, G2 pass, G3 partial-pass, G4 pass, G5 pass-implemented-scope, G6 partial-pass. 52/0 PASS is the raw test-count total; per-gate verdicts are the semantic signal.
 **External proofs:** pika 1.4.4 interop; `scripts/interop/tls_probe.py` 6/6 PASS
 **Repository:** semantic_computational_runtime/runtime/HyrxMQ
 

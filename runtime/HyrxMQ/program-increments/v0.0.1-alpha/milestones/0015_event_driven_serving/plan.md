@@ -96,7 +96,15 @@ identical — rollback tier):
 - No open defect: the flaky K=16 observation closes without a fix because it
   does not survive outside noisy desktop windows and is invisible in every
   sweep-level run from 0008-0013x13.
-- Roadmap state: 0009-0015 shipped; nothing open. Optional (user-gated):
+- 0022 CLOSING EVIDENCE (post-fix, coordinator run, event tier live):
+  single batched client 64B = 87,974 msg/s (11.4 us/msg);
+  10-conn batched=32: TCP 69,447 @64B; UDS COMPLETED —
+  111,573 @64B / 128,127 @256B / 101,398 @1KB / 65,168 @4KB (no wedge;
+  the pre-fix repro shape). The batched multi-conn cell is the 0016-class
+  repro CLOSED. event_driven_serving default-ON is ARMED but held until
+  the calm-window pika sweep (user-scheduled later).
+
+- Roadmap state: 0009-0021 shipped; nothing open. Optional (user-gated):
   1) quiet-window 5-cell pika sweep -> baseline re-anchor + hostnet gate
      row; 2) event_driven_serving default-ON flip after that clean pass;
   3) multi-connection per-conn throughput beyond 1-in-flight cycles

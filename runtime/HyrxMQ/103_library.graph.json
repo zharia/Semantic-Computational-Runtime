@@ -1,0 +1,76 @@
+{
+  "schema_version": "0.1.0",
+  "graph_id": "SDP-GRAPH-HYRXMQ",
+  "generated_from": [
+    "101_definition.md",
+    "001_Adoption/101_definition.md",
+    "src/hyrx/101_definition.md",
+    "src/hyrxmq/101_definition.md"
+  ],
+  "nodes": [
+    {
+      "id": "SDP-PROJ-HYRXMQ",
+      "type": "project",
+      "name": "HyrxMQ",
+      "path": "runtime/HyrxMQ"
+    },
+    {
+      "id": "SDP-APP-HYRX",
+      "type": "application",
+      "name": "hyrx",
+      "path": "runtime/HyrxMQ/src/hyrx"
+    },
+    {
+      "id": "SDP-APP-HYRXMQ",
+      "type": "application",
+      "name": "hyrxmq",
+      "path": "runtime/HyrxMQ/src/hyrxmq"
+    },
+    {
+      "id": "SDP-ADOPT-HYRXMQ-0001",
+      "type": "adoption_event",
+      "path": "runtime/HyrxMQ/001_Adoption"
+    },
+    {
+      "id": "SDP-KB-HYRXMQ",
+      "type": "knowledge_base",
+      "path": "runtime/HyrxMQ/002_Knowledge"
+    }
+  ],
+  "edges": [
+    {
+      "source": "SDP-PROJ-HYRXMQ",
+      "target": "SDP-APP-HYRX",
+      "type": "CONTAINS"
+    },
+    {
+      "source": "SDP-PROJ-HYRXMQ",
+      "target": "SDP-APP-HYRXMQ",
+      "type": "CONTAINS"
+    },
+    {
+      "source": "SDP-APP-HYRXMQ",
+      "target": "SDP-APP-HYRX",
+      "type": "DEPENDS_ON"
+    },
+    {
+      "source": "SDP-ADOPT-HYRXMQ-0001",
+      "target": "SDP-PROJ-HYRXMQ",
+      "type": "REFERENCES"
+    },
+    {
+      "source": "SDP-KB-HYRXMQ",
+      "target": "SDP-PROJ-HYRXMQ",
+      "type": "REFERENCES"
+    },
+    {
+      "source": "SDP-KB-HYRXMQ",
+      "target": "SDP-ADOPT-HYRXMQ-0001",
+      "type": "DERIVES_FROM"
+    }
+  ],
+  "notes": [
+    "Derived artifact. Not a source of truth. Edit the 101_definition.md files, then regenerate.",
+    "Relationship vocabulary: CONTAINS, DEPENDS_ON, REFERENCES, DERIVES_FROM."
+  ]
+}

@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-HyrxMQ v0.0.3 is a reference implementation of an AMQP 0-9-1 message broker written in Mojo. This increment moves the previous release's CONDITIONAL/PARTIAL gates toward PASS: TCP-tier TLS is implemented and proven against a real client, the persistence failure matrix is executable, headers-exchange matching is no longer a stub, and metrics export plus structured logging are exercised by tests. The implementation is **still not production-ready** — authorization, timeout controls, an HTTP metrics endpoint, latency histograms, signal-driven shutdown, and TLS on the UDS transport remain unimplemented.
+HyrxMQ v0.0.3 is a reference implementation of an AMQP 0-9-1 message broker written in Mojo. Gates have the following verdicts: G1 conditional-pass, G2 pass, G3 partial-pass, G4 pass, G5 pass-implemented-scope, G6 partial-pass. The implementation is still not production-ready — authorization, timeout controls, an HTTP metrics endpoint, latency histograms, signal-driven shutdown, and TLS on the UDS transport remain unimplemented.
 
-Full test suite: **52/0 PASS** (`pixi run test`).
+Full test suite: **52/0 PASS** (`pixi run test`). Per-gate verdicts gate the correctness signal.
 
 ---
 

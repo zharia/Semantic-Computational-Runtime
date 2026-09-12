@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Full Mojo test suite: every *.mojo under tests/phase* and tests/integration.
+# Full Mojo test suite: every *.mojo under tests/phase*, tests/integration,
+# tests/fuzz, tests/performance, tests/unit, tests/_selftest.
 # Success = a line ending in `=PASS` or `_PASS` (e.g. PHASE0_TEST_BOOTSTRAP=PASS,
 # FLARE_SMOKE_PASS) appears in the test's stdout.
 # Run inside the pixi env: `pixi run test` or `pixi run bash scripts/test_all.sh`.
@@ -49,13 +50,9 @@ run_test() {
 while IFS= read -r f; do
     run_test "$f"
 done < <(find tests/phase0 tests/phase1 tests/phase2 tests/phase3 \
-              tests/phase4 tests/phase5 tests/phase6 tests/phase7 tests/phase8 tests/phase9 tests/phase10 \
-              -name '*.mojo' -type f | sort)
-
-for f in tests/integration/*.mojo; do
-    [ -e "$f" ] || continue
-    run_test "$f"
-done
+          tests/phase4 tests/phase5 tests/phase6 tests/phase7 tests/phase8 tests/phase9 tests/phase10 \
+          tests/fuzz tests/performance tests/unit tests/_selftest \
+          tests/integration -name '*.mojo' -type f | sort)
 
 echo
 echo "TOTAL pass=$pass fail=$fail"

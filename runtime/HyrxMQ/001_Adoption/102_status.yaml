@@ -1,0 +1,56 @@
+---
+domain: sdp.adoption.hyrxmq
+entity_id: SDP-ADOPT-HYRXMQ-0001
+entity_type: adoption_event
+name: HyrxMQ Adoption Baseline
+parent: SDP-PROJ-HYRXMQ
+status: validated
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+genesis_event:
+  event_id: SDP-ADOPT-HYRXMQ-0001
+  event_type: adoption
+  causal_parents: []
+  subject: SDP-PROJ-HYRXMQ
+  occurred: 2026-09-12
+  baseline_commit: 98bcf9c
+  replay_target: SDP-PROJ-HYRXMQ@baseline
+  effect: establish_project_and_application_identities
+
+adopted_material:
+  - docs/PROJECT.md
+  - docs/REQUIREMENTS.md
+  - docs/ARCHITECTURE.md
+  - docs/ARCHITECTURE_INVARIANTS.md
+  - docs/CORE_ENGINE.md
+  - docs/IMPLEMENTATION_PLAN.md
+  - docs/TESTING.md
+  - docs/QUALITY_GATES.md
+  - docs/invariants/registry.yaml
+  - docs/engineering/CURRENT_STATE.md
+  - docs/engineering/FINAL_ENGINEERING_ASSESSMENT_v0.0.3.md
+  - docs/decisions
+  - program-increments
+  - tests
+  - benchmarks
+  - LICENSE
+  - vendor/flare/LICENSE
+
+provenance:
+  first_commit: 6739fef
+  seed_commit: c929002
+  commit_count_at_adoption: 86
+  baseline_commit: 98bcf9c
+  cited_by_docs: [4ec2a06, 01e60b6]
+  cited_by_benchmark: c6fb4cc
+
+asserts_production_ready: false
+asserts_kernel_frozen: false
+
+unknowns:
+  - id: UNK-HYRXMQ-002
+    statement: "Upstream/fork lineage is not recorded"
+  - id: UNK-HYRXMQ-004
+    statement: "Provenance mismatch across engineering and benchmark documents"
