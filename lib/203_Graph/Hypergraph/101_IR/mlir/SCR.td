@@ -33,61 +33,61 @@ def SCR_Dialect : Dialect {
 // Hypergraph Operations
 //===------------------------------------------------------===//
 
-def SCR_AddNodeOp : Op<SCR_Dialect, "add_node"> {
+def SCR_AddNodeOp : Op<SCR_Dialect, "add_node", [Pure]> {
   let summary = "Add a semantic entity to the hypergraph.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
-def SCR_RemoveNodeOp : Op<SCR_Dialect, "remove_node"> {
+def SCR_RemoveNodeOp : Op<SCR_Dialect, "remove_node", [Pure]> {
   let summary = "Remove a semantic entity.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
-def SCR_AddEdgeOp : Op<SCR_Dialect, "add_edge"> {
+def SCR_AddEdgeOp : Op<SCR_Dialect, "add_edge", [Pure]> {
   let summary = "Add a typed semantic hyperedge.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$edge);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
-def SCR_RemoveEdgeOp : Op<SCR_Dialect, "remove_edge"> {
+def SCR_RemoveEdgeOp : Op<SCR_Dialect, "remove_edge", [Pure]> {
   let summary = "Remove a hyperedge by id.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$edge_id);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
-def SCR_UpdateNodeValueOp : Op<SCR_Dialect, "update_node_value"> {
+def SCR_UpdateNodeValueOp : Op<SCR_Dialect, "update_node_value", [Pure]> {
   let summary = "Update entity value. Identity preserved.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id, AnyType:$new_value);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
 //===------------------------------------------------------===//
 // Composition
 //===------------------------------------------------------===//
 
-def SCR_NoOpOp : Op<SCR_Dialect, "no_op"> {
+def SCR_NoOpOp : Op<SCR_Dialect, "no_op", [Pure]> {
   let summary = "Identity transformation. Advances time.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$context);
   let results = (outs AnyType:$result_graph, AnyType:$result_context);
-
+  let hasVerifier = 1;
 }
 
-def SCR_AtomicTxOp : Op<SCR_Dialect, "atomic_tx"> {
+def SCR_AtomicTxOp : Op<SCR_Dialect, "atomic_tx", [Pure]> {
   let summary = "Transactional composition with rollback.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$context);
   let results = (outs AnyType:$result_graph, AnyType:$result_context);
   let regions = (region AnyRegion:$body);
-
+  let hasVerifier = 1;
 }
 
-def SCR_StepOp : Op<SCR_Dialect, "step"> {
+def SCR_StepOp : Op<SCR_Dialect, "step", [Pure]> {
   let summary = "Canonical transition. Wraps a body region with context update.";
   let description = [{
     Executes the body region as a single atomic transition.
@@ -97,7 +97,7 @@ def SCR_StepOp : Op<SCR_Dialect, "step"> {
   let arguments = (ins AnyType:$hypergraph, AnyType:$context);
   let results = (outs AnyType:$result_graph, AnyType:$result_context);
   let regions = (region AnyRegion:$body);
-
+  let hasVerifier = 1;
 }
 
 //===------------------------------------------------------===//
@@ -108,7 +108,7 @@ def SCR_ObserveNodeOp : Op<SCR_Dialect, "observe_node", [Pure]> {
   let summary = "Pure observation - read entity value.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id);
   let results = (outs AnyType:$result);
-
+  let hasVerifier = 1;
 }
 
 //===------------------------------------------------------===//
