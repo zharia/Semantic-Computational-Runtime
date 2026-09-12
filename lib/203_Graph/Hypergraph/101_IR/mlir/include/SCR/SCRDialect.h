@@ -9,6 +9,9 @@
 #define SCR_DIALECT_H
 
 #include "SCR/SCROps.h"
+#include <memory>
+
+namespace mlir { class Pass; }
 
 namespace scr {
 
@@ -32,6 +35,9 @@ private:
 };
 
 void registerSCRDialect(::mlir::MLIRContext &context);
+
+// Cross-op verification pass
+std::unique_ptr<::mlir::Pass> createSCRVerifyPass();
 
 } // namespace scr
 

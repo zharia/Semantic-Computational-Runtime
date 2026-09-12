@@ -2,6 +2,7 @@
 add_mlir_library(SCRdialect
   SCR/SCRDialect.cpp
   SCR/SCROps.cpp
+  SCR/SCRVerification.cpp
 
   EXCLUDE_FROM_LIBMLIR
 
