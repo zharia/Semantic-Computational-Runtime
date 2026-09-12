@@ -21,61 +21,83 @@ def SCR_Dialect : Dialect {
 }
 
 //===------------------------------------------------------===//
-// Dialect Types (opaque — parsed/printed manually)
+// Dialect Types
 //===------------------------------------------------------===//
-// Types are registered in C++ via Dialect::initialize().
+// Types are opaque OpaqueType, parsed/printed by mnemonic.
 // Mnemonics: entity_id, value, entity, role_binding,
 //            hyperedge, hypergraph, context
+//
+// ODS constraints use AnyType; verifier methods enforce type correctness.
 
 //===------------------------------------------------------===//
 // Hypergraph Operations
 //===------------------------------------------------------===//
 
-def SCR_AddNodeOp : Op<SCR_Dialect, "add_node", [Pure]> {
+def SCR_AddNodeOp : Op<SCR_Dialect, "add_node"> {
   let summary = "Add a semantic entity to the hypergraph.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity);
   let results = (outs AnyType:$result);
+
 }
 
-def SCR_RemoveNodeOp : Op<SCR_Dialect, "remove_node", [Pure]> {
+def SCR_RemoveNodeOp : Op<SCR_Dialect, "remove_node"> {
   let summary = "Remove a semantic entity.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id);
   let results = (outs AnyType:$result);
+
 }
 
-def SCR_AddEdgeOp : Op<SCR_Dialect, "add_edge", [Pure]> {
+def SCR_AddEdgeOp : Op<SCR_Dialect, "add_edge"> {
   let summary = "Add a typed semantic hyperedge.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$edge);
   let results = (outs AnyType:$result);
+
 }
 
-def SCR_RemoveEdgeOp : Op<SCR_Dialect, "remove_edge", [Pure]> {
+def SCR_RemoveEdgeOp : Op<SCR_Dialect, "remove_edge"> {
   let summary = "Remove a hyperedge by id.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$edge_id);
   let results = (outs AnyType:$result);
+
 }
 
-def SCR_UpdateNodeValueOp : Op<SCR_Dialect, "update_node_value", [Pure]> {
+def SCR_UpdateNodeValueOp : Op<SCR_Dialect, "update_node_value"> {
   let summary = "Update entity value. Identity preserved.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id, AnyType:$new_value);
   let results = (outs AnyType:$result);
+
 }
 
 //===------------------------------------------------------===//
 // Composition
 //===------------------------------------------------------===//
 
-def SCR_NoOpOp : Op<SCR_Dialect, "no_op", [Pure]> {
+def SCR_NoOpOp : Op<SCR_Dialect, "no_op"> {
   let summary = "Identity transformation. Advances time.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$context);
   let results = (outs AnyType:$result_graph, AnyType:$result_context);
+
 }
 
-def SCR_AtomicTxOp : Op<SCR_Dialect, "atomic_tx", [Pure]> {
+def SCR_AtomicTxOp : Op<SCR_Dialect, "atomic_tx"> {
   let summary = "Transactional composition with rollback.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$context);
   let results = (outs AnyType:$result_graph, AnyType:$result_context);
   let regions = (region AnyRegion:$body);
+
+}
+
+def SCR_StepOp : Op<SCR_Dialect, "step"> {
+  let summary = "Canonical transition. Wraps a body region with context update.";
+  let description = [{
+    Executes the body region as a single atomic transition.
+    On success: logicalStep advances by >= 1.
+    On failure: state and context are restored (rollback).
+  }];
+  let arguments = (ins AnyType:$hypergraph, AnyType:$context);
+  let results = (outs AnyType:$result_graph, AnyType:$result_context);
+  let regions = (region AnyRegion:$body);
+
 }
 
 //===------------------------------------------------------===//
@@ -86,6 +108,7 @@ def SCR_ObserveNodeOp : Op<SCR_Dialect, "observe_node", [Pure]> {
   let summary = "Pure observation - read entity value.";
   let arguments = (ins AnyType:$hypergraph, AnyType:$entity_id);
   let results = (outs AnyType:$result);
+
 }
 
 //===------------------------------------------------------===//
@@ -113,7 +136,7 @@ def SCR_MakeEntityOp : Op<SCR_Dialect, "make_entity", [Pure]> {
 }
 
 def SCR_MakeEntityIdOp : Op<SCR_Dialect, "make_entity_id", [Pure]> {
-  let summary = "Construct entity identity from string.";
+  let summary = "Construct entity identity from integer.";
   let arguments = (ins AnyType:$value);
   let results = (outs AnyType:$result);
 }
@@ -160,4 +183,14 @@ def SCR_MakeRoleBindingOp : Op<SCR_Dialect, "make_role_binding", [Pure]> {
   let summary = "Construct named role binding.";
   let arguments = (ins AnyType:$role, AnyType:$target);
   let results = (outs AnyType:$result);
+}
+
+//===------------------------------------------------------===//
+// Terminators
+//===------------------------------------------------------===//
+
+def SCR_ReturnOp : Op<SCR_Dialect, "return", [Terminator]> {
+  let summary = "Return from a region.";
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let results = (outs);
 }

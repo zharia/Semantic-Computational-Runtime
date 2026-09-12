@@ -51,7 +51,7 @@ Time (ALG-017)            →  !scr.context.logical_step (verified monotonic)
 | TableGen definition | `lib/203_Graph/Hypergraph/101_IR/mlir/SCR.td` | Complete |
 | C++ dialect library | `lib/203_Graph/Hypergraph/101_IR/mlir/build/lib/libSCRdialect.a` (9.7 MB) | Compiles clean |
 | `scr-opt` tool | `lib/203_Graph/Hypergraph/101_IR/mlir/build/tools/scr-opt` (232 MB) | Functional |
-| Lit tests | `lib/203_Graph/Hypergraph/101_IR/mlir/test/basic.mlir` | 5/5 passing |
+| Lit tests | `lib/203_Graph/Hypergraph/101_IR/mlir/test/basic.mlir` | 6/6 passing (incl. `scr.step`, `scr.return`) |
 
 ### 3.2 Type System — v0.1.0
 
@@ -67,46 +67,49 @@ All 7 types are registered as MLIR **opaque types** (`mlir::OpaqueType` with dia
 | `!scr.hypergraph` | `hypergraph` | Opaque | Struct (nodes, edges, logicalStep) |
 | `!scr.context` | `context` | Opaque | Struct (logicalStep, label) |
 
-### 3.3 Operations — v0.1.0
+### 3.3 Operations — v0.2.0
 
-All 20 operations compile and roundtrip. In this build:
+All 21 operations (including `scr.step`, `scr.return`) compile and roundtrip:
 - All operands use `AnyType` (no typed constraints yet).
 - No `assemblyFormat` — ops use generic ` "scr.op_name"(...) : (types) -> types ` syntax.
-- Memory effects: all ops marked `Pure` in ODS (side-effect annotations deferred).
-- No custom traits (MutatesHypergraph, AdvancesTime) — these require C++ OpTrait classes.
-- No verifier passes yet — algebraic invariants documented but not enforced at compile time.
+- Mutation ops (`add_node`, `remove_node`, etc.) do NOT have `Pure` trait — MLIR defaults to unknown effects (correct).
+- Pure ops (`observe_node`, constructors) retain `[Pure]` trait.
+- `scr.step` op added — canonical transition wrapper with region body.
+- `scr.return` terminator op added — terminates region bodies.
+- ODS-level verifier syntax not supported in MLIR 22.1.8 with custom dialect class — type correctness deferred to future version.
 
-| Operation | Signature | v0.1.0 Notes |
+| Operation | Signature | v0.2.0 Notes |
 |-----------|-----------|-------------|
 | `scr.empty` | `() -> !scr.hypergraph` | Creates empty hypergraph |
-| `scr.add_node` | `(!scr.hypergraph, !scr.entity) -> !scr.hypergraph` | Add entity |
-| `scr.remove_node` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove entity |
-| `scr.add_edge` | `(!scr.hypergraph, !scr.hyperedge) -> !scr.hypergraph` | Add hyperedge |
-| `scr.remove_edge` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove hyperedge |
-| `scr.update_node_value` | `(!scr.hypergraph, !scr.entity_id, !scr.value) -> !scr.hypergraph` | Update entity value |
-| `scr.no_op` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` | Identity transform |
+| `scr.add_node` | `(!scr.hypergraph, !scr.entity) -> !scr.hypergraph` | Add entity (no Pure) |
+| `scr.remove_node` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove entity (no Pure) |
+| `scr.add_edge` | `(!scr.hypergraph, !scr.hyperedge) -> !scr.hypergraph` | Add hyperedge (no Pure) |
+| `scr.remove_edge` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove hyperedge (no Pure) |
+| `scr.update_node_value` | `(!scr.hypergraph, !scr.entity_id, !scr.value) -> !scr.hypergraph` | Update entity value (no Pure) |
+| `scr.no_op` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` | Identity transform (no Pure) |
 | `scr.atomic_tx` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` with region | Transactional composition |
+| `scr.step` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` with region | Canonical transition |
 | `scr.observe_node` | `(!scr.hypergraph, !scr.entity_id) -> !scr.value` | Pure observation |
-| `scr.make_context` | `(AnyType, AnyType) -> !scr.context` | Create context |
-| `scr.make_entity` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.entity` | Construct entity |
-| `scr.make_entity_id` | `(AnyType) -> !scr.entity_id` | Construct identity |
-| `scr.make_hyperedge` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.hyperedge` | Construct hyperedge |
-| `scr.make_role_binding` | `(AnyType, AnyType) -> !scr.role_binding` | Construct role binding |
-| `scr.value_unit` | `() -> !scr.value` | Unit value |
-| `scr.value_bool` | `(AnyType) -> !scr.value` | Boolean value |
-| `scr.value_int` | `(AnyType) -> !scr.value` | Integer value |
-| `scr.value_real` | `(AnyType) -> !scr.value` | Real value |
-| `scr.value_text` | `(AnyType) -> !scr.value` | Text value |
+| `scr.make_context` | `(AnyType, AnyType) -> !scr.context` | Create context (Pure) |
+| `scr.make_entity` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.entity` | Construct entity (Pure) |
+| `scr.make_entity_id` | `(AnyType) -> !scr.entity_id` | Construct identity (Pure) |
+| `scr.make_hyperedge` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.hyperedge` | Construct hyperedge (Pure) |
+| `scr.make_role_binding` | `(AnyType, AnyType) -> !scr.role_binding` | Construct role binding (Pure) |
+| `scr.value_unit` | `() -> !scr.value` | Unit value (Pure) |
+| `scr.value_bool` | `(AnyType) -> !scr.value` | Boolean value (Pure) |
+| `scr.value_int` | `(AnyType) -> !scr.value` | Integer value (Pure) |
+| `scr.value_real` | `(AnyType) -> !scr.value` | Real value (Pure) |
+| `scr.value_text` | `(AnyType) -> !scr.value` | Text value (Pure) |
+| `scr.return` | `(Variadic<AnyType>) -> ()` | Region terminator |
 
-### 3.4 Known Limitations (v0.1.0)
+### 3.4 Known Limitations (v0.2.0)
 
 1. **Opaque types** — no internal layout, no field access ops, no per-variant constructors for `!scr.value`.
-2. **No typed operand constraints** — all operands are `AnyType`; no compile-time check that `add_node` receives `!scr.entity`.
+2. **No typed operand constraints** — all operands are `AnyType`; ODS verifier syntax not supported in MLIR 22.1.8 with custom dialect class.
 3. **No assemblyFormat** — generic syntax only; human-unfriendly.
 4. **No verifier passes** — IncidenceWellFormed, TimeMonotonicity, etc. are documented but not enforced.
 5. **No canonicalization** — fold patterns from spec not implemented.
-6. **No memory effects** — all ops marked `Pure`; mutation effects deferred.
-7. **No `scr.step` op** — transition wrapper not yet in the dialect.
+6. **No memory effects** — mutation ops have no explicit effect annotations (MLIR defaults to unknown effects, which is correct but imprecise).
 
 ---
 
