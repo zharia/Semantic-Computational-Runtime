@@ -1,0 +1,429 @@
+schema_version: 0.1.0
+phase: SCR Semantic Algebra Closure
+status: CLOSED
+authority: Semantic Algebra Closure Phase — machine-checked
+rules:
+  completion_is_fail_closed: true
+  implementation_freeze: true
+  no_deferred_core_items: true
+categories:
+- ontology
+- operators
+- outcomes
+- state
+- context
+- constraints
+- time
+- causality
+- concurrency
+- identity
+- relationships
+- observation
+- equivalence
+- space
+- continuity
+- representation
+- manifestation
+- formalization
+- terminology
+required_statuses:
+- PROVEN
+- DERIVED
+- EXCLUDED
+prohibited_final_statuses:
+- OPEN
+- UNDER_ANALYSIS
+- FALSIFIED
+- REVISED
+- DEFERRED
+items:
+- id: ALG-001
+  term: Identity
+  category: ontology
+  status: PROVEN
+  definition: "Semantic persistence relation determining when references at different states denote the same entity"
+  classification: type constructor
+  domain: EntityId
+  codomain: EntityId
+  laws: [node_identity_invariant]
+  lean_definition: "abbrev Identity := EntityId"
+  lean_evidence: [node_identity_invariant]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, terminology.md]
+- id: ALG-002
+  term: Entity
+  category: ontology
+  status: PROVEN
+  definition: "Semantically identifiable participant with persistent identity within an explicit semantic scope"
+  classification: record type
+  domain: EntityId × TypeName × Value × List Property
+  codomain: Entity
+  laws: []
+  lean_definition: "structure Entity where id : EntityId; typeName : String; value : Value; properties : List Property"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-003
+  term: EntityDefinition
+  category: ontology
+  status: DERIVED
+  definition: "Structural schema of an entity — derived from Entity type decomposition"
+  classification: derived from Entity
+  domain: Entity
+  codomain: (id, typeName, value, properties)
+  laws: []
+  lean_definition: "Entity.id, Entity.typeName, Entity.value, Entity.properties"
+  lean_evidence: [node_identity_invariant]
+  counterexamples: []
+  documentation: [primitive_inventory.md]
+- id: ALG-004
+  term: Value
+  category: ontology
+  status: PROVEN
+  definition: "Semantic value universe — typed payload carried by entities"
+  classification: inductive type
+  domain: unit | bool | int | float | string | String | list
+  codomain: Value
+  laws: []
+  lean_definition: "inductive Value where | unit | bool Bool | int Int | float Float | string String | String String | list (List Value)"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-005
+  term: Relationship
+  category: ontology
+  status: PROVEN
+  definition: "Typed semantic connection between entities via named roles"
+  classification: record type
+  domain: EntityId × TypeName × List Role × List Property
+  codomain: Hyperedge
+  laws: []
+  lean_definition: "structure Hyperedge where id : String; edgeType : String; roles : List Role; properties : List Property"
+  lean_evidence: [CX_02_dangling_edge_rejected, CX_03_incident_node_removal_rejected]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-006
+  term: State
+  category: state
+  status: PROVEN
+  definition: "Authoritative semantic state — the complete snapshot of entities and relationships"
+  classification: record type
+  domain: List Entity × List Hyperedge × Nat
+  codomain: Hypergraph (SemanticState)
+  laws: [IncidenceWellFormed]
+  lean_definition: "abbrev SemanticState := Hypergraph"
+  lean_evidence: [step_rollback_on_failure, step_advances_time, step_preserves_time_on_failure]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, terminology.md]
+- id: ALG-007
+  term: Context
+  category: context
+  status: PROVEN
+  definition: "Ambient metadata carried across transitions — not modified by failure"
+  classification: record type
+  domain: Nat × String
+  codomain: Context
+  laws: [step_rollback_on_failure]
+  lean_definition: "structure Context where logical_step : Nat; label : String"
+  lean_evidence: [step_rollback_on_failure, step_advances_time, step_preserves_time_on_failure]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, terminology.md]
+- id: ALG-008
+  term: Constraint
+  category: constraints
+  status: PROVEN
+  definition: "Predicate restricting which transformations are admissible on a given state"
+  classification: predicate
+  domain: Transformation × SemanticState × Context
+  codomain: Prop
+  laws: [IncidenceWellFormed]
+  lean_definition: "def isAdmissible (t : Transformation) (s : SemanticState) (_ : Context) : Prop := isApplicable t s = true ∧ IncidenceWellFormed s"
+  lean_evidence: [IncidenceWellFormed from SCR.Hypergraph]
+  counterexamples: [CX_02_dangling_edge_rejected, CX_03_incident_node_removal_rejected]
+  documentation: [primitive_inventory.md, canonical_algebra.md, algebraic_laws.md]
+- id: ALG-009
+  term: Applicability
+  category: operators
+  status: PROVEN
+  definition: "Structural precondition check — whether the transformation can be applied"
+  classification: function
+  domain: Transformation × SemanticState
+  codomain: Bool
+  laws: []
+  lean_definition: "def isApplicable (t : Transformation) (s : SemanticState) : Bool"
+  lean_evidence: [isApplicable from SCR.Algebra]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-010
+  term: Admissibility
+  category: operators
+  status: PROVEN
+  definition: "Combined applicability + well-formedness check"
+  classification: predicate
+  domain: Transformation × SemanticState × Context
+  codomain: Prop
+  laws: []
+  lean_definition: "def isAdmissible (t : Transformation) (s : SemanticState) (_ : Context) : Prop := isApplicable t s = true ∧ IncidenceWellFormed s"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-011
+  term: Transformation
+  category: operators
+  status: PROVEN
+  definition: "Intentional semantic transformation — the abstract syntax of state change"
+  classification: inductive type
+  domain: graphOp HyperOp | noOp | atomicTx Transformation Transformation
+  codomain: Transformation
+  laws: []
+  lean_definition: "inductive Transformation where | graphOp (op : HyperOp) | noOp | atomicTx (t1 t2 : Transformation)"
+  lean_evidence: [step_deterministic, step_rollback_on_failure, step_advances_time]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, terminology.md]
+- id: ALG-012
+  term: Transition
+  category: operators
+  status: PROVEN
+  definition: "Canonical step function — applies a transformation to state with context"
+  classification: function
+  domain: Transformation × SemanticState × Context
+  codomain: Outcome
+  laws: [step_deterministic, step_advances_time]
+  lean_definition: "def step (t : Transformation) (s : SemanticState) (c : Context) : Outcome"
+  lean_evidence: [step_deterministic, step_rollback_on_failure, step_advances_time, step_preserves_time_on_failure]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, algebraic_laws.md]
+- id: ALG-013
+  term: Outcome
+  category: outcomes
+  status: PROVEN
+  definition: "Explicit algebraic result of a transition — success or failure with rollback"
+  classification: inductive type
+  domain: ok SemanticState Context | fail SemanticState Context String
+  codomain: Outcome
+  laws: [step_rollback_on_failure]
+  lean_definition: "inductive Outcome where | ok (state : SemanticState) (ctx : Context) | fail (state : SemanticState) (ctx : Context) (reason : String)"
+  lean_evidence: [step_rollback_on_failure]
+  counterexamples: [CX_01_failure_distinguishable_from_noop]
+  documentation: [primitive_inventory.md, canonical_algebra.md, terminology.md]
+- id: ALG-014
+  term: Failure
+  category: outcomes
+  status: PROVEN
+  definition: "Fail-stop rollback — failure preserves the pre-step state and context exactly"
+  classification: constructor invariant
+  domain: Outcome.fail
+  codomain: SemanticState × Context (preserved)
+  laws: [step_rollback_on_failure]
+  lean_definition: ".fail (state : SemanticState) (ctx : Context) (reason : String)"
+  lean_evidence: [step_rollback_on_failure]
+  counterexamples: [CX_01_failure_distinguishable_from_noop]
+  documentation: [primitive_inventory.md, algebraic_laws.md]
+- id: ALG-015
+  term: Observation
+  category: observation
+  status: PROVEN
+  definition: "Pure state query — extract a value from the semantic state without side effects"
+  classification: function
+  domain: SemanticState × EntityId
+  codomain: Option Value
+  laws: [observation_purity]
+  lean_definition: "def observeNode (s : SemanticState) (id : EntityId) : Option Value := s.nodes.find? (fun n => n.id = id) |>.map Entity.value"
+  lean_evidence: [observation_purity]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, algebraic_laws.md]
+- id: ALG-016
+  term: Equivalence
+  category: equivalence
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — semantic equivalence, observational equivalence, and congruence are distinct concepts maintained separately"
+  classification: not a core term
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "N/A — not collapsed into a single operator"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-017
+  term: SemanticTime
+  category: time
+  status: PROVEN
+  definition: "Discrete logical step counter — strictly advances on success, invariant on failure"
+  classification: Nat field
+  domain: Nat
+  codomain: Nat
+  laws: [step_advances_time, step_preserves_time_on_failure]
+  lean_definition: "Context.logical_step : Nat"
+  lean_evidence: [step_advances_time, step_preserves_time_on_failure]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md, algebraic_laws.md]
+- id: ALG-018
+  term: Ordering
+  category: time
+  status: DERIVED
+  definition: "Partial order on transitions derived from logical time advancement"
+  classification: derived
+  domain: Transition × Transition
+  codomain: Prop
+  laws: [step_advances_time]
+  lean_definition: "Derived from Context.logical_step comparison"
+  lean_evidence: [step_advances_time]
+  counterexamples: []
+  documentation: [algebraic_laws.md]
+- id: ALG-019
+  term: Causality
+  category: causality
+  status: PROVEN
+  definition: "Causal dependency relation between transitions — not identical to successor observation"
+  classification: relation
+  domain: Transition × Transition
+  codomain: Prop
+  laws: [causesRelation is anti-symmetric, trace-sensitive]
+  lean_definition: "def causesRelation"
+  lean_evidence: [SCR.STCGraphCausality, CX_05_trace_shadow_incomparability]
+  counterexamples: []
+  documentation: [primitive_inventory.md, algebraic_laws.md]
+- id: ALG-020
+  term: Concurrency
+  category: concurrency
+  status: DERIVED
+  definition: "Absence of causal dependence between two transitions — derived from independence"
+  classification: derived
+  domain: Transition × Transition
+  codomain: Prop
+  laws: [independence]
+  lean_definition: "Derived from causesRelation⁻¹ • causesRelation = ∅"
+  lean_evidence: [SCR.STCGraphCausality.independence]
+  counterexamples: []
+  documentation: [algebraic_laws.md]
+- id: ALG-021
+  term: Independence
+  category: concurrency
+  status: PROVEN
+  definition: "Two transitions are independent iff neither causally depends on the other"
+  classification: relation
+  domain: Transition × Transition
+  codomain: Prop
+  laws: [independence proof]
+  lean_definition: "causesRelation⁻¹ • causesRelation = ∅"
+  lean_evidence: [SCR.STCGraphCausality.independence]
+  counterexamples: []
+  documentation: [primitive_inventory.md, algebraic_laws.md]
+- id: ALG-022
+  term: Composition
+  category: semantic
+  status: PROVEN
+  definition: "Sequential composition of transformations via atomicTx — associative, identity is noOp"
+  classification: constructor
+  domain: Transformation × Transformation
+  codomain: Transformation
+  laws: [associativity via atomicTx semantics]
+  lean_definition: ".atomicTx (t1 t2 : Transformation)"
+  lean_evidence: [step_advances_time, step_rollback_on_failure]
+  counterexamples: []
+  documentation: [primitive_inventory.md, canonical_algebra.md]
+- id: ALG-023
+  term: SemanticSpace
+  category: space
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — derived from SemanticState as the space of all valid states"
+  classification: derived
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "Derived: set of all SemanticState values"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-024
+  term: Persistence
+  category: continuity
+  status: DERIVED
+  definition: "Entity identity persists across state transitions — derived from node_identity_invariant"
+  classification: derived
+  domain: Entity × Transformation
+  codomain: EntityId (invariant)
+  laws: [node_identity_invariant]
+  lean_definition: "Derived from { n with value := v }.id = n.id"
+  lean_evidence: [node_identity_invariant]
+  counterexamples: []
+  documentation: [algebraic_laws.md]
+- id: ALG-025
+  term: Migration
+  category: continuity
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — a runtime operation on semantic state, not part of the core algebra"
+  classification: runtime operation
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "N/A"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-026
+  term: Replication
+  category: continuity
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — a runtime operation, not part of the core algebra"
+  classification: runtime operation
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "N/A"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-027
+  term: Representation
+  category: representation
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — representation is distinct from concept per governing principle"
+  classification: not a core term
+  domain: N/A
+  codomain: N/A
+  laws: [Representation ≠ Concept]
+  lean_definition: "N/A"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-028
+  term: Refinement
+  category: semantic
+  status: DERIVED
+  definition: "Constraint refinement — tighter admissibility constraints via conjunction"
+  classification: derived
+  domain: Predicate × Predicate
+  codomain: Predicate
+  laws: [conjunction of constraints]
+  lean_definition: "Derived from isAdmissible = isApplicable ∧ IncidenceWellFormed"
+  lean_evidence: [isAdmissible]
+  counterexamples: []
+  documentation: [algebraic_laws.md]
+- id: ALG-029
+  term: Manifestation
+  category: manifestation
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — manifestation is a derived projection from state, not a core type"
+  classification: derived projection
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "N/A — not a core type"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]
+- id: ALG-030
+  term: Provenance
+  category: formalization
+  status: EXCLUDED
+  definition: "Not a foundational algebraic term — provenance tracking is a runtime feature, not part of the core algebra"
+  classification: runtime feature
+  domain: N/A
+  codomain: N/A
+  laws: []
+  lean_definition: "N/A"
+  lean_evidence: []
+  counterexamples: []
+  documentation: [terminology.md]

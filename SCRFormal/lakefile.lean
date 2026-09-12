@@ -20,4 +20,6 @@ lean_lib «SCRFormal» where
     `SCR.STCGraphCausality,
     `SCR.STCGraphHyperedges,
     `SCR.REConformance,
-    `SCR.Hypergraph]
+    `SCR.Hypergraph,
+    `SCR.Algebra,
+    `SCR.AlgebraCounterexamples]

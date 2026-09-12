@@ -22,3 +22,5 @@ import SCR.STCGraphCausality
 import SCR.STCGraphHyperedges
 import SCR.REConformance
 import SCR.Hypergraph
+import SCR.Algebra
+import SCR.AlgebraCounterexamples
