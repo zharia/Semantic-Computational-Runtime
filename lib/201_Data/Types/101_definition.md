@@ -1,14 +1,14 @@
-# Types
+# Buffer
 
-> Directory documentation for the current SCR library tree.
+> Directory documentation for subdomain.
 
-**Path:** `lib/201_Data/Types`
+**Path:** `lib/Types/<subdomain>/01_definition`
 
 **Documentation role:** Repository inventory
 
 ## Purpose
 
-This directory currently exists as a structural location within the SCR library hierarchy for data representation, structures, and storage primitives for Types.
+This directory currently exists as a structural location within the SCR library hierarchy for data representation, structures, and storage primitives for the subdomain.
 
 ## Current Contents
 
@@ -24,12 +24,10 @@ The directory establishes a documented location for this area of the SCR library
 
 ## Relationship to Parent
 
-`Types` is a child of `201_Data` within the SCR library hierarchy.
+Parent is `lib/Types/<subdomain>`. This directory contains the specifications for the subdomain
 
 ## Scope Boundary
 
-No additional semantic contract is inferred from the directory's existence alone.
+
 
 ## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.

@@ -2019,6 +2019,35 @@ error.classify
 
 These names are conceptual requirements and are not necessarily final API names.
 
+
+
+### MLIR <-> Moji Mapping
+
+These conceptual functions are implemented across two layers:
+
+### MLIR Layer (lib/203_Graph/IR/mlir/):
+- 21 operations defined in 
+- 7 opaque types with per-op type verifiers
+- Cross-op verification pass ()
+- P0 essential functions fully mapped (8/8)
+
+### Mojo Layer (lib/scr_kernel/):
+- 11  files implementing kernel contract
+- 303 test functions covering core scenarios
+-  orchestrator for state transitions
+- P0 essential functions fully mapped (8/8)
+
+**Coverage Gap**:
+- P0 essential: 8/8 functions mapped across both layers
+- P1 gap: ~12 functions under active mapping
+- P2 enrichment: ~4 functions deferred
+
+**Mapping Process**:
+New functions are first implemented in Moji (executable kernel), 
+then MLIR ops are added for tooling and verification. 
+Alternatively, MLIR ops are designed first, 
+then Moji functions are implemented to match.
+
 ---
 
 # 71. Completeness Criteria
@@ -2264,12 +2293,16 @@ SCR-LIB-CORE
 Where implementation behavior conflicts with this document, the implementation is incorrect unless this definition is explicitly revised.
 
 Where a child domain conflicts with Core, the conflict MUST be resolved through explicit refinement or correction.
-
-Where an external implementation conflicts with Core, the external implementation MUST NOT be treated as authoritative.
-
----
-
-# 78. Definition Principle
+>
+> **SCR Semantic MLIR is the computational language through which semantic meaning becomes representable, analyzable, transformable, and lowerable without becoming dependent on its eventual implementation.**
+>
+>The IR is therefore neither the semantic domain itself nor the final execution representation. It is the formal bridge between them, with **Mojo providing the executable kernel and MLIR providing the machine-readable definition**.
+>
+>It defines neither the storage mechanism nor the execution mechanism by which that meaning is realized.
+>
+>Every higher-level SCR domain MUST be expressible in terms of this substrate without requiring Core to know the domain-specific laws that it introduces.
+>
+>That is the fundamental purpose of Core.
 
 > **The code is not the architecture.**
 
@@ -2293,10 +2326,14 @@ Core exists to establish the semantic foundation from which these distinctions r
 
 # 79. Final Principle
 
-> **SCR Core defines the semantic substrate through which computational meaning can exist, be identified, related, represented, transformed, observed, constrained, and evolved.**
-
-It defines neither the storage mechanism nor the execution mechanism by which that meaning is realized.
-
-Every higher-level SCR domain MUST be expressible in terms of this substrate without requiring Core to know the domain-specific laws that it introduces.
-
+>
+> **SCR Semantic MLIR is the computational language through which semantic meaning becomes representable, analyzable, transformable, and lowerable without becoming dependent on its eventual implementation.**
+>
+>The IR is therefore neither the semantic domain itself nor the final execution representation. It is the formal bridge between them, with **Mojo providing the executable kernel and MLIR providing the machine-readable definition**.
+>
+>It defines neither the storage mechanism nor the execution mechanism by which that meaning is realized.
+>
+>Every higher-level SCR domain MUST be expressible in terms of this substrate without requiring Core to know the domain-specific laws that it introduces.
+>
+>That is the fundamental purpose of Core.
 That is the fundamental purpose of Core.

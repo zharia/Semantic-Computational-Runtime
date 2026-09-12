@@ -2,9 +2,156 @@
 
 **Dialect:** `scr`  
 **Status:** Normative — derived from closed semantic algebra  
-**Version:** 0.1.0  
+**Version:** 0.2.0  
 **Date:** 2026-09-12  
 **Authority:** `SCRFormal/SCR/Algebra.lean` (canonical source)
+
+
+```text
+101_Core.md (normative semantic definition, lib/101_Core/)
+
+## -1. Derivation Chain
+
+
+
+The SCR semantic library development process flows through four sequential layers:
+
+
+
+```text
+101_Core.md (normative semantic definition)  
+    │
+    ▼ defines meaning
+Lean-Lang definitions (formal verification, lib/203_Graph/Hypergraph/201_LeanLang/)  
+    │
+    ▼ proves correctness
+MLIR scr dialect (machine-readable semantic definition,  
+  lib/203_Graph/IR/mlir/)  
+    │
+    ▼ represents meaning
+Mojo scr_kernel (executable semantic kernel,  
+  lib/scr_kernel/)
+```
+
+**Derivation Details**:
+
+- **101_Core.md** defines the normative semantic meaning through 24+ conceptual functions (§70-82). This is the authoritative source of truth.
+- **Lean-Lang definitions** (`lib/203_Graph/Hypergraph/201_LeanLang/`) encode these definitions as precise Lean types and prove core invariants and well-formedness conditions. This provides machine-checked verification that implementations satisfy the semantic contract.
+- **MLIR scr dialect** (`lib/203_Graph/IR/mlir/`) machine-represents the semantic library. 21 operations, 7 opaque types, per-op type verifiers, and the `--scr-verify` cross-op verification pass. This is the canonical machine-readable representation.
+- **Mojo scr_kernel** (`lib/scr_kernel/`) provides the executable semantic kernel. 11 `.mojo` files implement the kernel contract with 303 test functions, operating on types defined by the MLIR dialect. This is the runtime execution layer.
+
+**Derivation Flow**:
+- Semantic meaning flows **downward** from 101_Core.md through Lean verification, MLIR representation, and Moji execution.
+- Each layer adds implementation detail without changing semantic meaning.
+- The MLIR dialect is the machine-readable intermediate; Moji is the executable runtime.
+
+**Maintenance**: Changes to any layer require corresponding updates to downstream layers to preserve semantic consistency.
+
+## -1. Function Coverage Matrix
+    │
+    ▼ defines meaning
+MLIR scr dialect (machine-readable semantic definition, 
+  lib/203_Graph/IR/mlir/)
+    │
+    ▼ represents meaning
+Mojo scr_kernel (executable semantic kernel, 
+  lib/scr_kernel/)
+```
+
+## -1. Document Hierarchy
+
+The SCR semantic library follows a four-layer architecture:
+
+```text
+101_Core.md (normative semantic definition, lib/101_Core/)
+    │
+    ▼ defines meaning
+Lean-Lang definitions (formal verification, lib/203_Graph/Hypergraph/201_LeanLang/)
+    │
+    ▼ proves correctness
+MLIR scr dialect (machine-readable semantic definition, 
+  lib/203_Graph/IR/mlir/)
+    │
+    ▼ represents meaning
+Mojo scr_kernel (executable semantic kernel, 
+  lib/scr_kernel/)
+```
+
+## -1. Function Coverage Matrix
+
+| P0 Essential Function | MLIR Op | Moji Function | Coverage |
+|---|---|---|---|
+| `identity.create` | `make_entity_id` | `Entity.__init__` | ✅ Both |
+| `identity.resolve` | `make_entity_id` value extraction | `Entity.id` access | ✅ Both |
+| `identity.compare` | `!scr.entity_id` string comparison | `Entity.id` comparison | ✅ Both |
+| `type.define` | Type system via opaque types | `Value.Variant` definition | ✅ Both |
+| `type.validate` | Op verifiers on 9 ops | `NonNegativeConstraint.validate()` | ✅ Both |
+| `value.create` | `value_unit`/`value_int`/`value_bool`/`value_real`/`value_text` | `Value.Variant(...)` constructor | ✅ Both |
+| `entity.create` | `make_entity` | `Entity.__init__` + `Field.add_entity` | ✅ Both |
+| `entity.identify` | `make_entity_id` from entity | `Entity.id` access | ✅ Both |
+| `entity.attribute` | *New MLIR op needed* | `Entity.get(property_name)` | ⚠️ Map needed |
+| `relationship.create` | `make_hyperedge` | `Field.add_definition` / `Field.add_constraint` | ✅ Both |
+| `relationship.connect` | *New MLIR op needed* | `Field.add_relationship` | ⚠️ Map needed |
+| `relationship.disconnect` | `remove_edge` op exists | `SemanticField.remove_relationship` | ✅ |
+| `relationship.role` | *Via `make_role_binding`* | `SemanticField` role handling | ✅ |
+| `hyperedge.create` | `make_hyperedge` op exists | `Field.add_constraint` | ✅ |
+| `hyperedge.participant` | *Via `make_role_binding`* | N/A | ✅ MLIR |
+| `hyperedge.role` | *Via `make_role_binding`* | N/A | ✅ MLIR |
+| `region.create` | `empty` / `make_context` / `step` / `atomic_tx` | `SemanticField.__init__` | ✅ Both |
+| `region.select` | *New MLIR op needed* | N/A | ⚠️ Map needed |
+| `region.contains` | *New MLIR op needed* | N/A | ⚠️ Map needed |
+| `reference.create` | *New MLIR op needed* | N/A | ⚠️ Map needed |
+| `reference.resolve` | *New MLIR op needed* | N/A | ⚠️ Map needed |
+| `representation.create` | Deferred | N/A | Deferred |
+| `representation.convert` | Deferred | N/A | Deferred |
+| `pattern.create` | Deferred | N/A | Deferred |
+| `pattern.match` | Deferred | N/A | Deferred |
+| `transformation.create` | `Transformation` struct in MLIR | `Transformation.__init__` | ✅ Both |
+| `transformation.apply` | `step`/`atomic_tx` lowering | `Field.execute(INC/EMIT/SET_INT)` | ✅ Both |
+| `operation.define` | 21 ops defined in `SCR.td` | N/A (IR-level) | ✅ MLIR |
+| `operation.execute` | `scr-opt` / `--scr-verify` | N/A (runtime) | ✅ MLIR tool |
+| `operation.validate` | Op `verify()` methods (9 ops) | N/A (compile-time) | ✅ MLIR |
+| `state.create` | `empty` op | `SemanticField.__init__` | ✅ Both |
+| `state.observe` | `observe_node` op | `Field.validate()` | ✅ Both |
+| `state.transition` | `step`/`atomic_tx` ops | `Field.execute(INC/EMIT)` | ✅ Both |
+| `delta.compute` | Deferred | N/A | Deferred |
+| `delta.apply` | Deferred | N/A | Deferred |
+| `delta.compose` | Deferred | N/A | Deferred |
+| `event.create` | *New MLIR op or trace mechanism* | N/A | ⚠️ Map needed |
+| `event.emit` | *New MLIR pass or trace* | N/A | ⚠️ Map needed |
+| `stream.create` | Deferred | N/A | Deferred |
+| `stream.subscribe` | Deferred | N/A | Deferred |
+| `stream.transform` | Deferred | N/A | Deferred |
+| `temporal.compare` | Context `logical_step` comparison | N/A | ✅ MLIR |
+| `temporal.order` | Context `logical_step` ordering | N/A | ✅ MLIR |
+| `causal.link` | Deferred | N/A | Deferred |
+| `causal.predecessors` | Deferred | N/A | Deferred |
+| `provenance.record` | Deferred | N/A | Deferred |
+| `provenance.trace` | Deferred | N/A | Deferred |
+| `constraint.validate` | Op verifiers | `NonNegativeConstraint.validate()` | ✅ Both |
+| `capability.query` | Deferred | N/A | Deferred |
+| `capability.require` | Deferred | N/A | Deferred |
+| `contract.validate` | Deferred | N/A | Deferred |
+| `contract.compose` | Deferred | N/A | Deferred |
+| `equivalence.compare` | Deferred | N/A | Deferred (CX-EQV open) |
+| `query.select` | Deferred | N/A | Deferred |
+| `query.evaluate` | Deferred | N/A | Deferred |
+| `observation.record` | `observe_node` + value ops | N/A | ✅ MLIR |
+| `resource.require` | Deferred | N/A | Deferred |
+| `resource.release` | Deferred | N/A | Deferred |
+| `error.create` | Deferred | N/A | Deferred |
+| `error.classify` | Deferred | N/A | Deferred |
+
+## -1. Abstraction Levels
+
+| Level | Description | Artifact |
+|---|---|---|
+| **Semantic Definition** | Core meaning (authoritative) | `101_Core.md` |
+| **MLIR Representation** | Machine-readable semantic library | `MLIR scr dialect` |
+| **Mojo Implementation** | Executable semantic kernel | `Mojo scr_kernel` |
+| **Developer Code** | Application-level semantic functions | User code |
+
+---
 
 ---
 
@@ -48,10 +195,10 @@ Time (ALG-017)            →  !scr.context.logical_step (verified monotonic)
 
 | Artifact | Path | Status |
 |----------|------|--------|
-| TableGen definition | `lib/203_Graph/Hypergraph/101_IR/mlir/SCR.td` | Complete |
-| C++ dialect library | `lib/203_Graph/Hypergraph/101_IR/mlir/build/lib/libSCRdialect.a` (9.7 MB) | Compiles clean |
-| `scr-opt` tool | `lib/203_Graph/Hypergraph/101_IR/mlir/build/tools/scr-opt` (232 MB) | Functional |
-| Lit tests | `lib/203_Graph/Hypergraph/101_IR/mlir/test/basic.mlir` | 6/6 passing (incl. `scr.step`, `scr.return`) |
+| TableGen definition | `lib/203_Graph/IR/mlir/SCR.td` | Complete |
+| C++ dialect library | `lib/203_Graph/IR/mlir/build/lib/libSCRdialect.a` (9.7 MB) | Compiles clean |
+| `scr-opt` tool | `lib/203_Graph/IR/mlir/build/tools/scr-opt` (232 MB) | Functional |
+| Lit tests | `lib/203_Graph/IR/mlir/test/basic.mlir` | 6/6 passing (P0 essential functions: state/create/transition/observe, identity/create, entity/create, value/create, relationship/create, constraint/validate) |
 
 ### 3.2 Type System — v0.1.0
 
