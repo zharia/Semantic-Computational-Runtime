@@ -10,9 +10,8 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/OpAsmInterface.td"
-include "mlir/IR/SideEffectInterfaces.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
-include "mlir/Interfaces/VerifiedConstantInterface.td"
 
 //===------------------------------------------------------===//
 // SCR Dialect

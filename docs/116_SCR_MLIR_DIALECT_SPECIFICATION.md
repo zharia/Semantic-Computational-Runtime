@@ -40,20 +40,85 @@ Time (ALG-017)            →  !scr.context.logical_step (verified monotonic)
 
 ---
 
-## 3. Type System
+## 3. Implementation Status
 
-### 3.1 `!scr.entity_id`
+**This section records the gap between normative spec (sections 4–8) and current v0.1.0 build.**
+
+### 3.1 Build Artifacts
+
+| Artifact | Path | Status |
+|----------|------|--------|
+| TableGen definition | `lib/203_Graph/Hypergraph/101_IR/mlir/SCR.td` | Complete |
+| C++ dialect library | `lib/203_Graph/Hypergraph/101_IR/mlir/build/lib/libSCRdialect.a` (9.7 MB) | Compiles clean |
+| `scr-opt` tool | `lib/203_Graph/Hypergraph/101_IR/mlir/build/tools/scr-opt` (232 MB) | Functional |
+| Lit tests | `lib/203_Graph/Hypergraph/101_IR/mlir/test/basic.mlir` | 5/5 passing |
+
+### 3.2 Type System — v0.1.0
+
+All 7 types are registered as MLIR **opaque types** (`mlir::OpaqueType` with dialect namespace `"scr"`). They are **not** struct-typed in this build. The opaque representation preserves the type name for verification and lowering while deferring internal layout to a future version.
+
+| Type | Mnemonic | v0.1.0 Representation | Target Representation |
+|------|----------|----------------------|----------------------|
+| `!scr.entity_id` | `entity_id` | Opaque | Struct (string identity) |
+| `!scr.value` | `value` | Opaque | Sum type (unit/bool/int/real/text/seq) |
+| `!scr.entity` | `entity` | Opaque | Struct (id, typeName, value, properties) |
+| `!scr.role_binding` | `role_binding` | Opaque | Struct (role, target) |
+| `!scr.hyperedge` | `hyperedge` | Opaque | Struct (id, edgeType, roles, properties) |
+| `!scr.hypergraph` | `hypergraph` | Opaque | Struct (nodes, edges, logicalStep) |
+| `!scr.context` | `context` | Opaque | Struct (logicalStep, label) |
+
+### 3.3 Operations — v0.1.0
+
+All 20 operations compile and roundtrip. In this build:
+- All operands use `AnyType` (no typed constraints yet).
+- No `assemblyFormat` — ops use generic ` "scr.op_name"(...) : (types) -> types ` syntax.
+- Memory effects: all ops marked `Pure` in ODS (side-effect annotations deferred).
+- No custom traits (MutatesHypergraph, AdvancesTime) — these require C++ OpTrait classes.
+- No verifier passes yet — algebraic invariants documented but not enforced at compile time.
+
+| Operation | Signature | v0.1.0 Notes |
+|-----------|-----------|-------------|
+| `scr.empty` | `() -> !scr.hypergraph` | Creates empty hypergraph |
+| `scr.add_node` | `(!scr.hypergraph, !scr.entity) -> !scr.hypergraph` | Add entity |
+| `scr.remove_node` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove entity |
+| `scr.add_edge` | `(!scr.hypergraph, !scr.hyperedge) -> !scr.hypergraph` | Add hyperedge |
+| `scr.remove_edge` | `(!scr.hypergraph, !scr.entity_id) -> !scr.hypergraph` | Remove hyperedge |
+| `scr.update_node_value` | `(!scr.hypergraph, !scr.entity_id, !scr.value) -> !scr.hypergraph` | Update entity value |
+| `scr.no_op` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` | Identity transform |
+| `scr.atomic_tx` | `(!scr.hypergraph, !scr.context) -> (!scr.hypergraph, !scr.context)` with region | Transactional composition |
+| `scr.observe_node` | `(!scr.hypergraph, !scr.entity_id) -> !scr.value` | Pure observation |
+| `scr.make_context` | `(AnyType, AnyType) -> !scr.context` | Create context |
+| `scr.make_entity` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.entity` | Construct entity |
+| `scr.make_entity_id` | `(AnyType) -> !scr.entity_id` | Construct identity |
+| `scr.make_hyperedge` | `(AnyType, AnyType, AnyType, AnyType) -> !scr.hyperedge` | Construct hyperedge |
+| `scr.make_role_binding` | `(AnyType, AnyType) -> !scr.role_binding` | Construct role binding |
+| `scr.value_unit` | `() -> !scr.value` | Unit value |
+| `scr.value_bool` | `(AnyType) -> !scr.value` | Boolean value |
+| `scr.value_int` | `(AnyType) -> !scr.value` | Integer value |
+| `scr.value_real` | `(AnyType) -> !scr.value` | Real value |
+| `scr.value_text` | `(AnyType) -> !scr.value` | Text value |
+
+### 3.4 Known Limitations (v0.1.0)
+
+1. **Opaque types** — no internal layout, no field access ops, no per-variant constructors for `!scr.value`.
+2. **No typed operand constraints** — all operands are `AnyType`; no compile-time check that `add_node` receives `!scr.entity`.
+3. **No assemblyFormat** — generic syntax only; human-unfriendly.
+4. **No verifier passes** — IncidenceWellFormed, TimeMonotonicity, etc. are documented but not enforced.
+5. **No canonicalization** — fold patterns from spec not implemented.
+6. **No memory effects** — all ops marked `Pure`; mutation effects deferred.
+7. **No `scr.step` op** — transition wrapper not yet in the dialect.
+
+---
+
+## 4. Type System (Normative Target)
+
+### 4.1 `!scr.entity_id`
 
 Opaque semantic identity. String-compared. Not a pointer.
 
-```mlir
-// Usage
-%id = scr.entity_id "node_42" : !scr.entity_id
-```
-
 **Verification:** None (structural equality via string).
 
-### 3.2 `!scr.value`
+### 4.2 `!scr.value`
 
 Variant sum type. Exactly one active variant.
 
@@ -61,277 +126,131 @@ Variant sum type. Exactly one active variant.
 |---------|---------|-------------|
 | `unit` | none | `None` |
 | `bool` | `i1` | `IntegerAttr<i1>` |
-| `int` | `i64` (arbitrary-precision in semantics) | `IntegerAttr<i64>` |
+| `int` | `i64` | `IntegerAttr<i64>` |
 | `real` | `f64` | `FloatAttr<f64>` |
 | `text` | `String` | `StringAttr` |
 | `sequence` | `ArrayAttr<!scr.value>` | recursive |
 
-```mlir
-%v_unit = scr.value.unit : !scr.value
-%v_bool = scr.value.bool true : !scr.value
-%v_int = scr.value.int 42 : !scr.value
-%v_text = scr.value.text "hello" : !scr.value
-%v_seq = scr.value.sequence (%v_int, %v_text) : !scr.value
-```
-
 **Verification:** Exactly one variant active (enforced by ODS).
 
-### 3.3 `!scr.entity`
+### 4.3 `!scr.entity`
 
-Semantic entity with persistent identity.
-
-```mlir
-!scr.entity = !scr.struct<{
-  id: !scr.entity_id,
-  typeName: String,
-  value: !scr.value,
-  properties: !scr.dictionary
-}>
-```
-
-```mlir
-%entity = scr.make_entity %id, %typeName, %value, %props
-    : (!scr.entity_id, String, !scr.value, !scr.dictionary) -> !scr.entity
-```
+Semantic entity with persistent identity. Fields: `id`, `typeName`, `value`, `properties`.
 
 **Verification:** `id` is non-empty.
 
-### 3.4 `!scr.role_binding`
+### 4.4 `!scr.role_binding`
 
-Named role pointing to an entity.
+Named role pointing to an entity. Fields: `role`, `target`.
 
-```mlir
-!scr.role_binding = !scr.struct<{
-  role: String,
-  target: !scr.entity_id
-}>
-```
+### 4.5 `!scr.hyperedge`
 
-### 3.5 `!scr.hyperedge`
-
-Typed semantic relationship.
-
-```mlir
-!scr.hyperedge = !scr.struct<{
-  id: String,
-  edgeType: String,
-  roles: ArrayAttr<!scr.role_binding>,
-  properties: !scr.dictionary
-}>
-```
+Typed semantic relationship. Fields: `id`, `edgeType`, `roles`, `properties`.
 
 **Verification:** At least one role. Role targets are checked at insertion time.
 
-### 3.6 `!scr.hypergraph` — The Core State
+### 4.6 `!scr.hypergraph` — The Core State
 
-Authoritative semantic state. This is the primary data type flowing through SCR operations.
+Authoritative semantic state. Fields: `nodes`, `edges`, `logicalStep`.
 
-```mlir
-!scr.hypergraph = !scr.struct<{
-  nodes: ArrayAttr<!scr.entity>,
-  edges: ArrayAttr<!scr.hyperedge>,
-  logicalStep: Index
-}>
-```
+**Verification (IncidenceWellFormed):** Every hyperedge's role targets must reference entities present in `nodes`.
 
-**Verification (IncidenceWellFormed):** Every hyperedge's role targets must reference entities present in `nodes`. Checked on every operation that modifies the hypergraph.
+### 4.7 `!scr.context`
 
-### 3.7 `!scr.context`
-
-Ambient transition metadata.
-
-```mlir
-!scr.context = !scr.struct<{
-  logicalStep: Index,
-  label: String
-}>
-```
+Ambient transition metadata. Fields: `logicalStep`, `label`.
 
 ---
 
-## 4. Operations
+## 5. Operations (Normative Target)
 
-### 4.1 Hypergraph Operations (ALG-011 → HyperOp)
-
-Each maps 1:1 to a `HyperOp` constructor.
+### 5.1 Hypergraph Operations
 
 #### `scr.add_node`
 
-```mlir
-scr.add_node %graph, %entity : !scr.hypergraph, !scr.entity
-    -> !scr.hypergraph
-    attrs { /* optional: allow_overwrite = false */ }
-```
-
-**Preconditions (ALG-009):** Entity id must not exist in `graph.nodes`.  
-**Postconditions:** New entity present in result. All existing edges preserved.  
-**Time:** Advances `logicalStep` by 1.  
-**Failure:** Returns original `%graph` unchanged (rollback, ALG-014).  
+**Preconditions:** Entity id must not exist in graph.nodes.  
+**Postconditions:** New entity present. All existing edges preserved.  
+**Time:** Advances logicalStep by 1.  
+**Failure:** Returns original graph unchanged (rollback).  
 **Formal:** `step (.graphOp (.addNode e)) s c = .ok s' c'` iff `e.id ∉ s.NodeIds`
 
 #### `scr.remove_node`
 
-```mlir
-scr.remove_node %graph, %id : !scr.hypergraph, !scr.entity_id
-    -> !scr.hypergraph
-```
-
-**Preconditions:** Entity exists. No incident hyperedges (`checkNodeFreeOfEdges`).  
-**Postconditions:** Entity removed. All edges referencing it would be dangling — rejected.  
-**Time:** Advances `logicalStep` by 1.  
-**Failure:** Returns original `%graph`.  
+**Preconditions:** Entity exists. No incident hyperedges.  
+**Postconditions:** Entity removed.  
+**Time:** Advances logicalStep by 1.  
+**Failure:** Returns original graph.  
 **Formal:** `step (.graphOp (.removeNode id)) s c = .fail s c reason` iff ∃ edge with target `id`.  
 **Counterexample:** `CX_03_incident_node_removal_rejected`
 
 #### `scr.add_edge`
 
-```mlir
-scr.add_edge %graph, %edge : !scr.hypergraph, !scr.hyperedge
-    -> !scr.hypergraph
-```
-
-**Preconditions:** Edge id must not exist. All role targets must exist in `graph.nodes` (`checkRolesIncident`).  
+**Preconditions:** Edge id must not exist. All role targets must exist in graph.nodes.  
 **Postconditions:** New edge present. IncidenceWellFormed preserved.  
-**Time:** Advances `logicalStep` by 1.  
-**Failure:** Returns original `%graph`.  
+**Time:** Advances logicalStep by 1.  
+**Failure:** Returns original graph.  
 **Formal:** `step (.graphOp (.addEdge e)) s c = .fail s c reason` iff ∃ role target ∉ `s.NodeIds`.  
 **Counterexample:** `CX_02_dangling_edge_rejected`
 
 #### `scr.remove_edge`
 
-```mlir
-scr.remove_edge %graph, %edge_id : !scr.hypergraph, String
-    -> !scr.hypergraph
-```
-
 **Preconditions:** Edge exists.  
 **Postconditions:** Edge removed. Entities preserved.  
-**Time:** Advances `logicalStep` by 1.
+**Time:** Advances logicalStep by 1.
 
 #### `scr.update_node_value`
 
-```mlir
-scr.update_node_value %graph, %id, %value
-    : !scr.hypergraph, !scr.entity_id, !scr.value
-    -> !scr.hypergraph
-```
-
 **Preconditions:** Entity exists.  
-**Postconditions:** Entity value updated. Identity preserved (`node_identity_invariant`).  
-**Time:** Advances `logicalStep` by 1.  
+**Postconditions:** Entity value updated. Identity preserved.  
+**Time:** Advances logicalStep by 1.  
 **Formal:** `{ n with value := v }.id = n.id`  
-**Counterexample:** `CX_04_conflicting_writes_do_not_commute` — ordering matters.
+**Counterexample:** `CX_04_conflicting_writes_do_not_commute`
 
-### 4.2 Composition Operations (ALG-020, ALG-021)
+### 5.2 Composition Operations
 
 #### `scr.no_op`
 
-```mlir
-scr.no_op %graph, %ctx : !scr.hypergraph, !scr.context
-    -> !scr.hypergraph, !scr.context
-```
-
-**Semantics:** Identity transformation. Returns input unchanged. Advances `logicalStep` by 1.  
+**Semantics:** Identity transformation. Advances logicalStep by 1.  
 **Formal:** `step .noOp s c = .ok s { c with logical_step := c.logical_step + 1 }`
 
 #### `scr.atomic_tx`
 
-```mlir
-scr.atomic_tx %graph, %ctx {
-    scr.add_node %g1, %entity ...
-    scr.update_node_value %g2, %id, %value ...
-} : !scr.hypergraph, !scr.context
-    -> !scr.hypergraph, !scr.context
-```
-
-**Semantics:** Transactional atomic composition. Executes region sequentially. On failure anywhere in the region, entire transaction rolls back to pre-tx state (`step_rollback_on_failure`).  
+**Semantics:** Transactional atomic composition with region. On failure, entire transaction rolls back.  
 **Formal:** `step (.atomicTx t1 t2) s c` — if `step t1 s c = .ok s1 c1` then `step t2 s1 c1`, else `.fail s c reason`.
 
-### 4.3 Observation (ALG-015)
+### 5.3 Observation
 
 #### `scr.observe_node`
 
-```mlir
-%value = scr.observe_node %graph, %id
-    : !scr.hypergraph, !scr.entity_id -> !scr.value
-```
-
 **Semantics:** Pure state query. No side effects. No time advancement.  
 **Formal:** `observeNode s id` — `observation_purity` proven.  
-**Memory effect:** `Pure` (no read/write on `!scr.hypergraph`).
+**Memory effect:** `Pure`.
 
-### 4.4 Transition (ALG-012)
+### 5.4 Transition
 
 #### `scr.step`
-
-The canonical transition operator. Wraps any transformation with context update.
-
-```mlir
-%new_graph, %new_ctx = scr.step %graph, %ctx {
-    // any scr operation or atomic_tx
-} : !scr.hypergraph, !scr.context
-    -> !scr.hypergraph, !scr.context
-```
 
 **Invariants:**
 - `step_deterministic`: Same inputs always produce same outputs.
 - `step_advances_time`: On success, `new_ctx.logicalStep ≥ ctx.logicalStep + 1`.
-- `step_preserves_time_on_failure`: On failure, `new_ctx.logicalStep = ctx.logicalStep`.
-- `step_rollback_on_failure`: On failure, `new_graph = graph` and `new_ctx = ctx`.
+- `step_preserves_time_on_failure`: On failure, time unchanged.
+- `step_rollback_on_failure`: On failure, state restored.
 
 ---
 
-## 5. Verification Rules
+## 6. Verification Rules (Normative Target)
 
-### 5.1 IncidenceWellFormed (Invariant)
-
-Every hypergraph state must satisfy:
-
-```
-∀ e ∈ edges, ∀ r ∈ e.roles, r.target ∈ nodes.id
-```
-
-**Enforced on:** Every operation that returns `!scr.hypergraph`.  
-**Source:** `SCR.Hypergraph.IncidenceWellFormed`
-
-### 5.2 NoDanglingReferences
-
-No hyperedge may reference an entity that does not exist.
-
-**Enforced on:** `scr.add_edge` (precondition), `scr.remove_node` (postcondition).  
-**Source:** `CX_02_dangling_edge_rejected`, `CX_03_incident_node_removal_rejected`
-
-### 5.3 TimeMonotonicity
-
-On successful operations: `result.logicalStep > input.logicalStep`.
-
-**Enforced on:** All operations returning `!scr.hypergraph` + `!scr.context`.  
-**Source:** `step_advances_time`
-
-### 5.4 TimeInvarianceOnFailure
-
-On failed operations: `result.logicalStep = input.logicalStep`.
-
-**Enforced on:** All operations with failure paths.  
-**Source:** `step_preserves_time_on_failure`
-
-### 5.5 Rollback
-
-Failed operations return the pre-step state exactly.
-
-**Enforced on:** `scr.atomic_tx` failure paths.  
-**Source:** `step_rollback_on_failure`
-
-### 5.6 IdentityPreservation
-
-`scr.update_node_value` does not change entity id.
-
-**Enforced on:** `scr.update_node_value` postcondition.  
-**Source:** `node_identity_invariant`
+| Rule | Enforcement | Source |
+|------|------------|--------|
+| IncidenceWellFormed | Every op returning `!scr.hypergraph` | `SCR.Hypergraph.IncidenceWellFormed` |
+| NoDanglingReferences | `scr.add_edge`, `scr.remove_node` | `CX_02`, `CX_03` |
+| TimeMonotonicity | All ops returning `!scr.hypergraph` + `!scr.context` | `step_advances_time` |
+| TimeInvarianceOnFailure | All ops with failure paths | `step_preserves_time_on_failure` |
+| Rollback | `scr.atomic_tx` failure paths | `step_rollback_on_failure` |
+| IdentityPreservation | `scr.update_node_value` | `node_identity_invariant` |
 
 ---
 
-## 6. Memory Effects
+## 7. Memory Effects (Normative Target)
 
 | Operation | Read | Write | Alloc | Free |
 |-----------|------|-------|-------|------|
@@ -343,46 +262,42 @@ Failed operations return the pre-step state exactly.
 | `scr.no_op` | `!scr.hypergraph` | `!scr.hypergraph` | — | — |
 | `scr.observe_node` | — | — | — | — |
 
-All mutation operations read+write `!scr.hypergraph`. `scr.observe_node` is `Pure`.
-
 ---
 
-## 7. Canonicalization
+## 8. Canonicalization (Normative Target)
 
 | Pattern | Result |
 |---------|--------|
 | `scr.no_op %g, %ctx` | `%g, %ctx` (with time advanced) |
 | `scr.add_node %g, %e` where `%e ∈ %g.nodes` | fold to `scr.fail` |
 | `scr.add_edge %g, %e` where `%e.id ∈ %g.edges.ids` | fold to `scr.fail` |
-| `scr.update_node_value %g, %id, %old_val` then `scr.update_node_value %g, %id, %new_val` | fold to single `scr.update_node_value %g, %id, %new_val` |
+| `scr.update_node_value %g, %id, %old` then `scr.update_node_value %g, %id, %new` | fold to single update |
 
 ---
 
-## 8. Example
+## 9. Example (Generic Syntax — v0.1.0)
 
 ```mlir
 // Create initial state
-%empty = scr.empty : !scr.hypergraph
-%ctx = scr.context 0, "init" : !scr.context
+%g = "scr.empty"() : () -> !scr.hypergraph
 
-// Add entities
-%id_a = scr.entity_id "a" : !scr.entity_id
-%val_a = scr.value.int 1 : !scr.value
-%entity_a = scr.make_entity %id_a, "Counter", %val_a, {} : !scr.entity
-%g1, %c1 = scr.step %empty, %ctx {
-    %g1_inner = scr.add_node %empty, %entity_a : !scr.hypergraph, !scr.entity -> !scr.hypergraph
-    scr.yield %g1_inner : !scr.hypergraph
-} : !scr.hypergraph, !scr.context -> !scr.hypergraph, !scr.context
+// Create context
+%c0 = arith.constant 0 : i64
+%id_init = "scr.make_entity_id"(%c0) : (i64) -> !scr.entity_id
+%ctx = "scr.make_context"(%c0, %id_init) : (i64, !scr.entity_id) -> !scr.context
 
-// Update value
-%new_val = scr.value.int 2 : !scr.value
-%g2, %c2 = scr.step %g1, %c1 {
-    %g2_inner = scr.update_node_value %g1, %id_a, %new_val
-        : !scr.hypergraph, !scr.entity_id, !scr.value -> !scr.hypergraph
-    scr.yield %g2_inner : !scr.hypergraph
-} : !scr.hypergraph, !scr.context -> !scr.hypergraph, !scr.context
+// Create entity
+%val = "scr.value_int"(%c0) : (i64) -> !scr.value
+%tname = "scr.value_text"(%c0) : (i64) -> !scr.value
+%props = "scr.value_unit"() : () -> !scr.value
+%entity = "scr.make_entity"(%id_init, %tname, %val, %props)
+    : (!scr.entity_id, !scr.value, !scr.value, !scr.value) -> !scr.entity
+
+// Add entity to hypergraph
+%g1 = "scr.add_node"(%g, %entity)
+    : (!scr.hypergraph, !scr.entity) -> !scr.hypergraph
 
 // Observe (pure, no side effects)
-%result = scr.observe_node %g2, %id_a
-    : !scr.hypergraph, !scr.entity_id -> !scr.value
+%result = "scr.observe_node"(%g1, %id_init)
+    : (!scr.hypergraph, !scr.entity_id) -> !scr.value
 ```
