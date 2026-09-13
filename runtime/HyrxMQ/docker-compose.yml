@@ -1,0 +1,28 @@
+# HyrxMQ — self-contained broker + web dashboard
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+#
+# Custom ports:
+#   HYRXMQ_WEB_PORT=9090 HYRXMQ_PORT=5672 docker compose up -d
+
+services:
+  hyrxmq:
+    build: .
+    container_name: hyrxmq
+    ports:
+      - "${HYRXMQ_WEB_PORT:-8080}:8080"
+      - "${HYRXMQ_PORT:-5673}:5673"
+    environment:
+      - HYRXMQ_WEB_PORT=8080
+      - HYRXMQ_PORT=5673
+      - HYRXMQ_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3

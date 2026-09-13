@@ -1,15 +1,29 @@
-# Only dist/rootfs + nothing else goes into the image context.
-.git
-.pixi
-.venv
-program-increments
-tests
-benchmarks
-docs
-sprints
-src
-vendor
-build/*
-!build/hyrxmq-listen
-**/__pycache__
-dist/libs
+# Build artifacts (rebuilt inside container).
+build/
+dist/
+
+# pixi environment (recreated by pixi install).
+.pixi/
+
+# Node modules (reinstalled by npm install).
+src/hyrxmq_web/frontend/node_modules/
+
+# Git.
+.git/
+.gitignore
+
+# Test artifacts.
+tests/
+benchmarks/
+docs/
+scripts/
+
+# IDE / editor.
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS.
+.DS_Store
+Thumbs.db

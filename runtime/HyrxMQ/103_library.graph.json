@@ -5,7 +5,8 @@
     "101_definition.md",
     "001_Adoption/101_definition.md",
     "src/hyrx/101_definition.md",
-    "src/hyrxmq/101_definition.md"
+    "src/hyrxmq/101_definition.md",
+    "src/hyrxmq-web/101_definition.md"
   ],
   "nodes": [
     {
@@ -25,6 +26,12 @@
       "type": "application",
       "name": "hyrxmq",
       "path": "runtime/HyrxMQ/src/hyrxmq"
+    },
+    {
+      "id": "SDP-APP-HYRXMQ-WEB",
+      "type": "application",
+      "name": "hyrxmq-web",
+      "path": "runtime/HyrxMQ/src/hyrxmq-web"
     },
     {
       "id": "SDP-ADOPT-HYRXMQ-0001",
@@ -49,8 +56,23 @@
       "type": "CONTAINS"
     },
     {
+      "source": "SDP-PROJ-HYRXMQ",
+      "target": "SDP-APP-HYRXMQ-WEB",
+      "type": "CONTAINS"
+    },
+    {
       "source": "SDP-APP-HYRXMQ",
       "target": "SDP-APP-HYRX",
+      "type": "DEPENDS_ON"
+    },
+    {
+      "source": "SDP-APP-HYRXMQ-WEB",
+      "target": "SDP-APP-HYRX",
+      "type": "DEPENDS_ON"
+    },
+    {
+      "source": "SDP-APP-HYRXMQ-WEB",
+      "target": "SDP-APP-HYRXMQ",
       "type": "DEPENDS_ON"
     },
     {

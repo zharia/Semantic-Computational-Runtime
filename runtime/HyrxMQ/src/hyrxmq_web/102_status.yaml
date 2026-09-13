@@ -1,0 +1,30 @@
+---
+domain: sdp.application.hyrxmq-web
+entity_id: SDP-APP-HYRXMQ-WEB
+entity_type: application
+name: hyrxmq-web
+parent: SDP-PROJ-HYRXMQ
+status: implemented
+definition_status: adopted
+last_updated: 2026-09-12
+milestones: []
+
+source_topology:
+  - path: src/hyrxmq-web/main.mojo
+    role: web_entrypoint
+
+entrypoints:
+  - source: src/hyrxmq-web/main.mojo
+    artifact: build/hyrxmq-web
+    lifecycle: web-server
+    built_by: manual
+
+dependencies:
+  internal:
+    - entity_id: SDP-APP-HYRX
+      relation: DEPENDS_ON
+    - entity_id: SDP-APP-HYRXMQ
+      relation: DEPENDS_ON
+  external: []
+
+unknowns:

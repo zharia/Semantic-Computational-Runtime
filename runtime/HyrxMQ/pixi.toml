@@ -21,6 +21,8 @@ openssl = ">=3"
 build = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx"
 hyrxmq = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrxmq/main.mojo -o build/hyrxmq"
 hyrxmq-listen = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen"
+hyrxmq-web = "mkdir -p build && cd src/hyrxmq_web/frontend && npm run build && cd ../../.. && mojo build -I src -I vendor/flare src/hyrxmq_web/hyrxmq_web.mojo -o build/hyrxmq-web"
+hyrxmq-web-run = "mkdir -p build && mojo run -I src -I vendor/flare src/hyrxmq_web/hyrxmq_web.mojo"
 test = "bash scripts/test_all.sh"
 
 # Benchmark suite (audit §19/§20/§21). Not part of scripts/test_all.sh — these
@@ -37,3 +39,7 @@ bench-profile = "mojo run -I src -I vendor/flare benchmarks/profiling_probe.mojo
 bench-fair = "bash benchmarks/perf/run_all.sh"
 bench-regress = "python benchmarks/perf/compare.py --baseline benchmarks/perf/baseline.json"
 
+# Docker build + run.
+docker-build = "docker build -t hyrxmq ."
+docker-run = "docker run -p 8081:8080 -p 5674:5673 hyrxmq"
+docker-stop = "docker stop hyrxmq 2>/dev/null; docker rm hyrxmq 2>/dev/null"

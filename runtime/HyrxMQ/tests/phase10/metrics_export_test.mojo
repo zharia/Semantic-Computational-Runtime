@@ -80,7 +80,11 @@ def test_json_fields() raises:
     var want = "{\"node_name\":\"hyrxmq@localhost\",\"vhost\":\"/\","
     want += "\"uptime\":true,\"ready\":true,\"listening\":false,"
     want += "\"queues\":2,\"consumers\":1,\"messages_published\":42,"
-    want += "\"messages_delivered\":42,\"messages_acked\":42}"
+    want += "\"messages_delivered\":42,\"messages_acked\":42,"
+    want += "\"messages_rejected\":0,\"active_connections\":0,"
+    want += "\"refused_connections\":0,\"content_errors\":0,"
+    want += "\"pool_stats\":{\"allocations\":0,"
+    want += "\"reuses\":0,\"capacity\":0,\"in_use\":0}}"
     check(json == want, "json exact serialization")
 
     expect_contains(json, "\"node_name\":\"hyrxmq@localhost\"", "node name")

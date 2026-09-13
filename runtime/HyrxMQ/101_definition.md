@@ -30,8 +30,10 @@ Inside this Project:
 
 - Application `hyrx` — the Hyrx messaging engine and embedded API.
 - Application `hyrxmq` — the standalone AMQP 0-9-1 broker product.
-- The source topology, specifications, tests, evidence, and knowledge that
-  already exist under this directory.
+- Application `hyrxmq-web` — the browser-based management console for HyrxMQ.
+
+The source topology, specifications, tests, evidence, and knowledge that
+already exist under this directory.
 
 Outside this Project:
 
@@ -77,6 +79,7 @@ grouping, not a new semantic primitive.
 |---|---|---|
 | CONTAINS | `SDP-APP-HYRX` (`src/hyrx`) | provisionally consistent — see caveat |
 | CONTAINS | `SDP-APP-HYRXMQ` (`src/hyrxmq`) | consistent |
+| CONTAINS | `SDP-APP-HYRXMQ-WEB` (`src/hyrxmq-web`) | consistent |
 
 `src/hyrx` is documented as the Hyrx engine/core and as an embeddable library
 (`docs/PROJECT.md:13`, `docs/ARCHITECTURE.md:5-28`, `docs/CORE_ENGINE.md:7-15`).
@@ -110,6 +113,26 @@ classification as an Application is consistent.
   (`src/hyrxmq/__init__.mojo:7`)
 - INV-SDP-HYRXMQ-003: This definition must not redefine implementation semantics;
   existing specifications remain authoritative for behaviour.
+
+## Application Identities
+
+| SDP id | `SDP-APP-HYRX` |
+| Name | `hyrx` |
+| Type | Application |
+| Parent | `SDP-PROJ-HYRXMQ` |
+| Source root | `runtime/HyrxMQ/src/hyrx` |
+
+| SDP id | `SDP-APP-HYRXMQ` |
+| Name | `hyrxmq` |
+| Type | Application |
+| Parent | `SDP-PROJ-HYRXMQ` |
+| Source root | `runtime/HyrxMQ/src/hyrxmq` |
+
+| SDP id | `SDP-APP-HYRXMQ-WEB` |
+| Name | `hyrxmq-web` |
+| Type | Application |
+| Parent | `SDP-PROJ-HYRXMQ` |
+| Source root | `runtime/HyrxMQ/src/hyrxmq-web` |
 
 ## Relationships
 

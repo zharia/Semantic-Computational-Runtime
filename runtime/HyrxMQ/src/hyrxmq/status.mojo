@@ -5,6 +5,8 @@
 
 from std.collections import List
 
+from hyrx.core.pool_stats import PoolStats
+
 
 struct BrokerStatus:
     """A point-in-time projection of broker state for management/health."""
@@ -19,6 +21,12 @@ struct BrokerStatus:
     var messages_published: Int
     var messages_delivered: Int
     var messages_acked: Int
+    # Tier 1 additions.
+    var messages_rejected: Int
+    var active_connections: Int
+    var refused_connections: Int
+    var content_errors: Int
+    var pool_stats: PoolStats
 
     def __init__(out self):
         self.node_name = ""
@@ -31,6 +39,11 @@ struct BrokerStatus:
         self.messages_published = 0
         self.messages_delivered = 0
         self.messages_acked = 0
+        self.messages_rejected = 0
+        self.active_connections = 0
+        self.refused_connections = 0
+        self.content_errors = 0
+        self.pool_stats = PoolStats(0, 0, 0, 0)
 
     def __copyinit__(out self, existing: Self):
         self.node_name = existing.node_name
@@ -43,6 +56,11 @@ struct BrokerStatus:
         self.messages_published = existing.messages_published
         self.messages_delivered = existing.messages_delivered
         self.messages_acked = existing.messages_acked
+        self.messages_rejected = existing.messages_rejected
+        self.active_connections = existing.active_connections
+        self.refused_connections = existing.refused_connections
+        self.content_errors = existing.content_errors
+        self.pool_stats = existing.pool_stats
 
     @staticmethod
     def _json_escape(value: String) -> String:
@@ -91,6 +109,30 @@ struct BrokerStatus:
         parts.append("# HELP hyrxmq_messages_acked Total messages acked")
         parts.append("# TYPE hyrxmq_messages_acked counter")
         parts.append("hyrxmq_messages_acked " + String(self.messages_acked))
+        parts.append("# HELP hyrxmq_messages_rejected Total messages rejected")
+        parts.append("# TYPE hyrxmq_messages_rejected counter")
+        parts.append("hyrxmq_messages_rejected " + String(self.messages_rejected))
+        parts.append("# HELP hyrxmq_active_connections Active connections")
+        parts.append("# TYPE hyrxmq_active_connections gauge")
+        parts.append("hyrxmq_active_connections " + String(self.active_connections))
+        parts.append("# HELP hyrxmq_refused_connections Refused connections")
+        parts.append("# TYPE hyrxmq_refused_connections counter")
+        parts.append("hyrxmq_refused_connections " + String(self.refused_connections))
+        parts.append("# HELP hyrxmq_content_errors Content errors")
+        parts.append("# TYPE hyrxmq_content_errors counter")
+        parts.append("hyrxmq_content_errors " + String(self.content_errors))
+        parts.append("# HELP hyrxmq_pool_allocations Buffer pool allocations")
+        parts.append("# TYPE hyrxmq_pool_allocations counter")
+        parts.append("hyrxmq_pool_allocations " + String(self.pool_stats.allocations))
+        parts.append("# HELP hyrxmq_pool_reuses Buffer pool reuses")
+        parts.append("# TYPE hyrxmq_pool_reuses counter")
+        parts.append("hyrxmq_pool_reuses " + String(self.pool_stats.reuses))
+        parts.append("# HELP hyrxmq_pool_capacity Buffer pool capacity")
+        parts.append("# TYPE hyrxmq_pool_capacity gauge")
+        parts.append("hyrxmq_pool_capacity " + String(self.pool_stats.capacity))
+        parts.append("# HELP hyrxmq_pool_in_use Buffer pool buffers in use")
+        parts.append("# TYPE hyrxmq_pool_in_use gauge")
+        parts.append("hyrxmq_pool_in_use " + String(self.pool_stats.in_use))
         return "\n".join(parts) + "\n"
 
     def to_json(ref self) -> String:
@@ -106,4 +148,13 @@ struct BrokerStatus:
         parts.append("\"messages_published\":" + String(self.messages_published))
         parts.append("\"messages_delivered\":" + String(self.messages_delivered))
         parts.append("\"messages_acked\":" + String(self.messages_acked))
+        parts.append("\"messages_rejected\":" + String(self.messages_rejected))
+        parts.append("\"active_connections\":" + String(self.active_connections))
+        parts.append("\"refused_connections\":" + String(self.refused_connections))
+        parts.append("\"content_errors\":" + String(self.content_errors))
+        parts.append("\"pool_stats\":{\"allocations\":" + String(self.pool_stats.allocations)
+        + ",\"reuses\":" + String(self.pool_stats.reuses)
+        + ",\"capacity\":" + String(self.pool_stats.capacity)
+        + ",\"in_use\":" + String(self.pool_stats.in_use)
+        + "}")
         return "{" + ",".join(parts) + "}"

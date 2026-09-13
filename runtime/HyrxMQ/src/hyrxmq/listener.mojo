@@ -323,7 +323,12 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._service.shutdown()
 
     def status(mut self) -> BrokerStatus:
-        return self._service.status()
+        var s = self._service.status()
+        # Wire Tier 1 connection + error counters into the status snapshot.
+        s.active_connections = self._active
+        s.refused_connections = self._refused
+        s.content_errors = self._service.content_errors()
+        return s^
 
     def health(mut self) -> String:
         return self._service.health()

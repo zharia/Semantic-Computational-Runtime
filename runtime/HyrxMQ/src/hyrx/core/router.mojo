@@ -73,6 +73,7 @@ struct Router:
     #     can drop E2E bindings pointing at the deleted exchange.
     var _queue_consumers: Dict[String, List[UInt64]]
     var _exchange_index: List[String]
+    var _queue_index: List[String]
     # 0018: the injected storage journal (the DEFAULT tier is DISABLED — no
     # storage class activity of any kind). Every fs byte flows through the
     # journal's own FileSystemOps; the Router itself touches no file.
@@ -92,6 +93,7 @@ struct Router:
         self._messages_routed = 0
         self._queue_consumers = Dict[String, List[UInt64]]()
         self._exchange_index = List[String]()
+        self._queue_index = List[String]()
         self._journal = MessageJournal()
         self._recovering = False
 
@@ -107,6 +109,7 @@ struct Router:
         self._messages_routed = 0
         self._queue_consumers = Dict[String, List[UInt64]]()
         self._exchange_index = List[String]()
+        self._queue_index = List[String]()
         self._journal = MessageJournal()
         self._recovering = False
 
@@ -239,6 +242,7 @@ struct Router:
                     cfg._overflow_reject = topo.queues[i].overflow_reject
                     cfg._dlx = topo.queues[i].dlx.copy()
                     cfg._dlrk = topo.queues[i].dlrk.copy()
+                    self._queue_index.append(qname.copy())
                     self._queues[qname^] = Queue(qname, cfg^)
         # bindings (both endpoints must exist)
         var total_b = len(topo.bindings)
@@ -347,6 +351,7 @@ struct Router:
         """Declare a queue. Returns True if created, False if exists."""
         if name in self._queues:
             return False
+        self._queue_index.append(name.copy())
         self._queues[name^] = Queue(name, QueueConfig(capacity))
         return True
 
@@ -388,6 +393,7 @@ struct Router:
         cfg._overflow_reject = overflow_reject
         cfg._dlx = dlx^
         cfg._dlrk = dlrk^
+        self._queue_index.append(name.copy())
         self._queues[name^] = Queue(name, cfg^)
         return True
 
@@ -402,6 +408,13 @@ struct Router:
         var result = List[Message]()
         if name in self._queues:
             var q = self._queues.pop(name)
+            # Remove from queue index.
+            var i = 0
+            while i < len(self._queue_index):
+                if self._queue_index[i] == name:
+                    _ = self._queue_index.pop(i)
+                else:
+                    i += 1
             var drained = q.drain_messages()
             while len(drained) > 0:
                 var m = drained.pop()
@@ -674,6 +687,13 @@ struct Router:
             for i in range(len(cids)):
                 _ = self._consumers.pop(cids[i])
         var q = self._queues.pop(name)
+        # Remove from queue index.
+        var qi = 0
+        while qi < len(self._queue_index):
+            if self._queue_index[qi] == name:
+                _ = self._queue_index.pop(qi)
+            else:
+                qi += 1
         var drained = q.drain_messages()
         var n = len(drained)
         while len(drained) > 0:
@@ -1218,3 +1238,19 @@ struct Router:
 
     def consumer_count(ref self) -> Int:
         return len(self._consumers)
+
+    # ---- Tier 2: listing accessors for the management plane ----
+
+    def list_queue_names(ref self) -> List[String]:
+        """Owned list of all declared queue names."""
+        var names = List[String]()
+        for i in range(len(self._queue_index)):
+            names.append(self._queue_index[i])
+        return names^
+
+    def list_exchange_names(ref self) -> List[String]:
+        """Owned list of all declared exchange names."""
+        var names = List[String]()
+        for i in range(len(self._exchange_index)):
+            names.append(self._exchange_index[i])
+        return names^

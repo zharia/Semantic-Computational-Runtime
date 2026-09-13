@@ -17,6 +17,7 @@ from std.collections import List, Optional
 from hyrx.core.queue import Delivery
 from hyrx.embedded.api import HyrxEngine, HyrxConfig
 from hyrx.amqp.adapter import AMQPAdapter
+from hyrx.core.pool_stats import PoolStats
 
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.status import BrokerStatus
@@ -356,6 +357,19 @@ struct HyrxMQBroker:
         s.messages_published = stats.messages_published
         s.messages_delivered = stats.messages_delivered
         s.messages_acked = stats.messages_acknowledged
+        # Tier 1 additions — already computed by the engine.
+        s.messages_rejected = stats.messages_rejected
+        s.pool_stats = PoolStats(
+            stats.pool_stats.allocations,
+            stats.pool_stats.reuses,
+            stats.pool_stats.capacity,
+            stats.pool_stats.in_use,
+        )
+        # Connection/content-error counters live in the listener; default 0
+        # here. The listener populates its own status() override when wired.
+        s.active_connections = 0
+        s.refused_connections = 0
+        s.content_errors = 0
         return s^
 
     def health(ref self) -> String:
@@ -371,6 +385,16 @@ struct HyrxMQBroker:
 
     def node_name(ref self) -> String:
         return self._config.node_name
+
+    # ---- Tier 2: listing accessors for the management plane ----
+
+    def list_queue_names(ref self) -> List[String]:
+        """Owned list of all declared queue names."""
+        return self._engine.list_queue_names()
+
+    def list_exchange_names(ref self) -> List[String]:
+        """Owned list of all declared exchange names."""
+        return self._engine.list_exchange_names()
 
     # ---- protocol path ----
 

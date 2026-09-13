@@ -1,0 +1,5 @@
+body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; }
+.status { margin: 1rem 0; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 4px; }
+.endpoint { margin: 0.5rem 0; font-family: monospace; }
+.healthy { color: #2f855a; }
+.unhealthy { color: #c53030; }

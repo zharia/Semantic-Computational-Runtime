@@ -41,7 +41,7 @@ struct HyrxConfig:
         self._buffer_pool_max_slabs = max_slabs
         self._buffer_pool_enabled = False
 
-struct HyrxStats:
+struct HyrxStats(Copyable):
     """Snapshot of engine statistics."""
 
     var messages_published: Int
@@ -381,3 +381,13 @@ struct HyrxEngine:
             self._router.consumer_count(),
             self._router.pool_stats(),
         )
+
+    # ---- Tier 2: listing accessors for the management plane ----
+
+    def list_queue_names(ref self) -> List[String]:
+        """Owned list of all declared queue names."""
+        return self._router.list_queue_names()
+
+    def list_exchange_names(ref self) -> List[String]:
+        """Owned list of all declared exchange names."""
+        return self._router.list_exchange_names()

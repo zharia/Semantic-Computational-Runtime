@@ -2,7 +2,7 @@
 #
 # Pure data, no ownership semantics. Used for diagnostics only.
 
-struct PoolStats:
+struct PoolStats(Copyable):
     """Snapshot of pool allocation activity."""
 
     var allocations: Int
