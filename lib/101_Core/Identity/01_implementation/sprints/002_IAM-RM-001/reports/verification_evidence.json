@@ -1,0 +1,470 @@
+{
+  "exploration": {
+    "n": 8,
+    "states_explored": 155,
+    "transitions_attempted": 504,
+    "transitions_legal": 170,
+    "transitions_illegal": 334,
+    "max_depth": 3,
+    "pruned": 16,
+    "boundary_reason": "complete",
+    "invariant_violations": [],
+    "elapsed_seconds": 0.14030098915100098,
+    "seeds_used": [
+      0
+    ]
+  },
+  "adversarial": [
+    {
+      "index": 1,
+      "name": "normal allocation",
+      "passed": true,
+      "detail": "H={42}",
+      "invariants": [
+        "I004",
+        "I005",
+        "I007"
+      ],
+      "trace": []
+    },
+    {
+      "index": 2,
+      "name": "overlapping domain",
+      "passed": true,
+      "detail": "rejected: Requested region [64, 192) overlaps sibling domain DOM_A ([0, 128))",
+      "invariants": [
+        "I002"
+      ],
+      "trace": []
+    },
+    {
+      "index": 3,
+      "name": "nested domain",
+      "passed": true,
+      "detail": "legal subset accepted",
+      "invariants": [
+        "I003"
+      ],
+      "trace": []
+    },
+    {
+      "index": 4,
+      "name": "out-of-domain allocation",
+      "passed": true,
+      "detail": "rejected: SID 200 is outside domain DOM_A region [0, 128)",
+      "invariants": [
+        "I004"
+      ],
+      "trace": []
+    },
+    {
+      "index": 5,
+      "name": "stale authority",
+      "passed": true,
+      "detail": "rejected: Stale authority generation 1, current is 2",
+      "invariants": [
+        "I008"
+      ],
+      "trace": []
+    },
+    {
+      "index": 6,
+      "name": "authority rotation",
+      "passed": true,
+      "detail": "gen=2",
+      "invariants": [
+        "I008"
+      ],
+      "trace": []
+    },
+    {
+      "index": 7,
+      "name": "revoked authority",
+      "passed": true,
+      "detail": "rejected: Authority AUTH_A is not ACTIVE: AuthorityState.REVOKED",
+      "invariants": [
+        "I006"
+      ],
+      "trace": []
+    },
+    {
+      "index": 8,
+      "name": "duplicate commit",
+      "passed": true,
+      "detail": "H={42}",
+      "invariants": [
+        "I016"
+      ],
+      "trace": []
+    },
+    {
+      "index": 9,
+      "name": "SID reuse after retirement",
+      "passed": true,
+      "detail": "rejected: SID 42 has already been historically allocated",
+      "invariants": [
+        "I010"
+      ],
+      "trace": []
+    },
+    {
+      "index": 10,
+      "name": "snapshot rollback",
+      "passed": true,
+      "detail": "resurrect rejected: SID 2 has already been historically allocated; H={1, 2}",
+      "invariants": [
+        "I012"
+      ],
+      "trace": []
+    },
+    {
+      "index": 11,
+      "name": "crash during reservation",
+      "passed": true,
+      "detail": "H=set()",
+      "invariants": [
+        "I011"
+      ],
+      "trace": []
+    },
+    {
+      "index": 12,
+      "name": "crash after commit",
+      "passed": true,
+      "detail": "H={7}",
+      "invariants": [
+        "I011"
+      ],
+      "trace": []
+    },
+    {
+      "index": 13,
+      "name": "lost acknowledgement",
+      "passed": true,
+      "detail": "H={7}",
+      "invariants": [
+        "I016"
+      ],
+      "trace": []
+    },
+    {
+      "index": 14,
+      "name": "retry after commit",
+      "passed": true,
+      "detail": "H={7}",
+      "invariants": [
+        "I016"
+      ],
+      "trace": []
+    },
+    {
+      "index": 15,
+      "name": "concurrent sibling delegation",
+      "passed": true,
+      "detail": "disjoint siblings accepted",
+      "invariants": [
+        "I002"
+      ],
+      "trace": []
+    },
+    {
+      "index": 16,
+      "name": "concurrent allocation",
+      "passed": true,
+      "detail": "H={10, 11}",
+      "invariants": [
+        "I005"
+      ],
+      "trace": []
+    },
+    {
+      "index": 17,
+      "name": "malicious allocation outside domain",
+      "passed": true,
+      "detail": "rejected: SID 999 is outside domain DOM_A region [0, 128)",
+      "invariants": [
+        "I004"
+      ],
+      "trace": []
+    },
+    {
+      "index": 18,
+      "name": "stale process after key rotation",
+      "passed": true,
+      "detail": "rejected: Stale authority generation 1, current is 2",
+      "invariants": [
+        "I008"
+      ],
+      "trace": []
+    },
+    {
+      "index": 19,
+      "name": "abandoned domain",
+      "passed": true,
+      "detail": "rejected: Domain DOM_ABANDON is not ACTIVE (state: DomainState.RESERVED)",
+      "invariants": [
+        "I006"
+      ],
+      "trace": []
+    },
+    {
+      "index": 20,
+      "name": "exhausted domain",
+      "passed": true,
+      "detail": "rejected: SID 2 is outside domain DOM_TINY region [0, 2)",
+      "invariants": [
+        "I004"
+      ],
+      "trace": []
+    },
+    {
+      "index": 21,
+      "name": "fragmented domain",
+      "passed": true,
+      "detail": "disjoint fragments accepted",
+      "invariants": [
+        "I002"
+      ],
+      "trace": []
+    },
+    {
+      "index": 22,
+      "name": "deep delegation",
+      "passed": true,
+      "detail": "depth 3 accepted",
+      "invariants": [
+        "I003"
+      ],
+      "trace": []
+    },
+    {
+      "index": 23,
+      "name": "invalid provenance",
+      "passed": true,
+      "detail": "wrong root rejected",
+      "invariants": [
+        "I007"
+      ],
+      "trace": []
+    },
+    {
+      "index": 24,
+      "name": "corrupted provenance",
+      "passed": true,
+      "detail": "detected: [('IAM-I007', 'Committed SID 5 has no provenance record in P'), ('IAM-I010', 'Historical SID 5 missing provenance record')]",
+      "invariants": [
+        "I007"
+      ],
+      "trace": []
+    },
+    {
+      "index": 25,
+      "name": "conflicting deterministic allocation",
+      "passed": true,
+      "detail": "rejected: Transaction TX25 already bound to SID 5; conflicting deterministic allocation for SID 6",
+      "invariants": [
+        "I016"
+      ],
+      "trace": []
+    }
+  ],
+  "scenarios": {
+    "crash_recovery": {
+      "Case A crash during reservation": {
+        "reservation_persisted": true,
+        "historical_unchanged": true,
+        "invariants": []
+      },
+      "Case B crash after commit": {
+        "allocation_remains_historical": true,
+        "invariants": []
+      },
+      "Case C lost acknowledgement": {
+        "single_allocation": true,
+        "invariants": []
+      },
+      "Case D restore stale snapshot": {
+        "resurrection_rejected": true,
+        "H_after_recover": [
+          10,
+          11
+        ],
+        "invariants": []
+      }
+    },
+    "snapshot_safety": {
+      "H_snap1": [
+        1
+      ],
+      "H_snap2": [
+        1,
+        2
+      ],
+      "monotonic": true,
+      "H_live_before_restore": [
+        1,
+        2
+      ],
+      "H_after_restore": [
+        1,
+        2
+      ],
+      "no_backwards_movement": true,
+      "invariants": []
+    },
+    "generation_fencing": {
+      "old_allocation_still_valid": true,
+      "stale_generation_rejected": true,
+      "rejection_detail": "Stale authority generation 1, current is 2",
+      "current_generation": 2,
+      "generation_fencing_ne_identity_mutation": true,
+      "invariants": []
+    },
+    "transaction_idempotence": {
+      "same_tx_three_times_single_allocation": true,
+      "different_tx_same_sid_rejected": true,
+      "different_tx_rejection_detail": "SID 30 has already been historically allocated",
+      "invariants": []
+    },
+    "historical_non_reuse": {
+      "retired_reuse_rejected": true,
+      "retired_reuse_detail": "SID 40 has already been historically allocated",
+      "unbound_reuse_rejected": true,
+      "unbound_still_historical": true,
+      "invariants": []
+    },
+    "provenance": {
+      "valid_chain": true,
+      "broken_chain_wrong_root": false,
+      "wrong_authority_detected": true,
+      "wrong_authority_violations": [
+        [
+          "IAM-I006",
+          "SID 51 allocated by authority NONEXISTENT but domain DOM_A assigned authority is AUTH_A"
+        ],
+        [
+          "IAM-I007",
+          "Provenance for SID 51 references invalid authority NONEXISTENT"
+        ]
+      ],
+      "invariants": []
+    },
+    "binding_manifestation": {
+      "allocated_never_bound_historical": true,
+      "manifestation_handle_count": 2,
+      "latest_handle_active": true,
+      "previous_handle_inactive": true,
+      "sid_unchanged_through_manifestation": true,
+      "binding_separate": true,
+      "invariants": []
+    }
+  },
+  "concurrency": {
+    "disjoint": {
+      "scenario": "disjoint domain concurrency",
+      "interleavings": 2,
+      "all_succeeded": true,
+      "coordination_required": false,
+      "results": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "success": true,
+          "violations": [],
+          "H": [
+            10,
+            200
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "success": true,
+          "violations": [],
+          "H": [
+            10,
+            200
+          ]
+        }
+      ]
+    },
+    "shared": {
+      "scenario": "shared domain concurrency",
+      "distinct_sid_interleavings": 2,
+      "distinct_sid_all_safe": true,
+      "same_sid_second_tx_rejected": true,
+      "rejection_detail": "SID 1 has already been historically allocated",
+      "violations": [],
+      "coordination_required": true
+    },
+    "overlapping_delegation": {
+      "scenario": "overlapping delegation race",
+      "overlap_rejected": true,
+      "detail": "Requested region [64, 192) overlaps sibling domain DOM_A ([0, 128))",
+      "violations": []
+    },
+    "allocation_race": {
+      "scenario": "allocation race",
+      "duplicate_sid_rejected": true,
+      "detail": "SID 5 has already been historically allocated",
+      "H": [
+        5
+      ],
+      "violations": []
+    }
+  },
+  "geometry": [
+    {
+      "geometry": "aligned binary intervals / buddy",
+      "aligned_block_size": 32,
+      "blocks": 8,
+      "capacity_utilisation": 1.0,
+      "fragmentation": 0.0,
+      "stranded_capacity": 0,
+      "delegation_depth": 2,
+      "coordination_requirement": "none between disjoint blocks",
+      "historical_compression_potential": "high (power-of-two runs)",
+      "index_implications": "bit-prefix index natural"
+    },
+    {
+      "geometry": "prefix / radix",
+      "prefix_bits": 3,
+      "domains": 8,
+      "capacity_utilisation": 1.0,
+      "fragmentation": 0.0,
+      "stranded_capacity": 0,
+      "delegation_depth": 3,
+      "coordination_requirement": "none between disjoint prefixes",
+      "historical_compression_potential": "very high (prefix trie)",
+      "index_implications": "trie/radix index"
+    },
+    {
+      "geometry": "arbitrary aligned intervals",
+      "blocks": 4,
+      "capacity_utilisation": 1.0,
+      "fragmentation": 0.0,
+      "stranded_capacity": 0,
+      "delegation_depth": 2,
+      "coordination_requirement": "none between disjoint intervals",
+      "historical_compression_potential": "medium",
+      "index_implications": "interval index required"
+    },
+    {
+      "geometry": "hybrid root structured + domain allocator",
+      "root_regions": 2,
+      "child_allocations": 6,
+      "capacity_utilisation": 1.0,
+      "fragmentation": 0.0,
+      "stranded_capacity": 0,
+      "delegation_depth": 3,
+      "coordination_requirement": "root no coordination; within-domain serialisation",
+      "historical_compression_potential": "high",
+      "index_implications": "hybrid two-level index"
+    }
+  ],
+  "elapsed_seconds": 0.16945171356201172
+}
