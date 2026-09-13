@@ -1,0 +1,24 @@
+{
+  "name": "hyrx-wasm",
+  "version": "0.1.0",
+  "description": "Hyrx messaging engine compiled to WebAssembly",
+  "main": "js/hyrx.js",
+  "type": "module",
+  "exports": {
+    ".": "./js/hyrx.js"
+  },
+  "files": [
+    "js/",
+    "dist/",
+    "wit/",
+    "README.md"
+  ],
+  "scripts": {
+    "build:wasm": "cd ../.. && make -C src/hyrx_wasm wasm",
+    "build:native": "cd ../.. && make -C src/hyrx_wasm native",
+    "test": "cd ../.. && make -C src/hyrx_wasm test",
+    "serve": "cd dist && python3 -m http.server 8080"
+  },
+  "keywords": ["wasm", "webassembly", "messaging", "broker", "amqp"],
+  "license": "Apache-2.0"
+}

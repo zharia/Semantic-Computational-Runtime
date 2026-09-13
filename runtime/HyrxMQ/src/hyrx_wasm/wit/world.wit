@@ -1,0 +1,204 @@
+/// Hyrx WASM Component Interface
+/// Exposes the core Hyrx messaging engine as a WASM component.
+///
+/// Mirrors the Mojo HyrxEngine API (src/hyrx/embedded/api.mojo)
+/// adapted for WebAssembly Component Model.
+
+package hyrx:wasm@0.1.0;
+
+/// A contiguous byte buffer.
+interface buffer {
+    resource buffer-resource {
+        /// Create a new buffer with given capacity.
+        constructor(capacity: u32);
+        /// Current logical size in bytes.
+        size: func() -> u32;
+        /// Total allocated capacity.
+        capacity: func() -> u32;
+        /// Read a single byte by index.
+        get: func(index: u32) -> u8;
+        /// Write a single byte by index.
+        set: func(index: u32, value: u8);
+        /// Append one byte.
+        append: func(value: u8);
+        /// Reset logical length to 0.
+        clear: func();
+        /// Copy contents into a new byte list.
+        to-bytes: func() -> list<u8>;
+    }
+}
+
+/// Buffer pool for efficient reuse.
+interface pool {
+    resource pool-resource {
+        /// Create a pool with max size-class bytes and max pooled buffers.
+        constructor(max-class-bytes: u32, max-pooled: u32);
+        /// Acquire a buffer of at least min-bytes.
+        acquire: func(min-bytes: u32) -> buffer-resource;
+        /// Return a buffer to the pool.
+        release: func(buf: buffer-resource);
+        /// Pool statistics.
+        stats: func() -> pool-stats;
+    }
+
+    record pool-stats {
+        allocations: u32,
+        reuses: u32,
+        capacity: u32,
+        in-use: u32,
+    }
+}
+
+/// Message envelope and payload.
+interface message {
+    resource message-resource {
+        /// Create a message with routing key and payload bytes.
+        constructor(routing-key: string, payload: list<u8>);
+        /// Get the routing key.
+        routing-key: func() -> string;
+        /// Get the payload as bytes.
+        payload: func() -> list<u8>;
+        /// Get the payload size (no copy).
+        payload-size: func() -> u32;
+        /// Set custom headers.
+        set-header: func(key: string, value: string);
+        /// Get a header value.
+        get-header: func(key: string) -> option<string>;
+    }
+}
+
+/// Message queue with delivery tracking.
+interface queue {
+    use message.resource=message-resource;
+
+    resource queue-resource {
+        /// Create a bounded queue.
+        constructor(name: string, capacity: u32);
+        /// Enqueue a message. Returns false if full (backpressure).
+        enqueue: func(msg: message-resource) -> bool;
+        /// Dequeue next message. Returns delivery tag or none.
+        dequeue: func() -> option<u64>;
+        /// Read payload of an unacked message.
+        read-payload: func(delivery-tag: u64) -> list<u8>;
+        /// Acknowledge a delivery (message destroyed).
+        acknowledge: func(delivery-tag: u64) -> bool;
+        /// Reject a delivery (message requeued).
+        reject: func(delivery-tag: u64) -> bool;
+        /// Queue name.
+        name: func() -> string;
+        /// Ready depth.
+        depth: func() -> u32;
+        /// Unacked count.
+        unacked-count: func() -> u32;
+        /// Total capacity.
+        capacity: func() -> u32;
+    }
+}
+
+/// Exchange with routing logic.
+interface exchange {
+    enum exchange-type {
+        direct,
+        fanout,
+        topic,
+        headers,
+    }
+
+    resource exchange-resource {
+        /// Create an exchange.
+        constructor(name: string, exchange-type: exchange-type);
+        /// Add a queue binding.
+        add-binding: func(queue-name: string, routing-key: string);
+        /// Remove a queue binding.
+        remove-binding: func(queue-name: string, routing-key: string) -> bool;
+        /// Match routing key to bound queues.
+        match: func(routing-key: string) -> list<string>;
+        /// Exchange name.
+        name: func() -> string;
+        /// Binding count.
+        binding-count: func() -> u32;
+    }
+}
+
+/// Top-level Hyrx engine (broker).
+interface engine {
+    use message.resource=message-resource;
+    use queue.resource=queue-resource;
+    use exchange.resource=exchange-resource;
+    use pool.resource=pool-resource;
+
+    /// Engine statistics snapshot.
+    record engine-stats {
+        messages-published: u64,
+        messages-delivered: u64,
+        messages-acknowledged: u64,
+        messages-rejected: u64,
+        active-queues: u32,
+        active-consumers: u32,
+    }
+
+    resource engine-resource {
+        /// Create a new engine with default config.
+        constructor();
+        /// Create with custom queue capacity.
+        constructor-with-capacity(queue-capacity: u32);
+
+        // --- Topology ---
+        /// Declare an exchange. Returns true if created.
+        declare-exchange: func(name: string, exchange-type: exchange.resource=exchange-resource) -> bool;
+        /// Declare a queue. Returns true if created.
+        declare-queue: func(name: string) -> bool;
+        /// Bind a queue to an exchange.
+        bind-queue: func(queue-name: string, exchange-name: string, routing-key: string) -> bool;
+        /// Unbind a queue from an exchange.
+        unbind-queue: func(queue-name: string, exchange-name: string, routing-key: string) -> bool;
+        /// Delete a queue. Returns message count destroyed or -1 if missing.
+        delete-queue: func(name: string) -> i32;
+        /// Delete an exchange. Returns 0 or -1 if missing.
+        delete-exchange: func(name: string) -> i32;
+        /// Check if a queue exists.
+        has-queue: func(name: string) -> bool;
+        /// Check if an exchange exists.
+        has-exchange: func(name: string) -> bool;
+        /// List all queue names.
+        list-queues: func() -> list<string>;
+        /// List all exchange names.
+        list-exchanges: func() -> list<string>;
+
+        // --- Messaging ---
+        /// Publish a message through an exchange. Returns routed count.
+        publish: func(msg: message-resource, exchange-name: string) -> u32;
+        /// Publish directly to a queue (default exchange).
+        publish-to-queue: func(msg: message-resource, queue-name: string) -> u32;
+        /// Register a consumer. Returns consumer id.
+        consume: func(queue-name: string) -> u64;
+        /// Deliver next message for a consumer.
+        next-message: func(consumer-id: u64) -> option<u64>;
+        /// Read payload of a delivered message.
+        read-payload: func(consumer-id: u64, delivery-tag: u64) -> list<u8>;
+        /// Acknowledge a delivery.
+        acknowledge: func(consumer-id: u64, delivery-tag: u64) -> bool;
+        /// Reject a delivery (requeue).
+        reject: func(consumer-id: u64, delivery-tag: u64) -> bool;
+        /// Bulk acknowledge (all tags <= delivery-tag).
+        bulk-ack: func(consumer-id: u64, delivery-tag: u64) -> u32;
+        /// Nack a delivery.
+        nack: func(consumer-id: u64, delivery-tag: u64, requeue: bool) -> bool;
+        /// Unregister consumer (requeues unacked).
+        unregister-consumer: func(consumer-id: u64) -> bool;
+
+        // --- Stats ---
+        /// Engine statistics.
+        stats: func() -> engine-stats;
+    }
+}
+
+/// The Hyrx WASM world combines all interfaces.
+world hyrx-wasm {
+    export engine;
+    export exchange;
+    export queue;
+    export message;
+    export buffer;
+    export pool;
+}

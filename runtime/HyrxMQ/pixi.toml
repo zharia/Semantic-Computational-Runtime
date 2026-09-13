@@ -43,3 +43,9 @@ bench-regress = "python benchmarks/perf/compare.py --baseline benchmarks/perf/ba
 docker-build = "docker build -t hyrxmq ."
 docker-run = "docker run -p 8081:8080 -p 5674:5673 hyrxmq"
 docker-stop = "docker stop hyrxmq 2>/dev/null; docker rm hyrxmq 2>/dev/null"
+
+# Stress / soak benchmark suite
+bench-stress = "bash benchmarks/stress/run.sh"
+bench-stress-quick = "bash benchmarks/stress/run.sh --quick"
+bench-stress-soak = "bash benchmarks/stress/run.sh --soak 3600"
+
