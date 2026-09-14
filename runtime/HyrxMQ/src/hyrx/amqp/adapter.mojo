@@ -115,6 +115,14 @@ struct AMQPAdapter:
         """Total bindings on an exchange; -1 missing."""
         return engine.exchange_binding_total(name^)
 
+    def exchange_count(ref self, ref engine: HyrxEngine) -> Int:
+        """Number of declared exchanges."""
+        return engine.exchange_count()
+
+    def queue_count(ref self, ref engine: HyrxEngine) -> Int:
+        """Number of declared queues."""
+        return engine.queue_count()
+
     def bind_queue(
         mut self,
         mut engine: HyrxEngine,

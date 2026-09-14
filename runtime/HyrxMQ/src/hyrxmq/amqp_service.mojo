@@ -939,6 +939,10 @@ struct AMQPService:
     # 0017 T4: per-(connection, channel) tx staging (90).
     var _tx: Dict[UInt64, List[_TxStaged]]
     var _tx_keys: List[UInt64]
+    # 0025: resource governance — max message size (configurable ceiling).
+    var _max_message_size: Int
+    var _max_queues: Int
+    var _max_exchanges: Int
 
     def __init__(out self, var config: HyrxMQConfig):
         # Read frame_max + the T4 values (users table, heartbeat advertised)
@@ -946,6 +950,9 @@ struct AMQPService:
         # read from the still-owned config here, then it is moved.
         var fm = config.frame_max
         var hb = config.heartbeat_secs
+        var max_msg = config.max_message_size
+        var max_q = config.max_queues
+        var max_ex = config.max_exchanges
         # Element-wise rebuild of the users table (an explicit __init__ chain
         # is used in place of List[UserRecord].copy() so the copy never
         # depends on a non-trivial struct list's CollectionElement conformance
@@ -992,6 +999,9 @@ struct AMQPService:
         # codec ceiling by the listener. config.frame_max is validated >= 4096
         # (see HyrxMQConfig.frame_max / validate).
         self._frame_max = fm
+        self._max_message_size = max_msg
+        self._max_queues = max_q
+        self._max_exchanges = max_ex
 
     # ---- 0017 T2: per-channel delivery-tag namespaces ----
 
@@ -1607,6 +1617,17 @@ struct AMQPService:
             else:
                 var created = True
                 if len(ex_name.bytes()) != 0:
+                    # 0025: enforce max_exchanges before declaring.
+                    if not e_exists:
+                        var ecnt = self._broker.exchange_count()
+                        if ecnt >= self._max_exchanges:
+                            self._mark_channel_closed(conn_id, chan)
+                            return self._channel_error(
+                                chan,
+                                REPLY_PRECONDITION_FAILED(),
+                                "resource_limit - too many exchanges",
+                                mid,
+                            )
                     created = self._broker.declare_exchange(
                         ex_name.copy(), ex_type.copy()
                     )
@@ -1800,6 +1821,17 @@ struct AMQPService:
             if ov.__bool__():
                 if ov.value() == "reject-publish":
                     overflow_reject = True
+            # 0025: enforce max_queues before declaring new queue.
+            if not q_exists:
+                var qcnt = self._broker.queue_count()
+                if qcnt >= self._max_queues:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan,
+                        REPLY_PRECONDITION_FAILED(),
+                        "resource_limit - too many queues",
+                        mid,
+                    )
             _ = self._broker.declare_queue_full(
                 q_name.copy(), q_durable, ttl_ms, expires_ms,
                 max_len, overflow_reject, dlx_name.copy(), dlrk_name.copy(),
@@ -2737,6 +2769,13 @@ struct AMQPService:
             self._fail_content(conn_id, "second content header for one publish")
             return Optional[List[UInt8]]()
         var size = Int(hdr.body_size)
+        if size > self._max_message_size:
+            self._fail_content(
+                conn_id,
+                "message body size " + String(size) + " exceeds configured "
+                + "max_message_size " + String(self._max_message_size),
+            )
+            return Optional[List[UInt8]]()
         if size > MAX_PENDING_BODY():
             self._fail_content(
                 conn_id,

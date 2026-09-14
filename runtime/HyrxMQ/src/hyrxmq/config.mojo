@@ -135,6 +135,13 @@ struct HyrxMQConfig:
     var wss_origin_allowlist: List[String]
     # T3 (admin HTTP): port, default 0 = OFF.
     var admin_http_port: Int
+    # 0025: resource governance — hard limits.
+    var max_message_size: Int
+    var max_queues: Int
+    var max_exchanges: Int
+    var max_channels_per_connection: Int
+    var idle_timeout_secs: Int
+    var max_memory_bytes: Int
 
     def __init__(out self):
         self.listen_host = "0.0.0.0"
@@ -158,6 +165,12 @@ struct HyrxMQConfig:
         self.wss_tls_key_path = ""
         self.wss_origin_allowlist = List[String]()
         self.admin_http_port = 0
+        self.max_message_size = 134217728
+        self.max_queues = 65535
+        self.max_exchanges = 65535
+        self.max_channels_per_connection = 65535
+        self.idle_timeout_secs = 300
+        self.max_memory_bytes = 536870912
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -180,6 +193,12 @@ struct HyrxMQConfig:
         self.wss_tls_key_path = existing.wss_tls_key_path.copy()
         self.wss_origin_allowlist = existing.wss_origin_allowlist.copy()
         self.admin_http_port = existing.admin_http_port
+        self.max_message_size = existing.max_message_size
+        self.max_queues = existing.max_queues
+        self.max_exchanges = existing.max_exchanges
+        self.max_channels_per_connection = existing.max_channels_per_connection
+        self.idle_timeout_secs = existing.idle_timeout_secs
+        self.max_memory_bytes = existing.max_memory_bytes
 
     def apply(mut self, var key: String, var value: String) raises:
         """Assign one recognized key. Unknown keys are REJECTED (audit §17).
@@ -248,6 +267,18 @@ struct HyrxMQConfig:
                 i += 1
         elif key == "admin_http_port":
             self.admin_http_port = _require_int(key, value)
+        elif key == "max_message_size":
+            self.max_message_size = _require_int(key, value)
+        elif key == "max_queues":
+            self.max_queues = _require_int(key, value)
+        elif key == "max_exchanges":
+            self.max_exchanges = _require_int(key, value)
+        elif key == "max_channels_per_connection":
+            self.max_channels_per_connection = _require_int(key, value)
+        elif key == "idle_timeout_secs":
+            self.idle_timeout_secs = _require_int(key, value)
+        elif key == "max_memory_bytes":
+            self.max_memory_bytes = _require_int(key, value)
         else:
             raise "config: unknown field '" + key + "'"
 
@@ -344,6 +375,18 @@ struct HyrxMQConfig:
             raise "config: wss_listen out of range"
         if self.admin_http_port < 0 or self.admin_http_port > 65535:
             raise "config: admin_http_port out of range"
+        if self.max_message_size <= 0:
+            raise "config: max_message_size must be positive"
+        if self.max_queues <= 0:
+            raise "config: max_queues must be positive"
+        if self.max_exchanges <= 0:
+            raise "config: max_exchanges must be positive"
+        if self.max_channels_per_connection <= 0:
+            raise "config: max_channels_per_connection must be positive"
+        if self.idle_timeout_secs < 0:
+            raise "config: idle_timeout_secs must not be negative"
+        if self.max_memory_bytes <= 0:
+            raise "config: max_memory_bytes must be positive"
         if self.wss_tls_mode == "path":
             if len(self.wss_tls_path.strip().bytes()) == 0:
                 raise "config: wss_tls_mode='path' requires a non-empty wss_tls_path (the cert chain PEM)"

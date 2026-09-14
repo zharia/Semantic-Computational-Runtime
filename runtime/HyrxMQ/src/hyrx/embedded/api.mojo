@@ -179,6 +179,14 @@ struct HyrxEngine:
         """Total bindings on an exchange; -1 missing."""
         return self._router.exchange_binding_total(name^)
 
+    def exchange_count(ref self) -> Int:
+        """Number of declared exchanges."""
+        return self._router.exchange_count()
+
+    def queue_count(ref self) -> Int:
+        """Number of declared queues."""
+        return self._router.queue_count()
+
     def bind_queue(
         mut self,
         queue_name: String,

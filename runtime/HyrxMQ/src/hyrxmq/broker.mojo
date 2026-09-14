@@ -139,6 +139,14 @@ struct HyrxMQBroker:
         """Total bindings on an exchange; -1 missing."""
         return self._adapter.exchange_binding_total(self._engine, name^)
 
+    def exchange_count(ref self) -> Int:
+        """Number of declared exchanges."""
+        return self._adapter.exchange_count(self._engine)
+
+    def queue_count(ref self) -> Int:
+        """Number of declared queues."""
+        return self._adapter.queue_count(self._engine)
+
     def bind_queue(
         mut self,
         var queue: String,
