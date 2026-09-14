@@ -13,6 +13,7 @@
 # in-process lifecycle, not a bound socket (see status()).
 
 from std.collections import List, Optional
+from std.time import monotonic
 
 from hyrx.core.queue import Delivery
 from hyrx.embedded.api import HyrxEngine, HyrxConfig
@@ -20,7 +21,7 @@ from hyrx.amqp.adapter import AMQPAdapter
 from hyrx.core.pool_stats import PoolStats
 
 from hyrxmq.config import HyrxMQConfig
-from hyrxmq.status import BrokerStatus
+from hyrxmq.status import BrokerStatus, LatencyHistogram
 from hyrx.core.storage import MessageJournal
 from hyrx.core.exchange import HeaderArgs
 
@@ -46,6 +47,8 @@ struct HyrxMQBroker:
     var _config: HyrxMQConfig
     var _state: Int
     var _started: Bool
+    var _publish_latency: LatencyHistogram
+    var _consume_latency: LatencyHistogram
 
     def __init__(out self, var config: HyrxMQConfig):
         self._engine = HyrxEngine(
@@ -59,6 +62,8 @@ struct HyrxMQBroker:
         self._config = config^
         self._state = BROKER_STATE_STARTING()
         self._started = False
+        self._publish_latency = LatencyHistogram()
+        self._consume_latency = LatencyHistogram()
 
     # ---- lifecycle ----
 
@@ -169,9 +174,13 @@ struct HyrxMQBroker:
     ) raises -> Int:
         """Publish a body through an exchange. Returns number of queues routed.
         """
-        return self._adapter.publish(
+        var t0 = monotonic()
+        var routed = self._adapter.publish(
             self._engine, routing_key^, body^, exchange^
         )
+        var elapsed_us = Int((monotonic() - t0) // 1000)
+        self._publish_latency.observe(elapsed_us)
+        return routed
 
     # ---- 0017 T2: publish with byte-faithful content props ----
 
@@ -232,7 +241,11 @@ struct HyrxMQBroker:
 
     def deliver(mut self, consumer_id: UInt64) raises -> Optional[Delivery]:
         """Deliver the next message for a consumer, or None."""
-        return self._adapter.deliver_next(self._engine, consumer_id)
+        var t0 = monotonic()
+        var delivery = self._adapter.deliver_next(self._engine, consumer_id)
+        var elapsed_us = Int((monotonic() - t0) // 1000)
+        self._consume_latency.observe(elapsed_us)
+        return delivery^
 
     def read_payload(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
@@ -378,6 +391,8 @@ struct HyrxMQBroker:
         s.active_connections = 0
         s.refused_connections = 0
         s.content_errors = 0
+        s.publish_latency = self._publish_latency.copy()
+        s.consume_latency = self._consume_latency.copy()
         return s^
 
     def health(ref self) -> String:

@@ -8,6 +8,100 @@ from std.collections import List
 from hyrx.core.pool_stats import PoolStats
 
 
+struct LatencyHistogram(Copyable):
+    """Fixed-bucket latency histogram (microsecond resolution).
+
+    Buckets: 0-100us, 100-500us, 500us-1ms, 1-5ms, 5-10ms, 10-50ms, 50-100ms,
+    100ms-1s, 1s+. Covers the AMQP publish/consume latency spectrum.
+    """
+
+    var bucket_le_100us: Int
+    var bucket_le_500us: Int
+    var bucket_le_1ms: Int
+    var bucket_le_5ms: Int
+    var bucket_le_10ms: Int
+    var bucket_le_50ms: Int
+    var bucket_le_100ms: Int
+    var bucket_le_1s: Int
+    var bucket_gt_1s: Int
+    var total_count: Int
+    var total_sum_us: Int
+
+    def __init__(out self):
+        self.bucket_le_100us = 0
+        self.bucket_le_500us = 0
+        self.bucket_le_1ms = 0
+        self.bucket_le_5ms = 0
+        self.bucket_le_10ms = 0
+        self.bucket_le_50ms = 0
+        self.bucket_le_100ms = 0
+        self.bucket_le_1s = 0
+        self.bucket_gt_1s = 0
+        self.total_count = 0
+        self.total_sum_us = 0
+
+    def copy(ref self) -> Self:
+        """Return a copy of this histogram."""
+        var h = LatencyHistogram()
+        h.bucket_le_100us = self.bucket_le_100us
+        h.bucket_le_500us = self.bucket_le_500us
+        h.bucket_le_1ms = self.bucket_le_1ms
+        h.bucket_le_5ms = self.bucket_le_5ms
+        h.bucket_le_10ms = self.bucket_le_10ms
+        h.bucket_le_50ms = self.bucket_le_50ms
+        h.bucket_le_100ms = self.bucket_le_100ms
+        h.bucket_le_1s = self.bucket_le_1s
+        h.bucket_gt_1s = self.bucket_gt_1s
+        h.total_count = self.total_count
+        h.total_sum_us = self.total_sum_us
+        return h^
+
+    def observe(mut self, latency_us: Int):
+        """Record a latency sample in microseconds."""
+        self.total_count += 1
+        self.total_sum_us += latency_us
+        if latency_us <= 100:
+            self.bucket_le_100us += 1
+        elif latency_us <= 500:
+            self.bucket_le_500us += 1
+        elif latency_us <= 1000:
+            self.bucket_le_1ms += 1
+        elif latency_us <= 5000:
+            self.bucket_le_5ms += 1
+        elif latency_us <= 10000:
+            self.bucket_le_10ms += 1
+        elif latency_us <= 50000:
+            self.bucket_le_50ms += 1
+        elif latency_us <= 100000:
+            self.bucket_le_100ms += 1
+        elif latency_us <= 1000000:
+            self.bucket_le_1s += 1
+        else:
+            self.bucket_gt_1s += 1
+
+    def mean_us(ref self) -> Int:
+        """Mean latency in microseconds, 0 if no samples."""
+        if self.total_count == 0:
+            return 0
+        return self.total_sum_us // self.total_count
+
+    def to_json(ref self) -> String:
+        """JSON representation for API responses."""
+        return (
+            "{\"le_100us\":" + String(self.bucket_le_100us)
+            + ",\"le_500us\":" + String(self.bucket_le_500us)
+            + ",\"le_1ms\":" + String(self.bucket_le_1ms)
+            + ",\"le_5ms\":" + String(self.bucket_le_5ms)
+            + ",\"le_10ms\":" + String(self.bucket_le_10ms)
+            + ",\"le_50ms\":" + String(self.bucket_le_50ms)
+            + ",\"le_100ms\":" + String(self.bucket_le_100ms)
+            + ",\"le_1s\":" + String(self.bucket_le_1s)
+            + ",\"gt_1s\":" + String(self.bucket_gt_1s)
+            + ",\"total\":" + String(self.total_count)
+            + ",\"mean_us\":" + String(self.mean_us()) + "}"
+        )
+
+
 struct BrokerStatus:
     """A point-in-time projection of broker state for management/health."""
 
@@ -27,6 +121,8 @@ struct BrokerStatus:
     var refused_connections: Int
     var content_errors: Int
     var pool_stats: PoolStats
+    var publish_latency: LatencyHistogram
+    var consume_latency: LatencyHistogram
 
     def __init__(out self):
         self.node_name = ""
@@ -44,6 +140,8 @@ struct BrokerStatus:
         self.refused_connections = 0
         self.content_errors = 0
         self.pool_stats = PoolStats(0, 0, 0, 0)
+        self.publish_latency = LatencyHistogram()
+        self.consume_latency = LatencyHistogram()
 
     def __copyinit__(out self, existing: Self):
         self.node_name = existing.node_name
@@ -61,6 +159,8 @@ struct BrokerStatus:
         self.refused_connections = existing.refused_connections
         self.content_errors = existing.content_errors
         self.pool_stats = existing.pool_stats
+        self.publish_latency = existing.publish_latency
+        self.consume_latency = existing.consume_latency
 
     @staticmethod
     def _json_escape(value: String) -> String:
@@ -133,6 +233,34 @@ struct BrokerStatus:
         parts.append("# HELP hyrxmq_pool_in_use Buffer pool buffers in use")
         parts.append("# TYPE hyrxmq_pool_in_use gauge")
         parts.append("hyrxmq_pool_in_use " + String(self.pool_stats.in_use))
+        # Latency histogram metrics (publish path).
+        parts.append("# HELP hyrxmq_publish_latency_us Publish latency microseconds (histogram)")
+        parts.append("# TYPE hyrxmq_publish_latency_us histogram")
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"100\"} " + String(self.publish_latency.bucket_le_100us))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"500\"} " + String(self.publish_latency.bucket_le_500us))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"1000\"} " + String(self.publish_latency.bucket_le_1ms))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"5000\"} " + String(self.publish_latency.bucket_le_5ms))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"10000\"} " + String(self.publish_latency.bucket_le_10ms))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"50000\"} " + String(self.publish_latency.bucket_le_50ms))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"100000\"} " + String(self.publish_latency.bucket_le_100ms))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"1000000\"} " + String(self.publish_latency.bucket_le_1s))
+        parts.append("hyrxmq_publish_latency_us_bucket{le=\"+Inf\"} " + String(self.publish_latency.total_count))
+        parts.append("hyrxmq_publish_latency_us_sum " + String(self.publish_latency.total_sum_us))
+        parts.append("hyrxmq_publish_latency_us_count " + String(self.publish_latency.total_count))
+        # Latency histogram metrics (consume path).
+        parts.append("# HELP hyrxmq_consume_latency_us Consume latency microseconds (histogram)")
+        parts.append("# TYPE hyrxmq_consume_latency_us histogram")
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"100\"} " + String(self.consume_latency.bucket_le_100us))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"500\"} " + String(self.consume_latency.bucket_le_500us))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"1000\"} " + String(self.consume_latency.bucket_le_1ms))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"5000\"} " + String(self.consume_latency.bucket_le_5ms))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"10000\"} " + String(self.consume_latency.bucket_le_10ms))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"50000\"} " + String(self.consume_latency.bucket_le_50ms))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"100000\"} " + String(self.consume_latency.bucket_le_100ms))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"1000000\"} " + String(self.consume_latency.bucket_le_1s))
+        parts.append("hyrxmq_consume_latency_us_bucket{le=\"+Inf\"} " + String(self.consume_latency.total_count))
+        parts.append("hyrxmq_consume_latency_us_sum " + String(self.consume_latency.total_sum_us))
+        parts.append("hyrxmq_consume_latency_us_count " + String(self.consume_latency.total_count))
         return "\n".join(parts) + "\n"
 
     def to_json(ref self) -> String:
@@ -157,4 +285,6 @@ struct BrokerStatus:
         + ",\"capacity\":" + String(self.pool_stats.capacity)
         + ",\"in_use\":" + String(self.pool_stats.in_use)
         + "}")
+        parts.append("\"publish_latency\":" + self.publish_latency.to_json())
+        parts.append("\"consume_latency\":" + self.consume_latency.to_json())
         return "{" + ",".join(parts) + "}"

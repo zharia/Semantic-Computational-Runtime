@@ -84,7 +84,13 @@ def test_json_fields() raises:
     want += "\"messages_rejected\":0,\"active_connections\":0,"
     want += "\"refused_connections\":0,\"content_errors\":0,"
     want += "\"pool_stats\":{\"allocations\":0,"
-    want += "\"reuses\":0,\"capacity\":0,\"in_use\":0}}"
+    want += "\"reuses\":0,\"capacity\":0,\"in_use\":0},"
+    want += "\"publish_latency\":{\"le_100us\":0,\"le_500us\":0,\"le_1ms\":0,"
+    want += "\"le_5ms\":0,\"le_10ms\":0,\"le_50ms\":0,\"le_100ms\":0,"
+    want += "\"le_1s\":0,\"gt_1s\":0,\"total\":0,\"mean_us\":0},"
+    want += "\"consume_latency\":{\"le_100us\":0,\"le_500us\":0,\"le_1ms\":0,"
+    want += "\"le_5ms\":0,\"le_10ms\":0,\"le_50ms\":0,\"le_100ms\":0,"
+    want += "\"le_1s\":0,\"gt_1s\":0,\"total\":0,\"mean_us\":0}}"
     check(json == want, "json exact serialization")
 
     expect_contains(json, "\"node_name\":\"hyrxmq@localhost\"", "node name")
