@@ -22,6 +22,9 @@ from hyrx.amqp.frame_codec import AMQPFrame, AMQPFrameCodec
 from hyrx.amqp.constants import (
     BASIC_ACK,
     BASIC_CLASS_ID,
+    BASIC_CONSUME,
+    BASIC_CONSUME_OK,
+    BASIC_DELIVER,
     BASIC_GET,
     BASIC_GET_EMPTY,
     BASIC_GET_OK,
@@ -511,6 +514,103 @@ def test_get_empty(
     print("  [PASS] basic.get-empty on drained queue")
 
 
+# ---- test: async push (consume -> publish -> basic.deliver) ----
+
+def test_async_push(
+    mut client: ClientStream, mut listener: AMQPListener, slot: Int
+) raises:
+    """RC-3: a consumer that registers FIRST and a publish that arrives AFTER
+    must receive an async basic.deliver push (no further client request)."""
+    # declare a fresh queue (default exchange binds by queue name)
+    var dargs = List[UInt8]()
+    reserved_short(dargs)
+    write_short_string(dargs, "interop.push.q")
+    dargs.append(0)  # bits
+    write_u32(dargs, 0)  # arguments
+    client.send(request(UInt16(1), QUEUE_DECLARE(), dargs^))
+    check_eq(listener.serve_one_frame(slot), 1, "push queue.declare served")
+    check(
+        client.next_method() == QUEUE_DECLARE_OK(),
+        "push queue declared (empty)",
+    )
+
+    # basic.consume FIRST, on the EMPTY queue, with a client consumer-tag
+    var cargs = List[UInt8]()
+    reserved_short(cargs)
+    write_short_string(cargs, "interop.push.q")
+    write_short_string(cargs, "push-ctag")
+    cargs.append(0)  # bits: no-local/no-ack/exclusive/no-wait = 0
+    write_u32(cargs, 0)  # arguments table
+    client.send(request(UInt16(1), BASIC_CONSUME(), cargs^))
+    check_eq(listener.serve_one_frame(slot), 1, "basic.consume served")
+    check(
+        client.next_method() == BASIC_CONSUME_OK(),
+        "basic.consume-ok received (nothing pending yet)",
+    )
+
+    # publish AFTER consume through the default exchange
+    var body = bytes_of("async-push-payload-0123456789")
+    var pargs = List[UInt8]()
+    reserved_short(pargs)
+    write_short_string(pargs, "")  # default exchange
+    write_short_string(pargs, "interop.push.q")
+    pargs.append(0)
+    client.send(request(UInt16(1), BASIC_PUBLISH(), pargs^))
+    check_eq(listener.serve_one_frame(slot), 1, "push publish method served")
+    var hdr = AMQPFrameCodec.encode_header_frame(
+        UInt16(1), UInt16(BASIC_CLASS_ID()), UInt64(len(body)),
+        UInt16(0), List[UInt8](),
+    )
+    client.send(hdr^)
+    check_eq(listener.serve_one_frame(slot), 1, "push content header served")
+    client.send(AMQPFrameCodec.encode_body_frame(UInt16(1), body.copy()))
+    check_eq(listener.serve_one_frame(slot), 1, "push content body served")
+
+    # the async-push drain the event loop runs after every serving round
+    listener.drain_pushes()
+
+    var push_mid = client.next_method()
+    check(
+        push_mid == BASIC_DELIVER(),
+        "async basic.deliver pushed after publish (no client request)",
+    )
+    var dr = ByteReader(client.last_payload.copy())
+    _ = dr.read_short()  # class_id
+    _ = dr.read_short()  # method_id
+    var dctag = dr.read_short_string()
+    var dtag = dr.read_long_long()
+    var dredelivered = dr.read_octet()
+    _ = dr.read_short_string()  # exchange (Delivery carries none)
+    var drkey = dr.read_short_string()
+    check(dctag == "push-ctag", "async deliver echoes client consumer-tag")
+    check(dtag > 0, "async delivery-tag > 0")
+    check_eq(Int(dredelivered), 0, "async first delivery not redelivered")
+    check(drkey == "interop.push.q", "async deliver routing-key matches")
+
+    var hf = client.next_frame()
+    check_eq(Int(hf.frame_type), 2, "async HEADER follows basic.deliver")
+    var hp = hf.payload_copy()
+    var size = UInt64(0)
+    for i in range(4, 12):
+        size = (size << 8) | UInt64(hp[i])
+    check_eq(Int(size), len(body), "async body-size matches published")
+    var got = List[UInt8]()
+    while len(got) < Int(size):
+        var bf = client.next_frame()
+        check_eq(Int(bf.frame_type), 3, "async BODY follows header")
+        var bp = bf.payload_copy()
+        for i in range(len(bp)):
+            got.append(bp[i])
+    check_bytes(got, body, "async push payload matches published body")
+
+    var aargs = List[UInt8]()
+    write_u64(aargs, dtag)
+    aargs.append(UInt8(0))  # multiple = false
+    client.send(request(UInt16(1), BASIC_ACK(), aargs^))
+    check_eq(listener.serve_one_frame(slot), 1, "async basic.ack served")
+    print("  [PASS] async push: consume -> publish -> deliver + payload")
+
+
 # ---- test: connection.close ----
 
 def test_connection_close(
@@ -576,7 +676,10 @@ def main() raises:
     print("\n--- Test 8: Get-Empty (queue drained) ---")
     test_get_empty(client, listener, slot)
 
-    print("\n--- Test 9: Connection Close ---")
+    print("\n--- Test 9: Async Push (consume -> publish -> deliver) ---")
+    test_async_push(client, listener, slot)
+
+    print("\n--- Test 10: Connection Close ---")
     test_connection_close(client, listener, slot)
 
     # ---- cleanup ----

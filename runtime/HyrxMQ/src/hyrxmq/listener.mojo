@@ -516,6 +516,47 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 except:
                     continue
 
+    def drain_and_send(mut self, slot: Int) -> Int:
+        """0027 async push: send any newly-available deliveries for one slot.
+
+        Asks the service to drain the connection's registered consumer (shared
+        _flush_deliveries emitter: same tags/headers/backpressure as the
+        consume reply) and writes the returned frames. Returns bytes sent
+        (0 when none), or -1 after a send failure — the slot is closed by the
+        same fail-closed contract as a serve error. NEVER raises.
+        """
+        if slot < 0 or slot >= len(self._conns):
+            return 0
+        if self._closed[slot]:
+            return 0
+        if not self._conns[slot].__bool__():
+            return 0
+        try:
+            var conn_id = self._conns[slot].value().conn_id()
+            var pushes = self._service.drain_pushes(conn_id)
+            var n = len(pushes)
+            if n == 0:
+                return 0
+            self._conns[slot].value().send_bytes(pushes^)
+            self._refresh_last_active(slot)
+            return n
+        except:
+            if slot >= 0 and slot < len(self._closed):
+                self._close_slot(slot)
+            return -1
+
+    def drain_all_pushes(mut self):
+        """0027 async push: drain every open connection (one bounded pass).
+
+        Cross-connection fan-in: a publish served on connection B makes
+        messages available to a consumer registered on connection A; this pass
+        (run after each serving round) pushes them. Bounded by
+        _CONSUME_FLUSH_MAX per consumer inside the service and by the slot
+        count here; a failed send closes only its own slot.
+        """
+        for slot in range(len(self._conns)):
+            _ = self.drain_and_send(slot)
+
     def slot_conn_fd(ref self, slot: Int) -> Int:
         """The raw fd of the slot's connection (event-driven registry key).
 
@@ -970,6 +1011,12 @@ struct AMQPListener:
         """
         return self._srv.serve_one_frame(slot)
 
+    def drain_pushes(mut self):
+        """0027 async push: deliver any newly-available messages for every
+        connection's registered consumer (public driver for tests/embedders
+        outside the event loop)."""
+        self._srv.drain_all_pushes()
+
     def accept_and_serve_one(mut self) raises -> Int:
         """Accept one connection and serve frames until the peer closes it.
 
@@ -986,6 +1033,10 @@ struct AMQPListener:
             if rc < 0:
                 break
             served += rc
+            # 0027: async push on the legacy path too — after each served
+            # frame, push any newly-available deliveries (consume-then-publish
+            # on the same connection; cross-connection is serialized here).
+            _ = self._srv.drain_and_send(slot)
         return served
 
     def serve_forever(mut self) raises:
@@ -1077,6 +1128,10 @@ struct AMQPListener:
                 self._srv.close_slot(idle_slot)
             # 0026: server-initiated heartbeats on the same poll cadence.
             self._srv.check_heartbeats()
+            # 0027: async push — after this round's events, deliver any
+            # messages published to queues with consumers on OTHER
+            # connections (cross-connection fan-in).
+            self._srv.drain_all_pushes()
             # v0.0.4: fold any OS SIGTERM/SIGINT into the running flag.
             self.poll_os_signal()
 
@@ -1248,6 +1303,11 @@ struct UDSAMQPListener:
         """Advance one connection by at most one frame. NEVER raises."""
         return self._srv.serve_one_frame(slot)
 
+    def drain_pushes(mut self):
+        """0027 async push: deliver any newly-available messages for every
+        connection's registered consumer (public driver for tests/embedders)."""
+        self._srv.drain_all_pushes()
+
     def accept_and_serve_one(mut self) raises -> Int:
         """Accept one connection and serve frames until the peer closes it."""
         var slot = self.accept_one()
@@ -1259,6 +1319,10 @@ struct UDSAMQPListener:
             if rc < 0:
                 break
             served += rc
+            # 0027: async push on the legacy path too — after each served
+            # frame, push any newly-available deliveries (consume-then-publish
+            # on the same connection; cross-connection is serialized here).
+            _ = self._srv.drain_and_send(slot)
         return served
 
     def serve_forever(mut self) raises:
@@ -1332,6 +1396,10 @@ struct UDSAMQPListener:
                 self._srv.close_slot(idle_slot)
             # 0026: server-initiated heartbeats on the same poll cadence.
             self._srv.check_heartbeats()
+            # 0027: async push — after this round's events, deliver any
+            # messages published to queues with consumers on OTHER
+            # connections (cross-connection fan-in).
+            self._srv.drain_all_pushes()
             # v0.0.4: fold any OS SIGTERM/SIGINT into the running flag.
             self.poll_os_signal()
 
@@ -1554,6 +1622,11 @@ struct WSSAMQPListener[Ops: FileSystemOps]:
         """Advance one connection by at most one frame. NEVER raises."""
         return self._srv.serve_one_frame(slot)
 
+    def drain_pushes(mut self):
+        """0027 async push: deliver any newly-available messages for every
+        connection's registered consumer (public driver for tests/embedders)."""
+        self._srv.drain_all_pushes()
+
     def accept_and_serve_one(mut self) raises -> Int:
         """Accept one connection and serve frames until the peer closes."""
         var slot = self.accept_one()
@@ -1565,6 +1638,10 @@ struct WSSAMQPListener[Ops: FileSystemOps]:
             if rc < 0:
                 break
             served += rc
+            # 0027: async push on the legacy path too — after each served
+            # frame, push any newly-available deliveries (consume-then-publish
+            # on the same connection; cross-connection is serialized here).
+            _ = self._srv.drain_and_send(slot)
         return served
 
     def serve_forever(mut self) raises:

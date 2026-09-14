@@ -956,6 +956,11 @@ struct AMQPService:
     # auto-delete last-consumer bookkeeping) and cid → queue name.
     var _cids: Dict[UInt64, String]
     var _cid_by_ctag: Dict[String, UInt64]
+    # 0027 async push: per-consumer (engine cid) channel + auto-ack bit. The
+    # listener drains a connection's registered consumer through these OUTSIDE
+    # a basic.consume reply, so a message published after consume is pushed.
+    var _consumer_chan: Dict[UInt64, UInt16]
+    var _consumer_noack: Dict[UInt64, Bool]
     # 0017 T4: SASL PLAIN credentials table (copied from the config BEFORE
     # `config` is consumed by the broker).
     var _users: List[UserRecord]
@@ -1048,6 +1053,9 @@ struct AMQPService:
         self._exchange_meta_keys = List[String]()
         self._cids = Dict[UInt64, String]()
         self._cid_by_ctag = Dict[String, UInt64]()
+        # 0027 async push: per-consumer channel + auto-ack bit.
+        self._consumer_chan = Dict[UInt64, UInt16]()
+        self._consumer_noack = Dict[UInt64, Bool]()
         # 0017 T4: users table + heartbeat advertised value (copied above,
         # before the config was consumed).
         self._users = users^
@@ -1123,6 +1131,31 @@ struct AMQPService:
         st.consumer_by_tag[t] = cid
         st.engine_tag_by_tag[t] = etag
         st.tags.append(t)
+        self._chan_maps[key] = st^
+        return t
+
+    def _chan_alloc_tag_auto(
+        mut self, conn_id: UInt64, chan: UInt16
+    ) raises -> UInt64:
+        """Issue ONE wire delivery-tag for an ALREADY-ACKNOWLEDGED delivery.
+
+        Auto-ack (basic.get no-ack / auto-ack consume) resolves the engine
+        delivery the instant it is handed out, so no later basic.ack/nack can
+        ever address the wire tag. Recording it in `consumer_by_tag` /
+        `engine_tag_by_tag` / `tags` would therefore retain one unbounded
+        binding PER DELIVERY for the channel's whole life (soak-20260914T125406Z).
+        This still materialises the per-channel namespace so `next_tag` stays
+        monotonic for the channel's life (AMQP delivery-tag monotonicity), but
+        stores NO per-tag binding — memory is bounded by the channel count.
+        """
+        var key = _chan_key(conn_id, chan)
+        var st = _ChanTagMap()
+        if key in self._chan_maps:
+            st = self._chan_maps.pop(key)
+        else:
+            self._chan_key_list.append(key)
+        var t = st.next_tag
+        st.next_tag += 1
         self._chan_maps[key] = st^
         return t
 
@@ -2269,6 +2302,11 @@ struct AMQPService:
                     _ = self._consumers.pop(conn_id)
                 if xcid in self._ctags:
                     _ = self._ctags.pop(xcid)
+                # 0027 async push: forget the cancelled consumer's push state.
+                if xcid in self._consumer_chan:
+                    _ = self._consumer_chan.pop(xcid)
+                if xcid in self._consumer_noack:
+                    _ = self._consumer_noack.pop(xcid)
                 if xcid in self._cids:
                     var xq = self._cids.pop(xcid)
                     # auto_delete: last consumer gone → queue deleted.
@@ -2324,6 +2362,10 @@ struct AMQPService:
                 cargs^,
             )
             var no_ack = (cbits & BASIC_CONSUME_BIT_NO_ACK()) != 0
+            # 0027 async push: record the channel + auto-ack bit so the
+            # listener can later drain this consumer without a consume request.
+            self._consumer_chan[cid] = chan
+            self._consumer_noack[cid] = no_ack
             reply = self._flush_deliveries(conn_id, chan, cid, reply^, no_ack)
             return Optional[List[UInt8]](reply^)
 
@@ -2804,6 +2846,11 @@ struct AMQPService:
         if conn_id in self._consumers:
             var cid = self._consumers.pop(conn_id)
             _ = self._broker.unregister_consumer(cid)
+            # 0027 async push: drop the closed consumer's push state.
+            if cid in self._consumer_chan:
+                _ = self._consumer_chan.pop(cid)
+            if cid in self._consumer_noack:
+                _ = self._consumer_noack.pop(cid)
         if conn_id in self._get_cids:
             var gcid = self._get_cids.pop(conn_id)
             _ = self._broker.unregister_consumer(gcid)
@@ -3380,8 +3427,14 @@ struct AMQPService:
         # 0017 T2: the WIRE delivery-tag comes from the channel's namespace
         # (get-consumer and push-consumer tags live in ONE namespace). The
         # engine tag is kept only inside the resolution map; queue basis for
-        # the message-count stays engine-side.
-        var tag = self._chan_alloc_tag(conn_id, chan, cid, etag)
+        # the message-count stays engine-side. An auto-ack get resolves the
+        # delivery NOW, so no resolution binding is retained (see
+        # _chan_alloc_tag_auto — otherwise each auto-acked get leaks a tag).
+        var tag = (
+            self._chan_alloc_tag_auto(conn_id, chan)
+            if get_no_ack
+            else self._chan_alloc_tag(conn_id, chan, cid, etag)
+        )
         # get-ok args: delivery-tag long-long + redelivered bit + exchange
         # shortstr + routing-key shortstr + message-count long.
         var gargs = List[UInt8]()
@@ -3448,7 +3501,13 @@ struct AMQPService:
             var redelivered = self._broker.redelivered(cid, etag)
             var prop_flags = self._broker.content_prop_flags(cid, etag)
             var prop_bytes = self._broker.content_prop_bytes_copy(cid, etag)
-            var tag = self._chan_alloc_tag(conn_id, chan, cid, etag)
+            # Auto-ack consumers resolve each delivery immediately, so retain
+            # no resolution binding (see _chan_alloc_tag_auto).
+            var tag = (
+                self._chan_alloc_tag_auto(conn_id, chan)
+                if auto_ack
+                else self._chan_alloc_tag(conn_id, chan, cid, etag)
+            )
             # deliver args: consumer-tag shortstr + delivery-tag long-long +
             # redelivered bit + exchange shortstr + routing-key shortstr.
             var args = List[UInt8]()
@@ -3478,6 +3537,34 @@ struct AMQPService:
                 self._unacked_inc(conn_id)
             n += 1
         return dst^
+
+    def drain_pushes(mut self, conn_id: UInt64) raises -> List[UInt8]:
+        """0027 async push — drain newly-available deliveries for `conn_id`.
+
+        The listener calls this after every serving round (so a message
+        published AFTER basic.consume is delivered without another client
+        request). It returns the concatenated basic.deliver content frames for
+        the connection's registered push consumer, or an empty list when there
+        is no consumer, the consumer's channel is closed, or the queue is dry.
+
+        This is ADDITIVE: basic.consume still flushes already-pending messages
+        in its consume-ok reply (pull-on-subscribe). Both paths share
+        `_flush_deliveries`, so wire delivery-tag allocation, byte-faithful
+        content headers and _max_unacked backpressure are identical.
+        """
+        var out = List[UInt8]()
+        if conn_id not in self._consumers:
+            return out^
+        var cid = self._consumers[conn_id]
+        if cid not in self._consumer_chan:
+            return out^
+        var chan = self._consumer_chan[cid]
+        if self._channel_is_closed(conn_id, chan):
+            return out^
+        var auto_ack = False
+        if cid in self._consumer_noack:
+            auto_ack = self._consumer_noack[cid]
+        return self._flush_deliveries(conn_id, chan, cid, out^, auto_ack)
 
     def _reply(
         ref self,

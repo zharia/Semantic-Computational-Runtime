@@ -12,6 +12,10 @@
 > `pika` client tolerates but `amqplib`, the RabbitMQ Java client, and `amqp091-go` do not.
 > A secondary runner bug (`localhost` → IPv6) independently breaks the Java client, and a
 > known content-frame gap stops all consumers short of delivery.
+>
+> **Superseded by Run 2 (section 7):** with RC-1 (header echo), RC-2 (Java host) and RC-3
+> (async push delivery) fixed, the suite reports **3 of 3 PASS**, and pika passes both the
+> pull and the push paths. The Run 1 findings below are kept as the historical record.
 
 ---
 
@@ -194,3 +198,117 @@ it only runs `/tmp/go_interop` if the binary already exists (it would otherwise 
    loopback families) — independent of RC-1.
 3. **Implement content-frame reassembly for `basic.consume`/`Basic.Deliver`** (and
    `basic.return`) to close RC-3 and make the multi-client gates meaningful.
+
+---
+
+## 7. Run 2 (after RC-1/RC-2/RC-3 fixes)
+
+**Date:** 2026-09-14T13:33Z
+**Broker commit:** working tree on `48c71d5` (RC-1 header-echo removal committed;
+RC-2 runner host fix and the RC-3 async-push change are in the working tree)
+**Broker artifact:** `build/hyrxmq-listen` (rebuilt 2026-09-14 15:31 local)
+**Reference broker:** RabbitMQ container `ecstatic_khayyam` — **not touched**
+**Ports:** multi-client suite on `5698`; pika gates on `5699`; pika push gate on `5701`;
+RabbitMQ `5672` never bound/used
+
+> **Headline:** the shipped multi-client suite now reports **3 of 3 PASS**, and all four
+> standard clients (pika, Node/amqplib, Java amqp-client, Go amqp091-go) receive
+> asynchronous `basic.deliver` pushes after `basic.consume`.
+
+### 7.1 RC-3 fix (async push delivery) — design
+
+RC-3 was, precisely, **pull-on-subscribe with no asynchronous push**: `basic.consume`
+flushed already-queued messages into the `basic.consume-ok` reply and then nothing. A
+consumer that called `basic.consume` on an empty queue and then received `basic.publish`
+frames got zero deliveries — exactly what every standard client does.
+
+Change (additive; pull-on-subscribe is preserved):
+
+- `AMQPService` now records, per engine consumer id, the **channel** and the **auto-ack
+  bit** (`_consumer_chan`, `_consumer_noack`), populated at `basic.consume` and dropped at
+  `basic.cancel` / connection close.
+- New `AMQPService.drain_pushes(conn_id) -> List[UInt8]` drains newly-available deliveries
+  for that connection's registered consumer. It **reuses the existing
+  `_flush_deliveries` emitter**, so wire delivery-tag allocation, byte-faithful content
+  headers and `_max_unacked` backpressure are identical to the consume reply.
+- `AMQPConnServing.drain_and_send(slot)` / `drain_all_pushes()` send those frames
+  fail-closed (a send error closes only that slot). `serve_event_driven()` drains all
+  connections after every serving round (cross-connection fan-in), and the legacy
+  `accept_and_serve_one()` drains after each served frame. `AMQPListener.drain_pushes()`
+  exposes the same pass for embedders/tests.
+- `tests/phase10/interop_test.mojo` gained `test_async_push` (Test 9): consume on an empty
+  queue → publish → assert a pushed `basic.deliver` with byte-equal body and ack it.
+
+### 7.2 Multi-client suite (`bash scripts/interop/run_multi_interop.sh`, port 5698)
+
+```
+============ MULTI-CLIENT INTEROP RESULT ============
+CLIENT    RC    STATE
+node      0     PASS
+java      0     PASS
+go        0     PASS
+====================================================
+MULTI_INTEROP=PASS
+```
+
+Per-client evidence (each: `basic.consume` registered first, then 10 publishes, then 10
+asynchronously-pushed deliveries verified byte-for-byte):
+
+| Client | Result | Evidence |
+|--------|--------|----------|
+| **node** (v26.8.2, amqplib 0.10.9) | **PASS** | `consumed 10 messages, bodies verified`; `basic.return` replyCode 312 |
+| **java** (OpenJDK 21.0.12, amqp-client 5.21.0) | **PASS** | all 10 bodies verified in the consumer callback; `publisher confirms OK`; `basic.return` replyCode 312 |
+| **go** (go1.27.1, amqp091-go v1.10.0) | **PASS** | `consumed 10 messages, bodies verified`; `basic.qos prefetch=10 OK`; `basic.return` replyCode 312 |
+
+> **Honesty note on the Java line.** Java printed `consumed 0 messages` because its summary
+> reads `received.size()` *after* the main loop had already polled and drained the
+> `BlockingQueue`; the gateway's own per-message assertion ran on every poll and passed
+> (any mismatch would have produced `JAVA_INTEROP=FAIL` and exit 1). The count is a
+> reporting artifact of `JavaInterop.java:103`, not a delivery failure.
+
+### 7.3 pika gates
+
+- `bash scripts/interop/run_pika_negotiation.sh` (port 5699) → `HANDSHAKE GATE: PASS`
+  (8/8 steps, including `basic.get` delivery `body-A` + ack).
+- `scripts/interop/pika_content.py hyrx` (port 5699) → `TOTAL 9 PASS 9 FAIL 0`
+  (`PIKA_CONTENT(hyrx) VERDICT: PASS`); includes the 9000-byte multi-frame body.
+- **New** `scripts/interop/pika_push.py` (port 5701) → `PIKA_ASYNC_PUSH=PASS`:
+  real pika `basic_consume` on an empty queue **then** `basic_publish`, delivery received
+  via `process_data_events` with no `basic.get`.
+
+### 7.4 Unit / specification tests
+
+| Test | Result |
+|------|--------|
+| `tests/phase7/amqp_service_test.mojo` | `PHASE7_AMQP_SERVICE_TEST=PASS` |
+| `tests/phase7/broker_test.mojo` | `PHASE7_BROKER_TEST=PASS` |
+| `tests/phase10/interop_test.mojo` (incl. new Test 9 async push) | `INTEROP_TEST_PASS` |
+| `tests/phase10/correctness_matrix_test.mojo` | `CORRECTNESS_MATRIX_TEST=PASS` |
+| `tests/phase10/backpressure_test.mojo` (push path respects `_max_unacked`) | `BACKPRESSURE_TEST=PASS` |
+
+### 7.5 Files changed for RC-3
+
+- `src/hyrxmq/amqp_service.mojo` — `_consumer_chan` / `_consumer_noack` state,
+  `drain_pushes`, consume/cancel/close upkeep.
+- `src/hyrxmq/listener.mojo` — `drain_and_send` / `drain_all_pushes`, wired into the
+  event-driven (TCP + UDS) and legacy serving loops, plus the `AMQPListener.drain_pushes`
+  pass-through.
+- `tests/phase10/interop_test.mojo` — `test_async_push`.
+- `scripts/interop/pika_push.py` — real-pika async-push gate.
+- `program-increments/v0.0.4/reports/INTEROP_REPORT.md` — this section.
+
+### 7.6 Toolchain / cleanup
+
+- Toolchains present and used: pika 1.4.4, Node v26.8.2 / amqplib 0.10.9,
+  OpenJDK 21.0.12 / amqp-client 5.21.0, go1.27.1 / amqp091-go v1.10.0.
+- All brokers started for this run (ports `5698`/`5699`/`5701`) were terminated by exact
+  PID; those ports are verified free afterwards. No `pkill -f` / `killall` was used and the
+  reference container `ecstatic_khayyam` was never touched. The pre-existing
+  `hyrxmq-listen` PID `1717031` (other work) was left untouched.
+
+### 7.7 Remaining gaps (honest)
+
+- One consumer per connection (last `basic.consume` wins) — unchanged slice limitation.
+- The pika async-push gate uses an auto-ack consumer; manual-ack async push is covered by
+  the unit tests and the Node/Java/Go clients (all use manual ack).
+- `basic.return` handling is verified (node/java/go replyCode 312); no new gap introduced.

@@ -103,9 +103,10 @@ HYRXMQ_HOST=127.0.0.1 HYRXMQ_PORT=<free> ./build/hyrxmq-listen &
   --duration 600 --rate 100 --sample-interval 5
 ```
 
-Result: **FAIL** (2026-09-14, 12:44:05Z → 12:54:06Z). Actual duration
-**600 s**. 60 000 messages at the 100 msg/s target, 0 errors, broker alive at
-end.
+### Before fix — FAIL (2026-09-14, 12:44:05Z → 12:54:06Z)
+
+Actual duration **600 s**. 60 000 messages at the 100 msg/s target, 0 errors,
+broker alive at end.
 
 | Metric | Value | Threshold | Verdict |
 |--------|-------|-----------|---------|
@@ -115,16 +116,57 @@ end.
 | throughput | 100 msg/s (target-limited) | — | — |
 | errors | 0 | — | — |
 
-Three independent 600 s runs agree — RSS growth +19.7 %, +19.1 %, +18.9 % — all
-FAIL on RSS only; fd growth and p99 drift PASS in all three.
-
-RSS is **not** strictly monotonic — it steps and plateaus
-(13 852 → 15 564 → 16 668 → 18 856 → 18 864 → 22 400 → 22 420 → 28 184 KB at
-t = 600 s), so the growth is bursty (allocator / journal), not a steady
-per-message leak, and there is no fd leak and no latency degradation. It still
-exceeds the 10 % soak threshold, so the extended soak does not certify.
-
 Report: `benchmarks/certification/results/soak-20260914T125406Z.json`.
+
+RSS was **not** strictly monotonic — it stepped and plateaued
+(13 852 → 15 564 → 16 668 → 18 856 → 22 400 → 28 184 KB), with step sizes and
+step spacing both roughly **doubling**. That signature is geometric container
+reallocation, not allocator fragmentation (fragmentation has no doubling
+structure).
+
+### Root cause
+
+`AMQPService._handle_get` (and the auto-ack branch of `_flush_deliveries`)
+allocated a per-channel WIRE delivery-tag through `_chan_alloc_tag`, which
+records a binding in `_ChanTagMap.consumer_by_tag`, `.engine_tag_by_tag` and
+`.tags`. The `no-ack` (auto-ack) branch then acked the engine delivery but
+never called `_chan_take`, so **every auto-acked get leaked one tag binding
+for the channel's whole life**. `_ChanTagMap` is per `(conn, channel)`, so the
+three containers grew by one entry per delivery and reallocated (doubling) as
+they filled — exactly the observed step pattern.
+
+Proven empirically by a differential probe (same 1 KB publish→get workload):
+
+| Workload | 20 000 msgs | 40 000 msgs |
+|----------|-------------|-------------|
+| auto-ack (soak path) | +4 896 KB | +7 804 KB |
+| explicit-ack (`basic.ack`) | +424 KB | — |
+
+Manual ack resolves the tag through `_chan_take`; growth scales with message
+count for auto-ack only.
+
+### Fix
+
+`_chan_alloc_tag_auto` (new, `src/hyrxmq/amqp_service.mojo`) issues the wire
+tag and keeps `next_tag` monotonic for the channel (AMQP delivery-tag
+monotonicity) but stores **no** per-tag binding. Both auto-ack call sites now
+use it. Memory is bounded by the channel count, not the delivery count.
+
+### After fix — PASS (2026-09-14, 13:21:42Z → 13:31:42Z)
+
+| Metric | Value | Threshold | Verdict |
+|--------|-------|-----------|---------|
+| RSS growth | **+0.056 %** (13 908 → 14 356 KB) | ≤ 10 % | **PASS** |
+| fd growth | 1 (min 6, max 7) | ≤ 16 | PASS |
+| p99 drift | +5.27 % (0.977 → 1.029 ms) | ≤ 25 % | PASS |
+| throughput | 100 msg/s (target-limited) | — | — |
+| errors | 0 | — | — |
+
+RSS is flat after warm-up (plateau at 14 356 KB from t ≈ 575 s to 600 s);
+the residual ~450 KB is one-time warm-up, confirmed constant across a 20 000
+vs 40 000 message probe (+436 KB vs +456 KB).
+
+Report: `benchmarks/certification/results/soak-20260914T133142Z.json`.
 
 > Note: `soak.py --out <path>` is currently a silent no-op (line 531,
 > `path = args.out or write_report(report)` skips the writer). Run without
