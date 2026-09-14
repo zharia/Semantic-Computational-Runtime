@@ -9,11 +9,13 @@
 # buffer construction needed by flare's read/write API lives only in this file
 # and in uds.mojo.
 
-from std.ffi import OwnedDLHandle, c_int
+from std.ffi import OwnedDLHandle, c_int, c_uint
 from std.collections import List, Optional
+from std.memory import stack_allocation
 
 from flare.tcp import TcpListener, TcpStream
 from flare.net import IpAddr, SocketAddr, _find_flare_lib
+from flare.net._libc import _setsockopt
 from flare.runtime._libc_time import libc_nanosleep_ms
 from flare.tls._server_ffi import (
     ServerCtx,
@@ -29,6 +31,18 @@ from hyrx.transport.transport import TransportConfig, TransportConnection, AMQPC
 def _socket_addr(host: String, port: Int) raises -> SocketAddr:
     """Build a flare SocketAddr from a dotted-quad host and a port."""
     return SocketAddr(IpAddr.parse(host), UInt16(port))
+
+
+# IPPROTO_TCP / TCP_NODELAY (Linux): disable Nagle's algorithm on every
+# accepted connection. Nagle coalesces small writes until an ACK arrives; an
+# AMQP request/response exchange (publish -> get) is exactly the small-write
+# pattern it punishes, so leaving it on adds delayed-ACK latency to every
+# round trip and caps throughput. RabbitMQ/LavinMQ set NODELAY; HyrxMQ did
+# not — a direct cause of its poor pubget and latency cells.
+def _set_tcp_nodelay(fd: c_int) -> None:
+    var v = stack_allocation[1, c_int]()
+    v.unsafe_write(c_int(1))
+    _ = _setsockopt(fd, c_int(6), c_int(1), v.unsafe_bitcast[UInt8](), c_uint(4))
 
 
 # ── blocking OpenSSL I/O (server-side, same seam as wss.mojo) ───────────
@@ -147,6 +161,7 @@ struct TCPListener:
         if not self._listener.__bool__():
             raise "TCPListener.accept_connection: listener not started"
         var stream = self._listener.value().accept()
+        _set_tcp_nodelay(stream.as_raw_fd())
         var id = self._next_conn_id
         self._next_conn_id += 1
         var ssl_addr = Int(0)
