@@ -143,7 +143,14 @@ def _do_handshake(
         listener.serve_one_frame(slot) == SERVE_DISPATCHED(),
         "handshake: protocol header accepted",
     )
-    _ = conn.recv_exact(8)  # echoed protocol header
+    # amqp0-9-1.xml §1.4.2.2: no header echo; the server's first bytes are
+    # the connection.start METHOD frame (type 0x01).
+    var first = conn.recv_exact(1)
+    check(
+        first[0] == UInt8(0x01),
+        "handshake: server's first byte is a METHOD frame (no echo)",
+    )
+    codec.feed_bytes(first^)
     check(
         _read_method_code(conn, codec) == _method_code(CONNECTION_START()),
         "handshake: connection.start received",
@@ -207,7 +214,14 @@ def test_malformed_frame(mut listener: AMQPListener) raises:
         listener.serve_one_frame(slot) == SERVE_DISPATCHED(),
         "malformed: header served",
     )
-    _ = conn.recv_exact(8)
+    # No header echo: the first server byte is the connection.start METHOD
+    # frame type, then the start frame is drained.
+    var first = conn.recv_exact(1)
+    check(
+        first[0] == UInt8(0x01),
+        "malformed: server's first byte is a METHOD frame (no echo)",
+    )
+    codec.feed_bytes(first^)
     _ = _read_method_code(conn, codec)  # connection.start
 
     # Garbage that is not a legal frame_type (0xDE) — the codec rejects the

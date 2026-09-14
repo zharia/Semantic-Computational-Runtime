@@ -751,11 +751,17 @@ struct AMQPConnServing[Conn: AMQPConn]:
         """Consume the 8-octet protocol header, then send start.
 
         Accumulates raw bytes across steps until 8 are held (so a client that
-        dribbles the header is still handled). On a match, echoes the same 8
-        octets back and sends connection.start, advancing to HANDSHAKING. On a
-        mismatch the connection is failed closed (audit §14/§36: the header is
-        a mandatory, non-negotiable preamble — a wrong header is a protocol
-        error, not a frame error) while the broker keeps accepting.
+        dribbles the header is still handled). On a match the server sends
+        connection.start and advances to HANDSHAKING. On a mismatch the
+        connection is failed closed (audit §14/§36: the header is a mandatory,
+        non-negotiable preamble — a wrong header is a protocol error, not a
+        frame error) while the broker keeps accepting.
+
+        The server MUST NOT echo the protocol header back (amqp0-9-1.xml
+        §1.4.2.2): after the header the server's first bytes are
+        connection.start. An echo happens to be tolerated by pika (which skips
+        an 8-byte pre-frame prefix) but desynchronizes amqplib / RabbitMQ Java
+        / amqp091-go, which then fail to parse the stream.
 
         ``nb_event`` selects the read seam exactly as in `_serve_step`: in
         the event tier the header read is recv(2)+MSG_DONTWAIT, so a drib-
@@ -800,8 +806,8 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 self._close_slot(slot)
                 return SERVE_FAILED()
 
-        # Match: echo the header octets, then the first server frame.
-        self._conns[slot].value().send_bytes(hdr^)
+        # Match: send connection.start as the server's FIRST bytes. NO header
+        # echo (see docstring) — the echo desynchronizes non-pika clients.
         var start = self._service.connection_start_frame()
         self._conns[slot].value().send_bytes(start^)
         self._phases[slot] = PHASE_HANDSHAKING()

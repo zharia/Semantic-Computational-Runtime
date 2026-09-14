@@ -137,7 +137,7 @@ else
         CP="$AMQP_JAR:$SLF4J_JAR"
         JAVA_BUILD="$(mktemp -d)"
         if javac -cp "$CP" -d "$JAVA_BUILD" "$INTEROP/JavaInterop.java"; then
-            HYRX_HOST=localhost HYRX_PORT="$PORT" \
+            HYRX_HOST=127.0.0.1 HYRX_PORT="$PORT" \
                 timeout "$CLIENT_TIMEOUT" java -cp "$JAVA_BUILD:$CP" JavaInterop
             JAVA_RC=$?
         else

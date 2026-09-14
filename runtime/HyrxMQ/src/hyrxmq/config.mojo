@@ -182,6 +182,9 @@ struct HyrxMQConfig:
     # 0026: per-connection backpressure — max unacked deliveries before
     # the broker stops pushing to that connection.
     var max_unacked: Int
+    # M2.1: sliding-window auth-failure rate limit — SASL failures
+    # permitted per 60s window before new logins are refused.
+    var max_auth_failures_per_minute: Int
 
     def __init__(out self):
         self.listen_host = "0.0.0.0"
@@ -215,6 +218,7 @@ struct HyrxMQConfig:
         self.idle_timeout_secs = 300
         self.max_memory_bytes = 536870912
         self.max_unacked = 1000
+        self.max_auth_failures_per_minute = 60
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -247,6 +251,7 @@ struct HyrxMQConfig:
         self.idle_timeout_secs = existing.idle_timeout_secs
         self.max_memory_bytes = existing.max_memory_bytes
         self.max_unacked = existing.max_unacked
+        self.max_auth_failures_per_minute = existing.max_auth_failures_per_minute
 
     def copy(ref self) -> Self:
         """Return an independent copy (the explicit-copy seam; the same field
@@ -283,6 +288,7 @@ struct HyrxMQConfig:
         c.idle_timeout_secs = self.idle_timeout_secs
         c.max_memory_bytes = self.max_memory_bytes
         c.max_unacked = self.max_unacked
+        c.max_auth_failures_per_minute = self.max_auth_failures_per_minute
         return c^
 
     def apply(mut self, var key: String, var value: String) raises:
@@ -384,6 +390,8 @@ struct HyrxMQConfig:
             self.max_memory_bytes = _require_int(key, value)
         elif key == "max_unacked":
             self.max_unacked = _require_int(key, value)
+        elif key == "max_auth_failures_per_minute":
+            self.max_auth_failures_per_minute = _require_int(key, value)
         else:
             raise "config: unknown field '" + key + "'"
 
@@ -500,6 +508,8 @@ struct HyrxMQConfig:
             raise "config: max_memory_bytes must be positive"
         if self.max_unacked <= 0:
             raise "config: max_unacked must be positive"
+        if self.max_auth_failures_per_minute <= 0:
+            raise "config: max_auth_failures_per_minute must be positive"
         if self.wss_tls_mode == "path":
             if len(self.wss_tls_path.strip().bytes()) == 0:
                 raise "config: wss_tls_mode='path' requires a non-empty wss_tls_path (the cert chain PEM)"

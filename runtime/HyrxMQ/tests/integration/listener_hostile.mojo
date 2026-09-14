@@ -174,7 +174,14 @@ def do_handshake(
         listener.serve_one_frame(slot) == SERVE_DISPATCHED(),
         "protocol header accepted (start sent)",
     )
-    _ = conn.recv_exact(8)  # server echoes the same 8 octets (not a frame)
+    # amqp0-9-1.xml §1.4.2.2: no header echo; the server's first bytes are
+    # the connection.start METHOD frame (type 0x01).
+    var first = conn.recv_exact(1)
+    check(
+        first[0] == UInt8(0x01),
+        "server's first byte is a METHOD frame type (no header echo)",
+    )
+    codec.feed_bytes(first^)
     check(
         read_method_code(conn, codec) == method_code(CONNECTION_START()),
         "connection.start (10,10) received",

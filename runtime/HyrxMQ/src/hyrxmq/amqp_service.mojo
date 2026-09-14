@@ -979,6 +979,10 @@ struct AMQPService:
     var _conn_permissions: Dict[UInt64, _PermBits]
     # 0025 M2: auth failure counter (visible in status).
     var _auth_failures: Int
+    # M2.1: sliding-window auth-failure limiter. Millisecond timestamps of
+    # recent SASL failures; pruned to the trailing 60s window on each check.
+    var _auth_failure_window: List[Int]
+    var _max_auth_failures_per_minute: Int
     # 0026: per-consumer backpressure — unacked delivery count and ceiling.
     var _unacked_counts: Dict[UInt64, Int]
     var _max_unacked: Int
@@ -1006,6 +1010,7 @@ struct AMQPService:
         var max_unacked = config.max_unacked
         var max_channels = config.max_channels_per_connection
         var max_memory = config.max_memory_bytes
+        var max_auth_failures = config.max_auth_failures_per_minute
         # Element-wise rebuild of the users table (an explicit __init__ chain
         # is used in place of List[UserRecord].copy() so the copy never
         # depends on a non-trivial struct list's CollectionElement conformance
@@ -1063,6 +1068,9 @@ struct AMQPService:
         self._conn_vhost = Dict[UInt64, String]()
         self._conn_permissions = Dict[UInt64, _PermBits]()
         self._auth_failures = 0
+        # M2.1: sliding-window auth-failure limiter state.
+        self._auth_failure_window = List[Int]()
+        self._max_auth_failures_per_minute = max_auth_failures
         # 0026: per-consumer backpressure state.
         self._unacked_counts = Dict[UInt64, Int]()
         self._max_unacked = max_unacked
@@ -1072,6 +1080,20 @@ struct AMQPService:
         self._pending_bytes = 0
         self._max_memory_bytes = max_memory
         self._memory_rejections = 0
+
+    # ---- M2.1: sliding-window auth-failure limiter ----
+
+    def _prune_auth_window(mut self, now_ms: Int):
+        """Drop window entries older than the 60s trailing window."""
+        var kept = List[Int]()
+        for i in range(len(self._auth_failure_window)):
+            if now_ms - self._auth_failure_window[i] < 60_000:
+                kept.append(self._auth_failure_window[i])
+        self._auth_failure_window = kept^
+
+    def _auth_rate_limited(ref self) -> Bool:
+        """True when the trailing-60s failure count has reached the ceiling."""
+        return len(self._auth_failure_window) >= self._max_auth_failures_per_minute
 
     # ---- 0017 T2: per-channel delivery-tag namespaces ----
 
@@ -1620,6 +1642,26 @@ struct AMQPService:
             var mechanism = reader.read_short_string()
             var response = reader.read_long_string()
             var locale = reader.read_short_string()
+            # M2.1: sliding-window auth-failure rate limit. Prune the trailing
+            # 60s window and refuse BEFORE evaluating credentials once the
+            # ceiling is reached (same 403 ACCESS_REFUSED reply path).
+            var now_ms = _now_ms()
+            self._prune_auth_window(now_ms)
+            if self._auth_rate_limited():
+                var rl_c1 = "ACCESS_REFUSED - Authentication failure rate limit exceeded ("
+                var rl_c2 = rl_c1 + String(self._max_auth_failures_per_minute)
+                var rl_c3 = rl_c2 + " failures per minute). For details see the broker logfile."
+                var rl_args = List[UInt8]()
+                write_u16(rl_args, REPLY_ACCESS_REFUSED())
+                write_short_string(rl_args, rl_c3^)
+                write_u16(rl_args, CONNECTION_START_OK().class_id)
+                write_u16(rl_args, CONNECTION_START_OK().method_id)
+                return self._reply(
+                    UInt16(0),
+                    CONNECTION_CLOSE().class_id,
+                    CONNECTION_CLOSE().method_id,
+                    rl_args^,
+                )
             # 0017 T4 AUTH: SASL PLAIN response = `authzid NUL authcid NUL
             # passwd` (RFC 4616). Validated against HyrxMQConfig.users; the
             # password is never logged.
@@ -1646,6 +1688,7 @@ struct AMQPService:
                         break
             if not auth_ok:
                 self._auth_failures += 1
+                self._auth_failure_window.append(now_ms)
                 # Normative SERVER-initiated close (rabbit ground truth):
                 # reply-code 403 ACCESS_REFUSED + the reference close text,
                 # failing method = connection.start_ok (10,11). Emitted BEFORE

@@ -93,6 +93,44 @@ Harness present; complements in-process `tests/phase10/disk_failure_test.mojo`
 (append/sync failure bounded, broker survives journal failure). Not re-executed
 for this receipt.
 
+## Extended Soak (10 min)
+
+```bash
+# broker started manually (libflare staged at build/libflare_tls.so)
+HYRXMQ_HOST=127.0.0.1 HYRXMQ_PORT=<free> ./build/hyrxmq-listen &
+/tmp/hyrxmq-cert-venv/bin/python benchmarks/certification/soak.py \
+  --host 127.0.0.1 --port <free> --broker-pid <PID> \
+  --duration 600 --rate 100 --sample-interval 5
+```
+
+Result: **FAIL** (2026-09-14, 12:44:05Z → 12:54:06Z). Actual duration
+**600 s**. 60 000 messages at the 100 msg/s target, 0 errors, broker alive at
+end.
+
+| Metric | Value | Threshold | Verdict |
+|--------|-------|-----------|---------|
+| RSS growth | **+18.9 %** (13 852 → 28 184 KB) | ≤ 10 % | **FAIL** |
+| fd growth | 1 (min 6, max 7) | ≤ 16 | PASS |
+| p99 drift | −4.25 % (0.406 → 0.389 ms) | ≤ 25 % | PASS |
+| throughput | 100 msg/s (target-limited) | — | — |
+| errors | 0 | — | — |
+
+Three independent 600 s runs agree — RSS growth +19.7 %, +19.1 %, +18.9 % — all
+FAIL on RSS only; fd growth and p99 drift PASS in all three.
+
+RSS is **not** strictly monotonic — it steps and plateaus
+(13 852 → 15 564 → 16 668 → 18 856 → 18 864 → 22 400 → 22 420 → 28 184 KB at
+t = 600 s), so the growth is bursty (allocator / journal), not a steady
+per-message leak, and there is no fd leak and no latency degradation. It still
+exceeds the 10 % soak threshold, so the extended soak does not certify.
+
+Report: `benchmarks/certification/results/soak-20260914T125406Z.json`.
+
+> Note: `soak.py --out <path>` is currently a silent no-op (line 531,
+> `path = args.out or write_report(report)` skips the writer). Run without
+> `--out` and read the newest `results/soak-*.json`.
+> The 1-hour (`--duration 3600`) soak remains pending.
+
 ---
 
 ## Known gaps

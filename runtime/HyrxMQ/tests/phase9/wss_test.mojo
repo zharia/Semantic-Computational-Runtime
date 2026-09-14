@@ -846,15 +846,31 @@ def write_publish_get_ack(mut client: WsClient) raises:
 
 def verify_handshake_replies(mut client: WsClient) raises:
     """The negotiation replies as ONE WS message per single-frame reply:
-    the byte-exact header echo, then start, tune, open-ok."""
-    var echo = client.read_ws_message()
+    connection.start FIRST (amqp0-9-1.xml §1.4.2.2: the server must NOT
+    echo the 8-octet protocol header), then tune, open-ok."""
+    var first_live = client.read_ws_message()
     check(
-        echo.opcode == UInt8(2),
-        "the protocol-header echo rides ONE binary WS message",
+        first_live.opcode == UInt8(2),
+        "the first server reply rides ONE binary WS message",
     )
-    check_bytes(echo.payload, amqp_protocol_header(), "the echo is byte-exact")
     check(
-        client.read_solo_method() == CONNECTION_START(),
+        len(first_live.payload) >= 11
+        and first_live.payload[0] == UInt8(0x01),
+        "the first server byte is a METHOD frame (no header echo)",
+    )
+    check(
+        (UInt16(first_live.payload[7]) << 8 | UInt16(first_live.payload[8]))
+        == UInt16(10),
+        "the first server frame's class is connection (10)",
+    )
+    check(
+        (UInt16(first_live.payload[9]) << 8 | UInt16(first_live.payload[10]))
+        == UInt16(10),
+        "the first server frame's method is start (10)",
+    )
+    client.codec.feed_bytes(first_live.payload.copy())
+    check(
+        client.read_method() == CONNECTION_START(),
         "connection.start received over ws",
     )
     check(

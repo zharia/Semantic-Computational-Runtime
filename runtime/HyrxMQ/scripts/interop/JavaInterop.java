@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class JavaInterop {
 
-    static final String HOST = System.getenv().getOrDefault("HYRX_HOST", "localhost");
+    static final String HOST = System.getenv().getOrDefault("HYRX_HOST", "127.0.0.1");
     static final int PORT = Integer.parseInt(System.getenv().getOrDefault("HYRX_PORT", "5672"));
     static final String USER = System.getenv().getOrDefault("HYRX_USER", "admin");
     static final String PASS = System.getenv().getOrDefault("HYRX_PASS", "password");

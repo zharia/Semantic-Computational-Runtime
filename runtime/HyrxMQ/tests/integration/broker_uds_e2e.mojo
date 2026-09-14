@@ -221,14 +221,19 @@ def do_handshake(
 ) raises:
     """Drive the header -> start -> start-ok -> tune -> tune-ok -> open ->
     open-ok negotiation over the real socket, asserting each frame's ids."""
-    # 1. protocol header, server echoes it then sends connection.start.
+    # 1. protocol header -> the server's FIRST bytes are connection.start.
+    # amqp0-9-1.xml §1.4.2.2: the server must NOT echo the 8-octet header.
     var hdr = protocol_header()
     client.send(hdr.copy())
     check(
         listener.serve_one_frame(slot) == 1, "protocol header served (start sent)"
     )
-    var magic = client.read_exact(8)
-    check_bytes(magic, hdr, "server echoed the 8-octet header")
+    var first = client.read_exact(1)
+    check(
+        first[0] == UInt8(0x01),
+        "server's first byte is a METHOD frame type (no header echo)",
+    )
+    client.codec.feed_bytes(first^)
     check(client.next_method() == CONNECTION_START(), "connection.start received")
 
     # 2. start-ok -> tune.
