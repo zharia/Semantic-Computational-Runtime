@@ -56,7 +56,7 @@ struct HyrxWebHandler(Handler):
         return Response(503, "starting")
 
     def _ready(ref self) -> Response:
-        """Readiness: broker is ready to serve."""
+        """Readiness: broker is ready to serve. 503 during shutdown (degraded)."""
         if self._broker.ready():
             return ok("ready")
         return Response(503, "not ready")
@@ -104,7 +104,6 @@ struct HyrxWebHandler(Handler):
 
     def serve(self, req: Request) raises -> Response:
         var url = req.url
-        # Match API routes by prefix (query strings won't match our paths).
         if url == "/health" or url.startswith("/health?"):
             return self._health()
         if url == "/ready" or url.startswith("/ready?"):
@@ -115,7 +114,6 @@ struct HyrxWebHandler(Handler):
             return self._queues()
         if url == "/exchanges" or url.startswith("/exchanges?"):
             return self._exchanges()
-        # Fall back to static files (React dashboard).
         return self._static.serve(req)
 
 

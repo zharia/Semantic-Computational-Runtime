@@ -4,7 +4,7 @@
 # ranking/filtering) and the AMQPListener in-process shutdown seam
 # (running accessor, begin_shutdown, flush_storage no-op when no journal).
 
-from hyrxmq.logging import log_json, log_level_rank, should_log
+from hyrxmq.logging import log_json, log_json_simple, log_level_rank, should_log
 from hyrxmq.listener import AMQPListener
 from hyrxmq.config import HyrxMQConfig
 from hyrx.core.storage import MessageJournal
@@ -26,7 +26,7 @@ def last_char(s: String) -> String:
 
 def test_log_json_shape() raises:
     var rec = log_json(
-        "INFO", "broker", "listening", "\"queue\":\"q1\""
+        "INFO", "broker", "listening", "\"queue\":\"q1\"", "abc-123"
     )
     check(rec.find("{") == 0, "record starts with '{'")
     check(last_char(rec) == "}", "record ends with '}'")
@@ -35,11 +35,12 @@ def test_log_json_shape() raises:
     expect_contains(rec, "\"message\":\"listening\"", "message present")
     expect_contains(rec, "\"fields\":{\"queue\":\"q1\"}", "fields spliced")
     expect_contains(rec, "\"timestamp\":", "timestamp present")
+    expect_contains(rec, "\"correlation_id\":\"abc-123\"", "correlation_id present")
     check(rec.find("\n") < 0, "record is a single line")
 
 
 def test_log_json_escaping() raises:
-    var rec = log_json("WARN", "listener", "a\"b\\c", "")
+    var rec = log_json("WARN", "listener", "a\"b\\c", "", "")
     expect_contains(rec, "\"message\":\"a\\\"b\\\\c\"", "quote/backslash escaped")
     check(rec.find("\n") < 0, "escaped record stays one line")
     expect_contains(rec, "\"fields\":{}", "empty fields object")

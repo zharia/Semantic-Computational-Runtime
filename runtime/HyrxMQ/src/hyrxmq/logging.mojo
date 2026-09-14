@@ -37,20 +37,32 @@ def log_json(
     component: String,
     message: String,
     fields_json: String,
+    correlation_id: String,
 ) -> String:
     """Render one single-line JSON log record.
 
     ``fields_json`` is the caller-supplied body of the ``fields`` object,
     e.g. ``"\\"queue\\":\\"q1\\""``; it is spliced verbatim (the caller owns
     its validity). The string values (level/component/message) are escaped
-    here."""
+    here. ``correlation_id`` ties log lines across a request/connection."""
     var parts = List[String]()
     parts.append("\"timestamp\":" + String(monotonic()))
     parts.append("\"level\":\"" + _json_escape(level) + "\"")
     parts.append("\"component\":\"" + _json_escape(component) + "\"")
+    parts.append("\"correlation_id\":\"" + _json_escape(correlation_id) + "\"")
     parts.append("\"message\":\"" + _json_escape(message) + "\"")
     parts.append("\"fields\":{" + fields_json + "}")
     return "{" + ",".join(parts) + "}"
+
+
+def log_json_simple(
+    level: String,
+    component: String,
+    message: String,
+    fields_json: String,
+) -> String:
+    """Compatibility shim: no correlation_id."""
+    return log_json(level, component, message, fields_json, "")
 
 
 def log_level_rank(level: String) -> Int:
