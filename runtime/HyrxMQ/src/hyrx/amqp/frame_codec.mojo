@@ -56,6 +56,16 @@ struct AMQPFrame:
     def payload_size(ref self) -> Int:
         return len(self.payload)
 
+    def payload_byte(ref self, i: Int) -> UInt8:
+        """Borrow one payload octet (bounds-checked, NO copy).
+
+        Used by byte-glue that inspects only a frame's leading method ids
+        (class/method): ``payload_copy()`` there copied the ENTIRE payload,
+        so a 256 KB body frame paid a 256 KB copy just to read 4 bytes —
+        the dominant cost in the large-payload publish path.
+        """
+        return self.payload[i]
+
     def payload_copy(ref self) -> List[UInt8]:
         """Return an owned copy of the payload bytes."""
         if contiguous_batch_enabled():

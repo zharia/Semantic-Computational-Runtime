@@ -756,13 +756,22 @@ struct AMQPConnServing[Conn: AMQPConn]:
             return SERVE_DISPATCHED()
 
         # Close-detection is byte glue only: class/method ids of a method
-        # frame, no routing semantics.
-        var p = frame.value().payload_copy()
+        # frame, no routing semantics. Read the 4 leading octets WITHOUT
+        # copying the payload: payload_copy() here copied every frame's whole
+        # body (up to frame_max) just to inspect 4 bytes, dominating the
+        # large-payload publish path.
         var is_close = False
         var server_close = False
-        if frame.value().frame_type == FRAME_METHOD() and len(p) >= 4:
-            var class_id = (UInt16(p[0]) << 8) | UInt16(p[1])
-            var method_id = (UInt16(p[2]) << 8) | UInt16(p[3])
+        if (
+            frame.value().frame_type == FRAME_METHOD()
+            and frame.value().payload_size() >= 4
+        ):
+            var class_id = (
+                UInt16(frame.value().payload_byte(0)) << 8
+            ) | UInt16(frame.value().payload_byte(1))
+            var method_id = (
+                UInt16(frame.value().payload_byte(2)) << 8
+            ) | UInt16(frame.value().payload_byte(3))
             is_close = MethodID(class_id, method_id) == CONNECTION_CLOSE()
 
         var conn_id = self._conns[slot].value().conn_id()
