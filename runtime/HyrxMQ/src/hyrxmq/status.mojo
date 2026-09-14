@@ -120,6 +120,8 @@ struct BrokerStatus:
     var active_connections: Int
     var refused_connections: Int
     var content_errors: Int
+    # 0025 M2: SASL auth failure counter.
+    var auth_failures: Int
     var pool_stats: PoolStats
     var publish_latency: LatencyHistogram
     var consume_latency: LatencyHistogram
@@ -139,6 +141,7 @@ struct BrokerStatus:
         self.active_connections = 0
         self.refused_connections = 0
         self.content_errors = 0
+        self.auth_failures = 0
         self.pool_stats = PoolStats(0, 0, 0, 0)
         self.publish_latency = LatencyHistogram()
         self.consume_latency = LatencyHistogram()
@@ -158,6 +161,7 @@ struct BrokerStatus:
         self.active_connections = existing.active_connections
         self.refused_connections = existing.refused_connections
         self.content_errors = existing.content_errors
+        self.auth_failures = existing.auth_failures
         self.pool_stats = existing.pool_stats
         self.publish_latency = existing.publish_latency
         self.consume_latency = existing.consume_latency
@@ -221,6 +225,9 @@ struct BrokerStatus:
         parts.append("# HELP hyrxmq_content_errors Content errors")
         parts.append("# TYPE hyrxmq_content_errors counter")
         parts.append("hyrxmq_content_errors " + String(self.content_errors))
+        parts.append("# HELP hyrxmq_auth_failures SASL auth failures")
+        parts.append("# TYPE hyrxmq_auth_failures counter")
+        parts.append("hyrxmq_auth_failures " + String(self.auth_failures))
         parts.append("# HELP hyrxmq_pool_allocations Buffer pool allocations")
         parts.append("# TYPE hyrxmq_pool_allocations counter")
         parts.append("hyrxmq_pool_allocations " + String(self.pool_stats.allocations))
@@ -280,6 +287,7 @@ struct BrokerStatus:
         parts.append("\"active_connections\":" + String(self.active_connections))
         parts.append("\"refused_connections\":" + String(self.refused_connections))
         parts.append("\"content_errors\":" + String(self.content_errors))
+        parts.append("\"auth_failures\":" + String(self.auth_failures))
         parts.append("\"pool_stats\":{\"allocations\":" + String(self.pool_stats.allocations)
         + ",\"reuses\":" + String(self.pool_stats.reuses)
         + ",\"capacity\":" + String(self.pool_stats.capacity)

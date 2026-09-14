@@ -744,6 +744,77 @@ struct MemoryStorage(Movable):
         """Owned copy of the RAM journal pages (test/introspection)."""
         return self._page.copy()
 
+    def compact(mut self) raises -> Int:
+        """Rebuild _page from live records only. Returns bytes reclaimed.
+
+        Strips resolved tombstones (ACK/REDELIVER/REMOVE) and their
+        corresponding dead MSG records. Topology records for deleted
+        queues/exchanges are also dropped. The compacted WAL is
+        self-consistent: a fresh replay produces the same final state.
+
+        Idempotent: a second call on an already-compacted WAL returns 0.
+        """
+        var before_size = len(self._page)
+        var parsed = parse_journal(self._page)
+        if not parsed.complete:
+            self._truncate_prefix(parsed.good_end)
+            parsed = parse_journal(self._page)
+
+        var builder = RecoveryBuilder()
+        builder.apply(parsed^)
+        var topo = builder.finalize()
+
+        var new_page = List[UInt8]()
+        var new_count = 0
+
+        for i in range(len(topo.queues)):
+            var body = _dj_body(
+                topo.queues[i].name.copy(), topo.queues[i].durable,
+                topo.queues[i].capacity, topo.queues[i].ttl_ms,
+                topo.queues[i].max_length, topo.queues[i].overflow_reject,
+                topo.queues[i].dlx.copy(), topo.queues[i].dlrk.copy(),
+            )
+            var frame = _encode_frame(body^, RECORD_DECLARE_QUEUE())
+            for j in range(len(frame)):
+                new_page.append(frame[j])
+            new_count += 1
+
+        for i in range(len(topo.exchanges)):
+            var body = _dx_body(topo.exchanges[i].name.copy(), topo.exchanges[i].type_code)
+            var frame = _encode_frame(body^, RECORD_DECLARE_EXCHANGE())
+            for j in range(len(frame)):
+                new_page.append(frame[j])
+            new_count += 1
+
+        for i in range(len(topo.bindings)):
+            var body = _bind_body(
+                topo.bindings[i].exchange.copy(), topo.bindings[i].destination.copy(),
+                topo.bindings[i].routing_key.copy(), topo.bindings[i].e2e,
+            )
+            var frame = _encode_frame(body^, RECORD_BIND())
+            for j in range(len(frame)):
+                new_page.append(frame[j])
+            new_count += 1
+
+        for i in range(len(topo.queues)):
+            for j in range(len(topo.queues[i].msgs)):
+                var body = _msg_body(
+                    topo.queues[i].name.copy(),
+                    topo.queues[i].msgs[j].routing_key.copy(),
+                    topo.queues[i].msgs[j].prop_flags,
+                    topo.queues[i].msgs[j].prop_bytes.copy(),
+                    topo.queues[i].msgs[j].payload.copy(),
+                    topo.queues[i].msgs[j].stamp_ns,
+                )
+                var frame = _encode_frame(body^, RECORD_MSG())
+                for k in range(len(frame)):
+                    new_page.append(frame[k])
+                new_count += 1
+
+        self._page = new_page^
+        self._records = new_count
+        var after_size = len(self._page)
+        return before_size - after_size
 
 
 
@@ -859,6 +930,79 @@ struct FileStorage[Ops: FileSystemOps](Movable):
         if self._fd >= 0:
             self._ops.close(self._fd)
             self._fd = -1
+
+    def compact(mut self) raises -> Int:
+        """Rebuild WAL file from live records only. Returns bytes reclaimed.
+
+        Strips resolved tombstones and dead MSG records. The compacted file
+        is self-consistent: a fresh replay produces the same final state.
+
+        Idempotent: a second call on an already-compacted WAL returns 0.
+        """
+        if not self._ops.exists(self._path):
+            return 0
+        var pages = self._ops.read_all(self._path)
+        var before_size = len(pages)
+        var parsed = parse_journal(pages^)
+        if not parsed.complete:
+            self._ensure_open()
+            self._ops.truncate(self._fd, parsed.good_end)
+            pages = self._ops.read_all(self._path)
+            parsed = parse_journal(pages^)
+            before_size = parsed.good_end
+
+        var builder = RecoveryBuilder()
+        builder.apply(parsed^)
+        var topo = builder.finalize()
+
+        self._ensure_open()
+        self._ops.truncate(self._fd, 0)
+
+        var new_count = 0
+
+        for i in range(len(topo.queues)):
+            var body = _dj_body(
+                topo.queues[i].name.copy(), topo.queues[i].durable,
+                topo.queues[i].capacity, topo.queues[i].ttl_ms,
+                topo.queues[i].max_length, topo.queues[i].overflow_reject,
+                topo.queues[i].dlx.copy(), topo.queues[i].dlrk.copy(),
+            )
+            var frame = _encode_frame(body^, RECORD_DECLARE_QUEUE())
+            self._ops.append(self._fd, frame^)
+            new_count += 1
+
+        for i in range(len(topo.exchanges)):
+            var body = _dx_body(topo.exchanges[i].name.copy(), topo.exchanges[i].type_code)
+            var frame = _encode_frame(body^, RECORD_DECLARE_EXCHANGE())
+            self._ops.append(self._fd, frame^)
+            new_count += 1
+
+        for i in range(len(topo.bindings)):
+            var body = _bind_body(
+                topo.bindings[i].exchange.copy(), topo.bindings[i].destination.copy(),
+                topo.bindings[i].routing_key.copy(), topo.bindings[i].e2e,
+            )
+            var frame = _encode_frame(body^, RECORD_BIND())
+            self._ops.append(self._fd, frame^)
+            new_count += 1
+
+        for i in range(len(topo.queues)):
+            for j in range(len(topo.queues[i].msgs)):
+                var body = _msg_body(
+                    topo.queues[i].name.copy(),
+                    topo.queues[i].msgs[j].routing_key.copy(),
+                    topo.queues[i].msgs[j].prop_flags,
+                    topo.queues[i].msgs[j].prop_bytes.copy(),
+                    topo.queues[i].msgs[j].payload.copy(),
+                    topo.queues[i].msgs[j].stamp_ns,
+                )
+                var frame = _encode_frame(body^, RECORD_MSG())
+                self._ops.append(self._fd, frame^)
+                new_count += 1
+
+        self._records = new_count
+        var after_size = len(self._ops.read_all(self._path))
+        return before_size - after_size
 
 
 # ---- recovery: the forward-replay state builder ------------------------------------
@@ -1516,3 +1660,18 @@ struct MessageJournal(Movable):
     def close(mut self):
         if self._mode == 2:
             self._file.close()
+
+    def compact(mut self) raises -> Int:
+        """Compact the WAL: rebuild from live records only. Returns bytes reclaimed.
+
+        Strips resolved tombstones (ACK/REDELIVER/REMOVE) and dead MSG
+        records from the journal. The compacted WAL is self-consistent:
+        a fresh replay produces the same final topology.
+
+        No-op (returns 0) when storage is disabled. Idempotent.
+        """
+        if self._mode == 0:
+            return 0
+        if self._mode == 1:
+            return self._mem.compact()
+        return self._file.compact()

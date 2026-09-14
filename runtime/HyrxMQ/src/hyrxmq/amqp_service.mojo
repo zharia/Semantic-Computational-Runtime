@@ -669,6 +669,25 @@ def emit_message_frames(
     return out^
 
 
+# 0025 M2: per-connection ACL permission bits (vhost isolation).
+struct _PermBits:
+    """One connection's vhost permission triple (configure/write/read).
+
+    Stored on the service per-connection after SASL auth succeeds; checked
+    at each operation point (exchange.declare → configure, queue.declare →
+    configure, basic.publish → write, basic.consume/basic.get → read).
+    """
+
+    var configure: Bool
+    var write: Bool
+    var read: Bool
+
+    def __init__(out self, cfg: Bool, w: Bool, r: Bool):
+        self.configure = cfg
+        self.write = w
+        self.read = r
+
+
 # Per-channel delivery-tag namespace (0017 T2).
 #
 # ONE tag counter + outstanding-tag map per (connection, channel) NAMESPACE —
@@ -943,6 +962,11 @@ struct AMQPService:
     var _max_message_size: Int
     var _max_queues: Int
     var _max_exchanges: Int
+    # 0025 M2: per-connection vhost and ACL permissions (set on SASL auth).
+    var _conn_vhost: Dict[UInt64, String]
+    var _conn_permissions: Dict[UInt64, _PermBits]
+    # 0025 M2: auth failure counter (visible in status).
+    var _auth_failures: Int
 
     def __init__(out self, var config: HyrxMQConfig):
         # Read frame_max + the T4 values (users table, heartbeat advertised)
@@ -1002,6 +1026,10 @@ struct AMQPService:
         self._max_message_size = max_msg
         self._max_queues = max_q
         self._max_exchanges = max_ex
+        # 0025 M2: per-connection ACL state.
+        self._conn_vhost = Dict[UInt64, String]()
+        self._conn_permissions = Dict[UInt64, _PermBits]()
+        self._auth_failures = 0
 
     # ---- 0017 T2: per-channel delivery-tag namespaces ----
 
@@ -1204,7 +1232,10 @@ struct AMQPService:
         return self._broker.health()
 
     def status(mut self) -> BrokerStatus:
-        return self._broker.status()
+        var s = self._broker.status()
+        # 0025 M2: expose auth failure count in status.
+        s.auth_failures = self._auth_failures
+        return s^
 
     def node_name(mut self) -> String:
         return self._broker.node_name()
@@ -1461,6 +1492,7 @@ struct AMQPService:
                 + locale
             )
             var auth_ok = False
+            var matched_user_idx = -1
             if len(mechanism.bytes()) != 0 and mechanism.copy() == "PLAIN":
                 for i in range(len(self._users)):
                     if (
@@ -1468,8 +1500,10 @@ struct AMQPService:
                         and self._users[i].password.copy() == passwd.copy()
                     ):
                         auth_ok = True
+                        matched_user_idx = i
                         break
             if not auth_ok:
+                self._auth_failures += 1
                 # Normative SERVER-initiated close (rabbit ground truth):
                 # reply-code 403 ACCESS_REFUSED + the reference close text,
                 # failing method = connection.start_ok (10,11). Emitted BEFORE
@@ -1491,6 +1525,13 @@ struct AMQPService:
             if conn_id not in self._conns:
                 self._conns[conn_id] = AMQPConnectionState()
             self._conns[conn_id].set_state(CONN_STATE_TUNE_SENT())
+            # 0025 M2: store per-connection vhost + ACL permissions.
+            self._conn_vhost[conn_id] = self._users[matched_user_idx].vhost.copy()
+            self._conn_permissions[conn_id] = _PermBits(
+                self._users[matched_user_idx].can_configure,
+                self._users[matched_user_idx].can_write,
+                self._users[matched_user_idx].can_read,
+            )
             return self._reply_tune(chan)
 
         if mid == CONNECTION_TUNE_OK():
@@ -1578,6 +1619,14 @@ struct AMQPService:
         #   auto_delete: delete on the LAST unbind (exchange.unbind and
         #     queue.unbind paths both count bindings before dropping).
         if mid == EXCHANGE_DECLARE():
+            # 0025 M2: ACL — configure permission required.
+            if conn_id in self._conn_permissions:
+                if not self._conn_permissions[conn_id].configure:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan, REPLY_ACCESS_REFUSED(),
+                        "ACCESS_REFUSED - not permitted on this vhost", mid,
+                    )
             _ = reader.read_short()  # reserved-1 (deprecated "ticket")
             var ex_name = reader.read_short_string()
             var ex_type = reader.read_short_string()
@@ -1702,6 +1751,14 @@ struct AMQPService:
         #   The declare-ok wire shape is EXACT (queue shortstr +
         #   message_count long + consumer_count long — nothing more).
         if mid == QUEUE_DECLARE():
+            # 0025 M2: ACL — configure permission required.
+            if conn_id in self._conn_permissions:
+                if not self._conn_permissions[conn_id].configure:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan, REPLY_ACCESS_REFUSED(),
+                        "ACCESS_REFUSED - not permitted on this vhost", mid,
+                    )
             _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
             var q_name = reader.read_short_string()
             var q_bits = reader.read_octet()
@@ -1952,6 +2009,14 @@ struct AMQPService:
 
         # ---- basic publish: envelope only; the body arrives as content frames
         if mid == BASIC_PUBLISH():
+            # 0025 M2: ACL — write permission required.
+            if conn_id in self._conn_permissions:
+                if not self._conn_permissions[conn_id].write:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan, REPLY_ACCESS_REFUSED(),
+                        "ACCESS_REFUSED - not permitted on this vhost", mid,
+                    )
             # Spec args: reserved-1 short + exchange shortstr + routing-key
             # shortstr + bits[mandatory=1, immediate=2] in ONE octet. The
             # message is NOT published here: the METHOD frame is followed on
@@ -2018,6 +2083,14 @@ struct AMQPService:
 
         # ---- basic consume ----
         if mid == BASIC_CONSUME():
+            # 0025 M2: ACL — read permission required.
+            if conn_id in self._conn_permissions:
+                if not self._conn_permissions[conn_id].read:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan, REPLY_ACCESS_REFUSED(),
+                        "ACCESS_REFUSED - not permitted on this vhost", mid,
+                    )
             # Spec args: reserved-1 short + queue shortstr + consumer-tag
             # shortstr + bits[no-local=1,no-ack=2,exclusive=4,no-wait=8] +
             # arguments table.
@@ -2057,6 +2130,14 @@ struct AMQPService:
 
         # ---- basic get (60,70): synchronous — answer get-ok or get-empty ----
         if mid == BASIC_GET():
+            # 0025 M2: ACL — read permission required.
+            if conn_id in self._conn_permissions:
+                if not self._conn_permissions[conn_id].read:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan, REPLY_ACCESS_REFUSED(),
+                        "ACCESS_REFUSED - not permitted on this vhost", mid,
+                    )
             # Spec args: reserved-1 short + queue shortstr + no-ack bit.
             _ = reader.read_short()
             var gq = reader.read_short_string()
@@ -2548,6 +2629,11 @@ struct AMQPService:
             _ = self._heartbeat_negotiated.pop(conn_id)
         if conn_id in self._closed_channels:
             _ = self._closed_channels.pop(conn_id)
+        # 0025 M2: drop per-connection vhost + ACL permission state.
+        if conn_id in self._conn_vhost:
+            _ = self._conn_vhost.pop(conn_id)
+        if conn_id in self._conn_permissions:
+            _ = self._conn_permissions.pop(conn_id)
         # 0017 T3: exclusive CLIENT-connection-owned queues die with their
         # connection (one-connection lifetime): delete + drop metadata.
         var i2 = 0

@@ -83,6 +83,7 @@ def test_json_fields() raises:
     want += "\"messages_delivered\":42,\"messages_acked\":42,"
     want += "\"messages_rejected\":0,\"active_connections\":0,"
     want += "\"refused_connections\":0,\"content_errors\":0,"
+    want += "\"auth_failures\":0,"
     want += "\"pool_stats\":{\"allocations\":0,"
     want += "\"reuses\":0,\"capacity\":0,\"in_use\":0},"
     want += "\"publish_latency\":{\"le_100us\":0,\"le_500us\":0,\"le_1ms\":0,"

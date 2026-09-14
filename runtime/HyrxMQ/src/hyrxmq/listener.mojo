@@ -21,6 +21,7 @@
 # state machine lives once, in `AMQPConnServing`.
 
 from std.collections import Dict, List, Optional
+from std.time import monotonic
 
 from std.ffi import c_int, c_size_t, c_ssize_t, external_call, get_errno, ErrNo
 from std.sys.info import CompilationTarget
@@ -278,6 +279,10 @@ struct AMQPConnServing[Conn: AMQPConn]:
     # a socket READ (a frame served purely from the codec backlog leaves it
     # False, so parse-only dispatches do not consume the read budget).
     var _last_serve_read: Bool
+    # M4 Transport Resilience: connection idle timeout tracking.
+    var _last_active: Dict[UInt64, Int]
+    var _idle_timeout_ms: Int
+    var _conn_id_to_slot: Dict[UInt64, Int]
 
     def __init__(out self, var config: HyrxMQConfig):
         # Enforced ceiling handed to every per-connection codec AND advertised in
@@ -289,6 +294,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         # The accept-gate authority (see register below): the transport wrapper
         # does not enforce max_connections (TECH DEBT: enforce in one place).
         self._max_connections = config.max_connections
+        self._idle_timeout_ms = config.idle_timeout_secs * 1000
         self._service = AMQPService(config^)
         self._conns = List[Optional[Self.Conn]]()
         self._codecs = List[AMQPFrameCodec]()
@@ -298,6 +304,8 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._active = 0
         self._refused = 0
         self._last_serve_read = False
+        self._last_active = Dict[UInt64, Int]()
+        self._conn_id_to_slot = Dict[UInt64, Int]()
 
     # ---- broker service lifecycle (transport start/stop is the wrapper's) ----
 
@@ -366,6 +374,9 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._phases.append(PHASE_HEADER())
         self._hdrbuf.append(List[UInt8]())
         self._active += 1
+        var conn_id = self._conns[slot].value().conn_id()
+        self._last_active[conn_id] = Int(monotonic() // 1_000_000)
+        self._conn_id_to_slot[conn_id] = slot
         return slot
 
     def _drop(mut self, var conn: Optional[Self.Conn]):
@@ -390,6 +401,40 @@ struct AMQPConnServing[Conn: AMQPConn]:
         if slot < 0 or slot >= len(self._closed):
             return
         self._close_slot(slot)
+
+    def _refresh_last_active(mut self, slot: Int):
+        """Update the idle timestamp for a connection slot on read/write."""
+        if slot < 0 or slot >= len(self._conns):
+            return
+        if self._closed[slot]:
+            return
+        try:
+            if not self._conns[slot].__bool__():
+                return
+            var conn_id = self._conns[slot].value().conn_id()
+            self._last_active[conn_id] = Int(monotonic() // 1_000_000)
+        except:
+            return
+
+    def check_idle_connections(mut self) -> List[Int]:
+        """Return slot indices of connections exceeding idle timeout. O(active)."""
+        var expired = List[Int]()
+        if self._idle_timeout_ms <= 0:
+            return expired^
+        var now = Int(monotonic() // 1_000_000)
+        for slot in range(len(self._conns)):
+            if self._closed[slot]:
+                continue
+            try:
+                if not self._conns[slot].__bool__():
+                    continue
+                var conn_id = self._conns[slot].value().conn_id()
+                if conn_id in self._last_active:
+                    if now - self._last_active[conn_id] > self._idle_timeout_ms:
+                        expired.append(slot)
+            except:
+                continue
+        return expired^
 
     def slot_conn_fd(ref self, slot: Int) -> Int:
         """The raw fd of the slot's connection (event-driven registry key).
@@ -538,6 +583,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
                 self._last_serve_read = True
+                self._refresh_last_active(slot)
                 if got < want:
                     buf.resize(unsafe_uninit_length=got)
                 chunk = buf^
@@ -545,6 +591,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 # LEGACY tier: the blocking read, byte-identical to before.
                 chunk = self._conns[slot].value().recv_bytes(want)
                 self._last_serve_read = True
+                self._refresh_last_active(slot)
                 if len(chunk) == 0:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
@@ -566,6 +613,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         if frame.value().frame_type == FRAME_HEARTBEAT():
             var echo = AMQPFrameCodec.encode_heartbeat(frame.value().channel)
             self._conns[slot].value().send_bytes(echo^)
+            self._refresh_last_active(slot)
             return SERVE_DISPATCHED()
 
         # Close-detection is byte glue only: class/method ids of a method
@@ -600,6 +648,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
             # raise between send and close is impossible (handle_frame
             # produced the bytes already).
             self._conns[slot].value().send_bytes(resp.value().copy())
+            self._last_active[conn_id] = Int(monotonic() // 1_000_000)
             # Handshake completion is detected from the reply bytes only (no new
             # service coupling): an open-ok reply ends negotiation.
             if (
@@ -651,11 +700,13 @@ struct AMQPConnServing[Conn: AMQPConn]:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
                 self._last_serve_read = True
+                self._refresh_last_active(slot)
                 buf.resize(unsafe_uninit_length=got)
                 chunk = buf^
             else:
                 chunk = self._conns[slot].value().recv_bytes(need)
                 self._last_serve_read = True
+                self._refresh_last_active(slot)
                 if len(chunk) == 0:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
@@ -894,6 +945,14 @@ struct AMQPListener:
                     self._accept_drain(poller, slot_of_fd)
                 else:
                     self._serve_readiness(poller, slot_of_fd, events[i])
+            # M4: idle timeout check after event processing
+            var idle_expired = self._srv.check_idle_connections()
+            for j in range(len(idle_expired)):
+                var idle_slot = idle_expired[j]
+                var idle_fd = self._srv.slot_conn_fd(idle_slot)
+                if idle_fd >= 0:
+                    self._deregister(poller, slot_of_fd, idle_fd)
+                self._srv.close_slot(idle_slot)
 
 
     def _accept_drain(
@@ -1115,6 +1174,14 @@ struct UDSAMQPListener:
                     self._accept_drain(poller, slot_of_fd)
                 else:
                     self._serve_readiness(poller, slot_of_fd, events[i])
+            # M4: idle timeout check after event processing
+            var idle_expired = self._srv.check_idle_connections()
+            for j in range(len(idle_expired)):
+                var idle_slot = idle_expired[j]
+                var idle_fd = self._srv.slot_conn_fd(idle_slot)
+                if idle_fd >= 0:
+                    self._deregister(poller, slot_of_fd, idle_fd)
+                self._srv.close_slot(idle_slot)
 
 
     def _accept_drain(

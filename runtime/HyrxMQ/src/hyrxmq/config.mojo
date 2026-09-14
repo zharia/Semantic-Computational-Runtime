@@ -20,14 +20,43 @@ struct UserRecord:
 
     var username: String
     var password: String
+    # 0025 M2: per-vhost permissions (configure, write, read).
+    var vhost: String
+    var can_configure: Bool
+    var can_write: Bool
+    var can_read: Bool
 
     def __init__(out self, var user: String, var passwd: String):
         self.username = user^
         self.password = passwd^
+        self.vhost = "/"
+        self.can_configure = True
+        self.can_write = True
+        self.can_read = True
+
+    def __init__(
+        out self,
+        var user: String,
+        var passwd: String,
+        var user_vhost: String,
+        user_configure: Bool,
+        user_write: Bool,
+        user_read: Bool,
+    ):
+        self.username = user^
+        self.password = passwd^
+        self.vhost = user_vhost^
+        self.can_configure = user_configure
+        self.can_write = user_write
+        self.can_read = user_read
 
     def __copyinit__(out self, existing: Self):
         self.username = existing.username
         self.password = existing.password
+        self.vhost = existing.vhost
+        self.can_configure = existing.can_configure
+        self.can_write = existing.can_write
+        self.can_read = existing.can_read
 
 
 struct KeyValuePair:
