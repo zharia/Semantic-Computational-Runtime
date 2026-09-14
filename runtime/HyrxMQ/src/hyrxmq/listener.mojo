@@ -602,13 +602,31 @@ struct AMQPConnServing[Conn: AMQPConn]:
         var last = SERVE_DISPATCHED()
         var frames = 0
         var reads = 0
-        while frames < _DOSE_FRAME_CAP() and reads < _FAIRNESS_DOSE():
+        while frames < _DOSE_FRAME_CAP():
             last = self._serve_dose_frame(slot)
             if last != SERVE_DISPATCHED():
                 break
             frames += 1
             if self._last_serve_read:
                 reads += 1
+            # Once the READ budget is spent, keep serving ONLY frames the codec
+            # ALREADY holds. A parse-only step performs no kernel read (so it
+            # cannot starve a peer), and a dry fd that still has buffered bytes
+            # is invisible to level-triggered epoll — it will never re-fire.
+            # Stopping on the read budget alone therefore wedges the connection
+            # with complete frames stranded in the codec until the peer happens
+            # to send more bytes: the intermittent ~15 s pubget stall
+            # ("drain timeout: 1/128") where a 128-publish burst outran the
+            # 8-read dose and the following gets never got a reply.
+            #
+            # Continue while the codec is non-empty; a step that needs a read
+            # (partial frame) would-blocks to SERVE_PARTIAL and exits above, so
+            # this drains the backlog without unbounded reading.
+            if (
+                reads >= _FAIRNESS_DOSE()
+                and self._codecs[slot].buffered_bytes() == 0
+            ):
+                break
         return last
 
     def _serve_dose_frame(mut self, slot: Int) -> Int:
