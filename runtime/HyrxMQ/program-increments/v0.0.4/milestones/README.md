@@ -3,169 +3,176 @@
 **Spec:** `spec.md` (15 phases, 62 sections)
 **Baseline:** v0.0.3 — commit `034a9c0`
 **Target:** Production Ready
+**Release checklist:** `reports/RELEASE_CHECKLIST.md`
 
 ---
 
 ## Milestone 1: Semantic Correctness & Resource Governance
 
 **Gate:** A (Correctness) + B (Resource Safety)
-**Status:** IN PROGRESS
+**Status:** PARTIAL (limits declared; memory admission + `max_unacked` delivery + channel bound are config-only)
 
 ### Sprint 1.1 — Baseline Verification
 - [x] Record current commit (`034a9c0`)
-- [x] Run existing test suite (54/54 pass)
+- [x] Run existing test suite (54/54 pass at baseline)
 - [x] Record benchmark baseline (stress suite built)
 - [x] Record current documentation state
 
 ### Sprint 1.2 — Resource Limits Enforcement
-- [ ] Max message size validation at publish (reject before allocation)
-- [ ] Max connections enforcement in listener
-- [ ] Connection idle timeout
-- [ ] Max queues/exchanges/consumers/channels bounds
-- [ ] Config keys for all new limits
+- [x] Max message size validation at publish (reject before allocation)
+- [x] Max connections enforcement in listener
+- [x] Connection idle timeout
+- [x] Max queues/exchanges bounds (enforced)
+- [ ] Max channels-per-connection bound (config key only)
+- [x] Config keys for all new limits
 
 ### Sprint 1.3 — Backpressure & Admission Control
-- [ ] Memory admission control (validate before allocate)
-- [ ] Backpressure propagation (fast producer / slow consumer)
-- [ ] Bounded unacked delivery enforcement
+- [ ] Memory admission control (validate before allocate) — config only
+- [ ] Backpressure propagation (fast producer / slow consumer) — not wired
+- [ ] Bounded unacked delivery enforcement — config contract only
 
 ### Sprint 1.4 — Correctness Test Matrix
-- [ ] Routing matrix test (all exchange types × edge cases)
-- [ ] Ownership lifecycle test
-- [ ] Delivery tag correctness test
-- [ ] Queue semantics test (capacity, TTL, DLX, purge)
+- [x] Routing matrix test (all exchange types × edge cases)
+- [x] Ownership lifecycle test
+- [x] Delivery tag correctness test
+- [x] Queue semantics test (capacity, TTL, DLX, purge)
+- (consolidated as `tests/phase10/correctness_matrix_test.mojo`)
 
-**Exit:** Gate A + Gate B pass
+**Exit:** Gate A pass; Gate B partial (see above)
 
 ---
 
 ## Milestone 2: Security & Multi-Tenant Isolation
 
 **Gate:** C (Security)
-**Status:** NOT STARTED
+**Status:** PARTIAL (auth/vhost/ACL/TLS done; auth-failure rate limiting + dedicated ACL test remain)
 
 ### Sprint 2.1 — Authentication Hardening
-- [ ] SASL PLAIN credential validation (existing table, proper error)
-- [ ] Connection.close 403 on auth failure
-- [ ] Repeated auth failure handling
+- [x] SASL PLAIN credential validation (existing table, proper error)
+- [x] Connection.close 403 on auth failure
+- [ ] Repeated auth failure handling (rate limiting)
+- [ ] Auth failure audit logging (counter exposed only)
 
 ### Sprint 2.2 — Vhost Namespace Isolation
-- [ ] Vhost-scoped exchange/queue routing
-- [ ] Cross-vhost access denial
+- [x] Vhost-scoped exchange/queue routing
+- [x] Cross-vhost access denial
 - [ ] Per-vhost resource limits
 
 ### Sprint 2.3 — Authorization ACLs
-- [ ] Connect permission
-- [ ] Exchange declare/delete permission
-- [ ] Queue declare/delete permission
-- [ ] Publish permission
-- [ ] Consume permission
-- [ ] Bind/unbind permission
+- [x] Connect permission
+- [x] Exchange declare/delete permission
+- [x] Queue declare/delete permission
+- [x] Publish permission
+- [x] Consume permission
+- [x] Bind/unbind permission
+- (code-verified, invariant R16; no dedicated test)
 
 ### Sprint 2.4 — TLS Trust Validation
-- [ ] Certificate chain validation
+- [x] Certificate chain validation (`tls_verify_peer`)
 - [ ] Hostname validation
 - [ ] Expired/revoked certificate handling
-- [ ] Self-signed certificate behavior
+- [x] Self-signed certificate behavior (`tls_allow_self_signed`, `tls_ca_path`)
 
-**Exit:** Gate C pass
+**Exit:** Gate C partial
 
 ---
 
 ## Milestone 3: Persistence & Failure Durability
 
 **Gate:** D (Durability)
-**Status:** PARTIAL (WAL + recovery exists)
+**Status:** COMPLETE (core) — segment rotation + permission/RO-fs cases remain
 
 ### Sprint 3.1 — WAL Hardening
-- [ ] WAL compaction (tombstone reclaim)
+- [x] WAL compaction (tombstone reclaim, idempotent)
 - [ ] Segment rotation
-- [ ] Disk-full behavior
-- [ ] Corrupted record handling
+- [x] Disk-full behavior (disk-failure harness + test)
+- [x] Corrupted record handling (`wal_hardening_test.mojo`)
 
 ### Sprint 3.2 — Real Process-Kill Testing
-- [ ] SIGKILL harness (kill during publish)
+- [x] SIGKILL harness (kill during publish → restart → verify)
 - [ ] SIGKILL during flush
 - [ ] SIGKILL during recovery
-- [ ] State comparison after recovery
+- [x] State comparison after recovery
 
 ### Sprint 3.3 — Persistence Failure Matrix
-- [ ] Missing segment handling
-- [ ] Truncated segment handling
+- [x] Missing segment handling
+- [x] Truncated segment handling
 - [ ] Permission failure
 - [ ] Read-only filesystem
 
-**Exit:** Gate D pass
+**Exit:** Gate D pass (core); gaps above
 
 ---
 
 ## Milestone 4: Transport & Protocol Resilience
 
 **Gate:** Part of Gate G (Robustness)
-**Status:** PARTIAL (TCP/TLS/UDS/WSS exist)
+**Status:** COMPLETE (core) — half-open + wrong-method-in-state remain
 
 ### Sprint 4.1 — Network Failure Tests
-- [ ] Abrupt disconnect test
+- [x] Abrupt disconnect test
 - [ ] Half-open connection test
-- [ ] Partial frame test
-- [ ] Oversized frame test
+- [x] Partial frame test
+- [x] Oversized frame test
+- [x] Malformed / empty frame
 
 ### Sprint 4.2 — Protocol-State Resilience
 - [ ] Wrong method in wrong state
-- [ ] Wrong channel
-- [ ] Malformed frame handling
-- [ ] Premature close
-- [ ] Duplicate operation
+- [x] Wrong channel
+- [x] Malformed frame handling
+- [x] Premature close
+- [x] Duplicate operation
+- [x] Connection idle timeout
 
-**Exit:** All transport tests pass
+**Exit:** Implemented transport tests pass
 
 ---
 
 ## Milestone 5: Fuzzing & Adversarial Testing
 
 **Gate:** Part of Gate G
-**Status:** MINIMAL (frame fuzz exists)
+**Status:** PARTIAL — no field-table target; 1M-iteration bar unmet (25k run)
 
 ### Sprint 5.1 — Coverage-Guided Fuzzing
-- [ ] Frame decoding fuzzer
+- [x] Frame decoding fuzzer (20k)
 - [ ] Field table fuzzer
-- [ ] AMQP state transition fuzzer
-- [ ] Persistent corpus
+- [x] AMQP state transition fuzzer
+- [x] Persistent/deterministic corpus (LCG)
 
 ### Sprint 5.2 — Stateful Protocol Fuzzing
-- [ ] Sequence generator (CONNECT→OPEN→CHANNEL→DECLARE→PUBLISH→CONSUME→ACK→CLOSE)
-- [ ] Mutation strategies (ordering, duplication, omission, malformed values)
-- [ ] Crash/deadlock/leak detection
+- [x] Sequence generator (CONNECT→…→CLOSE)
+- [x] Mutation strategies (bit_flip, byte_replace, truncate, duplicate)
+- [x] Crash/deadlock/leak detection
 
-**Exit:** No crashes under 1M fuzz iterations
+**Exit:** No crashes to 25k iterations (1M unmet)
 
 ---
 
 ## Milestone 6: Operationalisation
 
 **Gate:** E (Operational Readiness)
-**Status:** PARTIAL (health/status endpoints exist)
+**Status:** COMPLETE (log-redaction gap)
 
 ### Sprint 6.1 — Health Endpoints
-- [ ] Separate liveness vs readiness
-- [ ] Kubernetes probe compatibility
-- [ ] Recovery state detection
+- [x] Separate liveness vs readiness
+- [x] Kubernetes probe compatibility
+- [x] Recovery/shutdown state detection
 
 ### Sprint 6.2 — Metrics & Observability
-- [ ] Prometheus /metrics endpoint
-- [ ] Latency histograms (p50/p95/p99/p99.9)
-- [ ] Connection metrics
-- [ ] Queue depth metrics
+- [x] Prometheus /metrics endpoint
+- [x] Latency histograms (p50/p95/p99/p99.9)
+- [x] Connection metrics
+- [x] Queue depth metrics
 
 ### Sprint 6.3 — Structured Logging
-- [ ] Connection ID, channel, vhost, identity
-- [ ] Error category, severity, timestamp
+- [x] Connection ID, channel, vhost, identity (correlation IDs)
+- [x] Error category, severity, timestamp
 - [ ] Sensitive data redaction
 
 ### Sprint 6.4 — Signal Handling & Graceful Shutdown
-- [ ] SIGTERM handler
-- [ ] SIGINT handler
-- [ ] Shutdown sequence (stop admission → drain → persist → close → exit)
+- [x] SIGTERM handler
+- [x] SIGINT handler
+- [x] Shutdown sequence (stop admission → drain → persist → close → exit)
 
 **Exit:** Gate E pass
 
@@ -174,65 +181,67 @@
 ## Milestone 7: Kubernetes Composability
 
 **Gate:** Part of Gate E
-**Status:** NOT STARTED
+**Status:** PARTIAL — manifests present; no StatefulSet, no live-cluster run
 
 ### Sprint 7.1 — Kubernetes Manifests
-- [ ] Deployment/StatefulSet manifest
-- [ ] Service manifest
-- [ ] ConfigMap template
-- [ ] Secret template
+- [x] Deployment manifest
+- [ ] StatefulSet manifest
+- [x] Service manifest
+- [x] ConfigMap template
+- [x] Secret template
 
 ### Sprint 7.2 — Lifecycle Validation
 - [ ] Pod startup test
 - [ ] Readiness transition test
-- [ ] Graceful termination test
-- [ ] Resource limits test
+- [ ] Graceful termination test (on-cluster)
+- [x] Resource limits (manifest)
+- [ ] Persistent volume remount test
 
-**Exit:** K8s manifests deployable
+**Exit:** Manifests structurally valid; deployable not yet proven
 
 ---
 
 ## Milestone 8: AMQP Interoperability
 
 **Gate:** F (Interoperability)
-**Status:** Pika-only
+**Status:** PARTIAL — Python/Node/Java done; Go unavailable
 
 ### Sprint 8.1 — Multi-Client Testing
-- [ ] Python (Pika) — existing
-- [ ] Node.js (amqplib)
-- [ ] Go (amqp091-go)
-- [ ] Java (RabbitMQ client)
+- [x] Python (Pika) — existing
+- [x] Node.js (amqplib)
+- [ ] Go (amqp091-go) — no toolchain
+- [x] Java (RabbitMQ client)
 
 ### Sprint 8.2 — Protocol Matrix
-- [ ] Publisher confirms
-- [ ] QoS / prefetch
-- [ ] Mandatory publish / basic.return
-- [ ] Heartbeat
-- [ ] Reconnect
+- [x] Publisher confirms
+- [x] QoS / prefetch
+- [x] Mandatory publish / basic.return
+- [x] Heartbeat
+- [x] Reconnect
 
-**Exit:** Gate F pass
+**Exit:** Gate F partial
 
 ---
 
 ## Milestone 9: Performance & Soak Certification
 
 **Gate:** Part of Gate G
-**Status:** BENCHMARK BUILT
+**Status:** PARTIAL — certification PASS; 1-hour soak + CI gate remain
 
 ### Sprint 9.1 — Performance Certification
-- [ ] Full benchmark suite execution
-- [ ] Throughput, p50/p95/p99/p99.9
-- [ ] CPU/memory per message
-- [ ] TLS overhead measurement
+- [x] Full benchmark suite execution
+- [x] Throughput, p50/p95/p99/p99.9
+- [x] CPU/memory per message
+- [x] TLS overhead measurement
 
 ### Sprint 9.2 — Soak Testing
 - [ ] 1-hour continuous operation
-- [ ] Memory leak detection
-- [ ] Descriptor leak detection
-- [ ] Latency degradation monitoring
+- [x] Memory leak detection
+- [x] Descriptor leak detection
+- [x] Latency degradation monitoring
 
 ### Sprint 9.3 — Regression Gate
-- [ ] Benchmark threshold establishment
+- [x] Benchmark threshold establishment
 - [ ] CI gate integration
 
 **Exit:** Performance baseline established
@@ -242,30 +251,30 @@
 ## Milestone 10: Audit & Release
 
 **Gate:** H (Release Reproducibility)
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
 ### Sprint 10.1 — Invariant Audit
-- [ ] Routing authority invariant
-- [ ] Ownership invariant
-- [ ] Delivery state invariant
-- [ ] Resource bounds invariant
-- [ ] Persistence invariant
-- [ ] Security invariant
+- [x] Routing authority invariant
+- [x] Ownership invariant
+- [x] Delivery state invariant
+- [x] Resource bounds invariant
+- [x] Persistence invariant
+- [x] Security invariant
 
 ### Sprint 10.2 — Documentation Truth Audit
-- [ ] All claims verified against implementation
-- [ ] All known limitations documented
-- [ ] All unsupported claims removed
+- [x] All claims verified against implementation
+- [x] All known limitations documented
+- [x] All unsupported claims removed
 
 ### Sprint 10.3 — Release Engineering
-- [ ] Clean checkout test
-- [ ] Reproducible build
-- [ ] Complete test suite pass
-- [ ] Release artifact
-- [ ] Release notes
-- [ ] Changelog
+- [x] Clean checkout test
+- [x] Reproducible build
+- [x] Complete test suite pass (68/69; 1 expected)
+- [x] Release artifact
+- [x] Release notes
+- [x] Changelog
 
-**Exit:** Gate H pass → PRODUCTION READY
+**Exit:** Gate H pass → production-ready artifact
 
 ---
 
