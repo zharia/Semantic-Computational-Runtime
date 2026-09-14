@@ -32,5 +32,11 @@ def event_driven_serving() -> Bool:
     registered connections, K frames per slot per ready-cycle). When False,
     both loop exactly as before: one connection at a time, to completion —
     byte path identical, instant rollback.
-    """
-    return False
+
+    v0.0.4: flipped to True. The serial loop could serve only ONE connection
+    to completion before accepting the next, so a second client's handshake
+    timed out while the first connection stayed open — catastrophic for any
+    real broker (the three-broker benchmark measured exactly 1/16 concurrent
+    pairs connecting). The event-driven loop is the intended serving path;
+    the flag remains as an instant rollback seam."""
+    return True

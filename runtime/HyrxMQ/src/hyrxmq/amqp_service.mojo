@@ -2843,6 +2843,14 @@ struct AMQPService:
         basic.get consumer) requeue their unacked deliveries via
         Router.unregister_consumer (single routing authority).
         """
+        # Capture the queue THIS connection had a consumer on BEFORE the
+        # consumer is dropped: auto-delete is a LAST-CONSUMER transition, so
+        # only that queue can reach zero consumers through this teardown.
+        var consumer_queue = ""
+        if conn_id in self._consumers:
+            var ccid = self._consumers[conn_id]
+            if ccid in self._cids:
+                consumer_queue = self._cids[ccid].copy()
         if conn_id in self._consumers:
             var cid = self._consumers.pop(conn_id)
             _ = self._broker.unregister_consumer(cid)
@@ -2920,16 +2928,18 @@ struct AMQPService:
                     i2 += 1
             else:
                 _ = self._queue_meta_keys.pop(i2)
-        # The connection's consumers are gone; auto_delete queues with NO
-        # remaining consumer delete too (auto_delete last-consumer semantics).
-        i2 = 0
-        while i2 < len(self._queue_meta_keys):
-            var qn = self._queue_meta_keys[i2]
-            _ = self._maybe_auto_delete_queue(qn.copy())
-            if qn.copy() not in self._queue_meta:
-                i2 = 0
-                continue
-            i2 += 1
+        # The connection's consumers are gone; an auto_delete queue whose LAST
+        # consumer this connection owned now reaches zero consumers and dies
+        # (auto_delete last-consumer semantics).
+        #
+        # MUST be scoped to consumer_queue. A global sweep over every queue
+        # deleted OTHER connections' auto-delete queues on every close: those
+        # queues have zero consumers when the declaring client uses basic_get
+        # (no consumer registered), so a fast-closing neighbour erased them
+        # mid-use. That race is what made 4+ concurrent connections fail with
+        # 404 NOT_FOUND on a queue just declared (three-broker benchmark).
+        if len(consumer_queue.bytes()) > 0:
+            _ = self._maybe_auto_delete_queue(consumer_queue.copy())
         # Any ctag→cid entries pointing at dead consumers are unreachable:
         # the connection's consumer ids died with _consumers/_ctrack. The
         # dicts are per-connection-clean only by cid; stale ctag→cid entries
