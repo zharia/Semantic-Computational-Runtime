@@ -967,6 +967,9 @@ struct AMQPService:
     var _conn_permissions: Dict[UInt64, _PermBits]
     # 0025 M2: auth failure counter (visible in status).
     var _auth_failures: Int
+    # 0026: per-consumer backpressure — unacked delivery count and ceiling.
+    var _unacked_counts: Dict[UInt64, Int]
+    var _max_unacked: Int
 
     def __init__(out self, var config: HyrxMQConfig):
         # Read frame_max + the T4 values (users table, heartbeat advertised)
@@ -977,6 +980,7 @@ struct AMQPService:
         var max_msg = config.max_message_size
         var max_q = config.max_queues
         var max_ex = config.max_exchanges
+        var max_unacked = config.max_unacked
         # Element-wise rebuild of the users table (an explicit __init__ chain
         # is used in place of List[UserRecord].copy() so the copy never
         # depends on a non-trivial struct list's CollectionElement conformance
@@ -988,6 +992,10 @@ struct AMQPService:
                 UserRecord(
                     config.users[i].username.copy(),
                     config.users[i].password.copy(),
+                    config.users[i].vhost.copy(),
+                    config.users[i].can_configure,
+                    config.users[i].can_write,
+                    config.users[i].can_read,
                 )
             )
         self._broker = HyrxMQBroker(config^)
@@ -1030,6 +1038,9 @@ struct AMQPService:
         self._conn_vhost = Dict[UInt64, String]()
         self._conn_permissions = Dict[UInt64, _PermBits]()
         self._auth_failures = 0
+        # 0026: per-consumer backpressure state.
+        self._unacked_counts = Dict[UInt64, Int]()
+        self._max_unacked = max_unacked
 
     # ---- 0017 T2: per-channel delivery-tag namespaces ----
 
@@ -1202,6 +1213,23 @@ struct AMQPService:
         var staged = self._tx.pop(key)
         self._tx[key] = List[_TxStaged]()
         return staged^
+
+    # ---- 0025: vhost resource scoping ----
+
+    def _vhost_scope(
+        ref self, conn_id: UInt64, var name: String
+    ) raises -> String:
+        """Prefix an exchange/queue name with its connection's vhost for
+        resource isolation. Default vhost "/" returns the bare name
+        (backward compatible). Non-default vhosts produce "vhost::name"
+        so the flat Router keys are naturally partitioned.
+        """
+        if conn_id not in self._conn_vhost:
+            return name^
+        var vh = self._conn_vhost[conn_id].copy()
+        if vh == "/":
+            return name^
+        return vh + "::" + name^
 
     # ---- lifecycle / broker delegation ----
 
@@ -1628,7 +1656,7 @@ struct AMQPService:
                         "ACCESS_REFUSED - not permitted on this vhost", mid,
                     )
             _ = reader.read_short()  # reserved-1 (deprecated "ticket")
-            var ex_name = reader.read_short_string()
+            var ex_name = self._vhost_scope(conn_id, reader.read_short_string())
             var ex_type = reader.read_short_string()
             var ebits = reader.read_octet()
             var eargs_ft = reader.read_table()
@@ -1760,7 +1788,7 @@ struct AMQPService:
                         "ACCESS_REFUSED - not permitted on this vhost", mid,
                     )
             _ = reader.read_short()  # reserved-1 (deprecated "ticket", must be 0)
-            var q_name = reader.read_short_string()
+            var q_name = self._vhost_scope(conn_id, reader.read_short_string())
             var q_bits = reader.read_octet()
             var q_args = reader.read_table()
             var q_passive = (q_bits & QUEUE_DECLARE_BIT_PASSIVE()) != 0
@@ -1922,8 +1950,8 @@ struct AMQPService:
         # ---- queue bind ----
         if mid == QUEUE_BIND():
             _ = reader.read_short()  # reserved-1
-            var bq = reader.read_short_string()
-            var be = reader.read_short_string()
+            var bq = self._vhost_scope(conn_id, reader.read_short_string())
+            var be = self._vhost_scope(conn_id, reader.read_short_string())
             var brk = reader.read_short_string()
             _ = self._broker.bind_queue(bq^, be^, brk^, HeaderArgs())
             return self._reply(
@@ -2027,7 +2055,7 @@ struct AMQPService:
             # queues gets basic.return (60,50) + content on this channel
             # (see _publish_pending). immediate=1 is NOT honoured (flagged).
             _ = reader.read_short()  # reserved-1
-            var pex = reader.read_short_string()
+            var pex = self._vhost_scope(conn_id, reader.read_short_string())
             var prk = reader.read_short_string()
             var pbits = reader.read_octet()
             var mandatory = 0
@@ -2095,7 +2123,7 @@ struct AMQPService:
             # shortstr + bits[no-local=1,no-ack=2,exclusive=4,no-wait=8] +
             # arguments table.
             _ = reader.read_short()  # reserved-1
-            var cq = reader.read_short_string()
+            var cq = self._vhost_scope(conn_id, reader.read_short_string())
             var ctag = reader.read_short_string()
             var cbits = reader.read_octet()
             var cargs_ft = reader.read_table()
@@ -2140,7 +2168,7 @@ struct AMQPService:
                     )
             # Spec args: reserved-1 short + queue shortstr + no-ack bit.
             _ = reader.read_short()
-            var gq = reader.read_short_string()
+            var gq = self._vhost_scope(conn_id, reader.read_short_string())
             var gbits = reader.read_octet()
             return self._handle_get(conn_id, chan, gq^, gbits)
 
@@ -2290,7 +2318,7 @@ struct AMQPService:
             # _mark_channel_closed (recorded by the guard's rename of the
             # channel state — see _channel_error).
             _ = reader.read_short()  # reserved-1 (deprecated ticket)
-            var pq = reader.read_short_string()
+            var pq = self._vhost_scope(conn_id, reader.read_short_string())
             var pbits = reader.read_octet()
             var purged = self._broker.purge_queue(pq.copy())
             if purged < 0:
@@ -2324,7 +2352,7 @@ struct AMQPService:
             # if_empty violated (queue not empty) -> 406 PRECONDITION_FAILED;
             # if_unused violated (active consumers) -> 406 PRECONDITION_FAILED.
             _ = reader.read_short()  # reserved-1
-            var dq = reader.read_short_string()
+            var dq = self._vhost_scope(conn_id, reader.read_short_string())
             var dbits = reader.read_octet()
             var dcount = self._broker.delete_queue_checked(
                 dq.copy(),
@@ -2373,8 +2401,8 @@ struct AMQPService:
             # channel error (normative error table; flagged: rabbit returns
             # 404 also for unbind of a non-existent binding).
             _ = reader.read_short()  # reserved-1
-            var uq = reader.read_short_string()
-            var ue = reader.read_short_string()
+            var uq = self._vhost_scope(conn_id, reader.read_short_string())
+            var ue = self._vhost_scope(conn_id, reader.read_short_string())
             var urk = reader.read_short_string()
             reader.read_table_skip()  # arguments (not interpreted)
             var unbound = self._broker.unbind_queue(uq.copy(), ue.copy(), urk.copy())
@@ -2405,7 +2433,7 @@ struct AMQPService:
             # reachability). Missing → 404 channel error; if_unused
             # violated (any binding exists) → 406 channel error.
             _ = reader.read_short()  # reserved-1
-            var dex = reader.read_short_string()
+            var dex = self._vhost_scope(conn_id, reader.read_short_string())
             var dbits = reader.read_octet()
             var dcode = self._broker.delete_exchange_checked(
                 dex.copy(), (dbits & EXCHANGE_DELETE_BIT_UNUSED()) != 0
@@ -2443,8 +2471,8 @@ struct AMQPService:
             # source). Missing source or destination → 404 channel error
             # (normative); bind-ok (40,31) carries no arguments.
             _ = reader.read_short()  # reserved-1
-            var bdest = reader.read_short_string()
-            var bsrc = reader.read_short_string()
+            var bdest = self._vhost_scope(conn_id, reader.read_short_string())
+            var bsrc = self._vhost_scope(conn_id, reader.read_short_string())
             var brk = reader.read_short_string()
             var bbits = reader.read_octet()
             reader.read_table_skip()  # arguments
@@ -2476,8 +2504,8 @@ struct AMQPService:
             # Missing source exchange → 404 channel error; a missing exact
             # binding also errors (404) per normative table (flagged).
             _ = reader.read_short()  # reserved-1
-            var xdest = reader.read_short_string()
-            var xsrc = reader.read_short_string()
+            var xdest = self._vhost_scope(conn_id, reader.read_short_string())
+            var xsrc = self._vhost_scope(conn_id, reader.read_short_string())
             var xrk = reader.read_short_string()
             var xbits = reader.read_octet()
             reader.read_table_skip()  # arguments

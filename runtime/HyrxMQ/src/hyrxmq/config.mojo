@@ -15,7 +15,7 @@ from std.collections import List, Optional
 # 0017 T4: one credentials-table entry (username + password). The broker
 # validates SASL PLAIN responses against THIS table (default: admin/password);
 # a mismatch is the normative connection.close 403 ACCESS_REFUSED.
-struct UserRecord:
+struct UserRecord(Copyable):
     """One configured broker user (username + password)."""
 
     var username: String
@@ -146,6 +146,14 @@ struct HyrxMQConfig:
     var tls_enabled: Bool
     var tls_cert_path: String
     var tls_key_path: String
+    # TLS certificate validation policy. `tls_verify_peer` (default True)
+    # requires the peer chain to be verified; `tls_allow_self_signed`
+    # (default False) is only meaningful while verifying and is rejected
+    # when verification is off. `tls_ca_path` is the trust anchor used by
+    # peer verification (EMPTY = fall back to the configured cert chain).
+    var tls_verify_peer: Bool
+    var tls_allow_self_signed: Bool
+    var tls_ca_path: String
 
     # 0023: OPTIONAL WSS tier (browser transport) + the admin-HTTP tier
     # key for T3. Defaults are all OFF ("0"/"none") so unconfigured
@@ -171,6 +179,9 @@ struct HyrxMQConfig:
     var max_channels_per_connection: Int
     var idle_timeout_secs: Int
     var max_memory_bytes: Int
+    # 0026: per-connection backpressure — max unacked deliveries before
+    # the broker stops pushing to that connection.
+    var max_unacked: Int
 
     def __init__(out self):
         self.listen_host = "0.0.0.0"
@@ -188,6 +199,9 @@ struct HyrxMQConfig:
         self.tls_enabled = False
         self.tls_cert_path = ""
         self.tls_key_path = ""
+        self.tls_verify_peer = True
+        self.tls_allow_self_signed = False
+        self.tls_ca_path = ""
         self.wss_listen = 0
         self.wss_tls_mode = "none"
         self.wss_tls_path = ""
@@ -200,6 +214,7 @@ struct HyrxMQConfig:
         self.max_channels_per_connection = 65535
         self.idle_timeout_secs = 300
         self.max_memory_bytes = 536870912
+        self.max_unacked = 1000
 
     def __copyinit__(out self, existing: Self):
         self.listen_host = existing.listen_host
@@ -216,6 +231,9 @@ struct HyrxMQConfig:
         self.tls_enabled = existing.tls_enabled
         self.tls_cert_path = existing.tls_cert_path.copy()
         self.tls_key_path = existing.tls_key_path.copy()
+        self.tls_verify_peer = existing.tls_verify_peer
+        self.tls_allow_self_signed = existing.tls_allow_self_signed
+        self.tls_ca_path = existing.tls_ca_path.copy()
         self.wss_listen = existing.wss_listen
         self.wss_tls_mode = existing.wss_tls_mode
         self.wss_tls_path = existing.wss_tls_path.copy()
@@ -228,6 +246,44 @@ struct HyrxMQConfig:
         self.max_channels_per_connection = existing.max_channels_per_connection
         self.idle_timeout_secs = existing.idle_timeout_secs
         self.max_memory_bytes = existing.max_memory_bytes
+        self.max_unacked = existing.max_unacked
+
+    def copy(ref self) -> Self:
+        """Return an independent copy (the explicit-copy seam; the same field
+        transfer as __copyinit__, mirroring the project's `copy()` convention
+        for non-implicitly-copyable types)."""
+        var c = HyrxMQConfig()
+        c.listen_host = self.listen_host.copy()
+        c.port = self.port
+        c.max_connections = self.max_connections
+        c.frame_max = self.frame_max
+        c.heartbeat_secs = self.heartbeat_secs
+        c.default_queue_capacity = self.default_queue_capacity
+        c.vhost = self.vhost.copy()
+        c.node_name = self.node_name.copy()
+        c.users = self.users.copy()
+        c.storage_mode = self.storage_mode.copy()
+        c.storage_path = self.storage_path.copy()
+        c.tls_enabled = self.tls_enabled
+        c.tls_cert_path = self.tls_cert_path.copy()
+        c.tls_key_path = self.tls_key_path.copy()
+        c.tls_verify_peer = self.tls_verify_peer
+        c.tls_allow_self_signed = self.tls_allow_self_signed
+        c.tls_ca_path = self.tls_ca_path.copy()
+        c.wss_listen = self.wss_listen
+        c.wss_tls_mode = self.wss_tls_mode.copy()
+        c.wss_tls_path = self.wss_tls_path.copy()
+        c.wss_tls_key_path = self.wss_tls_key_path.copy()
+        c.wss_origin_allowlist = self.wss_origin_allowlist.copy()
+        c.admin_http_port = self.admin_http_port
+        c.max_message_size = self.max_message_size
+        c.max_queues = self.max_queues
+        c.max_exchanges = self.max_exchanges
+        c.max_channels_per_connection = self.max_channels_per_connection
+        c.idle_timeout_secs = self.idle_timeout_secs
+        c.max_memory_bytes = self.max_memory_bytes
+        c.max_unacked = self.max_unacked
+        return c^
 
     def apply(mut self, var key: String, var value: String) raises:
         """Assign one recognized key. Unknown keys are REJECTED (audit §17).
@@ -271,6 +327,24 @@ struct HyrxMQConfig:
             self.tls_cert_path = _require_text(key, value)
         elif key == "tls_key_path":
             self.tls_key_path = _require_text(key, value)
+        elif key == "tls_verify_peer":
+            var tv = value.strip()
+            if tv == "true" or tv == "1":
+                self.tls_verify_peer = True
+            elif tv == "false" or tv == "0":
+                self.tls_verify_peer = False
+            else:
+                raise "config: invalid tls_verify_peer '" + tv + "' (true|false|1|0)"
+        elif key == "tls_allow_self_signed":
+            var ts = value.strip()
+            if ts == "true" or ts == "1":
+                self.tls_allow_self_signed = True
+            elif ts == "false" or ts == "0":
+                self.tls_allow_self_signed = False
+            else:
+                raise "config: invalid tls_allow_self_signed '" + ts + "' (true|false|1|0)"
+        elif key == "tls_ca_path":
+            self.tls_ca_path = _require_text(key, value)
         elif key == "wss_listen":
             self.wss_listen = _require_int(key, value)
         elif key == "wss_tls_mode":
@@ -308,6 +382,8 @@ struct HyrxMQConfig:
             self.idle_timeout_secs = _require_int(key, value)
         elif key == "max_memory_bytes":
             self.max_memory_bytes = _require_int(key, value)
+        elif key == "max_unacked":
+            self.max_unacked = _require_int(key, value)
         else:
             raise "config: unknown field '" + key + "'"
 
@@ -390,7 +466,9 @@ struct HyrxMQConfig:
             if len(self.storage_path.strip().bytes()) != 0:
                 raise "config: storage_path must be empty in the '" + self.storage_mode + "' storage_mode"
         # TCP-tier TLS invariants: tls_enabled=True requires both cert and key;
-        # tls_enabled=False requires both paths empty.
+        # tls_enabled=False requires both paths empty. Certificate-validation
+        # policy: allowing self-signed certs is only meaningful while peer
+        # verification is on, so it is rejected when tls_verify_peer is false.
         if self.tls_enabled:
             if len(self.tls_cert_path.strip().bytes()) == 0:
                 raise "config: tls_enabled=true requires a non-empty tls_cert_path"
@@ -399,6 +477,10 @@ struct HyrxMQConfig:
         else:
             if len(self.tls_cert_path.strip().bytes()) != 0 or len(self.tls_key_path.strip().bytes()) != 0:
                 raise "config: tls_cert_path / tls_key_path must be empty when tls_enabled is false"
+            if len(self.tls_ca_path.strip().bytes()) != 0:
+                raise "config: tls_ca_path must be empty when tls_enabled is false"
+        if self.tls_allow_self_signed and not self.tls_verify_peer:
+            raise "config: tls_allow_self_signed requires tls_verify_peer=true"
         # 0023: wss + admin-HTTP invariants (OFF-by-default tiers).
         if self.wss_listen < 0 or self.wss_listen > 65535:
             raise "config: wss_listen out of range"
@@ -416,6 +498,8 @@ struct HyrxMQConfig:
             raise "config: idle_timeout_secs must not be negative"
         if self.max_memory_bytes <= 0:
             raise "config: max_memory_bytes must be positive"
+        if self.max_unacked <= 0:
+            raise "config: max_unacked must be positive"
         if self.wss_tls_mode == "path":
             if len(self.wss_tls_path.strip().bytes()) == 0:
                 raise "config: wss_tls_mode='path' requires a non-empty wss_tls_path (the cert chain PEM)"

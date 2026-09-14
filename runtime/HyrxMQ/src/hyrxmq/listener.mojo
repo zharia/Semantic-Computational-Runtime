@@ -283,6 +283,19 @@ struct AMQPConnServing[Conn: AMQPConn]:
     var _last_active: Dict[UInt64, Int]
     var _idle_timeout_ms: Int
     var _conn_id_to_slot: Dict[UInt64, Int]
+    # 0026 server-initiated heartbeats: per-connection last-send timestamps
+    # (ms) and the negotiated interval. No timer thread — the event-driven
+    # loop checks this after every poll wait.
+    var _last_heartbeat_sent: Dict[UInt64, Int]
+    var _heartbeat_interval_ms: Int
+    # TLS certificate-validation policy, captured from the config before it is
+    # consumed by AMQPService (the policy gate lives with the serving state
+    # machine so both the listener wrapper and any future transport share it).
+    var _tls_enabled: Bool
+    var _tls_verify_peer: Bool
+    var _tls_allow_self_signed: Bool
+    var _tls_ca_path: String
+    var _tls_cert_path: String
 
     def __init__(out self, var config: HyrxMQConfig):
         # Enforced ceiling handed to every per-connection codec AND advertised in
@@ -295,6 +308,13 @@ struct AMQPConnServing[Conn: AMQPConn]:
         # does not enforce max_connections (TECH DEBT: enforce in one place).
         self._max_connections = config.max_connections
         self._idle_timeout_ms = config.idle_timeout_secs * 1000
+        # Captured BEFORE the config move below.
+        self._heartbeat_interval_ms = config.heartbeat_secs * 1000
+        self._tls_enabled = config.tls_enabled
+        self._tls_verify_peer = config.tls_verify_peer
+        self._tls_allow_self_signed = config.tls_allow_self_signed
+        self._tls_ca_path = config.tls_ca_path.copy()
+        self._tls_cert_path = config.tls_cert_path.copy()
         self._service = AMQPService(config^)
         self._conns = List[Optional[Self.Conn]]()
         self._codecs = List[AMQPFrameCodec]()
@@ -306,6 +326,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._last_serve_read = False
         self._last_active = Dict[UInt64, Int]()
         self._conn_id_to_slot = Dict[UInt64, Int]()
+        self._last_heartbeat_sent = Dict[UInt64, Int]()
 
     # ---- broker service lifecycle (transport start/stop is the wrapper's) ----
 
@@ -340,6 +361,27 @@ struct AMQPConnServing[Conn: AMQPConn]:
 
     def health(mut self) -> String:
         return self._service.health()
+
+    def tls_policy_ok(ref self) -> Bool:
+        """Whether the configured TLS certificate-validation policy is
+        internally coherent and startable.
+
+        True when TLS is disabled (nothing to enforce). When TLS is enabled
+        and `tls_verify_peer` is True, a trust anchor must be available —
+        either an explicit `tls_ca_path` or the configured cert chain — so
+        verification cannot silently degrade to none. An incoherent policy
+        (verification on with no anchor, or self-signed allowed while
+        verification is off) returns False: the listener refuses TLS rather
+        than start with a weaker policy than requested."""
+        if not self._tls_enabled:
+            return True
+        if self._tls_allow_self_signed and not self._tls_verify_peer:
+            return False
+        if self._tls_verify_peer:
+            if len(self._tls_ca_path.strip().bytes()) != 0:
+                return True
+            return len(self._tls_cert_path.strip().bytes()) != 0
+        return True
 
     # ---- slot bookkeeping ----
 
@@ -376,6 +418,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         self._active += 1
         var conn_id = self._conns[slot].value().conn_id()
         self._last_active[conn_id] = Int(monotonic() // 1_000_000)
+        self._last_heartbeat_sent[conn_id] = Int(monotonic() // 1_000_000)
         self._conn_id_to_slot[conn_id] = slot
         return slot
 
@@ -435,6 +478,42 @@ struct AMQPConnServing[Conn: AMQPConn]:
             except:
                 continue
         return expired^
+
+    def check_heartbeats(mut self):
+        """Send one heartbeat frame on each connection idle for >= interval.
+
+        Server-initiated liveness (0026), no timer thread: the event-driven
+        loop calls this after every poll wait. A connection whose last
+        heartbeat send is at least `_heartbeat_interval_ms` old receives a
+        single heartbeat frame (type 8, channel 0, size 0). Per-connection
+        send failures are swallowed; teardown stays with the dose/idle path.
+        """
+        if self._heartbeat_interval_ms <= 0:
+            return
+        var now = Int(monotonic() // 1_000_000)
+        for slot in range(len(self._conns)):
+            if self._closed[slot]:
+                continue
+            # Read the last-send stamp in its own try: the dict read raises
+            # DictKeyError, which must not mix with send_bytes' Error below.
+            var last_sent = -1
+            try:
+                if not self._conns[slot].__bool__():
+                    continue
+                var conn_id = self._conns[slot].value().conn_id()
+                if conn_id not in self._last_heartbeat_sent:
+                    continue
+                last_sent = self._last_heartbeat_sent[conn_id]
+            except:
+                continue
+            if now - last_sent >= self._heartbeat_interval_ms:
+                try:
+                    var hb = AMQPFrameCodec.encode_heartbeat(0)
+                    self._conns[slot].value().send_bytes(hb^)
+                    var cid = self._conns[slot].value().conn_id()
+                    self._last_heartbeat_sent[cid] = now
+                except:
+                    continue
 
     def slot_conn_fd(ref self, slot: Int) -> Int:
         """The raw fd of the slot's connection (event-driven registry key).
@@ -769,8 +848,17 @@ struct AMQPListener:
     ) raises:
         """Load the server TLS context. Must be called before start().
 
-        Raises if the cert/key cannot be loaded (bad PEM, key mismatch,
-        etc.) — the listener stays in plaintext if this is never called."""
+        Refuses to enable TLS (stays plaintext, logs a warning, does not
+        crash) when the certificate-validation policy is incoherent — e.g.
+        ``tls_verify_peer=true`` with no CA/trust anchor configured. Raises
+        if the cert/key cannot be loaded (bad PEM, key mismatch, etc.) —
+        the listener stays in plaintext if this is never called."""
+        if not self._srv.tls_policy_ok():
+            print(
+                "HyrxMQ listener: refusing TLS — tls_verify_peer=true but "
+                "no CA/trust anchor configured; serving plaintext"
+            )
+            return
         self._transport.set_tls_config(cert_path, key_path)
 
     # ---- 0018: pluggable storage pass-throughs (additive) ----
@@ -953,6 +1041,8 @@ struct AMQPListener:
                 if idle_fd >= 0:
                     self._deregister(poller, slot_of_fd, idle_fd)
                 self._srv.close_slot(idle_slot)
+            # 0026: server-initiated heartbeats on the same poll cadence.
+            self._srv.check_heartbeats()
 
 
     def _accept_drain(
@@ -1182,6 +1272,8 @@ struct UDSAMQPListener:
                 if idle_fd >= 0:
                     self._deregister(poller, slot_of_fd, idle_fd)
                 self._srv.close_slot(idle_slot)
+            # 0026: server-initiated heartbeats on the same poll cadence.
+            self._srv.check_heartbeats()
 
 
     def _accept_drain(
