@@ -46,3 +46,31 @@ A release candidate must:
 6. recover expected durable state
 7. stop cleanly
 8. emit useful journal output
+
+## Graceful shutdown (verified)
+
+`build/hyrxmq-listen` installs real SIGTERM/SIGINT handlers. Mojo 1.0 has no
+signal module and no module-level mutable globals, so the async-signal-safe
+flag lives in a small C shim (`src/hyrxmq/shutdown_shim.c`, a
+`volatile sig_atomic_t` written by a `signal(2)` handler). The serving loop
+polls `hyrxmq_shutdown_requested()` on its ~100 ms poll cadence, calls
+`begin_shutdown()`, then `flush_storage()` + `stop()` before exiting 0.
+
+The shim is compiled and linked by the pixi `hyrxmq-listen` task:
+
+```
+clang -O2 -c src/hyrxmq/shutdown_shim.c -o build/shutdown_shim.o
+mojo build -I src -I vendor/flare -Xlinker build/shutdown_shim.o \
+    src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen
+```
+
+`mojo run` (JIT) cannot link the object, so unit tests cover only the pure-Mojo
+`ShutdownState` / listener-flag seam
+(`tests/phase10/graceful_shutdown_test.mojo`). The end-to-end signal path is
+verified on the built executable: `kill -TERM <pid>` (and `kill -INT`) while
+idle returns exit code 0 in <10 ms and prints `shut down cleanly`.
+
+Limitation (HONEST): in the legacy serial loop, a connection being served
+blocks the OS-signal poll until it finishes; the event-driven loop
+(`event_driven_serving()` True) rotates doses so the poll stays responsive
+during active traffic.

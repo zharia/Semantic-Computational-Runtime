@@ -47,6 +47,7 @@ from hyrxmq.amqp_service import AMQPService
 from hyrxmq.config import HyrxMQConfig
 from hyrx.core.storage import FileSystemOps, MessageJournal
 from hyrxmq.status import BrokerStatus
+from hyrxmq.shutdown import os_shutdown_requested
 
 
 # One read chunk per socket step; the codec reassembles across steps.
@@ -921,6 +922,16 @@ struct AMQPListener:
         """Whether the accept loop is currently marked running."""
         return self._running
 
+    def poll_os_signal(mut self):
+        """Fold an OS SIGTERM/SIGINT into the running flag.
+
+        The linked C shim's handler only stores to a `volatile sig_atomic_t`;
+        this poll (once per loop iteration, bounded by the ~100 ms poll
+        timeout on the event-driven tier) performs the non-async-safe state
+        change. A no-op in JIT builds that did not link the shim."""
+        if os_shutdown_requested():
+            self._running = False
+
     def health(mut self) -> String:
         return self._srv.health()
 
@@ -993,8 +1004,25 @@ struct AMQPListener:
         if event_driven_serving():
             self.serve_event_driven()
             return
+        # v0.0.4: poll the accept fd with a 100 ms timeout so an IDLE broker
+        # still notices SIGTERM/SIGINT (a bare blocking accept would park the
+        # process until a client arrived). A ready accept fd still serves one
+        # connection serially to completion — legacy one-at-a-time semantics.
+        var poller = EventPoller()
+        var lfd = self._transport.accept_fd()
+        poller.add(lfd, UInt64(Int(lfd)))
+        var events = List[PollEvent]()
         while self._running:
-            _ = self.accept_and_serve_one()
+            var n = poller.wait(events, _POLL_TIMEOUT_MS())
+            self.poll_os_signal()
+            if not self._running:
+                break
+            var readable = False
+            for i in range(n):
+                if not events[i].wakeup:
+                    readable = True
+            if readable:
+                _ = self.accept_and_serve_one()
 
     # ---- 0015: event-driven serving ----
 
@@ -1043,6 +1071,8 @@ struct AMQPListener:
                 self._srv.close_slot(idle_slot)
             # 0026: server-initiated heartbeats on the same poll cadence.
             self._srv.check_heartbeats()
+            # v0.0.4: fold any OS SIGTERM/SIGINT into the running flag.
+            self.poll_os_signal()
 
 
     def _accept_drain(
@@ -1174,6 +1204,11 @@ struct UDSAMQPListener:
         """Discriminator so callers/tests know which endpoint accessor is valid."""
         return "uds"
 
+    def poll_os_signal(mut self):
+        """UDS twin of AMQPListener.poll_os_signal (see that docstring)."""
+        if os_shutdown_requested():
+            self._running = False
+
     def stop(mut self):
         self._running = False
         self._transport.stop()
@@ -1231,8 +1266,25 @@ struct UDSAMQPListener:
         if event_driven_serving():
             self.serve_event_driven()
             return
+        # v0.0.4: poll the accept fd with a 100 ms timeout so an IDLE broker
+        # still notices SIGTERM/SIGINT (a bare blocking accept would park the
+        # process until a client arrived). A ready accept fd still serves one
+        # connection serially to completion — legacy one-at-a-time semantics.
+        var poller = EventPoller()
+        var lfd = self._transport.accept_fd()
+        poller.add(lfd, UInt64(Int(lfd)))
+        var events = List[PollEvent]()
         while self._running:
-            _ = self.accept_and_serve_one()
+            var n = poller.wait(events, _POLL_TIMEOUT_MS())
+            self.poll_os_signal()
+            if not self._running:
+                break
+            var readable = False
+            for i in range(n):
+                if not events[i].wakeup:
+                    readable = True
+            if readable:
+                _ = self.accept_and_serve_one()
 
     # ---- 0015: event-driven serving ----
 
@@ -1274,6 +1326,8 @@ struct UDSAMQPListener:
                 self._srv.close_slot(idle_slot)
             # 0026: server-initiated heartbeats on the same poll cadence.
             self._srv.check_heartbeats()
+            # v0.0.4: fold any OS SIGTERM/SIGINT into the running flag.
+            self.poll_os_signal()
 
 
     def _accept_drain(
@@ -1453,6 +1507,11 @@ struct WSSAMQPListener[Ops: FileSystemOps]:
         valid (the wss analogue of tcp/uds)."""
         return "wss"
 
+    def poll_os_signal(mut self):
+        """WSS twin of AMQPListener.poll_os_signal (see that docstring)."""
+        if os_shutdown_requested():
+            self._running = False
+
     def stop(mut self):
         self._running = False
         self._transport.stop()
@@ -1519,4 +1578,7 @@ struct WSSAMQPListener[Ops: FileSystemOps]:
                 "(event_driven_serving = False)"
             )
         while self._running:
+            self.poll_os_signal()
+            if not self._running:
+                break
             _ = self.accept_and_serve_one()

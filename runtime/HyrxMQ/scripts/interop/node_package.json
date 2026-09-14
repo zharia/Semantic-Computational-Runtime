@@ -1,0 +1,13 @@
+{
+  "name": "hyrxmq-node-interop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js amqplib interop gate for HyrxMQ (M8.1)",
+  "main": "node_interop.js",
+  "scripts": {
+    "interop": "node node_interop.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.0"
+  }
+}

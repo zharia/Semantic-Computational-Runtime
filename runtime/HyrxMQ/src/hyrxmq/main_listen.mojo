@@ -39,6 +39,7 @@ from hyrx.core.storage import (
 )
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.listener import AMQPListener, UDSAMQPListener, WSSAMQPListener
+from hyrxmq.shutdown import install_shutdown_signal_handler
 from hyrx.core.storage import FileSystemOps
 
 
@@ -293,6 +294,11 @@ def main() raises:
     # 0023 T3: the admin-HTTP tier configuration (env override; additive).
     _resolve_admin_http(cfg)
     cfg.validate()
+    # v0.0.4: real SIGTERM/SIGINT handling. The linked C shim (shutdown_shim.c)
+    # installs the handlers; the serving loop polls the flag and calls
+    # begin_shutdown(), so the process drains and exits 0 within ~100 ms.
+    if not install_shutdown_signal_handler():
+        raise "main_listen: failed to install SIGTERM/SIGINT handlers"
     var node = cfg.node_name
     # 0023 T3: the admin-HTTP tier, when configured, FAILS LOUD here —
     # before ANY bind (including the WSS tier's) — because the serving
@@ -344,3 +350,7 @@ def main() raises:
         + String(listener.port())
     )
     listener.serve_forever()
+    # v0.0.4 graceful drain: persist the WAL, then release socket + service.
+    listener.flush_storage()
+    listener.stop()
+    print("HyrxMQ " + node + " shut down cleanly")

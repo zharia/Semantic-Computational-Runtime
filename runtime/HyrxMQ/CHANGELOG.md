@@ -21,6 +21,8 @@
 - Vhost routing boundary (name-prefix isolation)
 - Network failure resilience tests (10 scenarios)
 - SIGKILL test plan documentation
+- Real SIGTERM/SIGINT graceful shutdown via a linked C signal shim (`src/hyrxmq/shutdown_shim.c`); `hyrxmq-listen` exits 0 within ~100 ms of the signal
+- `tests/phase10/graceful_shutdown_test.mojo` (ShutdownState + listener shutdown seam)
 - Invariant audit (18 invariants)
 - Documentation truth audit
 - Security audit

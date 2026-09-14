@@ -16,6 +16,8 @@ out/
 # Benchmarks/results
 benchmarks/results/
 benchmarks/raw/
+# certification: reports + broker logs are derived artifacts
+benchmarks/certification/results/
 # perf: results.json + the gate report are derived; baseline.json is the
 # intentionally-pinned reference run (compare.py --update-baseline).
 benchmarks/perf/results.json

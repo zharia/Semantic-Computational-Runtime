@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "description": "HyrxMQ (M9) performance-certification regression thresholds. certify.py fails (non-zero exit) when a measured metric that has a threshold here falls below/above it. Metrics that cannot be measured (broker up but no pika, TLS not configured) are reported SKIP and never counted as a pass or a fail.",
+  "throughput": {
+    "min_throughput_1kb": 5000,
+    "min_throughput_64kb": 1000,
+    "min_throughput_1mb": 100
+  },
+  "latency": {
+    "max_p99_latency_ms_1kb": 50,
+    "max_p99_latency_ms_64kb": 100,
+    "max_p99_latency_ms_1mb": 250,
+    "max_p999_latency_ms_1kb": 200
+  },
+  "memory": {
+    "max_memory_per_msg_bytes": 4096
+  },
+  "tls": {
+    "max_tls_overhead_pct": 60,
+    "min_tls_throughput_ratio": 0.5
+  },
+  "soak": {
+    "soak_max_rss_growth_pct": 10,
+    "soak_max_fd_growth": 16,
+    "soak_max_p99_degradation_pct": 25
+  }
+}
