@@ -33,6 +33,18 @@ def install_shutdown_signal_handler() raises -> Bool:
     return external_call["hyrxmq_install_shutdown_signals", c_int]() == 0
 
 
+def install_shutdown_signal_handler_exit() raises -> Bool:
+    """Install an EXIT-ON-SIGNAL SIGTERM/SIGINT handler (PID 1 containers).
+
+    Linux ignores signals without a handler for PID 1 — a container whose
+    entrypoint is the process ignores SIGTERM and is SIGKILLed after the full
+    grace period (exit 137). The web binary is that entrypoint, so it installs
+    this variant: the C handler calls `_exit(0)` (async-signal-safe) for an
+    immediate clean exit. The listen binary keeps the polling variant so it can
+    drain storage. Only valid when the shim is linked."""
+    return external_call["hyrxmq_install_shutdown_signals_exit", c_int]() == 0
+
+
 def os_shutdown_requested() -> Bool:
     """True once SIGTERM/SIGINT has flipped the shim's flag."""
     return external_call["hyrxmq_shutdown_requested", c_int]() != 0

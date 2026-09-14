@@ -281,6 +281,18 @@ def REPLY_RESOURCE_LOCKED() -> UInt16:
     return 405
 
 
+# 0026 resource-limit reply codes (amqp0-9-1.xml response-code table):
+# 504 CHANNEL_ERROR (channel-level close, used for the per-connection
+# channel ceiling) and 506 RESOURCE_ERROR (connection-level close, used for
+# the max_memory_bytes admission gate).
+def REPLY_CHANNEL_ERROR() -> UInt16:
+    return 504
+
+
+def REPLY_RESOURCE_ERROR_CODE() -> UInt16:
+    return 506
+
+
 # 0017 T3 field-table type tag of AMQP long-int 'I' (see field_table.mojo).
 def FT_TYPE_INT() -> Int:
     return 73
@@ -970,6 +982,17 @@ struct AMQPService:
     # 0026: per-consumer backpressure — unacked delivery count and ceiling.
     var _unacked_counts: Dict[UInt64, Int]
     var _max_unacked: Int
+    # 0026: per-connection OPEN channel numbers (the max_channels_per_connection
+    # ceiling counts these; channel.close/server-error removes the number and a
+    # later channel.open re-adds it).
+    var _open_channels: Dict[UInt64, List[UInt16]]
+    var _max_channels_per_connection: Int
+    # 0026: memory admission — total declared bytes of all in-flight publish
+    # reassembly buffers across connections, its ceiling and the rejection
+    # counter (surfaced through memory_rejections()).
+    var _pending_bytes: Int
+    var _max_memory_bytes: Int
+    var _memory_rejections: Int
 
     def __init__(out self, var config: HyrxMQConfig):
         # Read frame_max + the T4 values (users table, heartbeat advertised)
@@ -981,6 +1004,8 @@ struct AMQPService:
         var max_q = config.max_queues
         var max_ex = config.max_exchanges
         var max_unacked = config.max_unacked
+        var max_channels = config.max_channels_per_connection
+        var max_memory = config.max_memory_bytes
         # Element-wise rebuild of the users table (an explicit __init__ chain
         # is used in place of List[UserRecord].copy() so the copy never
         # depends on a non-trivial struct list's CollectionElement conformance
@@ -1041,6 +1066,12 @@ struct AMQPService:
         # 0026: per-consumer backpressure state.
         self._unacked_counts = Dict[UInt64, Int]()
         self._max_unacked = max_unacked
+        # 0026: resource-limits — open-channel tracking + memory admission.
+        self._open_channels = Dict[UInt64, List[UInt16]]()
+        self._max_channels_per_connection = max_channels
+        self._pending_bytes = 0
+        self._max_memory_bytes = max_memory
+        self._memory_rejections = 0
 
     # ---- 0017 T2: per-channel delivery-tag namespaces ----
 
@@ -1140,6 +1171,85 @@ struct AMQPService:
             _ = self._confirms.pop(key)
         if key in self._tx:
             _ = self._tx.pop(key)
+
+    # ---- 0026: resource-limit enforcement helpers ----
+
+    def _channel_is_open(mut self, conn_id: UInt64, chan: UInt16) raises -> Bool:
+        """Whether `chan` is currently counted as an OPEN channel for the
+        connection (the max_channels_per_connection basis)."""
+        if conn_id not in self._open_channels:
+            return False
+        var chans = self._open_channels[conn_id].copy()
+        for i in range(len(chans)):
+            if chans[i] == chan:
+                return True
+        return False
+
+    def _open_channel_count(ref self, conn_id: UInt64) raises -> Int:
+        """Number of channel numbers currently counted OPEN for the connection."""
+        if conn_id not in self._open_channels:
+            return 0
+        return len(self._open_channels[conn_id])
+
+    def _mark_channel_open(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Count one newly opened channel number for the connection."""
+        var chans = List[UInt16]()
+        if conn_id in self._open_channels:
+            chans = self._open_channels.pop(conn_id)
+        chans.append(chan.copy())
+        self._open_channels[conn_id] = chans^
+
+    def _unmark_channel_open(mut self, conn_id: UInt64, chan: UInt16) raises:
+        """Drop a channel number from the connection's OPEN set."""
+        if conn_id not in self._open_channels:
+            return
+        var kept = List[UInt16]()
+        var old = self._open_channels.pop(conn_id)
+        for i in range(len(old)):
+            if old[i] != chan:
+                kept.append(old[i])
+        if len(kept) > 0:
+            self._open_channels[conn_id] = kept^
+
+    def _unacked_count(ref self, conn_id: UInt64) raises -> Int:
+        """Outstanding unacked deliveries for the connection (0 when none)."""
+        if conn_id not in self._unacked_counts:
+            return 0
+        return self._unacked_counts[conn_id]
+
+    def _unacked_inc(mut self, conn_id: UInt64) raises:
+        """Record one outstanding delivery for the connection."""
+        var n = 0
+        if conn_id in self._unacked_counts:
+            n = self._unacked_counts[conn_id]
+        self._unacked_counts[conn_id] = n + 1
+
+    def _unacked_dec(mut self, conn_id: UInt64, n: Int) raises:
+        """Resolve up to `n` outstanding deliveries (floored at 0)."""
+        if conn_id not in self._unacked_counts:
+            return
+        var c = self._unacked_counts[conn_id] - n
+        if c <= 0:
+            _ = self._unacked_counts.pop(conn_id)
+        else:
+            self._unacked_counts[conn_id] = c
+
+    def _connection_close_error(
+        ref self, code: UInt16, var text: String, failing: MethodID
+    ) -> Optional[List[UInt8]]:
+        """Encode a SERVER-initiated connection.close (10,50) with the given
+        reply-code/text and failing class/method ids."""
+        var cargs = List[UInt8]()
+        write_u16(cargs, code)
+        write_short_string(cargs, text^)
+        write_u16(cargs, failing.class_id)
+        write_u16(cargs, failing.method_id)
+        return self._reply(
+            UInt16(0),
+            CONNECTION_CLOSE().class_id,
+            CONNECTION_CLOSE().method_id,
+            cargs^,
+        )
 
     # ---- 0017 T4: publisher-confirm state (confirm class 85) ----
 
@@ -1292,6 +1402,10 @@ struct AMQPService:
     def content_errors(ref self) -> Int:
         """Dropped §2.3.5-violating content frames since service start."""
         return self._content_errors
+
+    def memory_rejections(ref self) -> Int:
+        """Publishes refused by the max_memory_bytes admission gate (0026)."""
+        return self._memory_rejections
 
     def pending_body_len(mut self, conn_id: UInt64) raises -> Int:
         """Bytes accumulated for the in-flight publish (0 when none)."""
@@ -1596,6 +1710,20 @@ struct AMQPService:
             # 0017 T1: channel.open on a PREVIOUSLY CLOSED channel number
             # re-opens it (the closed-channel guard above then no longer
             # fails its methods).
+            # 0026: the per-connection channel ceiling is enforced here. Only a
+            # channel number not ALREADY counted as open needs a new slot; at
+            # the ceiling the server answers the normative channel-level 504
+            # CHANNEL_ERROR and does NOT open.
+            if not self._channel_is_open(conn_id, chan):
+                if self._open_channel_count(conn_id) >= self._max_channels_per_connection:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan,
+                        REPLY_CHANNEL_ERROR(),
+                        "channel limit exceeded",
+                        mid,
+                    )
+                self._mark_channel_open(conn_id, chan)
             self._reopen_channel(conn_id, chan)
             var okargs = List[UInt8]()
             write_long_str_empty(okargs)
@@ -2190,6 +2318,8 @@ struct AMQPService:
                     _ = self._broker.reject(r_cid, r_tag)
                 else:
                     _ = self._broker.nack(r_cid, r_tag, False)
+                # 0026: the rejected delivery is no longer outstanding.
+                self._unacked_dec(conn_id, 1)
             elif conn_id in self._consumers:
                 if r_requeue:
                     _ = self._broker.reject(self._consumers[conn_id], rtag)
@@ -2219,6 +2349,8 @@ struct AMQPService:
                         var b_cid = bulk[i].consumer_id
                         var b_tag = bulk[i].engine_tag
                         _ = self._broker.ack(b_cid, b_tag)
+                    # 0026: every resolved tag frees an outstanding delivery.
+                    self._unacked_dec(conn_id, len(bulk))
                     return Optional[List[UInt8]]()
                 if conn_id in self._consumers:
                     _ = self._broker.bulk_ack(self._consumers[conn_id], tag)
@@ -2238,6 +2370,8 @@ struct AMQPService:
                 var e_cid = entry.value().consumer_id
                 var e_tag = entry.value().engine_tag
                 done = self._broker.ack(e_cid, e_tag)
+                # 0026: the acked delivery is no longer outstanding.
+                self._unacked_dec(conn_id, 1)
             # Legacy engine-tag fallback (tags issued before the map, or
             # engine tags addressed via the old bookkeeping):
             if not done and conn_id in self._consumers:
@@ -2278,6 +2412,8 @@ struct AMQPService:
                         var b_cid = nbulk[i].consumer_id
                         var b_tag = nbulk[i].engine_tag
                         _ = self._broker.nack(b_cid, b_tag, n_requeue)
+                    # 0026: every resolved tag frees an outstanding delivery.
+                    self._unacked_dec(conn_id, len(nbulk))
                     return Optional[List[UInt8]]()
                 if conn_id in self._consumers:
                     _ = self._broker.nack_through(
@@ -2295,6 +2431,8 @@ struct AMQPService:
                     var n_cid = nentry.value().consumer_id
                     var n_tag = nentry.value().engine_tag
                     resolved = self._broker.nack(n_cid, n_tag, n_requeue)
+                    # 0026: the nacked delivery is no longer outstanding.
+                    self._unacked_dec(conn_id, 1)
                 if not resolved and conn_id in self._consumers:
                     resolved = self._broker.nack(self._consumers[conn_id], ntag, n_requeue)
                 if (
@@ -2542,6 +2680,12 @@ struct AMQPService:
     def _clear_pending(mut self, conn_id: UInt64) raises:
         """Drop the in-flight publish state for a connection (fail closed)."""
         if conn_id in self._pending:
+            # 0026: release the declared bytes from the admission accounting.
+            var sz = self._pending[conn_id].body_size
+            if sz > 0:
+                self._pending_bytes -= sz
+                if self._pending_bytes < 0:
+                    self._pending_bytes = 0
             _ = self._pending.pop(conn_id)
         if conn_id in self._pending_bodies:
             _ = self._pending_bodies.pop(conn_id)
@@ -2588,6 +2732,8 @@ struct AMQPService:
                 return
         chans.append(chan.copy())
         self._closed_channels[conn_id] = chans^
+        # 0026: a closed channel frees its slot in the open-channel ceiling.
+        self._unmark_channel_open(conn_id, chan)
         if conn_id in self._pending:
             if self._pending[conn_id].channel == chan:
                 self._clear_pending(conn_id)
@@ -2657,6 +2803,11 @@ struct AMQPService:
             _ = self._heartbeat_negotiated.pop(conn_id)
         if conn_id in self._closed_channels:
             _ = self._closed_channels.pop(conn_id)
+        # 0026: drop the connection's open-channel + unacked backpressure state.
+        if conn_id in self._open_channels:
+            _ = self._open_channels.pop(conn_id)
+        if conn_id in self._unacked_counts:
+            _ = self._unacked_counts.pop(conn_id)
         # 0025 M2: drop per-connection vhost + ACL permission state.
         if conn_id in self._conn_vhost:
             _ = self._conn_vhost.pop(conn_id)
@@ -2897,7 +3048,24 @@ struct AMQPService:
                 + String(MAX_PENDING_BODY()) + "-byte reassembly ceiling",
             )
             return Optional[List[UInt8]]()
+        # 0026: memory admission control. When admitting this body would push
+        # the total in-flight reassembly bytes over max_memory_bytes, refuse
+        # the publish with the normative connection.close 506 RESOURCE_ERROR
+        # (the listener closes the socket after the reply). The counter is
+        # surfaced through memory_rejections().
+        if self._pending_bytes + size > self._max_memory_bytes:
+            self._memory_rejections += 1
+            self._clear_pending(conn_id)
+            return self._connection_close_error(
+                REPLY_RESOURCE_ERROR_CODE(),
+                "RESOURCE_ERROR - max_memory_bytes exceeded",
+                BASIC_PUBLISH(),
+            )
         self._pending[conn_id].set_body_size(size)
+        # 0026: account the admitted body against the memory ceiling; it is
+        # released when the publish completes or is cleared.
+        if size > 0:
+            self._pending_bytes += size
         # 0017 T2: STORE the byte-faithful content header as received — the
         # property-flag word goes onto the pending record; the RAW property
         # LIST bytes go into the parallel slice map. Outbound transmit uses
@@ -3059,6 +3227,11 @@ struct AMQPService:
         if conn_id not in self._pending or conn_id not in self._pending_bodies:
             return Optional[List[UInt8]]()
         var p = self._pending.pop(conn_id)
+        # 0026: the publish completed — release its bytes from admission.
+        if p.body_size > 0:
+            self._pending_bytes -= p.body_size
+            if self._pending_bytes < 0:
+                self._pending_bytes = 0
         var body = self._pending_bodies.pop(conn_id)
         # 0017 T2: the raw property-list slice rides beside the flag word.
         var props = List[UInt8]()
@@ -3130,6 +3303,18 @@ struct AMQPService:
             cid = self._broker.consume_register(queue.copy())
             self._get_cids[conn_id] = cid
             self._get_queues[conn_id] = queue.copy()
+        # 0026: backpressure — a connection at its unacked ceiling is answered
+        # get-empty (no message handed out) until acks arrive.
+        var get_no_ack = (bits & BASIC_GET_BIT_NO_ACK()) != 0
+        if not get_no_ack and self._unacked_count(conn_id) >= self._max_unacked:
+            var qargs_bp = List[UInt8]()
+            write_short_string(qargs_bp, "")
+            return self._reply(
+                chan,
+                BASIC_GET_EMPTY().class_id,
+                BASIC_GET_EMPTY().method_id,
+                qargs_bp^,
+            )
         var d = self._broker.deliver(cid)
         if not d.__bool__():
             var eargs = List[UInt8]()
@@ -3166,8 +3351,11 @@ struct AMQPService:
         write_short_string(gargs, routing_key^)
         write_u32(gargs, UInt32(message_count))
         self._get_tags[conn_id] = etag
-        if (bits & BASIC_GET_BIT_NO_ACK()) != 0:
+        if get_no_ack:
             _ = self._broker.ack(cid, etag)
+        else:
+            # 0026: one outstanding unacked delivery for the connection.
+            self._unacked_inc(conn_id)
         return Optional[List[UInt8]](
             emit_message_frames(
                 chan, BASIC_GET_OK(), gargs^, payload^, self._frame_max,
@@ -3200,6 +3388,11 @@ struct AMQPService:
             ctag = self._ctags[cid]
         var n = 0
         while n < _CONSUME_FLUSH_MAX():
+            # 0026: backpressure — stop pushing once the connection has
+            # _max_unacked outstanding deliveries (auto-ack consumers never
+            # accumulate, so they are exempt).
+            if not auto_ack and self._unacked_count(conn_id) >= self._max_unacked:
+                return dst^
             var d = self._broker.deliver(cid)
             if not d.__bool__():
                 return dst^
@@ -3237,6 +3430,9 @@ struct AMQPService:
             )
             if auto_ack:
                 _ = self._broker.ack(cid, etag)
+            else:
+                # 0026: one outstanding unacked delivery for the connection.
+                self._unacked_inc(conn_id)
             n += 1
         return dst^
 

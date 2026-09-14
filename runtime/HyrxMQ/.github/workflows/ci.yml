@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Build hyrxmq-listen
+        run: pixi run hyrxmq-listen
+
+      - name: Upload broker binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyrxmq-listen
+          path: build/hyrxmq-listen
+          if-no-files-found: error
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: latest
+          cache: true
+
+      # The suite contains one intentional negative self-test
+      # (tests/_selftest/assertion_negfail.mojo) that MUST exit non-zero.
+      # Tolerate the overall exit code, then assert the pass count from TOTAL.
+      - name: Run test suite
+        run: |
+          set -uo pipefail
+          pixi run test 2>&1 | tee test-output.txt || true
+          TOTAL="$(grep -E '^TOTAL pass=' test-output.txt | tail -1)"
+          echo "TOTAL line: ${TOTAL:-<missing>}"
+          if [ -z "$TOTAL" ]; then
+            echo "::error::could not find TOTAL pass= line in test output"
+            exit 1
+          fi
+          PASS="$(printf '%s\n' "$TOTAL" | sed -E 's/.*pass=([0-9]+).*/\1/')"
+          echo "pass=$PASS"
+          if [ "$PASS" -lt 60 ]; then
+            echo "::error::pass count $PASS < 60"
+            exit 1
+          fi
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.txt
+          if-no-files-found: ignore
+
+  fuzz:
+    name: fuzz
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Frame fuzz
+        run: pixi run mojo run -I src -I vendor/flare tests/phase10/frame_fuzz_test.mojo
+
+      - name: AMQP fuzz
+        run: pixi run mojo run -I src -I vendor/flare tests/phase10/amqp_fuzz_test.mojo
+
+      - name: Stateful fuzz
+        run: pixi run mojo run -I src -I vendor/flare tests/phase10/stateful_fuzz_test.mojo
+
+  certification:
+    name: certification-quick
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Certification (quick)
+        run: bash benchmarks/certification/run_certification.sh --quick

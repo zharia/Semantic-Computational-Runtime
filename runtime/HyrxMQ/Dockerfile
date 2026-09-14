@@ -20,7 +20,7 @@ FROM ubuntu:22.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl gcc g++ ca-certificates git xz-utils && \
+        curl gcc g++ clang ca-certificates git xz-utils && \
     rm -rf /var/lib/apt/lists/*
 
 # Install pixi.
@@ -43,8 +43,9 @@ COPY vendor/libcut_preload.so /usr/local/lib/libcut_preload.so
 # Install deps + compile all binaries.
 ENV HYRXMQ_HOST=0.0.0.0
 RUN mkdir -p build && pixi install && \
-    pixi run mojo build -I src -I vendor/flare src/hyrxmq_web/hyrxmq_web.mojo -o build/hyrxmq-web && \
-    pixi run mojo build -I src -I vendor/flare src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen && \
+    clang -O2 -c src/hyrxmq/shutdown_shim.c -o build/shutdown_shim.o && \
+    pixi run mojo build -I src -I vendor/flare -Xlinker build/shutdown_shim.o src/hyrxmq_web/hyrxmq_web.mojo -o build/hyrxmq-web && \
+    pixi run mojo build -I src -I vendor/flare -Xlinker build/shutdown_shim.o src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen && \
     pixi run mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx && \
     cd src/hyrxmq_web/frontend && npm install && npm run build && \
     cd /app && gcc -O2 -fPIC -shared -o build/libflare_fs.so vendor/flare/flare/http/ffi/fs_wrapper.c

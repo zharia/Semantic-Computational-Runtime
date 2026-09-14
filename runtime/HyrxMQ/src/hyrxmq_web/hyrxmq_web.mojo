@@ -26,6 +26,7 @@ from flare.utils.dylib import find_flare_lib
 from hyrxmq.config import HyrxMQConfig
 from hyrxmq.broker import HyrxMQBroker
 from hyrxmq.listener import AMQPListener
+from hyrxmq.shutdown import install_shutdown_signal_handler_exit
 
 
 # ---- composite handler: owns broker, serves API + static files ----
@@ -120,6 +121,19 @@ struct HyrxWebHandler(Handler):
 # ---- entry point ----
 
 def main() raises:
+    # PID 1 containers ignore unhandled SIGTERM (Linux special-cases init), so
+    # the web binary — the container entrypoint — MUST install a handler or it
+    # is SIGKILLed after the full grace period (exit 137). The C shim's
+    # exit-on-signal handler calls _exit(0) for an immediate clean exit. Under
+    # `mojo run` the shim is not linked, so the failure is non-fatal.
+    try:
+        if install_shutdown_signal_handler_exit():
+            print("shutdown: SIGTERM/SIGINT handler installed")
+        else:
+            print("shutdown: warning — signal handler install failed")
+    except:
+        print("shutdown: warning — signal shim not linked (mojo run JIT)")
+
     # Pre-flight: verify libflare_tls.so is reachable.
     var lib_path = find_flare_lib("tls")
     try:

@@ -31,6 +31,8 @@ CLIENT_TIMEOUT="${CLIENT_TIMEOUT:-120}"
 
 NODE_RC=1
 JAVA_RC=1
+GO_BIN="${GO_INTEROP_BIN:-/tmp/go_interop}"
+GO_RC=1
 BROKER_PID=""
 LOG="$(mktemp)"
 BROKER_LOG="$(mktemp)"
@@ -146,6 +148,18 @@ else
     fi
 fi
 
+# ---------------- Go / amqp091-go ----------------
+echo
+echo "== go (amqp091-go) =="
+if [ ! -x "$GO_BIN" ]; then
+    echo "go interop binary $GO_BIN not found — build scripts/interop/go_interop first — skipping"
+    GO_RC=127
+else
+    HYRX_HOST=127.0.0.1 HYRX_PORT="$PORT" \
+        timeout "$CLIENT_TIMEOUT" "$GO_BIN"
+    GO_RC=$?
+fi
+
 # ---------------- teardown + report ----------------
 cleanup
 trap - EXIT INT TERM
@@ -159,11 +173,13 @@ echo "============ MULTI-CLIENT INTEROP RESULT ============"
 printf '%-8s  %-4s  %s\n' "CLIENT" "RC" "STATE"
 if [ "$NODE_RC" -eq 0 ]; then ns=PASS; else ns=FAIL; fi
 if [ "$JAVA_RC" -eq 0 ]; then js=PASS; else js=FAIL; fi
+if [ "$GO_RC" -eq 0 ]; then gs=PASS; else gs=FAIL; fi
 printf '%-8s  %-4s  %s\n' "node" "$NODE_RC" "$ns"
 printf '%-8s  %-4s  %s\n' "java" "$JAVA_RC" "$js"
+printf '%-8s  %-4s  %s\n' "go" "$GO_RC" "$gs"
 echo "===================================================="
 
-if [ "$NODE_RC" -eq 0 ] && [ "$JAVA_RC" -eq 0 ]; then
+if [ "$NODE_RC" -eq 0 ] && [ "$JAVA_RC" -eq 0 ] && [ "$GO_RC" -eq 0 ]; then
     echo "MULTI_INTEROP=PASS"
     exit 0
 fi

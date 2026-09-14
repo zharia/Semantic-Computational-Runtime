@@ -16,6 +16,7 @@
  * ShutdownState / listener-flag seam.
  */
 #include <signal.h>
+#include <unistd.h>
 
 static volatile sig_atomic_t hyrxmq_shutdown_requested_flag = 0;
 
@@ -29,6 +30,35 @@ int hyrxmq_install_shutdown_signals(void) {
         return -1;
     }
     if (signal(SIGINT, hyrxmq_shutdown_handler) == SIG_ERR) {
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * Exit-on-signal variant for PID 1 containers (the web binary).
+ *
+ * Linux gives PID 1 special signal semantics: a signal with no installed
+ * handler is IGNORED, not defaulted. A container whose entrypoint is the web
+ * binary therefore ignores SIGTERM and is SIGKILLed after the full
+ * termination grace period (observed exit code 137 in the kind E2E run).
+ *
+ * Installing a handler fixes it. `_exit(0)` is async-signal-safe (unlike
+ * `exit(3)`, which is not, and `printf`, which would deadlock). The web
+ * process holds no WAL write state, so an immediate clean exit is correct;
+ * the `hyrxmq-listen` binary keeps the polling variant above so it can drain.
+ */
+static void hyrxmq_shutdown_exit_handler(int sig) {
+    (void)sig;
+    hyrxmq_shutdown_requested_flag = 1;
+    _exit(0);
+}
+
+int hyrxmq_install_shutdown_signals_exit(void) {
+    if (signal(SIGTERM, hyrxmq_shutdown_exit_handler) == SIG_ERR) {
+        return -1;
+    }
+    if (signal(SIGINT, hyrxmq_shutdown_exit_handler) == SIG_ERR) {
         return -1;
     }
     return 0;

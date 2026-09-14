@@ -21,7 +21,7 @@ openssl = ">=3"
 build = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrx/main.mojo -o build/hyrx"
 hyrxmq = "mkdir -p build && mojo build -I src -I vendor/flare src/hyrxmq/main.mojo -o build/hyrxmq"
 hyrxmq-listen = "mkdir -p build && clang -O2 -c src/hyrxmq/shutdown_shim.c -o build/shutdown_shim.o && mojo build -I src -I vendor/flare -Xlinker build/shutdown_shim.o src/hyrxmq/main_listen.mojo -o build/hyrxmq-listen"
-hyrxmq-web = "mkdir -p build && cd src/hyrxmq_web/frontend && npm run build && cd ../../.. && mojo build -I src -I vendor/flare src/hyrxmq_web/hyrxmq_web.mojo -o build/hyrxmq-web"
+hyrxmq-web = "mkdir -p build && cd src/hyrxmq_web/frontend && npm run build && cd ../../.. && clang -O2 -c src/hyrxmq/shutdown_shim.c -o build/shutdown_shim.o && mojo build -I src -I vendor/flare -Xlinker build/shutdown_shim.o src/hyrxmq_web/hyrxmq_web.mojo -o build/hyrxmq-web"
 hyrxmq-web-run = "mkdir -p build && mojo run -I src -I vendor/flare src/hyrxmq_web/hyrxmq_web.mojo"
 test = "bash scripts/test_all.sh"
 
