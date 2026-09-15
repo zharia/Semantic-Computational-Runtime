@@ -84,6 +84,7 @@ default ConfigMap; add them only when the corresponding feature is used.
 | `HYRXMQ_WSS_LISTEN`, `HYRXMQ_WSS_TLS_MODE`, `HYRXMQ_WSS_TLS_PATH`, `HYRXMQ_WSS_TLS_KEY`, `HYRXMQ_WSS_ORIGIN` | WebSocket listener and TLS settings. |
 | `HYRXMQ_UDS_PATH` | UNIX-domain-socket listener path. |
 | `HYRXMQ_ADMIN_HTTP` | Management HTTP endpoint binding. |
+| `HYRXMQ_USERS` | Operator-supplied credential table. Comma-separated `username:password[:vhost[:configure,write,read]]` entries (vhost default `/`, perms default all). Non-empty REPLACES the built-in `admin/password` default; empty/absent keeps it. A malformed entry aborts startup. Delivered through the `hyrxmq-credentials` Secret (§4), not the ConfigMap. |
 
 ## 4. Secrets handling
 

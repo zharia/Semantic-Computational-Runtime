@@ -118,6 +118,60 @@ def _require_int(var key: String, var value: String) raises -> Int:
         raise "config: invalid integer for '" + key + "' (got '" + value + "')"
 
 
+def _parse_user_entry(var entry: String) raises -> UserRecord:
+    """Parse one HYRXMQ_USERS entry into a UserRecord.
+
+    Shape: `username:password` or `username:password:vhost` or
+    `username:password:vhost:configure,write,read`. vhost defaults to "/";
+    omitted perms default to all three true. A malformed entry (wrong field
+    count, empty username/password) raises naming the entry.
+    """
+    var parts = entry.split(":")
+    if len(parts) < 2 or len(parts) > 4:
+        raise "config: malformed HYRXMQ_USERS entry '" + entry + "'"
+    var user = String(parts[0].strip())
+    var passwd = String(parts[1].strip())
+    if len(user.bytes()) == 0:
+        raise "config: HYRXMQ_USERS entry '" + entry + "' has an empty username"
+    if len(passwd.bytes()) == 0:
+        raise "config: HYRXMQ_USERS entry '" + entry + "' has an empty password"
+    var vhost = String("/")
+    if len(parts) >= 3:
+        var v = String(parts[2].strip())
+        if len(v.bytes()) > 0:
+            vhost = v
+    var can_configure = True
+    var can_write = True
+    var can_read = True
+    if len(parts) == 4:
+        can_configure = False
+        can_write = False
+        can_read = False
+        var perms = String(parts[3].strip())
+        if len(perms.bytes()) == 0:
+            raise "config: HYRXMQ_USERS entry '" + entry + "' has an empty permission list"
+        var items = perms.split(",")
+        for j in range(len(items)):
+            var p = String(items[j].strip())
+            if len(p.bytes()) == 0:
+                continue
+            if p == "configure":
+                can_configure = True
+            elif p == "write":
+                can_write = True
+            elif p == "read":
+                can_read = True
+            else:
+                raise (
+                    "config: HYRXMQ_USERS entry '"
+                    + entry
+                    + "' has unknown permission '"
+                    + p
+                    + "' (configure|write|read)"
+                )
+    return UserRecord(user^, passwd^, vhost^, can_configure, can_write, can_read)
+
+
 struct HyrxMQConfig:
     """Standalone broker configuration with safe defaults."""
 
@@ -394,6 +448,44 @@ struct HyrxMQConfig:
             self.max_auth_failures_per_minute = _require_int(key, value)
         else:
             raise "config: unknown field '" + key + "'"
+
+    def parse_users_env(mut self, var spec: String) raises:
+        """Replace the users table from the HYRXMQ_USERS environment spec.
+
+        Format (comma-separated entries; whitespace trimmed):
+          username:password
+          username:password:vhost
+          username:password:vhost:configure,write,read
+        vhost defaults to "/"; omitted perms default to all three (true). An
+        empty spec is a NO-OP (the admin/password default stands). A malformed
+        entry raises an error naming the entry. A non-empty spec REPLACES the
+        default users list, so the operator's env fully controls credentials.
+        """
+        var trimmed = String(spec.strip())
+        if len(trimmed.bytes()) == 0:
+            return
+        var tokens = trimmed.split(",")
+        var parsed = List[UserRecord]()
+        var current = String("")
+        for i in range(len(tokens)):
+            var tok = String(tokens[i].strip())
+            if len(tok.bytes()) == 0:
+                continue
+            if tok.find(":") >= 0:
+                if len(current.bytes()) > 0:
+                    parsed.append(_parse_user_entry(current))
+                current = tok
+            else:
+                if len(current.bytes()) == 0:
+                    raise (
+                        "config: malformed HYRXMQ_USERS entry '"
+                        + tok
+                        + "' (expected username:password)"
+                    )
+                current = current + "," + tok
+        if len(current.bytes()) > 0:
+            parsed.append(_parse_user_entry(current))
+        self.users = parsed^
 
     @staticmethod
     def from_key_values(var entries: List[KeyValuePair]) raises -> HyrxMQConfig:

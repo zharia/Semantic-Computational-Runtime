@@ -21,6 +21,11 @@
 #                                          0.0.0.0 default is intentionally
 #                                          narrowed here so the probe client
 #                                          reaches it on 127.0.0.1)
+#   auth: $HYRXMQ_USERS ->  comma-separated `username:password[:vhost
+#                                          [:configure,write,read]]` entries;
+#                                          non-empty REPLACES the default
+#                                          admin/password table (empty/absent
+#                                          keeps it). A malformed entry raises.
 # This env override also serves §17 (environment-driven configuration).
 #
 # The UDS cell exists so a Unix-domain-socket connection can be benchmarked
@@ -293,6 +298,10 @@ def main() raises:
     _resolve_wss_config(cfg)
     # 0023 T3: the admin-HTTP tier configuration (env override; additive).
     _resolve_admin_http(cfg)
+    # 0017 T4: operator-supplied credentials (env override; additive). Empty
+    # = keep the admin/password default; non-empty REPLACES the users table
+    # (comma-separated `username:password[:vhost[:perms]]` entries).
+    cfg.parse_users_env(getenv("HYRXMQ_USERS", ""))
     cfg.validate()
     # v0.0.4: real SIGTERM/SIGINT handling. The linked C shim (shutdown_shim.c)
     # installs the handlers; the serving loop polls the flag and calls

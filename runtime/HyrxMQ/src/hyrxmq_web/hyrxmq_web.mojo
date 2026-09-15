@@ -161,6 +161,8 @@ def main() raises:
     var broker_cfg = HyrxMQConfig()
     broker_cfg.port = amqp_port
     broker_cfg.listen_host = getenv("HYRXMQ_HOST", "127.0.0.1")
+    # 0017 T4: operator-supplied credentials (empty = keep admin/password).
+    broker_cfg.parse_users_env(getenv("HYRXMQ_USERS", ""))
 
     var broker = HyrxMQBroker(broker_cfg^)
     broker.start()
@@ -177,6 +179,8 @@ def main() raises:
     var listen_cfg = HyrxMQConfig()
     listen_cfg.port = amqp_port
     listen_cfg.listen_host = getenv("HYRXMQ_HOST", "127.0.0.1")
+    # 0017 T4: the AMQP listener authenticates against its own config's users.
+    listen_cfg.parse_users_env(getenv("HYRXMQ_USERS", ""))
     var listen_host = listen_cfg.listen_host.copy()
     var listener = AMQPListener(listen_cfg^)
     try:

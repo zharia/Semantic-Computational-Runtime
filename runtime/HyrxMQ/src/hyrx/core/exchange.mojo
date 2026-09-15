@@ -4,7 +4,8 @@
 #   - direct: exact routing_key match
 #   - fanout: all bound queues
 #   - topic: wildcard pattern match (* = one word, # = zero or more)
-#   - headers: match on message headers (stub: returns all)
+#   - headers: match on message headers (x-match="all"{default}/"any" via
+#     _headers_match; a missing header never matches)
 #
 # Ownership model:
 #   - Exchange owns its bindings list.

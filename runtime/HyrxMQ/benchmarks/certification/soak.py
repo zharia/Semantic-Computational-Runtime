@@ -528,7 +528,13 @@ def main():
     if not alive:
         report["verdict"] = "FAIL"
         report["notes"].append("broker was not alive at the end of the soak")
-    path = args.out or write_report(report)
+    if args.out:
+        os.makedirs(os.path.dirname(os.path.abspath(args.out)) or ".", exist_ok=True)
+        with open(args.out, "w") as fh:
+            json.dump(report, fh, indent=1)
+        path = args.out
+    else:
+        path = write_report(report)
 
     print("\n=== soak checks ===")
     for c in report["checks"]:

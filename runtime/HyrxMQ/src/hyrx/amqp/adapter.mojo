@@ -26,12 +26,10 @@ def exchange_type_from_name(var name: String) -> ExchangeType:
 
     Single mapping (was previously duplicated in the broker with a different
     result for "headers"): "headers" maps to ExchangeType.headers(). Header
-    matching is a documented stub in core (src/hyrx/core/exchange.mojo:181 —
-    the headers branch currently matches all bindings), so a "headers" exchange
-    behaves like fanout until the stub is implemented. It is NOT silently
-    re-typed as direct anywhere.
-
-    NOT IMPLEMENTED: headers-based matching semantics.
+    matching is IMPLEMENTED in core (src/hyrx/core/exchange.mojo — the
+    `_headers_match` helper honors x-match="all"{default}/"any" over the
+    binding arguments), so a "headers" exchange routes on message headers as
+    the AMQP spec requires. It is NOT silently re-typed as direct anywhere.
     """
     if name == "fanout":
         return ExchangeType.fanout()
@@ -275,10 +273,12 @@ struct AMQPAdapter:
         consumer_id: UInt64,
         delivery_tag: UInt64,
     ) raises -> Bool:
-        """Translate AMQP basic.ack (multiple=false) to Hyrx.
+        """Translate AMQP basic.ack to Hyrx.
 
-        NOT IMPLEMENTED: basic.ack with multiple=true ("up to and including")
-        — the engine only acknowledges one delivery tag at a time.
+        multiple=true ("up to and including") IS handled upstream in
+        amqp_service.mojo (the `multiple` bit drives broker.bulk_ack /
+        per-channel tag-prefix resolution); this single-tag entry point is
+        the multiple=false path.
         """
         return engine.acknowledge(consumer_id, delivery_tag)
 
@@ -288,9 +288,12 @@ struct AMQPAdapter:
         consumer_id: UInt64,
         delivery_tag: UInt64,
     ) raises -> Bool:
-        """Translate AMQP basic.nack/reject to Hyrx.
+        """Translate AMQP basic.reject to Hyrx.
 
-        NOT IMPLEMENTED: the `requeue` bit — the engine always requeues.
+        The `requeue` bit IS honored (handled in amqp_service.mojo): this
+        engine.reject is the requeue=true path; requeue=false routes through
+        broker.nack(..., False), which dead-letters via x-dead-letter-exchange
+        or drops the message when no DLX is set.
         """
         return engine.reject(consumer_id, delivery_tag)
 
