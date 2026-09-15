@@ -1,0 +1,16 @@
+{
+  "provider": "h3",
+  "domain": "topology",
+  "subdomain": "spatial_indexing",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}

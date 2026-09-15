@@ -1,0 +1,16 @@
+{
+  "provider": "vulkan",
+  "domain": "render",
+  "subdomain": "graphics",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}

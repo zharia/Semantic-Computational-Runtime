@@ -1,0 +1,18 @@
+provider: cgal
+domain: geometry
+subdomain: computational_geometry
+
+status: seeded
+implementation_status: not_started
+contract_status: not_defined
+conformance_status: not_tested
+
+canonical: false
+reference: false
+
+capabilities: []
+supported_versions: []
+platforms: []
+architectures: []
+dependencies: []
+limitations: []

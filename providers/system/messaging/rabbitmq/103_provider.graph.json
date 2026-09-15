@@ -1,0 +1,16 @@
+{
+  "provider": "rabbitmq",
+  "domain": "system",
+  "subdomain": "messaging",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}

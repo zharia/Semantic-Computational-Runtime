@@ -1,0 +1,16 @@
+{
+  "provider": "cuda",
+  "domain": "system",
+  "subdomain": "accelerator",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}

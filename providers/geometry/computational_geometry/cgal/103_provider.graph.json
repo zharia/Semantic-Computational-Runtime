@@ -1,0 +1,16 @@
+{
+  "provider": "cgal",
+  "domain": "geometry",
+  "subdomain": "computational_geometry",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}

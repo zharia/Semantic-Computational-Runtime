@@ -1,0 +1,18 @@
+provider: h3
+domain: topology
+subdomain: spatial_indexing
+
+status: seeded
+implementation_status: not_started
+contract_status: not_defined
+conformance_status: not_tested
+
+canonical: false
+reference: false
+
+capabilities: []
+supported_versions: []
+platforms: []
+architectures: []
+dependencies: []
+limitations: []

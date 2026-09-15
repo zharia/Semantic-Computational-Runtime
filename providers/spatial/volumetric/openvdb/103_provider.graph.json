@@ -1,0 +1,16 @@
+{
+  "provider": "openvdb",
+  "domain": "spatial",
+  "subdomain": "volumetric",
+  "status": "seeded",
+  "capabilities": [],
+  "contracts": [],
+  "implementations": [],
+  "adapters": [],
+  "artifacts": [],
+  "dependencies": [],
+  "resources": [],
+  "platforms": [],
+  "architectures": [],
+  "provenance": {}
+}
