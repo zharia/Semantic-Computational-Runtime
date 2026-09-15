@@ -19,7 +19,6 @@ from hyrx.core.buffer import Buffer
 from hyrx.core.queue import Delivery
 from hyrx.embedded.api import HyrxEngine
 from hyrx.core.exchange import HeaderArgs
-from std.memory import unsafe_memcpy
 
 
 def exchange_type_from_name(var name: String) -> ExchangeType:
@@ -149,13 +148,7 @@ struct AMQPAdapter:
         """
         var headers = Dict[String, String]()
         var env = Envelope(MessageID(0), routing_key^, headers^)
-        var buf = Buffer(len(body))
-        buf.resize_uninit(len(body))
-        unsafe_memcpy(
-            dest=buf._data.unsafe_ptr(),
-            src=body.unsafe_ptr(),
-            count=len(body),
-        )
+        var buf = Buffer(body^)
         var msg = Message(env^, buf^)
         return engine.publish(msg^, exchange_name^)
 
@@ -174,13 +167,7 @@ struct AMQPAdapter:
         byte-identically on deliver/get-ok."""
         var headers = Dict[String, String]()
         var env = Envelope(MessageID(0), routing_key^, headers^)
-        var buf = Buffer(len(body))
-        buf.resize_uninit(len(body))
-        unsafe_memcpy(
-            dest=buf._data.unsafe_ptr(),
-            src=body.unsafe_ptr(),
-            count=len(body),
-        )
+        var buf = Buffer(body^)
         var msg = Message(env^, buf^, prop_flags, prop_bytes^)
         return engine.publish(msg^, exchange_name^)
 
@@ -198,13 +185,7 @@ struct AMQPAdapter:
         direct queue route. Byte-faithful content props are carried here too."""
         var headers = Dict[String, String]()
         var env = Envelope(MessageID(0), queue_name.copy(), headers^)
-        var buf = Buffer(len(body))
-        buf.resize_uninit(len(body))
-        unsafe_memcpy(
-            dest=buf._data.unsafe_ptr(),
-            src=body.unsafe_ptr(),
-            count=len(body),
-        )
+        var buf = Buffer(body^)
         var msg = Message(env^, buf^, prop_flags, prop_bytes^)
         return engine.publish_to_queue(msg^, queue_name^)
     # ---- 0017 T2 readouts ----

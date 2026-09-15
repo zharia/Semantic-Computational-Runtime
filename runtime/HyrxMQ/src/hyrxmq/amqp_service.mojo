@@ -636,18 +636,35 @@ def emit_message_frames(
     prop_flags: UInt16,
     var prop_list: List[UInt8],
 ) raises -> List[UInt8]:
-    var out = AMQPFrameCodec.encode_method_frame(
-        chan, mid.class_id, mid.method_id, args^
-    )
+    """Encode METHOD + HEADER + BODY frames for one message into a NEW list."""
+    var out = List[UInt8]()
+    append_message_frames(out, chan, mid, args^, body^, frame_max, prop_flags, prop_list^)
+    return out^
+
+
+def append_message_frames(
+    mut out: List[UInt8],
+    chan: UInt16,
+    mid: MethodID,
+    var args: List[UInt8],
+    var body: List[UInt8],
+    frame_max: Int,
+    prop_flags: UInt16,
+    var prop_list: List[UInt8],
+) raises:
+    """Append METHOD + HEADER + BODY frames for one message onto `out`.
+
+    Direct-append twin of `emit_message_frames`: the delivery flush paths use
+    this so a completed message is written ONCE, into the reply buffer, with no
+    intermediate per-message list allocation and no whole-message copy.
+    """
+    AMQPFrameCodec.append_method_frame(out, chan, mid.class_id, mid.method_id, args^)
     var body_len = len(body)
-    var hdr = AMQPFrameCodec.encode_header_frame(
-        chan, mid.class_id, UInt64(body_len), prop_flags, prop_list^
+    AMQPFrameCodec.append_header_frame(
+        out, chan, mid.class_id, UInt64(body_len), prop_flags, prop_list^
     )
-    var old_len = len(out)
-    out.resize(unsafe_uninit_length=old_len + len(hdr))
-    unsafe_memcpy(dest=out.unsafe_ptr() + old_len, src=hdr.unsafe_ptr(), count=len(hdr))
     if body_len == 0:
-        return out^
+        return
     var chunk = frame_max - 8
     if chunk < _MIN_BODY_CHUNK():
         chunk = _MIN_BODY_CHUNK()
@@ -664,7 +681,7 @@ def emit_message_frames(
                 n = body_len - pos
             AMQPFrameCodec.append_body_frame(out, chan, body.unsafe_ptr() + pos, n)
             pos += n
-        return out^
+        return
     var pos = 0
     while pos < body_len:
         var n = chunk
@@ -674,11 +691,8 @@ def emit_message_frames(
         part.resize(unsafe_uninit_length=n)
         unsafe_memcpy(dest=part.unsafe_ptr(), src=body.unsafe_ptr() + pos, count=n)
         var wf = AMQPFrameCodec.encode_body_frame(chan, part^)
-        var out_len = len(out)
-        out.resize(unsafe_uninit_length=out_len + len(wf))
-        unsafe_memcpy(dest=out.unsafe_ptr() + out_len, src=wf.unsafe_ptr(), count=len(wf))
+        _concat(out, wf^)
         pos += n
-    return out^
 
 
 # 0025 M2: per-connection ACL permission bits (vhost isolation).
@@ -1568,6 +1582,17 @@ struct AMQPService:
     def handle_frame(
         mut self, conn_id: UInt64, frame: AMQPFrame
     ) raises -> Optional[List[UInt8]]:
+        """Borrowed-frame entry point (unit tests / in-process callers).
+
+        Copies the frame and delegates to the OWNED dispatch. The network
+        serving path calls `_handle_frame_owned` directly with the MOVED
+        parsed frame, so the wire path pays no payload restage here.
+        """
+        return self._handle_frame_owned(conn_id, frame.copy())
+
+    def _handle_frame_owned(
+        mut self, conn_id: UInt64, var frame: AMQPFrame
+    ) raises -> Optional[List[UInt8]]:
         """Decode one frame, dispatch to the broker, encode a reply.
 
         Frame-type aware (amqp0-9-1.xml §2.3.5): METHOD frames are dispatched by
@@ -1590,7 +1615,7 @@ struct AMQPService:
             # sequence (mandatory=1 publish completed with a zero-size body).
             return self._on_content_header(conn_id, frame)
         if frame.frame_type == FRAME_BODY():
-            return self._on_content_body(conn_id, frame)
+            return self._on_content_body(conn_id, frame^)
         if frame.frame_type == FRAME_HEARTBEAT():
             # 0017 T4 (minimal client-heartbeat protocol): a received
             # heartbeat frame (type 8, zero payload) gets an IMMEDIATE
@@ -3162,6 +3187,13 @@ struct AMQPService:
                 BASIC_PUBLISH(),
             )
         self._pending[conn_id].set_body_size(size)
+        # Preallocate the reassembly buffer for MULTI-frame bodies (body_size
+        # larger than one frame's max payload) so the per-body-frame resize
+        # never reallocates (and never copies the bytes already accumulated).
+        # A body that fits ONE frame is instead adopted zero-copy on arrival
+        # (see _on_content_body), so preallocating here would only be wasteful.
+        if size > self._frame_max - 8:
+            self._pending_bodies[conn_id] = List[UInt8](capacity=size)
         # 0026: account the admitted body against the memory ceiling; it is
         # released when the publish completes or is cleared.
         if size > 0:
@@ -3178,7 +3210,7 @@ struct AMQPService:
             return self._publish_pending(conn_id)
         return Optional[List[UInt8]]()
 
-    def _on_content_body(mut self, conn_id: UInt64, frame: AMQPFrame) raises -> Optional[List[UInt8]]:
+    def _on_content_body(mut self, conn_id: UInt64, var frame: AMQPFrame) raises -> Optional[List[UInt8]]:
         """A content BODY frame: append, complete, or fail closed.
 
         Bounds (audit §13/§18): a body frame with no pending publish is dropped
@@ -3187,6 +3219,12 @@ struct AMQPService:
         dropped, never published, and no further bytes are retained.
 
         0017 T1: content frames on a CLOSED channel are tolerated silently.
+
+        Ownership: `frame` is OWNED by this handler, so a SINGLE body frame
+        that completes the declared body MOVES its payload buffer into the
+        reassembly slot instead of memcpy-ing it — the common case for every
+        body that fits one frame (<= frame_max). Multi-frame bodies copy each
+        frame into the capacity-preallocated slot (see _on_content_header).
         """
         if self._channel_is_closed(conn_id, frame.channel):
             return Optional[List[UInt8]]()
@@ -3199,23 +3237,35 @@ struct AMQPService:
             # that already completed: in both cases this frame is out of order.
             self._fail_content(conn_id, "body frame before/after its header")
             return Optional[List[UInt8]]()
+        var plen = frame.payload_size()
         var have = len(self._pending_bodies[conn_id])
-        if have + frame.payload_size() > want:
+        if have + plen > want:
             self._fail_content(
                 conn_id,
                 "body overflow: "
-                + String(have + frame.payload_size())
+                + String(have + plen)
                 + " bytes against a declared "
                 + String(want),
             )
             return Optional[List[UInt8]]()
+        if have == 0 and plen == want:
+            # Single-frame body: adopt the parsed payload (zero copy). swap so
+            # `frame` keeps a valid (empty) payload and stays destructible.
+            var adopted = List[UInt8]()
+            swap(adopted, frame.payload)
+            self._pending_bodies[conn_id] = adopted^
+            return self._publish_pending(conn_id)
         var pb = self._pending_bodies.pop(conn_id)
+        if pb.capacity() < want:
+            # Multi-frame body (preallocated to `want` at header) or a client
+            # that split a small body across frames: size the slot exactly once.
+            pb = List[UInt8](capacity=want)
         var pb_old_len = len(pb)
-        pb.resize(unsafe_uninit_length=pb_old_len + frame.payload_size())
+        pb.resize(unsafe_uninit_length=pb_old_len + plen)
         unsafe_memcpy(
             dest=pb.unsafe_ptr() + pb_old_len,
             src=frame.payload.unsafe_ptr(),
-            count=frame.payload_size(),
+            count=plen,
         )
         self._pending_bodies[conn_id] = pb^
         if len(self._pending_bodies[conn_id]) == want:
@@ -3269,19 +3319,30 @@ struct AMQPService:
                 _concat(out, err.value().copy())
             return False
         var routed = 0
+        # mandatory=1 needs the publisher's own body/header echoed back in a
+        # basic.return when the publish is unroutable, but routing CONSUMES
+        # body/props. Copy the echo inputs ONLY for mandatory publishes (rare);
+        # the common case MOVES the reassembled body straight into the engine's
+        # Buffer with no restaging copy (see Buffer.__init__(var data)).
+        var do_echo = (mandatory == 1)
+        var echo_body = List[UInt8]()
+        var echo_props = List[UInt8]()
+        if do_echo:
+            echo_body = body.copy()
+            echo_props = props.copy()
         # The DEFAULT exchange ("") publishes DIRECT into the queue named by
         # the routing key (the exchange's normative pre-bound direct binding).
         if len(exchange.bytes()) == 0:
             routed = self._broker.publish_to_queue_with_props(
-                routing_key.copy(), body.copy(),
-                prop_flags, props.copy(),
+                routing_key.copy(), body^,
+                prop_flags, props^,
             )
         else:
             routed = self._broker.publish_with_props(
-                exchange.copy(), routing_key.copy(), body.copy(),
-                prop_flags, props.copy(),
+                exchange.copy(), routing_key.copy(), body^,
+                prop_flags, props^,
             )
-        if mandatory == 1 and routed <= 0:
+        if do_echo and routed <= 0:
             # basic.return (60,50) args: reply-code(short)=312 + reply-text
             # (shortstr)="NO_ROUTE" + exchange(shortstr) + routing-key
             # (shortstr) — followed by the message content (HEADER+BODY).
@@ -3293,8 +3354,8 @@ struct AMQPService:
             write_short_string(rargs, exchange.copy())
             write_short_string(rargs, routing_key.copy())
             var retf = emit_message_frames(
-                chan, BASIC_RETURN(), rargs^, body.copy(), self._frame_max,
-                prop_flags, props.copy(),
+                chan, BASIC_RETURN(), rargs^, echo_body^, self._frame_max,
+                prop_flags, echo_props^,
             )
             _concat(out, retf^)
         # Publisher-confirm ack (0017 T4): AFTER the route (routed >= 0 = the
@@ -3356,7 +3417,7 @@ struct AMQPService:
                 p.channel,
                 _TxStaged(
                     p.exchange.copy(), p.routing_key.copy(), p.mandatory,
-                    p.prop_flags, body.copy(), props.copy(),
+                    p.prop_flags, body^, props^,
                 ),
             )
             return Optional[List[UInt8]]()
@@ -3368,8 +3429,8 @@ struct AMQPService:
             p.routing_key.copy(),
             p.mandatory,
             p.prop_flags,
-            body.copy(),
-            props.copy(),
+            body^,
+            props^,
             out,
         )
         if len(out) == 0:
@@ -3529,16 +3590,9 @@ struct AMQPService:
                 args.append(0)  # redelivered bit
             write_short_string(args, "")  # exchange (Delivery carries none)
             write_short_string(args, routing_key^)
-            var wire = emit_message_frames(
-                chan, BASIC_DELIVER(), args^, payload^, self._frame_max,
+            append_message_frames(
+                dst, chan, BASIC_DELIVER(), args^, payload^, self._frame_max,
                 prop_flags, prop_bytes^,
-            )
-            var dst_old_len = len(dst)
-            dst.resize(unsafe_uninit_length=dst_old_len + len(wire))
-            unsafe_memcpy(
-                dest=dst.unsafe_ptr() + dst_old_len,
-                src=wire.unsafe_ptr(),
-                count=len(wire),
             )
             if auto_ack:
                 _ = self._broker.ack(cid, etag)
@@ -3583,9 +3637,8 @@ struct AMQPService:
         method_id: UInt16,
         var args: List[UInt8],
     ) -> Optional[List[UInt8]]:
-        var bytes = AMQPFrameCodec.encode_method_frame(
-            chan, class_id, method_id, args^
-        )
+        var bytes = List[UInt8]()
+        AMQPFrameCodec.append_method_frame(bytes, chan, class_id, method_id, args^)
         return Optional[List[UInt8]](bytes^)
 
     def _reply_open(ref self, chan: UInt16) -> Optional[List[UInt8]]:

@@ -51,8 +51,12 @@ from hyrxmq.shutdown import os_shutdown_requested
 
 
 # One read chunk per socket step; the codec reassembles across steps.
+# Sized to frame_limit + 8 so a WHOLE maximum-size body frame can arrive in a
+# single recv — then feed_bytes ADOPTS it with no copy (see frame_codec). The
+# event tier clamps the actual request to the codec's remaining room, and a
+# non-blocking recv returns only what is available, so this never adds latency.
 def _READ_SIZE() -> Int:
-    return 65536
+    return 131080
 
 
 # The 8-octet AMQP 0-9-1 protocol header (amqp0-9-1.xml §1.4.2.2): the literal
@@ -775,7 +779,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
             is_close = MethodID(class_id, method_id) == CONNECTION_CLOSE()
 
         var conn_id = self._conns[slot].value().conn_id()
-        var resp = self._service.handle_frame(conn_id, frame.value())
+        var resp = self._service._handle_frame_owned(conn_id, frame.take())
         if resp.__bool__():
             # open-ok detected pre-send (borrow-safe pattern)
             var open_ok = _resp_is_open_ok(resp.value())
@@ -794,8 +798,9 @@ struct AMQPConnServing[Conn: AMQPConn]:
             # bytes-only guarantee: resp is fully written here, then the slot
             # is closed in the is_close block after this branch. A service
             # raise between send and close is impossible (handle_frame
-            # produced the bytes already).
-            self._conns[slot].value().send_bytes(resp.value().copy())
+            # produced the bytes already). resp is MOVED into the socket write
+            # (send_bytes takes ownership) — no whole-response copy.
+            self._conns[slot].value().send_bytes(resp.take())
             self._last_active[conn_id] = Int(monotonic() // 1_000_000)
             # Handshake completion is detected from the reply bytes only (no new
             # service coupling): an open-ok reply ends negotiation.

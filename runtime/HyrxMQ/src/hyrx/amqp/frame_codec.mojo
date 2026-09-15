@@ -76,6 +76,15 @@ struct AMQPFrame:
                 result.append(self.payload[i])
             return result^
 
+    def copy(self) -> AMQPFrame:
+        """Return an independent owned copy of this frame.
+
+        Used only by the borrowed-frame test entry point (AMQPService's
+        handle_frame); the network path MOVES the parsed frame into the
+        owned dispatch instead, so no payload restage happens there.
+        """
+        return AMQPFrame(self.frame_type, self.channel, self.payload.copy())
+
 
 struct MethodFrame:
     """Parsed AMQP method frame."""
@@ -245,6 +254,16 @@ struct AMQPFrameCodec:
                 + " bytes"
             )
         if contiguous_batch_enabled():
+            # Zero-copy feed: when the codec holds NO unparsed backlog (cursor
+            # is at the end of the buffer), ADOPT the incoming chunk as the new
+            # buffer instead of memcpy-ing it in. The listener reads at most one
+            # frame's worth per step and parses every step, so the buffer is
+            # fully drained on the common path — this removes a whole recv-size
+            # copy per read (dominant for large bodies).
+            if self._cursor >= len(self._buffer):
+                self._buffer = data^
+                self._cursor = 0
+                return
             # block copy: grow buffer in-place, memcpy data
             var old_len = len(self._buffer)
             var new_len = old_len + len(data)
@@ -435,6 +454,84 @@ struct AMQPFrameCodec:
         # frame end
         result.append(0xCE)
         return result^
+
+    @staticmethod
+    def append_method_frame(
+        mut out: List[UInt8],
+        channel: UInt16,
+        class_id: UInt16,
+        method_id: UInt16,
+        var args: List[UInt8],
+    ):
+        """Append ONE method frame directly onto `out` (byte-identical to
+        encode_method_frame). Removes the intermediate frame list allocation
+        and copy on the reply hot path."""
+        var args_len = len(args)
+        var payload_size = 4 + args_len
+        var old_len = len(out)
+        out.resize(unsafe_uninit_length=old_len + 12 + args_len)
+        out[old_len] = 1
+        out[old_len + 1] = UInt8((channel >> 8) & 0xFF)
+        out[old_len + 2] = UInt8(channel & 0xFF)
+        out[old_len + 3] = UInt8((payload_size >> 24) & 0xFF)
+        out[old_len + 4] = UInt8((payload_size >> 16) & 0xFF)
+        out[old_len + 5] = UInt8((payload_size >> 8) & 0xFF)
+        out[old_len + 6] = UInt8(payload_size & 0xFF)
+        out[old_len + 7] = UInt8((class_id >> 8) & 0xFF)
+        out[old_len + 8] = UInt8(class_id & 0xFF)
+        out[old_len + 9] = UInt8((method_id >> 8) & 0xFF)
+        out[old_len + 10] = UInt8(method_id & 0xFF)
+        if args_len > 0:
+            unsafe_memcpy(
+                dest=out.unsafe_ptr() + old_len + 11,
+                src=args.unsafe_ptr(),
+                count=args_len,
+            )
+        out[old_len + 11 + args_len] = 0xCE
+
+    @staticmethod
+    def append_header_frame(
+        mut out: List[UInt8],
+        channel: UInt16,
+        class_id: UInt16,
+        body_size: UInt64,
+        property_flags: UInt16,
+        var properties: List[UInt8],
+    ):
+        """Append ONE content header frame directly onto `out` (byte-identical
+        to encode_header_frame). See append_method_frame."""
+        var props_len = len(properties)
+        var payload_size = 14 + props_len
+        var old_len = len(out)
+        out.resize(unsafe_uninit_length=old_len + 22 + props_len)
+        out[old_len] = 2
+        out[old_len + 1] = UInt8((channel >> 8) & 0xFF)
+        out[old_len + 2] = UInt8(channel & 0xFF)
+        out[old_len + 3] = UInt8((payload_size >> 24) & 0xFF)
+        out[old_len + 4] = UInt8((payload_size >> 16) & 0xFF)
+        out[old_len + 5] = UInt8((payload_size >> 8) & 0xFF)
+        out[old_len + 6] = UInt8(payload_size & 0xFF)
+        out[old_len + 7] = UInt8((class_id >> 8) & 0xFF)
+        out[old_len + 8] = UInt8(class_id & 0xFF)
+        out[old_len + 9] = 0  # weight (reserved, MUST be 0)
+        out[old_len + 10] = 0
+        out[old_len + 11] = UInt8((body_size >> 56) & 0xFF)
+        out[old_len + 12] = UInt8((body_size >> 48) & 0xFF)
+        out[old_len + 13] = UInt8((body_size >> 40) & 0xFF)
+        out[old_len + 14] = UInt8((body_size >> 32) & 0xFF)
+        out[old_len + 15] = UInt8((body_size >> 24) & 0xFF)
+        out[old_len + 16] = UInt8((body_size >> 16) & 0xFF)
+        out[old_len + 17] = UInt8((body_size >> 8) & 0xFF)
+        out[old_len + 18] = UInt8(body_size & 0xFF)
+        out[old_len + 19] = UInt8((property_flags >> 8) & 0xFF)
+        out[old_len + 20] = UInt8(property_flags & 0xFF)
+        if props_len > 0:
+            unsafe_memcpy(
+                dest=out.unsafe_ptr() + old_len + 21,
+                src=properties.unsafe_ptr(),
+                count=props_len,
+            )
+        out[old_len + 21 + props_len] = 0xCE
 
     @staticmethod
     def encode_body_frame(

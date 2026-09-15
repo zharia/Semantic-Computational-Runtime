@@ -41,6 +41,18 @@ struct Buffer:
         self._pooled = False
         self._pool_class = -1
 
+    def __init__(out self, var data: List[UInt8]):
+        """Construct by TAKING OWNERSHIP of `data` (move, no copy).
+
+        Zero-copy primitive for the publish path: the AMQP service already
+        owns the fully reassembled body as a List[UInt8], so wrapping it in a
+        Buffer must not restage the payload. `_data` keeps the moved list's
+        length and capacity verbatim; the buffer is NOT pool-owned.
+        """
+        self._data = data^
+        self._pooled = False
+        self._pool_class = -1
+
     def __deinit__(deinit self):
         """Release memory. Called only when this Buffer is consumed/destroyed.
 
