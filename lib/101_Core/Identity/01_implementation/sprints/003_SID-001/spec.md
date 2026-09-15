@@ -6,6 +6,26 @@
 **Target area:** `lib/101_Core/Identity/01_implementation/sprints/`
 **Purpose:** Close the IAM-001 reference-model phase, codify the defects and architectural discoveries found by IAM-RM-001, perform a targeted deeper verification pass, and establish the normative boundary for SID-001.
 
+### Refactored Milestones & Sprints Index
+This specification has been decomposed into executable milestones and sprints under [`milestones/`](milestones/README.md):
+- **[Milestone 001: Baseline Assessment & Verification Taxonomy](milestones/001_baseline_and_taxonomy/spec.md)**
+  - [Sprint 01: IAM-RM-001 Baseline Assessment & Defect Audit](milestones/001_baseline_and_taxonomy/sprints/sprint_01_baseline_assessment.md)
+  - [Sprint 02: Verification Classification & Evidence Standards](milestones/001_baseline_and_taxonomy/sprints/sprint_02_verification_classification.md)
+- **[Milestone 002: Normative Semantics & Amendments (IAM-001 v0.2)](milestones/002_normative_amendments/spec.md)**
+  - [Sprint 01: Historical Consistency Semantics & IAM-I017](milestones/002_normative_amendments/sprints/sprint_01_historical_consistency.md)
+  - [Sprint 02: Transaction Identity & Non-Rebinding Semantics](milestones/002_normative_amendments/sprints/sprint_02_transaction_identity.md)
+  - [Sprint 03: Architectural Decisions — Multi-Root & Derived Allocation](milestones/002_normative_amendments/sprints/sprint_03_multi_root_and_derived_allocation.md)
+  - [Sprint 04: Specification Amendments Consolidation](milestones/002_normative_amendments/sprints/sprint_04_specification_amendments_consolidation.md)
+- **[Milestone 003: Deep Targeted Verification & Adversarial Falsification](milestones/003_deep_verification/spec.md)**
+  - [Sprint 01: Deep Temporal State Trace Exploration](milestones/003_deep_verification/sprints/sprint_01_deep_temporal_traces.md)
+  - [Sprint 02: Targeted Recovery & Resilience Verification](milestones/003_deep_verification/sprints/sprint_02_targeted_recovery_verification.md)
+  - [Sprint 03: Authority Generation Fencing & Historical Non-Reuse](milestones/003_deep_verification/sprints/sprint_03_authority_generation_and_non_reuse.md)
+  - [Sprint 04: Concurrency Verification & Binding/Manifestation Separation](milestones/003_deep_verification/sprints/sprint_04_concurrency_and_binding_separation.md)
+- **[Milestone 004: Verification Closure & SID-001 Readiness Gate](milestones/004_verification_closure_and_gate/spec.md)**
+  - [Sprint 01: Lean 4 Formal Proof Assessment](milestones/004_verification_closure_and_gate/sprints/sprint_01_formal_proof_assessment.md)
+  - [Sprint 02: Verification Matrix & Counterexample Audit](milestones/004_verification_closure_and_gate/sprints/sprint_02_invariant_matrix_and_counterexamples.md)
+  - [Sprint 03: Closure Deliverables & SID-001 Readiness Gate](milestones/004_verification_closure_and_gate/sprints/sprint_03_closure_deliverables_and_readiness_gate.md)
+
 ---
 
 # 1. Mission
