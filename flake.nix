@@ -1,4 +1,3 @@
-```nix
 {
   description = "Semantic Computational Runtime — MLIR-based computational semantics";
 
@@ -11,7 +10,6 @@
       systems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
 
@@ -90,11 +88,27 @@
             file
             unzip
             zip
+
+            # Package management & Mojo runner
+            pixi
+
+            # Graphics, Wayland, and Compositor providers (Cave POC)
+            wayland
+            wayland-protocols
+            wayland-scanner
+            libxkbcommon
+            libdrm
+            mesa
+            libGL
+
+            # Volumetric spatial fields
+            openvdb
+            tbb
           ];
 
           llvmToolsAll = llvmTools ++ [
             # LLVM testing infrastructure where available.
-            llvm.lit
+            pkgs.lit
           ];
 
         in
@@ -221,6 +235,23 @@
             '';
           };
         }
+        // (pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          # FHS environment for running pre-compiled binary toolchains (e.g. Mojo / Pixi on NixOS)
+          fhs = (pkgs.buildFHSEnv {
+            name = "scr-fhs";
+            targetPkgs = p: with p; [
+              glibc
+              gcc.cc.lib
+              zlib
+              openssl
+              util-linux
+              libxml2
+              libffi
+              pixi
+            ] ++ llvmToolsAll ++ commonTools;
+            runScript = "bash";
+          }).env;
+        })
       );
 
       # ------------------------------------------------------------
@@ -239,7 +270,7 @@
               llvm.clang
               llvm.lld
               llvm.mlir
-              llvm.lit
+              pkgs.lit
               pkgs.cmake
               pkgs.ninja
               pkgs.rustc
@@ -273,4 +304,4 @@
       );
     };
 }
-```
+

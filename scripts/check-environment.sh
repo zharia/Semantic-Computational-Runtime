@@ -44,6 +44,8 @@ check "Python"            python3
 check "ccache"            ccache
 check "ShellCheck"        shellcheck
 check "ripgrep"           rg
+check "Pixi"              pixi
+check "Mojo"              mojo
 
 echo
 echo "----------------------------------------------"
@@ -51,14 +53,16 @@ echo " Versions"
 echo "----------------------------------------------"
 
 nix --version
-clang --version | head -1
+clang --version 2>/dev/null | head -1 || true
 llvm-config --version 2>/dev/null || true
 mlir-opt --version 2>/dev/null | head -1 || true
-rustc --version
-cargo --version
-python3 --version
-cmake --version | head -1
-ninja --version
+rustc --version 2>/dev/null || true
+cargo --version 2>/dev/null || true
+python3 --version 2>/dev/null || true
+cmake --version 2>/dev/null | head -1 || true
+ninja --version 2>/dev/null || true
+pixi --version 2>/dev/null || true
+mojo --version 2>/dev/null || true
 
 echo
 echo "----------------------------------------------"
