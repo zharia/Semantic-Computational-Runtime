@@ -112,6 +112,31 @@ struct Buffer:
                 result._data.append(source[i])
         return result^
 
+    def copy_range_into(ref self, offset: Int, count: Int, mut dst: List[UInt8]):
+        """Append ``dst`` with bytes [offset, offset+count) of this buffer.
+
+        Pure readout: this Buffer keeps ownership of its bytes; `dst` grows by
+        exactly `count` and receives one contiguous copy. Used by the delivery
+        path to write queue-owned payload bytes straight into the reply buffer,
+        removing the intermediate BufferSnapshot copy.
+
+        The caller owns the bounds: offset/count address the stored payload
+        (validated by the queue/message layer before this call).
+        """
+        if count <= 0:
+            return
+        var old_len = len(dst)
+        if contiguous_batch_enabled():
+            dst.resize(unsafe_uninit_length=old_len + count)
+            unsafe_memcpy(
+                dest=dst.unsafe_ptr() + old_len,
+                src=self._data.unsafe_ptr() + offset,
+                count=count,
+            )
+        else:
+            for i in range(count):
+                dst.append(self._data[offset + i])
+
     def snapshot(ref self) -> BufferSnapshot:
         """Return an owned COPY of the current contents.
 

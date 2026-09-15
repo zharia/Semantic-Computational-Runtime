@@ -334,11 +334,12 @@ struct AMQPFrameCodec:
             return Optional[AMQPFrame]()
 
         # Extract payload — read from cursor offset
-        var payload = List[UInt8](capacity=Int(size))
         var payload_start = c + 7
         var payload_end = c + 7 + Int(size)
+        # One allocation with the final length already set (no separate
+        # capacity-reserve + resize pair).
+        var payload = List[UInt8](unsafe_uninit_length=Int(size))
         if contiguous_batch_enabled():
-            payload.resize(unsafe_uninit_length=Int(size))
             unsafe_memcpy(
                 dest=payload.unsafe_ptr(),
                 src=self._buffer.unsafe_ptr() + payload_start,
@@ -346,7 +347,7 @@ struct AMQPFrameCodec:
             )
         else:
             for i in range(payload_start, payload_end):
-                payload.append(self._buffer[i])
+                payload[i - payload_start] = self._buffer[i]
 
         # Verify frame end byte
         var end_byte = self._buffer[payload_end]
@@ -568,6 +569,26 @@ struct AMQPFrameCodec:
             # frame end
             result.append(0xCE)
         return result^
+
+    @staticmethod
+    def append_body_frame_header(mut out: List[UInt8], chan: UInt16, count: Int):
+        """Append the 7-octet BODY frame prefix (type+channel+size).
+
+        Used by the delivery path that streams queue-owned payload bytes
+        directly into the reply: the caller then appends `count` payload octets
+        (from the queue) and finally the frame-end octet. The bytes written
+        here plus those payload octets plus the end octet are EXACTLY what
+        append_body_frame writes for the same chan/count.
+        """
+        var old_len = len(out)
+        out.resize(unsafe_uninit_length=old_len + 7)
+        out[old_len] = 3
+        out[old_len + 1] = UInt8((chan >> 8) & 0xFF)
+        out[old_len + 2] = UInt8(chan & 0xFF)
+        out[old_len + 3] = UInt8((count >> 24) & 0xFF)
+        out[old_len + 4] = UInt8((count >> 16) & 0xFF)
+        out[old_len + 5] = UInt8((count >> 8) & 0xFF)
+        out[old_len + 6] = UInt8(count & 0xFF)
 
     @staticmethod
     def append_body_frame(

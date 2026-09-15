@@ -284,6 +284,30 @@ struct Queue:
         var empty = List[UInt8]()
         return BufferSnapshot(empty^)
 
+    def copy_payload_slice(
+        ref self,
+        delivery_tag: UInt64,
+        offset: Int,
+        count: Int,
+        mut dst: List[UInt8],
+    ) raises:
+        """Append a byte range of an unacked message's payload onto `dst`.
+
+        Ownership: bytes are COPIED out; the Message remains owned by the queue.
+        This is the delivery-side streaming read used by the AMQP reply encoder
+        to write body frames directly from the queue, avoiding the intermediate
+        BufferSnapshot materialization. An unknown tag contributes nothing
+        (consistent with read_payload's silent-empty design gap).
+        """
+        if delivery_tag in self._unacked:
+            self._unacked[delivery_tag].copy_payload_slice(offset, count, dst)
+
+    def payload_size_of(ref self, delivery_tag: UInt64) raises -> Int:
+        """Logical payload length of an unacked message (0 for unknown tag)."""
+        if delivery_tag in self._unacked:
+            return self._unacked[delivery_tag].payload_size()
+        return 0
+
     def read_routing_key(ref self, delivery_tag: UInt64) raises -> String:
         """Read the routing key of an unacked message."""
         if delivery_tag in self._unacked:

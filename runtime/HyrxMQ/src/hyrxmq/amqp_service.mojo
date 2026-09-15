@@ -1630,10 +1630,15 @@ struct AMQPService:
             return Optional[List[UInt8]]()
 
         # Method payload layout: class_id(2) + method_id(2) + args(N).
-        # Parse directly over an owned copy to avoid a partial move that would
-        # leave the owning frame value undestroyable.
-        var reader = ByteReader(frame.payload_copy())
+        # The frame is OWNED here and its payload is not used after this point.
+        # SWAP the payload out (Mojo forbids a partial move out of the middle of
+        # a value) and MOVE it into the reader — no per-frame method-payload
+        # copy/allocation; `frame` is left with an empty payload and stays
+        # destructible.
         var chan = frame.channel
+        var moved = List[UInt8]()
+        swap(moved, frame.payload)
+        var reader = ByteReader(moved^)
         var class_id = reader.read_short()
         var method_id = reader.read_short()
         var mid = MethodID(class_id, method_id)
@@ -2235,8 +2240,8 @@ struct AMQPService:
                 var ok = self._execute_publish(
                     conn_id,
                     chan,
-                    s.exchange.copy(),
-                    s.routing_key.copy(),
+                    s.exchange,
+                    s.routing_key,
                     s.mandatory,
                     s.prop_flags,
                     s.body.copy(),
@@ -3204,7 +3209,11 @@ struct AMQPService:
         # both verbatim (see _publish_pending / emit_message_frames): the
         # per-property field values are never re-encoded in this service.
         self._pending[conn_id].set_prop_flags(hdr.property_flags)
-        self._pending_prop_bytes[conn_id] = hdr.properties.copy()
+        # MOVE the decoded property slice into the pending state (no second
+        # copy of the raw property bytes per publish).
+        var prop_slice = List[UInt8]()
+        swap(prop_slice, hdr.properties)
+        self._pending_prop_bytes[conn_id] = prop_slice^
         if size == 0:
             # Zero-length body: exactly ZERO body frames follow (§2.3.5.3).
             return self._publish_pending(conn_id)
@@ -3278,8 +3287,8 @@ struct AMQPService:
         mut self,
         conn_id: UInt64,
         chan: UInt16,
-        var exchange: String,
-        var routing_key: String,
+        exchange: String,
+        routing_key: String,
         mandatory: Int,
         prop_flags: UInt16,
         var body: List[UInt8],
@@ -3306,7 +3315,7 @@ struct AMQPService:
              (rabbit wire ordering). No broker-internal confirm timeout.
         Returns False when the channel was error-closed (404).
         """
-        if len(exchange.bytes()) != 0 and not self._broker.has_exchange(exchange.copy()):
+        if len(exchange.bytes()) != 0 and not self._broker.has_exchange(exchange):
             self._mark_channel_closed(conn_id, chan)
             var emsg = "NOT_FOUND - no exchange '" + exchange.copy() + "' in vhost '/'"
             var err = self._channel_error(
@@ -3403,7 +3412,7 @@ struct AMQPService:
         # the exchange at publish time, not at commit; only a real (or the
         # default) exchange is allowed to stage).
         if self._tx_active(conn_id, p.channel):
-            if len(p.exchange.bytes()) != 0 and not self._broker.has_exchange(p.exchange.copy()):
+            if len(p.exchange.bytes()) != 0 and not self._broker.has_exchange(p.exchange):
                 self._mark_channel_closed(conn_id, p.channel)
                 var temsg = "NOT_FOUND - no exchange '" + p.exchange.copy() + "' in vhost '/'"
                 return self._channel_error(
@@ -3425,8 +3434,8 @@ struct AMQPService:
         _ = self._execute_publish(
             conn_id,
             p.channel,
-            p.exchange.copy(),
-            p.routing_key.copy(),
+            p.exchange,
+            p.routing_key,
             p.mandatory,
             p.prop_flags,
             body^,
@@ -3487,7 +3496,7 @@ struct AMQPService:
                 eargs^,
             )
         var etag = d.value().delivery_tag()
-        var payload = self._broker.read_payload(cid, etag)
+        var payload_size = self._broker.queue_payload_size(cid, etag)
         var routing_key = self._broker.queue_routing_key(cid, etag)
         var message_count = self._broker.queue_message_count(cid)
         # 0017 T2: redelivered bit (engine delivery counter > 1) + the stored
@@ -3518,19 +3527,74 @@ struct AMQPService:
         write_short_string(gargs, routing_key^)
         write_u32(gargs, UInt32(message_count))
         self._get_tags[conn_id] = etag
+        # Build the reply content from the queue-owned payload FIRST (streaming
+        # readout; the message is still in unacked), then resolve the delivery.
+        # Acking before the read would destroy the message the body frames copy
+        # from. The wire bytes are unchanged.
+        var gout = List[UInt8]()
+        self._append_content_from_delivery(
+            gout,
+            chan,
+            BASIC_GET_OK(),
+            gargs^,
+            payload_size,
+            prop_flags,
+            prop_bytes^,
+            cid,
+            etag,
+        )
         if get_no_ack:
             _ = self._broker.ack(cid, etag)
         else:
             # 0026: one outstanding unacked delivery for the connection.
             self._unacked_inc(conn_id)
-        return Optional[List[UInt8]](
-            emit_message_frames(
-                chan, BASIC_GET_OK(), gargs^, payload^, self._frame_max,
-                prop_flags, prop_bytes^,
-            )^
-        )
+        return Optional[List[UInt8]](gout^)
 
     # ---- reply encoders ----
+
+    def _append_content_from_delivery(
+        mut self,
+        mut out: List[UInt8],
+        chan: UInt16,
+        mid: MethodID,
+        var args: List[UInt8],
+        body_size: Int,
+        prop_flags: UInt16,
+        var prop_list: List[UInt8],
+        cid: UInt64,
+        etag: UInt64,
+    ) raises:
+        """Append METHOD + HEADER + BODY frames for an unacked delivery onto
+        `out`, streaming the queue-owned payload straight into the reply.
+
+        Byte-identical to emit_message_frames/append_message_frames for the
+        same message (same frame headers, same chunking at `frame_max - 8`,
+        same payload bytes, same frame-end octets), but the BODY payload is
+        copied from the queue's Message into `out` in one pass — the
+        intermediate BufferSnapshot is never materialized. The message is a
+        pure readout source and stays queue-owned; the caller MUST invoke this
+        before any ack/reject that destroys the message.
+        """
+        AMQPFrameCodec.append_method_frame(
+            out, chan, mid.class_id, mid.method_id, args^
+        )
+        AMQPFrameCodec.append_header_frame(
+            out, chan, mid.class_id, UInt64(body_size), prop_flags, prop_list^
+        )
+        if body_size == 0:
+            return
+        var chunk = self._frame_max - 8
+        if chunk < _MIN_BODY_CHUNK():
+            chunk = _MIN_BODY_CHUNK()
+        var pos = 0
+        while pos < body_size:
+            var n = chunk
+            if pos + n > body_size:
+                n = body_size - pos
+            AMQPFrameCodec.append_body_frame_header(out, chan, n)
+            self._broker.queue_copy_payload_slice(cid, etag, pos, n, out)
+            out.append(0xCE)
+            pos += n
 
     def _flush_deliveries(
         mut self,
@@ -3564,7 +3628,7 @@ struct AMQPService:
             if not d.__bool__():
                 return dst^
             var etag = d.value().delivery_tag()
-            var payload = self._broker.read_payload(cid, etag)
+            var payload_size = self._broker.queue_payload_size(cid, etag)
             var routing_key = self._broker.queue_routing_key(cid, etag)
             # 0017 T2: redelivered = the engine's delivery counter > 1; the
             # content header is the stored publisher slice, re-emitted
@@ -3590,9 +3654,16 @@ struct AMQPService:
                 args.append(0)  # redelivered bit
             write_short_string(args, "")  # exchange (Delivery carries none)
             write_short_string(args, routing_key^)
-            append_message_frames(
-                dst, chan, BASIC_DELIVER(), args^, payload^, self._frame_max,
-                prop_flags, prop_bytes^,
+            self._append_content_from_delivery(
+                dst,
+                chan,
+                BASIC_DELIVER(),
+                args^,
+                payload_size,
+                prop_flags,
+                prop_bytes^,
+                cid,
+                etag,
             )
             if auto_ack:
                 _ = self._broker.ack(cid, etag)

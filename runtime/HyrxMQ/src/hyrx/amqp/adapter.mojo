@@ -236,6 +236,27 @@ struct AMQPAdapter:
         var view = engine.read_payload(consumer_id, delivery_tag)
         return view.take_bytes()
 
+    def queue_payload_size(
+        ref self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Int:
+        """Translation: logical payload length of an unacked delivery (no copy)."""
+        return engine.queue_payload_size(consumer_id, delivery_tag)
+
+    def queue_copy_payload_slice(
+        ref self,
+        mut engine: HyrxEngine,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        offset: Int,
+        count: Int,
+        mut dst: List[UInt8],
+    ) raises:
+        """Translation: append a payload byte range of an unacked delivery
+        onto `dst` without materializing a snapshot."""
+        engine.queue_copy_payload_slice(
+            consumer_id, delivery_tag, offset, count, dst
+        )
+
     def queue_routing_key(
         mut self, mut engine: HyrxEngine, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> String:
@@ -279,9 +300,9 @@ struct AMQPAdapter:
         """Queue presence preflight before queue.purge/delete (404 table)."""
         return engine.has_queue(name^)
 
-    def has_exchange(ref self, ref engine: HyrxEngine, var name: String) -> Bool:
+    def has_exchange(ref self, ref engine: HyrxEngine, name: String) -> Bool:
         """Exchange presence preflight before delete (404 table)."""
-        return engine.has_exchange(name^)
+        return engine.has_exchange(name)
 
     def purge_queue(mut self, mut engine: HyrxEngine, var name: String) raises -> Int:
         """Translate AMQP queue.purge (50,30). -1 = missing queue."""

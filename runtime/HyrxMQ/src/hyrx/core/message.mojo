@@ -209,6 +209,17 @@ struct Message:
                 dst.append(self._payload[i])
         return dst^
 
+    def copy_payload_slice(
+        ref self, offset: Int, count: Int, mut dst: List[UInt8]
+    ):
+        """Append [offset, offset+count) of the payload onto `dst` (one copy).
+
+        Pure readout: the Message keeps its payload. Used by the delivery path
+        to stream queue-owned bytes into the reply buffer without an
+        intermediate snapshot.
+        """
+        self._payload.copy_range_into(offset, count, dst)
+
     def payload_size(ref self) -> Int:
         """Logical payload length (no copy)."""
         return self._payload.size()

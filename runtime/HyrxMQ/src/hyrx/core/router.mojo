@@ -533,7 +533,7 @@ struct Router:
         """Whether a queue with this name is declared (11 T1 404 preflight)."""
         return name in self._queues
 
-    def has_exchange(ref self, var name: String) -> Bool:
+    def has_exchange(ref self, name: String) -> Bool:
         """Whether an exchange with this name is declared (404 preflight)."""
         return name in self._exchanges
 
@@ -1166,6 +1166,30 @@ struct Router:
         """
         var qname = self._consumers[consumer_id].queue_name()
         return self._queues[qname].read_payload(delivery_tag)
+
+    def queue_payload_size(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Int:
+        """Logical payload length of an unacked delivery (no copy)."""
+        var qname = self._consumers[consumer_id].queue_name()
+        return self._queues[qname].payload_size_of(delivery_tag)
+
+    def queue_copy_payload_slice(
+        ref self,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        offset: Int,
+        count: Int,
+        mut dst: List[UInt8],
+    ) raises:
+        """Append a byte range of an unacked delivery's payload onto `dst`.
+
+        Ownership: bytes are copied out; the Message stays queue-owned. The
+        delivery path uses this to stream body-frame payloads directly into the
+        reply buffer (no BufferSnapshot materialization).
+        """
+        var qname = self._consumers[consumer_id].queue_name()
+        self._queues[qname].copy_payload_slice(delivery_tag, offset, count, dst)
 
     def queue_routing_key(
         ref self, consumer_id: UInt64, delivery_tag: UInt64

@@ -245,6 +245,26 @@ struct HyrxEngine:
         """
         return self._router.read_payload(consumer_id, delivery_tag)
 
+    def queue_payload_size(
+        ref self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Int:
+        """Logical payload length of an unacked delivery (no copy)."""
+        return self._router.queue_payload_size(consumer_id, delivery_tag)
+
+    def queue_copy_payload_slice(
+        ref self,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        offset: Int,
+        count: Int,
+        mut dst: List[UInt8],
+    ) raises:
+        """Append a byte range of an unacked delivery's payload onto `dst`
+        (streaming readout; the message stays queue-owned)."""
+        self._router.queue_copy_payload_slice(
+            consumer_id, delivery_tag, offset, count, dst
+        )
+
     def queue_routing_key(
         ref self, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> String:
@@ -300,9 +320,9 @@ struct HyrxEngine:
         """Whether a queue with this name is declared."""
         return self._router.has_queue(name^)
 
-    def has_exchange(ref self, var name: String) -> Bool:
+    def has_exchange(ref self, name: String) -> Bool:
         """Whether an exchange with this name is declared."""
-        return self._router.has_exchange(name^)
+        return self._router.has_exchange(name)
 
     def purge_queue(mut self, var name: String) raises -> Int:
         """queue.purge (50,30): drop ready messages (unacked untouched).

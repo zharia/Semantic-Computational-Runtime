@@ -246,3 +246,171 @@ failed: tests/_selftest/assertion_negfail.mojo   # deliberate negative self-test
 ```
 
 Expected baseline; all functional, protocol, storage and fuzz suites pass.
+
+---
+
+# Round 2 — 2026-09-15 (targeting the four remaining slow paths)
+
+**Method:** same interleaved A/B harness as Round 1 (two broker binaries,
+two ports, alternating start order, median of N reps). `BASE` = HEAD before
+Round 2 (commit `3db330d`); per-change ratios below are `< 1` = candidate
+faster. Focused 9-rep run for the headline cells, 5–6 reps for per-change
+isolation. Docker three-broker re-run with the Round-2 binary over the existing
+runtime layer (`hyrxmq:r2`), 3 reps (host governor `powersave`, so treat the
+3-rep absolute levels as noisy).
+
+## R1 — pubget snapshot copy out of the queue — **CONFIRMED / FIXED**
+
+**Hypothesis.** `Queue.read_payload` materialises a `BufferSnapshot` (one full
+payload copy) and `append_message_frames` then copies that snapshot again into
+the reply buffer — two payload copies per delivered message. The snapshot is a
+pure readout and need not exist: the reply encoder can write the queue-owned
+bytes directly.
+
+**Change (target #3).** Added a streaming readout seam:
+`Buffer.copy_range_into` → `Message.copy_payload_slice` →
+`Queue.copy_payload_slice` / `payload_size_of` → `Router` → `HyrxEngine` →
+`Adapter` → `HyrxMQBroker`. The service's new `_append_content_from_delivery`
+writes METHOD + HEADER frames, the BODY frame prefix
+(`AMQPFrameCodec.append_body_frame_header`, new), then streams the payload
+range from the queue-owned Message straight into the reply, then the frame-end
+octet. Chat = unchanged; the BODY octets are byte-identical because the same
+header/prefix/end bytes and the same `frame_max - 8` chunking are used. In
+`_handle_get` the reply is now built **before** the auto-ack (the ack destroys
+the message the body frames read from); the wire result is unchanged.
+
+**Measured (5 reps, `c1` vs `BASE`):** pubget 262144 c1 **0.930**, c8 **0.914**;
+pubget 1024 c8 **0.899**; pubget 64 c8 0.965. This removes one full payload copy
+per delivered message.
+
+## R2 — per-frame method-payload copy + redundant String copies — **PARTIAL**
+
+**Hypothesis.** `_handle_frame_owned` did `ByteReader(frame.payload_copy())`,
+copying the whole method payload on every method frame; `_execute_publish` and
+its callers copied the exchange/routing-key `String`s several times per publish.
+
+**Changes (target #2).**
+- `_handle_frame_owned`: SWAP the method frame's payload out and MOVE it into
+  the `ByteReader` (Mojo forbids a partial move out of the frame, so `swap` is
+  the zero-copy form). `chan` is read first.
+- `_execute_publish` takes `exchange`/`routing_key` **borrowed**; both call
+  sites (`_publish_pending`, tx.commit replay) pass them borrowed instead of
+  `.copy()`; `has_exchange` takes the name borrowed through all four layers.
+- `_on_content_header` MOVES the decoded property slice into
+  `_pending_prop_bytes` instead of `copy()`.
+- `try_parse_frame`: single allocation
+  (`List[UInt8](unsafe_uninit_length=size)`) instead of reserve+resize.
+
+**Measured (5–9 reps):** method move `BASE→c2`: publish 64 c8 **0.925**, publish
+1024 c8 0.968. Borrowed strings `c2→c3`: publish 1024 c8 0.993, c1 0.990.
+Single-alloc payload `c3→c4`: publish 16384 c1 0.969, pubget 262144 c8 0.942.
+Props move `c4→c5`: publish 64 c8 0.970, 1024 c8 0.966, pubget 1024 c8 0.979.
+
+**Refuted:** rewriting `ByteReader.read_short_string` to build the String from a
+byte span (`Span`+`unsafe_from_utf8`, ASCII fast path). It measured publish 1024
+c8 **1.063** (6.3 % slower) on the interleaved A/B, so it was reverted; the
+per-byte `Codepoint` path is faster for the short strings on this path.
+
+## R3 — zero-copy body adoption in the codec — **NOT DONE (inherent copy)**
+
+**Hypothesis.** For a body frame that occupies the entire codec buffer, move the
+adopted recv buffer into the message instead of copying the payload out of it.
+
+**Finding.** The listener parses ONE frame per serve step and re-parses from the
+codec backlog before reading again, so a recv chunk routinely holds several
+coalesced frames (method+header+body of consecutive publishes). Only the LAST
+frame in a chunk could be adopted wholesale. Eliminating the copy for arbitrary
+frames needs the message payload to be an offset view over a *shared* recv
+buffer; that shares ownership across messages/queues (the same lifetime problem
+as the fanout ref-count) and, because the read buffer is allocated at
+`_READ_SIZE` (131 080 B), a queued message would retain ~128 KiB of capacity per
+message — a real retention regression for `pubget`/`consume`. The share is
+therefore not safe under the per-message ownership invariant, and the
+whole-buffer-only variant only fires for the single-frame-per-recv case (c1),
+not the c8 headline. Decision: keep the one necessary codec copy; do not trade
+ownership/retention for it. This is why publish 16384 is the one cell still
+materially behind (see standings).
+
+## R4 — fanout ref-counted shared payload — **NOT DONE (unsafe)**
+
+The residual is `Router._fill_destination`'s per-destination ownership copy,
+required by the per-destination ownership invariant. Payloads are not provably
+immutable after enqueue: `Route` fan-out constructs one `Message` per queue, and
+`ack_reclaim`/`take_payload` hand each Message's `Buffer` to the pool at its own
+death site. A multi-owner buffer would be released once per destination
+(double-release) and could be mutated through one queue's path. No safe
+ref-counted shared payload without changing the ownership contract, so it was
+not attempted (per the task's "do NOT do it if it risks the invariant").
+
+## Round-2 files changed
+
+| File | Region |
+|---|---|
+| `src/hyrx/core/buffer.mojo` | new `copy_range_into` (streaming readout) |
+| `src/hyrx/core/message.mojo` | new `copy_payload_slice` |
+| `src/hyrx/core/queue.mojo` | new `copy_payload_slice`, `payload_size_of` |
+| `src/hyrx/core/router.mojo` | `queue_copy_payload_slice`, `queue_payload_size`; `has_exchange` borrowed name |
+| `src/hyrx/embedded/api.mojo` | same two readouts; `has_exchange` borrowed name |
+| `src/hyrx/amqp/adapter.mojo` | same two translations; `has_exchange` borrowed name |
+| `src/hyrx/amqp/frame_codec.mojo` | `append_body_frame_header`; single-alloc payload extraction |
+| `src/hyrxmq/broker.mojo` | same two readouts; `has_exchange` borrowed name |
+| `src/hyrxmq/amqp_service.mojo` | `_append_content_from_delivery`; `_handle_get` + `_flush_deliveries` use the streaming body; method-payload move into `ByteReader`; `_execute_publish` borrowed exchange/routing-key; property-slice move |
+
+`read_payload` / `BufferSnapshot` are retained for `main.mojo`, the embedded
+API and tests; only the delivery hot path stopped using them.
+
+## Round-2 measured before/after (interleaved, 9 reps; lower is better)
+
+| workload | payload | conc | BASE msg/s | Round-2 msg/s | ratio |
+|---|---|---|---|---|---|
+| publish | 16384 | 1 | 49,671 | 49,529 | 1.003 |
+| publish | 16384 | 8 | 177,931 | 181,481 | **0.980** |
+| publish | 1024 | 1 | 134,684 | 138,738 | **0.971** |
+| publish | 1024 | 8 | 545,860 | 564,211 | **0.967** |
+| pubget | 262144 | 1 | 3,323 | 3,607 | **0.921** |
+| pubget | 262144 | 8 | 4,051 | 4,355 | **0.930** |
+| pubget | 1024 | 8 | 63,629 | 65,165 | **0.976** |
+| fanout | 1024 | 8 | 66,356 | 66,765 | 0.994 |
+
+(6-rep run also showed publish 64 c8 653,317 → 692,459 = **0.943**.)
+
+## Round-2 three-broker standings (Docker, 3 reps, `hyrxmq:r2`)
+
+Median msgs/s; ratio = fastest / HyrxMQ (1.000 = fastest).
+
+| workload | payload | conc | HyrxMQ | RabbitMQ | LavinMQ | HyrxMQ ratio |
+|---|---|---|---|---|---|---|
+| publish | 1024 | 8 | 508,493 | 510,002 | 551,840 | **1.085** (tied Rabbit) |
+| publish | 16384 | 8 | 130,614 | 164,044 | 104,560 | **1.256** |
+| publish | 262144 | 8 | 10,084 | 11,359 | 4,197 | **1.127** |
+| pubget | 1024 | 8 | 44,847 | 30,500 | 46,825 | **1.044** |
+| pubget | 16384 | 8 | 22,318 | 19,334 | 258 | **1.000 (fastest)** |
+| pubget | 262144 | 8 | 3,757 | 3,966 | 211 | **1.056** |
+| fanout | 1024 | 8 | 40,629 | 26,588 | 43,566 | **1.072** |
+
+Overall geomean-vs-fastest: **HyrxMQ 1.089**, RabbitMQ 1.178, LavinMQ 3.535
+(LavinMQ's large-payload `pubget` collapsed to ~200–260 msg/s in this run,
+which dominates its geomean; treat as noise/mislabelled environment).
+
+## Round-2 remaining gaps
+
+1. **publish 16384 (1.26×, RabbitMQ).** The last body `memcpy` out of the codec
+   buffer; not removable without shared/offset payload ownership (R3). This is
+   the one remaining material gap.
+2. **publish 262144 (1.13×, RabbitMQ) / pubget 262144 (1.06×, RabbitMQ).** Now
+   body copy + socket write bound; snapshot copy already removed.
+3. **fanout (1.07×, LavinMQ).** Per-destination ownership copy (R4); bounded and
+   required by the ownership invariant.
+4. **publish 1024 / pubget ≤1 KiB (1.04–1.09×, LavinMQ).** publish 1024 is
+   now tied with RabbitMQ and only LavinMQ (a different runtime) leads;
+   residual is per-message dict/allocation churn.
+
+## Round-2 test result
+
+```
+TOTAL pass=72 fail=1
+failed: tests/_selftest/assertion_negfail.mojo   # deliberate negative self-test
+```
+
+Expected baseline; all functional, protocol, storage and fuzz suites pass.
+

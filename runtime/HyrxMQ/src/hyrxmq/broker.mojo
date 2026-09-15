@@ -253,6 +253,28 @@ struct HyrxMQBroker:
         """Read a delivered message's payload bytes (message stays owned)."""
         return self._adapter.read_payload(self._engine, consumer_id, delivery_tag)
 
+    def queue_payload_size(
+        mut self, consumer_id: UInt64, delivery_tag: UInt64
+    ) raises -> Int:
+        """Logical payload length of an unacked delivery (no copy)."""
+        return self._adapter.queue_payload_size(
+            self._engine, consumer_id, delivery_tag
+        )
+
+    def queue_copy_payload_slice(
+        mut self,
+        consumer_id: UInt64,
+        delivery_tag: UInt64,
+        offset: Int,
+        count: Int,
+        mut dst: List[UInt8],
+    ) raises:
+        """Append a payload byte range of an unacked delivery onto `dst`
+        (streaming readout; the message stays queue-owned)."""
+        self._adapter.queue_copy_payload_slice(
+            self._engine, consumer_id, delivery_tag, offset, count, dst
+        )
+
     def queue_routing_key(
         mut self, consumer_id: UInt64, delivery_tag: UInt64
     ) raises -> String:
@@ -281,9 +303,9 @@ struct HyrxMQBroker:
         """Queue presence (404 preflight for purge/delete/unbind)."""
         return self._adapter.has_queue(self._engine, name^)
 
-    def has_exchange(ref self, var name: String) -> Bool:
+    def has_exchange(ref self, name: String) -> Bool:
         """Exchange presence (404 preflight)."""
-        return self._adapter.has_exchange(self._engine, name^)
+        return self._adapter.has_exchange(self._engine, name)
 
     def purge_queue(mut self, var name: String) raises -> Int:
         """queue.purge (50,30): -1 = missing queue, else purged count."""
