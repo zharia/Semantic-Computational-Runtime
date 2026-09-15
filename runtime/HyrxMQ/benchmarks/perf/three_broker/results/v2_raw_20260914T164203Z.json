@@ -1,0 +1,6844 @@
+{
+ "schema": 2,
+ "run_id": "20260914T164203Z",
+ "started_utc": "2026-09-14T16:42:03Z",
+ "finished_utc": "2026-09-14T16:52:17Z",
+ "mode": "quick",
+ "reps": 3,
+ "target_rep_s": 2.0,
+ "host": {
+  "cpu_model": "AMD Ryzen 5 3600 6-Core Processor",
+  "nproc": 12,
+  "mem_total_gib": 15.54,
+  "kernel": "7.2.4-3-cachyos",
+  "machine": "x86_64",
+  "docker_version": "29.8.0",
+  "go_version": "go version go1.27.1-X:nodwarf5 linux/amd64",
+  "governor": "powersave",
+  "loadavg_1m": 3.02
+ },
+ "images": {
+  "hyrxmq": {
+   "image": "hyrxmq:latest",
+   "image_id": "sha256:ccdf6c2fdb97f350db9e8f78b72a8762480657a04152315e70f31d21752a9ff3"
+  },
+  "rabbitmq": {
+   "image": "rabbitmq:4-management",
+   "image_id": "sha256:ffd1b50c522ad20172ffd6716a2f41db375c7269560c8f3fb9a694e210ef0852"
+  },
+  "lavinmq": {
+   "image": "cloudamqp/lavinmq:latest",
+   "image_id": "sha256:0fa126ed80521a50f8a0ac575a5d7bb7447376c3c6bb829a38b85685b9340664"
+  }
+ },
+ "config": {
+  "payloads": [
+   "1024"
+  ],
+  "concs": [
+   "1",
+   "16"
+  ],
+  "workloads": [
+   "publish",
+   "pubget",
+   "confirm",
+   "latency",
+   "fanout"
+  ]
+ },
+ "cells": {
+  "publish|1024|1": {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404127.8943677,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 135786.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 244416,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404138.1212227,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 143786.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 258816,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 18350080.0,
+        "rss_bytes_max": 18350080.0,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404142.1912034,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 141084.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 253952,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 8.4,
+        "cpu_pct_max": 8.4,
+        "rss_bytes_median": 18392023.04,
+        "rss_bytes_max": 18392023.04,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 141084.4,
+     "min_msgs_per_s": 135786.7,
+     "max_msgs_per_s": 143786.7,
+     "rates": [
+      135786.7,
+      143786.7,
+      141084.4
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.8,
+      1.8,
+      1.8
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 4.2,
+      "rss_bytes_median": 18371051.52
+     },
+     "ratio_vs_fastest": 1.022,
+     "pct_of_fastest": 97.8
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404129.9671347,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 131306.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 236352,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 3.9,
+        "cpu_pct_max": 3.9,
+        "rss_bytes_median": 153406668.8,
+        "rss_bytes_max": 153406668.8,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404134.051485,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 122168.9,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 219904,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404144.2256126,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 149866.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 269760,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.3,
+        "cpu_pct_max": 0.3,
+        "rss_bytes_median": 133483724.8,
+        "rss_bytes_max": 133483724.8,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 131306.7,
+     "min_msgs_per_s": 122168.9,
+     "max_msgs_per_s": 149866.7,
+     "rates": [
+      131306.7,
+      122168.9,
+      149866.7
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.8,
+      1.8,
+      1.8
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 2.1,
+      "rss_bytes_median": 143445196.8
+     },
+     "ratio_vs_fastest": 1.098,
+     "pct_of_fastest": 91.1
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404132.011076,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 152248.9,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 274048,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 3.7,
+        "cpu_pct_max": 3.7,
+        "rss_bytes_median": 57881395.2,
+        "rss_bytes_max": 57881395.2,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404136.087746,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 134151.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 241472,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 4.2,
+        "cpu_pct_max": 4.2,
+        "rss_bytes_median": 57870909.44,
+        "rss_bytes_max": 57870909.44,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404140.155416,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 144213.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.8,
+        "timed_ops": 259584,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 144213.3,
+     "min_msgs_per_s": 134151.1,
+     "max_msgs_per_s": 152248.9,
+     "rates": [
+      152248.9,
+      134151.1,
+      144213.3
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.8,
+      1.8,
+      1.8
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 4.0,
+      "rss_bytes_median": 57876152.32
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 144213.3,
+   "fastest_broker": "lavinmq"
+  },
+  "publish|1024|16": {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404146.2625363,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 337522.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.881,
+        "timed_ops": 634880,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 20594032.64,
+        "rss_bytes_max": 20594032.64,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404157.293214,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 331298.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.875,
+        "timed_ops": 621184,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 91.8,
+        "cpu_pct_max": 91.8,
+        "rss_bytes_median": 33428602.88,
+        "rss_bytes_max": 33428602.88,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404161.6511295,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 343137.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.892,
+        "timed_ops": 649216,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 2.5,
+        "cpu_pct_max": 2.5,
+        "rss_bytes_median": 24473763.84,
+        "rss_bytes_max": 24473763.84,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 337522.6,
+     "min_msgs_per_s": 331298.1,
+     "max_msgs_per_s": 343137.4,
+     "rates": [
+      337522.6,
+      331298.1,
+      343137.4
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.881,
+      1.875,
+      1.892
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 2.5,
+      "rss_bytes_median": 24473763.84
+     },
+     "ratio_vs_fastest": 1.643,
+     "pct_of_fastest": 60.8
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404148.5844426,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 519283.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.854,
+        "timed_ops": 962752,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 314.1,
+        "cpu_pct_max": 314.1,
+        "rss_bytes_median": 143759769.6,
+        "rss_bytes_max": 143759769.6,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404152.9311736,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 532250.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.871,
+        "timed_ops": 995840,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 140509184.0,
+        "rss_bytes_max": 140509184.0,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404163.9830782,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 500930.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.879,
+        "timed_ops": 941248,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 384.7,
+        "cpu_pct_max": 384.7,
+        "rss_bytes_median": 189058252.8,
+        "rss_bytes_max": 189058252.8,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 519283.7,
+     "min_msgs_per_s": 500930.3,
+     "max_msgs_per_s": 532250.1,
+     "rates": [
+      519283.7,
+      532250.1,
+      500930.3
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.854,
+      1.871,
+      1.879
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 314.1,
+      "rss_bytes_median": 143759769.6
+     },
+     "ratio_vs_fastest": 1.068,
+     "pct_of_fastest": 93.6
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404150.8896797,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 554690.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.802,
+        "timed_ops": 999552,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 49.0,
+        "cpu_pct_max": 49.0,
+        "rss_bytes_median": 65703772.16,
+        "rss_bytes_max": 65703772.16,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404155.2454357,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 569901.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.805,
+        "timed_ops": 1028672,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "publish",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404159.6110647,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "publish",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 545491.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000000,
+        "wall_s": 1.802,
+        "timed_ops": 982976,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 66815262.72,
+        "rss_bytes_max": 66815262.72,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 554690.3,
+     "min_msgs_per_s": 545491.7,
+     "max_msgs_per_s": 569901.4,
+     "rates": [
+      554690.3,
+      569901.4,
+      545491.7
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000000,
+      1000000,
+      1000000
+     ],
+     "wall_s": [
+      1.802,
+      1.805,
+      1.802
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 24.6,
+      "rss_bytes_median": 66259517.44
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 554690.3,
+   "fastest_broker": "lavinmq"
+  },
+  "pubget|1024|1": {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404166.441702,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 615.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 20454,
+        "wall_s": 29.918,
+        "timed_ops": 18409,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 1.3,
+        "rss_bytes_median": 22900899.84,
+        "rss_bytes_max": 23152558.08,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404204.0200655,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 498.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 25000,
+        "wall_s": 45.146,
+        "timed_ops": 22500,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 27.1,
+        "rss_bytes_median": 18213765.12,
+        "rss_bytes_max": 19765657.6,
+        "samples": 15
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404251.4254644,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 1345.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 24324,
+        "wall_s": 16.269,
+        "timed_ops": 21892,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 11.3,
+        "rss_bytes_median": 18308136.96,
+        "rss_bytes_max": 18979225.6,
+        "samples": 5
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 615.3,
+     "min_msgs_per_s": 498.4,
+     "max_msgs_per_s": 1345.6,
+     "rates": [
+      615.3,
+      498.4,
+      1345.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      20454,
+      25000,
+      24324
+     ],
+     "wall_s": [
+      29.918,
+      45.146,
+      16.269
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 0.0,
+      "rss_bytes_median": 18308136.96
+     },
+     "ratio_vs_fastest": 22.948,
+     "pct_of_fastest": 4.4
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404196.7183843,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 8277.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 14062,
+        "wall_s": 1.529,
+        "timed_ops": 12656,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.3,
+        "cpu_pct_max": 0.3,
+        "rss_bytes_median": 128869990.4,
+        "rss_bytes_max": 128869990.4,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404200.3651855,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 8554.5,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 14400,
+        "wall_s": 1.515,
+        "timed_ops": 12960,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 16.1,
+        "cpu_pct_max": 16.1,
+        "rss_bytes_median": 128450560.0,
+        "rss_bytes_max": 128450560.0,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404268.122791,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 7996.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 13043,
+        "wall_s": 1.468,
+        "timed_ops": 11739,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 14.8,
+        "cpu_pct_max": 14.8,
+        "rss_bytes_median": 129708851.2,
+        "rss_bytes_max": 129708851.2,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 8277.3,
+     "min_msgs_per_s": 7996.6,
+     "max_msgs_per_s": 8554.5,
+     "rates": [
+      8277.3,
+      8554.5,
+      7996.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      14062,
+      14400,
+      13043
+     ],
+     "wall_s": [
+      1.529,
+      1.515,
+      1.468
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 14.8,
+      "rss_bytes_median": 128869990.4
+     },
+     "ratio_vs_fastest": 1.706,
+     "pct_of_fastest": 58.6
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404198.5782628,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 14134.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 22222,
+        "wall_s": 1.415,
+        "timed_ops": 20000,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 21.5,
+        "cpu_pct_max": 21.5,
+        "rss_bytes_median": 42320527.36,
+        "rss_bytes_max": 42320527.36,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404202.2165859,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 14120.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 23376,
+        "wall_s": 1.49,
+        "timed_ops": 21039,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 1.6,
+        "cpu_pct_max": 1.6,
+        "rss_bytes_median": 41020293.12,
+        "rss_bytes_max": 41020293.12,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404249.5001125,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 13870,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 24657,
+        "wall_s": 1.6,
+        "timed_ops": 22192,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 40904949.76,
+        "rss_bytes_max": 40904949.76,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 14120.1,
+     "min_msgs_per_s": 13870,
+     "max_msgs_per_s": 14134.3,
+     "rates": [
+      14134.3,
+      14120.1,
+      13870
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      22222,
+      23376,
+      24657
+     ],
+     "wall_s": [
+      1.415,
+      1.49,
+      1.6
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 1.6,
+      "rss_bytes_median": 41020293.12
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 14120.1,
+   "fastest_broker": "lavinmq"
+  },
+  "pubget|1024|16": {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404269.875085,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 72320,
+        "wall_s": 30.004,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.pubget.q\" timeout: 71/128",
+         "drain \"bench.pubget.q\" timeout: 71/128",
+         "drain \"bench.pubget.q\" timeout: 73/128",
+         "drain \"bench.pubget.q\" timeout: 63/128",
+         "drain \"bench.pubget.q\" timeout: 68/128",
+         "drain \"bench.pubget.q\" timeout: 58/128",
+         "drain \"bench.pubget.q\" timeout: 74/128",
+         "drain \"bench.pubget.q\" timeout: 63/128"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": 56.4,
+        "cpu_pct_max": 57.5,
+        "rss_bytes_median": 21978152.96,
+        "rss_bytes_max": 22712156.16,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404307.1521766,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 75333,
+        "wall_s": 30.004,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.pubget.q\" timeout: 67/128",
+         "drain \"bench.pubget.q\" timeout: 68/128",
+         "drain \"bench.pubget.q\" timeout: 67/128",
+         "drain \"bench.pubget.q\" timeout: 63/128",
+         "drain \"bench.pubget.q\" timeout: 49/128",
+         "drain \"bench.pubget.q\" timeout: 58/128",
+         "drain \"bench.pubget.q\" timeout: 71/128",
+         "drain \"bench.pubget.q\" timeout: 76/128"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": 56.1,
+        "cpu_pct_max": 56.8,
+        "rss_bytes_median": 24007147.52,
+        "rss_bytes_max": 24882708.48,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404339.4416273,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 75333,
+        "wall_s": 30.005,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.pubget.q\" timeout: 59/128",
+         "drain \"bench.pubget.q\" timeout: 73/128",
+         "drain \"bench.pubget.q\" timeout: 64/128",
+         "drain \"bench.pubget.q\" timeout: 66/128",
+         "drain \"bench.pubget.q\" timeout: 67/128",
+         "drain \"bench.pubget.q\" timeout: 63/128",
+         "drain \"bench.pubget.q\" timeout: 88/128",
+         "drain \"bench.pubget.q\" timeout: 76/128"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": 56.7,
+        "cpu_pct_max": 57.5,
+        "rss_bytes_median": 26544701.439999998,
+        "rss_bytes_max": 26969374.72,
+        "samples": 10
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 0,
+     "min_msgs_per_s": 0,
+     "max_msgs_per_s": 0,
+     "rates": [
+      0,
+      0,
+      0
+     ],
+     "errors_total": 48,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      72320,
+      75333,
+      75333
+     ],
+     "wall_s": [
+      30.004,
+      30.004,
+      30.005
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 56.4,
+      "rss_bytes_median": 24007147.52
+     },
+     "ratio_vs_fastest": null,
+     "pct_of_fastest": null
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404300.0251338,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 31327.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 33481,
+        "wall_s": 0.962,
+        "timed_ops": 30137,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404303.292801,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 30541.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 56500,
+        "wall_s": 1.665,
+        "timed_ops": 50852,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.4,
+        "cpu_pct_max": 0.4,
+        "rss_bytes_median": 198390579.2,
+        "rss_bytes_max": 198390579.2,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404369.5914686,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 31110.5,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 44097,
+        "wall_s": 1.276,
+        "timed_ops": 39697,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 96.6,
+        "cpu_pct_max": 96.6,
+        "rss_bytes_median": 197446860.8,
+        "rss_bytes_max": 197446860.8,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 31110.5,
+     "min_msgs_per_s": 30541.7,
+     "max_msgs_per_s": 31327.4,
+     "rates": [
+      31327.4,
+      30541.7,
+      31110.5
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      33481,
+      56500,
+      44097
+     ],
+     "wall_s": [
+      0.962,
+      1.665,
+      1.276
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 48.5,
+      "rss_bytes_median": 197918720.0
+     },
+     "ratio_vs_fastest": 1.627,
+     "pct_of_fastest": 61.5
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404301.1850758,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 49432.5,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 100444,
+        "wall_s": 1.829,
+        "timed_ops": 90412,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 35871784.96,
+        "rss_bytes_max": 35871784.96,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404305.1959894,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 50622.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 95157,
+        "wall_s": 1.692,
+        "timed_ops": 85653,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 67.8,
+        "cpu_pct_max": 67.8,
+        "rss_bytes_median": 37276876.8,
+        "rss_bytes_max": 37276876.8,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "pubget",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404337.252561,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "pubget",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 50623.5,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 106353,
+        "wall_s": 1.891,
+        "timed_ops": 95729,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 35882270.72,
+        "rss_bytes_max": 35882270.72,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 50622.3,
+     "min_msgs_per_s": 49432.5,
+     "max_msgs_per_s": 50623.5,
+     "rates": [
+      49432.5,
+      50622.3,
+      50623.5
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      100444,
+      95157,
+      106353
+     ],
+     "wall_s": [
+      1.829,
+      1.692,
+      1.891
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 0.1,
+      "rss_bytes_median": 35882270.72
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 50622.3,
+   "fastest_broker": "lavinmq"
+  },
+  "confirm|1024|1": {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404371.1831632,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 7690.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 14594,
+        "wall_s": 1.708,
+        "timed_ops": 13135,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 8.1,
+        "cpu_pct_max": 8.1,
+        "rss_bytes_median": 24714936.32,
+        "rss_bytes_max": 24714936.32,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404386.8394573,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 7822,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 14210,
+        "wall_s": 1.635,
+        "timed_ops": 12789,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 19.9,
+        "cpu_pct_max": 19.9,
+        "rss_bytes_median": 24473763.84,
+        "rss_bytes_max": 24473763.84,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404394.3694997,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 8286.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 12558,
+        "wall_s": 1.364,
+        "timed_ops": 11303,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 7822,
+     "min_msgs_per_s": 7690.3,
+     "max_msgs_per_s": 8286.7,
+     "rates": [
+      7690.3,
+      7822,
+      8286.7
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      14594,
+      14210,
+      12558
+     ],
+     "wall_s": [
+      1.708,
+      1.635,
+      1.364
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 14.0,
+      "rss_bytes_median": 24594350.08
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404373.257853,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 4346.8,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 7297,
+        "wall_s": 1.511,
+        "timed_ops": 6568,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404379.9559293,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 4400.8,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 8307,
+        "wall_s": 1.699,
+        "timed_ops": 7477,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 168506163.2,
+        "rss_bytes_max": 168506163.2,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404396.0372214,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 4365.9,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 7397,
+        "wall_s": 1.525,
+        "timed_ops": 6658,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 140404326.4,
+        "rss_bytes_max": 140404326.4,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 4365.9,
+     "min_msgs_per_s": 4346.8,
+     "max_msgs_per_s": 4400.8,
+     "rates": [
+      4346.8,
+      4400.8,
+      4365.9
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      7297,
+      8307,
+      7397
+     ],
+     "wall_s": [
+      1.511,
+      1.699,
+      1.525
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 0.1,
+      "rss_bytes_median": 154455244.8
+     },
+     "ratio_vs_fastest": 1.792,
+     "pct_of_fastest": 55.8
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404377.595792,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 107.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 240,
+        "wall_s": 2.011,
+        "timed_ops": 216,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 24.3,
+        "cpu_pct_max": 24.3,
+        "rss_bytes_median": 36846960.64,
+        "rss_bytes_max": 36846960.64,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404384.6273305,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 109.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 227,
+        "wall_s": 1.879,
+        "timed_ops": 205,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 32.4,
+        "cpu_pct_max": 32.4,
+        "rss_bytes_median": 37339791.36,
+        "rss_bytes_max": 37339791.36,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404391.8640778,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 84.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 200,
+        "wall_s": 2.132,
+        "timed_ops": 180,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 35850813.44,
+        "rss_bytes_max": 35850813.44,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 107.4,
+     "min_msgs_per_s": 84.4,
+     "max_msgs_per_s": 109.1,
+     "rates": [
+      107.4,
+      109.1,
+      84.4
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      240,
+      227,
+      200
+     ],
+     "wall_s": [
+      2.011,
+      1.879,
+      2.132
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 24.3,
+      "rss_bytes_median": 36846960.64
+     },
+     "ratio_vs_fastest": 72.831,
+     "pct_of_fastest": 1.4
+    }
+   },
+   "fastest_msgs_per_s": 7822,
+   "fastest_broker": "hyrxmq"
+  },
+  "confirm|1024|16": {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404397.8125837,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 56800,
+        "wall_s": 0.025,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.confirm.q\" timeout: 104/256",
+         "drain \"bench.confirm.q\" timeout: 109/256",
+         "drain \"bench.confirm.q\" timeout: 118/256",
+         "drain \"bench.confirm.q\" timeout: 119/256",
+         "drain \"bench.confirm.q\" timeout: 91/256",
+         "drain \"bench.confirm.q\" timeout: 91/256",
+         "drain \"bench.confirm.q\" timeout: 93/256",
+         "drain \"bench.confirm.q\" timeout: 90/256"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404471.0951326,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 47333,
+        "wall_s": 0.029,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.confirm.q\" timeout: 101/256",
+         "drain \"bench.confirm.q\" timeout: 121/256",
+         "drain \"bench.confirm.q\" timeout: 116/256",
+         "drain \"bench.confirm.q\" timeout: 94/256",
+         "drain \"bench.confirm.q\" timeout: 77/256",
+         "drain \"bench.confirm.q\" timeout: 97/256",
+         "drain \"bench.confirm.q\" timeout: 93/256",
+         "drain \"bench.confirm.q\" timeout: 79/256"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404533.8067918,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 0,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 16,
+        "count": 43692,
+        "wall_s": 0.025,
+        "timed_ops": 0,
+        "queues": 1,
+        "workers_connected": 16,
+        "error_samples": [
+         "drain \"bench.confirm.q\" timeout: 120/256",
+         "drain \"bench.confirm.q\" timeout: 102/256",
+         "drain \"bench.confirm.q\" timeout: 118/256",
+         "drain \"bench.confirm.q\" timeout: 108/256",
+         "drain \"bench.confirm.q\" timeout: 81/256",
+         "drain \"bench.confirm.q\" timeout: 90/256",
+         "drain \"bench.confirm.q\" timeout: 119/256",
+         "drain \"bench.confirm.q\" timeout: 82/256"
+        ]
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 0,
+     "min_msgs_per_s": 0,
+     "max_msgs_per_s": 0,
+     "rates": [
+      0,
+      0,
+      0
+     ],
+     "errors_total": 48,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      56800,
+      47333,
+      43692
+     ],
+     "wall_s": [
+      0.025,
+      0.029,
+      0.025
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": null,
+      "rss_bytes_median": null
+     },
+     "ratio_vs_fastest": null,
+     "pct_of_fastest": null
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404458.0072565,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 17348.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 37866,
+        "wall_s": 1.965,
+        "timed_ops": 34090,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.4,
+        "cpu_pct_max": 0.4,
+        "rss_bytes_median": 190526259.2,
+        "rss_bytes_max": 190526259.2,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404463.8638184,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 16436.8,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 37866,
+        "wall_s": 2.074,
+        "timed_ops": 34090,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 227121561.6,
+        "rss_bytes_max": 227121561.6,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404594.0092254,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 17120.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 31555,
+        "wall_s": 1.659,
+        "timed_ops": 28403,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 287.4,
+        "cpu_pct_max": 287.4,
+        "rss_bytes_median": 222507827.2,
+        "rss_bytes_max": 222507827.2,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 17120.6,
+     "min_msgs_per_s": 16436.8,
+     "max_msgs_per_s": 17348.6,
+     "rates": [
+      17348.6,
+      16436.8,
+      17120.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      37866,
+      37866,
+      31555
+     ],
+     "wall_s": [
+      1.965,
+      2.074,
+      1.659
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 0.4,
+      "rss_bytes_median": 222507827.2
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404461.0426867,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 334.5,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 917,
+        "wall_s": 2.502,
+        "timed_ops": 837,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 36511416.32,
+        "rss_bytes_max": 36511416.32,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404466.9879458,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 216.2,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 911,
+        "wall_s": 3.843,
+        "timed_ops": 831,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 4.8,
+        "cpu_pct_max": 4.8,
+        "rss_bytes_median": 38084280.32,
+        "rss_bytes_max": 38084280.32,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "confirm",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404531.6096497,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "confirm",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 975.8,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 2050,
+        "wall_s": 1.904,
+        "timed_ops": 1858,
+        "queues": 1,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": 5.4,
+        "cpu_pct_max": 5.4,
+        "rss_bytes_median": 36930846.72,
+        "rss_bytes_max": 36930846.72,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 334.5,
+     "min_msgs_per_s": 216.2,
+     "max_msgs_per_s": 975.8,
+     "rates": [
+      334.5,
+      216.2,
+      975.8
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      917,
+      911,
+      2050
+     ],
+     "wall_s": [
+      2.502,
+      3.843,
+      1.904
+     ],
+     "status": "OK",
+     "resources": {
+      "cpu_pct_median": 4.8,
+      "rss_bytes_median": 36930846.72
+     },
+     "ratio_vs_fastest": 51.183,
+     "pct_of_fastest": 2.0
+    }
+   },
+   "fastest_msgs_per_s": 17120.6,
+   "fastest_broker": "rabbitmq"
+  },
+  "latency|1024|1": {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404595.8939955,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 505.7,
+        "p50_us": 86,
+        "p95_us": 129,
+        "p99_us": 189,
+        "p999_us": 757,
+        "errors": 0,
+        "count": 17142,
+        "wall_s": 30.506,
+        "timed_ops": 15428,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 21527265.28,
+        "rss_bytes_max": 21537751.04,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404633.8768878,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 495.6,
+        "p50_us": 92,
+        "p95_us": 143,
+        "p99_us": 217,
+        "p999_us": 909,
+        "errors": 0,
+        "count": 17142,
+        "wall_s": 31.132,
+        "timed_ops": 15428,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 21527265.28,
+        "rss_bytes_max": 21527265.28,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404666.8110404,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 9977.6,
+        "p50_us": 82,
+        "p95_us": 122,
+        "p99_us": 181,
+        "p999_us": 1123,
+        "errors": 0,
+        "count": 16363,
+        "wall_s": 1.476,
+        "timed_ops": 14727,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 6.8,
+        "cpu_pct_max": 6.8,
+        "rss_bytes_median": 21527265.28,
+        "rss_bytes_max": 21527265.28,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 505.7,
+     "min_msgs_per_s": 495.6,
+     "max_msgs_per_s": 9977.6,
+     "rates": [
+      505.7,
+      495.6,
+      9977.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      17142,
+      17142,
+      16363
+     ],
+     "wall_s": [
+      30.506,
+      31.132,
+      1.476
+     ],
+     "status": "OK",
+     "p50_us_median": 86,
+     "p95_us_median": 129,
+     "p99_us_median": 189,
+     "p999_us_median": 909,
+     "resources": {
+      "cpu_pct_median": 0.0,
+      "rss_bytes_median": 21527265.28
+     },
+     "ratio_vs_fastest": 18.122,
+     "pct_of_fastest": 5.5
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404626.5509295,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 5028.5,
+        "p50_us": 163,
+        "p95_us": 232,
+        "p99_us": 309,
+        "p999_us": 1672,
+        "errors": 0,
+        "count": 9230,
+        "wall_s": 1.652,
+        "timed_ops": 8307,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 131491430.4,
+        "rss_bytes_max": 131491430.4,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404630.4214525,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 4808.8,
+        "p50_us": 169,
+        "p95_us": 236,
+        "p99_us": 299,
+        "p999_us": 1614,
+        "errors": 0,
+        "count": 9473,
+        "wall_s": 1.773,
+        "timed_ops": 8526,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 32.1,
+        "cpu_pct_max": 32.1,
+        "rss_bytes_median": 132015718.4,
+        "rss_bytes_max": 132015718.4,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404668.4185565,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 4577.6,
+        "p50_us": 171,
+        "p95_us": 256,
+        "p99_us": 761,
+        "p999_us": 1999,
+        "errors": 0,
+        "count": 9729,
+        "wall_s": 1.913,
+        "timed_ops": 8757,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 131806003.2,
+        "rss_bytes_max": 131806003.2,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 4808.8,
+     "min_msgs_per_s": 4577.6,
+     "max_msgs_per_s": 5028.5,
+     "rates": [
+      5028.5,
+      4808.8,
+      4577.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      9230,
+      9473,
+      9729
+     ],
+     "wall_s": [
+      1.652,
+      1.773,
+      1.913
+     ],
+     "status": "OK",
+     "p50_us_median": 169,
+     "p95_us_median": 236,
+     "p99_us_median": 309,
+     "p999_us_median": 1672,
+     "resources": {
+      "cpu_pct_median": 0.1,
+      "rss_bytes_median": 131806003.2
+     },
+     "ratio_vs_fastest": 1.906,
+     "pct_of_fastest": 52.5
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404628.3365858,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 8749.6,
+        "p50_us": 92,
+        "p95_us": 146,
+        "p99_us": 257,
+        "p999_us": 1393,
+        "errors": 0,
+        "count": 18947,
+        "wall_s": 1.949,
+        "timed_ops": 17053,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 35924213.76,
+        "rss_bytes_max": 35924213.76,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404632.3110921,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 9635.4,
+        "p50_us": 84,
+        "p95_us": 126,
+        "p99_us": 232,
+        "p999_us": 1528,
+        "errors": 0,
+        "count": 15652,
+        "wall_s": 1.462,
+        "timed_ops": 14087,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 1.9,
+        "cpu_pct_max": 1.9,
+        "rss_bytes_median": 35934699.52,
+        "rss_bytes_max": 35934699.52,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "latency",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404665.1081836,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "latency",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 9164.3,
+        "p50_us": 85,
+        "p95_us": 131,
+        "p99_us": 257,
+        "p999_us": 1822,
+        "errors": 0,
+        "count": 16363,
+        "wall_s": 1.607,
+        "timed_ops": 14727,
+        "queues": 1,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 35934699.52,
+        "rss_bytes_max": 35934699.52,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 9164.3,
+     "min_msgs_per_s": 8749.6,
+     "max_msgs_per_s": 9635.4,
+     "rates": [
+      8749.6,
+      9635.4,
+      9164.3
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      18947,
+      15652,
+      16363
+     ],
+     "wall_s": [
+      1.949,
+      1.462,
+      1.607
+     ],
+     "status": "OK",
+     "p50_us_median": 85,
+     "p95_us_median": 131,
+     "p99_us_median": 257,
+     "p999_us_median": 1528,
+     "resources": {
+      "cpu_pct_median": 0.1,
+      "rss_bytes_median": 35934699.52
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 9164.3,
+   "fastest_broker": "lavinmq"
+  },
+  "fanout|1024|1": {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404670.484032,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 236.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 15.233,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 21569208.32,
+        "rss_bytes_max": 21569208.32,
+        "samples": 5
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404688.3761792,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 119.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 30.098,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.0,
+        "cpu_pct_max": 0.0,
+        "rss_bytes_median": 21569208.32,
+        "rss_bytes_max": 22093496.32,
+        "samples": 10
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404734.0400357,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 13899.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.259,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 236.3,
+     "min_msgs_per_s": 119.6,
+     "max_msgs_per_s": 13899.6,
+     "rates": [
+      236.3,
+      119.6,
+      13899.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      15.233,
+      30.098,
+      0.259
+     ],
+     "status": "OK",
+     "delivered_median": 3600,
+     "resources": {
+      "cpu_pct_median": 0.0,
+      "rss_bytes_median": 21569208.32
+     },
+     "ratio_vs_fastest": 58.596,
+     "pct_of_fastest": 1.7
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404686.0091934,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 7775.4,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.463,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404687.266566,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 7627.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.472,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 133378867.2,
+        "rss_bytes_max": 133378867.2,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404734.5349987,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 8391.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.429,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 7775.4,
+     "min_msgs_per_s": 7627.1,
+     "max_msgs_per_s": 8391.6,
+     "rates": [
+      7775.4,
+      7627.1,
+      8391.6
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      0.463,
+      0.472,
+      0.429
+     ],
+     "status": "OK",
+     "delivered_median": 3600,
+     "resources": {
+      "cpu_pct_median": 0.1,
+      "rss_bytes_median": 133378867.2
+     },
+     "ratio_vs_fastest": 1.781,
+     "pct_of_fastest": 56.2
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404686.7520375,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 13382.9,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.269,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404687.9563618,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 13846.2,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.26,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 0.1,
+        "cpu_pct_max": 0.1,
+        "rss_bytes_median": 36207329.28,
+        "rss_bytes_max": 36207329.28,
+        "samples": 1
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 1,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404733.6354506,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 1,
+        "msgs_per_sec": 14516.1,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.248,
+        "timed_ops": 900,
+        "delivered": 3600,
+        "queues": 4,
+        "workers_connected": 1
+       },
+       "resources": {
+        "cpu_pct_median": 3.5,
+        "cpu_pct_max": 3.5,
+        "rss_bytes_median": 36081500.16,
+        "rss_bytes_max": 36081500.16,
+        "samples": 1
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 13846.2,
+     "min_msgs_per_s": 13382.9,
+     "max_msgs_per_s": 14516.1,
+     "rates": [
+      13382.9,
+      13846.2,
+      14516.1
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      1,
+      1,
+      1
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      0.269,
+      0.26,
+      0.248
+     ],
+     "status": "OK",
+     "delivered_median": 3600,
+     "resources": {
+      "cpu_pct_median": 1.8,
+      "rss_bytes_median": 36144414.72
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 13846.2,
+   "fastest_broker": "lavinmq"
+  },
+  "fanout|1024|16": {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "brokers": {
+    "hyrxmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 0,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404735.1433797,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 45200,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.08,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 2,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404736.3503184,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 44097.6,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.082,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 1,
+       "broker": "hyrxmq",
+       "rc": 0,
+       "t_start": 1789404736.7138684,
+       "result": {
+        "broker": "hyrxmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 39304.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.092,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 44097.6,
+     "min_msgs_per_s": 39304.3,
+     "max_msgs_per_s": 45200,
+     "rates": [
+      45200,
+      44097.6,
+      39304.3
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      0.08,
+      0.082,
+      0.092
+     ],
+     "status": "OK",
+     "delivered_median": 3616,
+     "resources": {
+      "cpu_pct_median": null,
+      "rss_bytes_median": null
+     },
+     "ratio_vs_fastest": 1.093,
+     "pct_of_fastest": 91.5
+    },
+    "rabbitmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 1,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404735.3860264,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 31719.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.114,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 0,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404735.9146712,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 33174.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.109,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 2,
+       "broker": "rabbitmq",
+       "rc": 0,
+       "t_start": 1789404736.9716277,
+       "result": {
+        "broker": "rabbitmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 32285.7,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.112,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 32285.7,
+     "min_msgs_per_s": 31719.3,
+     "max_msgs_per_s": 33174.3,
+     "rates": [
+      31719.3,
+      33174.3,
+      32285.7
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      0.114,
+      0.109,
+      0.112
+     ],
+     "status": "OK",
+     "delivered_median": 3616,
+     "resources": {
+      "cpu_pct_median": null,
+      "rss_bytes_median": null
+     },
+     "ratio_vs_fastest": 1.493,
+     "pct_of_fastest": 67.0
+    },
+    "lavinmq": {
+     "runs": [
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 0,
+       "order": 2,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404735.651261,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 45772.2,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.079,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 1,
+       "order": 1,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404736.1753511,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 48213.3,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.075,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      },
+      {
+       "workload": "fanout",
+       "payload": 1024,
+       "concurrency": 16,
+       "rep": 2,
+       "order": 0,
+       "broker": "lavinmq",
+       "rc": 0,
+       "t_start": 1789404736.5334601,
+       "result": {
+        "broker": "lavinmq",
+        "workload": "fanout",
+        "payload": 1024,
+        "concurrency": 16,
+        "msgs_per_sec": 48864.9,
+        "p50_us": null,
+        "p95_us": null,
+        "p99_us": null,
+        "p999_us": null,
+        "errors": 0,
+        "count": 1000,
+        "wall_s": 0.074,
+        "timed_ops": 904,
+        "delivered": 3616,
+        "queues": 4,
+        "workers_connected": 16
+       },
+       "resources": {
+        "cpu_pct_median": null,
+        "cpu_pct_max": null,
+        "rss_bytes_median": null,
+        "rss_bytes_max": null,
+        "samples": 0
+       }
+      }
+     ],
+     "n_ok": 3,
+     "n_total": 3,
+     "median_msgs_per_s": 48213.3,
+     "min_msgs_per_s": 45772.2,
+     "max_msgs_per_s": 48864.9,
+     "rates": [
+      45772.2,
+      48213.3,
+      48864.9
+     ],
+     "errors_total": 0,
+     "workers_connected": [
+      16,
+      16,
+      16
+     ],
+     "count": [
+      1000,
+      1000,
+      1000
+     ],
+     "wall_s": [
+      0.079,
+      0.075,
+      0.074
+     ],
+     "status": "OK",
+     "delivered_median": 3616,
+     "resources": {
+      "cpu_pct_median": null,
+      "rss_bytes_median": null
+     },
+     "ratio_vs_fastest": 1.0,
+     "pct_of_fastest": 100.0
+    }
+   },
+   "fastest_msgs_per_s": 48213.3,
+   "fastest_broker": "lavinmq"
+  }
+ },
+ "runs": [
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404127.8943677,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 135786.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 244416,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404129.9671347,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 131306.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 236352,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 3.9,
+    "cpu_pct_max": 3.9,
+    "rss_bytes_median": 153406668.8,
+    "rss_bytes_max": 153406668.8,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404132.011076,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 152248.9,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 274048,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 3.7,
+    "cpu_pct_max": 3.7,
+    "rss_bytes_median": 57881395.2,
+    "rss_bytes_max": 57881395.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404134.051485,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 122168.9,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 219904,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404136.087746,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 134151.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 241472,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 4.2,
+    "cpu_pct_max": 4.2,
+    "rss_bytes_median": 57870909.44,
+    "rss_bytes_max": 57870909.44,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404138.1212227,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 143786.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 258816,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 18350080.0,
+    "rss_bytes_max": 18350080.0,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404140.155416,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 144213.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 259584,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404142.1912034,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 141084.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 253952,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 8.4,
+    "cpu_pct_max": 8.4,
+    "rss_bytes_median": 18392023.04,
+    "rss_bytes_max": 18392023.04,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404144.2256126,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 149866.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.8,
+    "timed_ops": 269760,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.3,
+    "cpu_pct_max": 0.3,
+    "rss_bytes_median": 133483724.8,
+    "rss_bytes_max": 133483724.8,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404146.2625363,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 337522.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.881,
+    "timed_ops": 634880,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 20594032.64,
+    "rss_bytes_max": 20594032.64,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404148.5844426,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 519283.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.854,
+    "timed_ops": 962752,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 314.1,
+    "cpu_pct_max": 314.1,
+    "rss_bytes_median": 143759769.6,
+    "rss_bytes_max": 143759769.6,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404150.8896797,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 554690.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.802,
+    "timed_ops": 999552,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 49.0,
+    "cpu_pct_max": 49.0,
+    "rss_bytes_median": 65703772.16,
+    "rss_bytes_max": 65703772.16,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404152.9311736,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 532250.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.871,
+    "timed_ops": 995840,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 140509184.0,
+    "rss_bytes_max": 140509184.0,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404155.2454357,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 569901.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.805,
+    "timed_ops": 1028672,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404157.293214,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 331298.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.875,
+    "timed_ops": 621184,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 91.8,
+    "cpu_pct_max": 91.8,
+    "rss_bytes_median": 33428602.88,
+    "rss_bytes_max": 33428602.88,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404159.6110647,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 545491.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.802,
+    "timed_ops": 982976,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 66815262.72,
+    "rss_bytes_max": 66815262.72,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404161.6511295,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 343137.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.892,
+    "timed_ops": 649216,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 2.5,
+    "cpu_pct_max": 2.5,
+    "rss_bytes_median": 24473763.84,
+    "rss_bytes_max": 24473763.84,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "publish",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404163.9830782,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "publish",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 500930.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000000,
+    "wall_s": 1.879,
+    "timed_ops": 941248,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 384.7,
+    "cpu_pct_max": 384.7,
+    "rss_bytes_median": 189058252.8,
+    "rss_bytes_max": 189058252.8,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404166.441702,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 615.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 20454,
+    "wall_s": 29.918,
+    "timed_ops": 18409,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 1.3,
+    "rss_bytes_median": 22900899.84,
+    "rss_bytes_max": 23152558.08,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404196.7183843,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 8277.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 14062,
+    "wall_s": 1.529,
+    "timed_ops": 12656,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.3,
+    "cpu_pct_max": 0.3,
+    "rss_bytes_median": 128869990.4,
+    "rss_bytes_max": 128869990.4,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404198.5782628,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 14134.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 22222,
+    "wall_s": 1.415,
+    "timed_ops": 20000,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 21.5,
+    "cpu_pct_max": 21.5,
+    "rss_bytes_median": 42320527.36,
+    "rss_bytes_max": 42320527.36,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404200.3651855,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 8554.5,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 14400,
+    "wall_s": 1.515,
+    "timed_ops": 12960,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 16.1,
+    "cpu_pct_max": 16.1,
+    "rss_bytes_median": 128450560.0,
+    "rss_bytes_max": 128450560.0,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404202.2165859,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 14120.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 23376,
+    "wall_s": 1.49,
+    "timed_ops": 21039,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 1.6,
+    "cpu_pct_max": 1.6,
+    "rss_bytes_median": 41020293.12,
+    "rss_bytes_max": 41020293.12,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404204.0200655,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 498.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 25000,
+    "wall_s": 45.146,
+    "timed_ops": 22500,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 27.1,
+    "rss_bytes_median": 18213765.12,
+    "rss_bytes_max": 19765657.6,
+    "samples": 15
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404249.5001125,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 13870,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 24657,
+    "wall_s": 1.6,
+    "timed_ops": 22192,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 40904949.76,
+    "rss_bytes_max": 40904949.76,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404251.4254644,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 1345.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 24324,
+    "wall_s": 16.269,
+    "timed_ops": 21892,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 11.3,
+    "rss_bytes_median": 18308136.96,
+    "rss_bytes_max": 18979225.6,
+    "samples": 5
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404268.122791,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 7996.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 13043,
+    "wall_s": 1.468,
+    "timed_ops": 11739,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 14.8,
+    "cpu_pct_max": 14.8,
+    "rss_bytes_median": 129708851.2,
+    "rss_bytes_max": 129708851.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404269.875085,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 72320,
+    "wall_s": 30.004,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.pubget.q\" timeout: 71/128",
+     "drain \"bench.pubget.q\" timeout: 71/128",
+     "drain \"bench.pubget.q\" timeout: 73/128",
+     "drain \"bench.pubget.q\" timeout: 63/128",
+     "drain \"bench.pubget.q\" timeout: 68/128",
+     "drain \"bench.pubget.q\" timeout: 58/128",
+     "drain \"bench.pubget.q\" timeout: 74/128",
+     "drain \"bench.pubget.q\" timeout: 63/128"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": 56.4,
+    "cpu_pct_max": 57.5,
+    "rss_bytes_median": 21978152.96,
+    "rss_bytes_max": 22712156.16,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404300.0251338,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 31327.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 33481,
+    "wall_s": 0.962,
+    "timed_ops": 30137,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404301.1850758,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 49432.5,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 100444,
+    "wall_s": 1.829,
+    "timed_ops": 90412,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 35871784.96,
+    "rss_bytes_max": 35871784.96,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404303.292801,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 30541.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 56500,
+    "wall_s": 1.665,
+    "timed_ops": 50852,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.4,
+    "cpu_pct_max": 0.4,
+    "rss_bytes_median": 198390579.2,
+    "rss_bytes_max": 198390579.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404305.1959894,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 50622.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 95157,
+    "wall_s": 1.692,
+    "timed_ops": 85653,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 67.8,
+    "cpu_pct_max": 67.8,
+    "rss_bytes_median": 37276876.8,
+    "rss_bytes_max": 37276876.8,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404307.1521766,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 75333,
+    "wall_s": 30.004,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.pubget.q\" timeout: 67/128",
+     "drain \"bench.pubget.q\" timeout: 68/128",
+     "drain \"bench.pubget.q\" timeout: 67/128",
+     "drain \"bench.pubget.q\" timeout: 63/128",
+     "drain \"bench.pubget.q\" timeout: 49/128",
+     "drain \"bench.pubget.q\" timeout: 58/128",
+     "drain \"bench.pubget.q\" timeout: 71/128",
+     "drain \"bench.pubget.q\" timeout: 76/128"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": 56.1,
+    "cpu_pct_max": 56.8,
+    "rss_bytes_median": 24007147.52,
+    "rss_bytes_max": 24882708.48,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404337.252561,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 50623.5,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 106353,
+    "wall_s": 1.891,
+    "timed_ops": 95729,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 35882270.72,
+    "rss_bytes_max": 35882270.72,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404339.4416273,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 75333,
+    "wall_s": 30.005,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.pubget.q\" timeout: 59/128",
+     "drain \"bench.pubget.q\" timeout: 73/128",
+     "drain \"bench.pubget.q\" timeout: 64/128",
+     "drain \"bench.pubget.q\" timeout: 66/128",
+     "drain \"bench.pubget.q\" timeout: 67/128",
+     "drain \"bench.pubget.q\" timeout: 63/128",
+     "drain \"bench.pubget.q\" timeout: 88/128",
+     "drain \"bench.pubget.q\" timeout: 76/128"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": 56.7,
+    "cpu_pct_max": 57.5,
+    "rss_bytes_median": 26544701.439999998,
+    "rss_bytes_max": 26969374.72,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "pubget",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404369.5914686,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "pubget",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 31110.5,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 44097,
+    "wall_s": 1.276,
+    "timed_ops": 39697,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 96.6,
+    "cpu_pct_max": 96.6,
+    "rss_bytes_median": 197446860.8,
+    "rss_bytes_max": 197446860.8,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404371.1831632,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 7690.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 14594,
+    "wall_s": 1.708,
+    "timed_ops": 13135,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 8.1,
+    "cpu_pct_max": 8.1,
+    "rss_bytes_median": 24714936.32,
+    "rss_bytes_max": 24714936.32,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404373.257853,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 4346.8,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 7297,
+    "wall_s": 1.511,
+    "timed_ops": 6568,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404377.595792,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 107.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 240,
+    "wall_s": 2.011,
+    "timed_ops": 216,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 24.3,
+    "cpu_pct_max": 24.3,
+    "rss_bytes_median": 36846960.64,
+    "rss_bytes_max": 36846960.64,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404379.9559293,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 4400.8,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 8307,
+    "wall_s": 1.699,
+    "timed_ops": 7477,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 168506163.2,
+    "rss_bytes_max": 168506163.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404384.6273305,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 109.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 227,
+    "wall_s": 1.879,
+    "timed_ops": 205,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 32.4,
+    "cpu_pct_max": 32.4,
+    "rss_bytes_median": 37339791.36,
+    "rss_bytes_max": 37339791.36,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404386.8394573,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 7822,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 14210,
+    "wall_s": 1.635,
+    "timed_ops": 12789,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 19.9,
+    "cpu_pct_max": 19.9,
+    "rss_bytes_median": 24473763.84,
+    "rss_bytes_max": 24473763.84,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404391.8640778,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 84.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 200,
+    "wall_s": 2.132,
+    "timed_ops": 180,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 35850813.44,
+    "rss_bytes_max": 35850813.44,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404394.3694997,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 8286.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 12558,
+    "wall_s": 1.364,
+    "timed_ops": 11303,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404396.0372214,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 4365.9,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 7397,
+    "wall_s": 1.525,
+    "timed_ops": 6658,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 140404326.4,
+    "rss_bytes_max": 140404326.4,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404397.8125837,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 56800,
+    "wall_s": 0.025,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.confirm.q\" timeout: 104/256",
+     "drain \"bench.confirm.q\" timeout: 109/256",
+     "drain \"bench.confirm.q\" timeout: 118/256",
+     "drain \"bench.confirm.q\" timeout: 119/256",
+     "drain \"bench.confirm.q\" timeout: 91/256",
+     "drain \"bench.confirm.q\" timeout: 91/256",
+     "drain \"bench.confirm.q\" timeout: 93/256",
+     "drain \"bench.confirm.q\" timeout: 90/256"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404458.0072565,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 17348.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 37866,
+    "wall_s": 1.965,
+    "timed_ops": 34090,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.4,
+    "cpu_pct_max": 0.4,
+    "rss_bytes_median": 190526259.2,
+    "rss_bytes_max": 190526259.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404461.0426867,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 334.5,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 917,
+    "wall_s": 2.502,
+    "timed_ops": 837,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 36511416.32,
+    "rss_bytes_max": 36511416.32,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404463.8638184,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 16436.8,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 37866,
+    "wall_s": 2.074,
+    "timed_ops": 34090,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 227121561.6,
+    "rss_bytes_max": 227121561.6,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404466.9879458,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 216.2,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 911,
+    "wall_s": 3.843,
+    "timed_ops": 831,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 4.8,
+    "cpu_pct_max": 4.8,
+    "rss_bytes_median": 38084280.32,
+    "rss_bytes_max": 38084280.32,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404471.0951326,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 47333,
+    "wall_s": 0.029,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.confirm.q\" timeout: 101/256",
+     "drain \"bench.confirm.q\" timeout: 121/256",
+     "drain \"bench.confirm.q\" timeout: 116/256",
+     "drain \"bench.confirm.q\" timeout: 94/256",
+     "drain \"bench.confirm.q\" timeout: 77/256",
+     "drain \"bench.confirm.q\" timeout: 97/256",
+     "drain \"bench.confirm.q\" timeout: 93/256",
+     "drain \"bench.confirm.q\" timeout: 79/256"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404531.6096497,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 975.8,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 2050,
+    "wall_s": 1.904,
+    "timed_ops": 1858,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 5.4,
+    "cpu_pct_max": 5.4,
+    "rss_bytes_median": 36930846.72,
+    "rss_bytes_max": 36930846.72,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404533.8067918,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 0,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 16,
+    "count": 43692,
+    "wall_s": 0.025,
+    "timed_ops": 0,
+    "queues": 1,
+    "workers_connected": 16,
+    "error_samples": [
+     "drain \"bench.confirm.q\" timeout: 120/256",
+     "drain \"bench.confirm.q\" timeout: 102/256",
+     "drain \"bench.confirm.q\" timeout: 118/256",
+     "drain \"bench.confirm.q\" timeout: 108/256",
+     "drain \"bench.confirm.q\" timeout: 81/256",
+     "drain \"bench.confirm.q\" timeout: 90/256",
+     "drain \"bench.confirm.q\" timeout: 119/256",
+     "drain \"bench.confirm.q\" timeout: 82/256"
+    ]
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "confirm",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404594.0092254,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "confirm",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 17120.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 31555,
+    "wall_s": 1.659,
+    "timed_ops": 28403,
+    "queues": 1,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": 287.4,
+    "cpu_pct_max": 287.4,
+    "rss_bytes_median": 222507827.2,
+    "rss_bytes_max": 222507827.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404595.8939955,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 505.7,
+    "p50_us": 86,
+    "p95_us": 129,
+    "p99_us": 189,
+    "p999_us": 757,
+    "errors": 0,
+    "count": 17142,
+    "wall_s": 30.506,
+    "timed_ops": 15428,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 21527265.28,
+    "rss_bytes_max": 21537751.04,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404626.5509295,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 5028.5,
+    "p50_us": 163,
+    "p95_us": 232,
+    "p99_us": 309,
+    "p999_us": 1672,
+    "errors": 0,
+    "count": 9230,
+    "wall_s": 1.652,
+    "timed_ops": 8307,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 131491430.4,
+    "rss_bytes_max": 131491430.4,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404628.3365858,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 8749.6,
+    "p50_us": 92,
+    "p95_us": 146,
+    "p99_us": 257,
+    "p999_us": 1393,
+    "errors": 0,
+    "count": 18947,
+    "wall_s": 1.949,
+    "timed_ops": 17053,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 35924213.76,
+    "rss_bytes_max": 35924213.76,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404630.4214525,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 4808.8,
+    "p50_us": 169,
+    "p95_us": 236,
+    "p99_us": 299,
+    "p999_us": 1614,
+    "errors": 0,
+    "count": 9473,
+    "wall_s": 1.773,
+    "timed_ops": 8526,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 32.1,
+    "cpu_pct_max": 32.1,
+    "rss_bytes_median": 132015718.4,
+    "rss_bytes_max": 132015718.4,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404632.3110921,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 9635.4,
+    "p50_us": 84,
+    "p95_us": 126,
+    "p99_us": 232,
+    "p999_us": 1528,
+    "errors": 0,
+    "count": 15652,
+    "wall_s": 1.462,
+    "timed_ops": 14087,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 1.9,
+    "cpu_pct_max": 1.9,
+    "rss_bytes_median": 35934699.52,
+    "rss_bytes_max": 35934699.52,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404633.8768878,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 495.6,
+    "p50_us": 92,
+    "p95_us": 143,
+    "p99_us": 217,
+    "p999_us": 909,
+    "errors": 0,
+    "count": 17142,
+    "wall_s": 31.132,
+    "timed_ops": 15428,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 21527265.28,
+    "rss_bytes_max": 21527265.28,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404665.1081836,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 9164.3,
+    "p50_us": 85,
+    "p95_us": 131,
+    "p99_us": 257,
+    "p999_us": 1822,
+    "errors": 0,
+    "count": 16363,
+    "wall_s": 1.607,
+    "timed_ops": 14727,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 35934699.52,
+    "rss_bytes_max": 35934699.52,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404666.8110404,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 9977.6,
+    "p50_us": 82,
+    "p95_us": 122,
+    "p99_us": 181,
+    "p999_us": 1123,
+    "errors": 0,
+    "count": 16363,
+    "wall_s": 1.476,
+    "timed_ops": 14727,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 6.8,
+    "cpu_pct_max": 6.8,
+    "rss_bytes_median": 21527265.28,
+    "rss_bytes_max": 21527265.28,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "latency",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404668.4185565,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "latency",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 4577.6,
+    "p50_us": 171,
+    "p95_us": 256,
+    "p99_us": 761,
+    "p999_us": 1999,
+    "errors": 0,
+    "count": 9729,
+    "wall_s": 1.913,
+    "timed_ops": 8757,
+    "queues": 1,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 131806003.2,
+    "rss_bytes_max": 131806003.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404670.484032,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 236.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 15.233,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 21569208.32,
+    "rss_bytes_max": 21569208.32,
+    "samples": 5
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404686.0091934,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 7775.4,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.463,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404686.7520375,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 13382.9,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.269,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404687.266566,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 7627.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.472,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 133378867.2,
+    "rss_bytes_max": 133378867.2,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404687.9563618,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 13846.2,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.26,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.1,
+    "cpu_pct_max": 0.1,
+    "rss_bytes_median": 36207329.28,
+    "rss_bytes_max": 36207329.28,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404688.3761792,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 119.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 30.098,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 0.0,
+    "cpu_pct_max": 0.0,
+    "rss_bytes_median": 21569208.32,
+    "rss_bytes_max": 22093496.32,
+    "samples": 10
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404733.6354506,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 14516.1,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.248,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": 3.5,
+    "cpu_pct_max": 3.5,
+    "rss_bytes_median": 36081500.16,
+    "rss_bytes_max": 36081500.16,
+    "samples": 1
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404734.0400357,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 13899.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.259,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 1,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404734.5349987,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 1,
+    "msgs_per_sec": 8391.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.429,
+    "timed_ops": 900,
+    "delivered": 3600,
+    "queues": 4,
+    "workers_connected": 1
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 0,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404735.1433797,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 45200,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.08,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 1,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404735.3860264,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 31719.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.114,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 0,
+   "order": 2,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404735.651261,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 45772.2,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.079,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 0,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404735.9146712,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 33174.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.109,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 1,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404736.1753511,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 48213.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.075,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 1,
+   "order": 2,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404736.3503184,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 44097.6,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.082,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 0,
+   "broker": "lavinmq",
+   "rc": 0,
+   "t_start": 1789404736.5334601,
+   "result": {
+    "broker": "lavinmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 48864.9,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.074,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 1,
+   "broker": "hyrxmq",
+   "rc": 0,
+   "t_start": 1789404736.7138684,
+   "result": {
+    "broker": "hyrxmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 39304.3,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.092,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  },
+  {
+   "workload": "fanout",
+   "payload": 1024,
+   "concurrency": 16,
+   "rep": 2,
+   "order": 2,
+   "broker": "rabbitmq",
+   "rc": 0,
+   "t_start": 1789404736.9716277,
+   "result": {
+    "broker": "rabbitmq",
+    "workload": "fanout",
+    "payload": 1024,
+    "concurrency": 16,
+    "msgs_per_sec": 32285.7,
+    "p50_us": null,
+    "p95_us": null,
+    "p99_us": null,
+    "p999_us": null,
+    "errors": 0,
+    "count": 1000,
+    "wall_s": 0.112,
+    "timed_ops": 904,
+    "delivered": 3616,
+    "queues": 4,
+    "workers_connected": 16
+   },
+   "resources": {
+    "cpu_pct_median": null,
+    "cpu_pct_max": null,
+    "rss_bytes_median": null,
+    "rss_bytes_max": null,
+    "samples": 0
+   }
+  }
+ ],
+ "verdict": {
+  "bands": {
+   "1": {
+    "fair_cell_count": 4,
+    "geomean_ratio_vs_fastest": {
+     "hyrxmq": 6.0889,
+     "rabbitmq": 1.5636,
+     "lavinmq": 2.9213
+    },
+    "ranking": [
+     "rabbitmq",
+     "lavinmq",
+     "hyrxmq"
+    ],
+    "winner": "rabbitmq",
+    "cells": [
+     "publish|1024|1",
+     "pubget|1024|1",
+     "confirm|1024|1",
+     "fanout|1024|1"
+    ]
+   },
+   "16-32": {
+    "fair_cell_count": 2,
+    "geomean_ratio_vs_fastest": {
+     "hyrxmq": 1.3404,
+     "rabbitmq": 1.263,
+     "lavinmq": 1.0
+    },
+    "ranking": [
+     "lavinmq",
+     "rabbitmq",
+     "hyrxmq"
+    ],
+    "winner": "lavinmq",
+    "cells": [
+     "publish|1024|16",
+     "fanout|1024|16"
+    ]
+   }
+  },
+  "overall": {
+   "fair_cell_count": 6,
+   "geomean_ratio_vs_fastest": {
+    "hyrxmq": 3.6766,
+    "rabbitmq": 1.4562,
+    "lavinmq": 2.0436
+   },
+   "ranking": [
+    "rabbitmq",
+    "lavinmq",
+    "hyrxmq"
+   ],
+   "winner": "rabbitmq",
+   "cells": [
+    "publish|1024|1",
+    "publish|1024|16",
+    "pubget|1024|1",
+    "confirm|1024|1",
+    "fanout|1024|1",
+    "fanout|1024|16"
+   ]
+  }
+ }
+}

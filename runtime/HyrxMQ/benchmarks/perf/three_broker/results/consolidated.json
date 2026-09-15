@@ -1,0 +1,2734 @@
+{
+ "schema": 1,
+ "run_id": "20260914T145132Z",
+ "host": {
+  "cpu_model": "AMD Ryzen 5 3600 6-Core Processor",
+  "nproc": 12,
+  "mem_total_gib": 15.54,
+  "kernel": "7.2.4-3-cachyos",
+  "machine": "x86_64",
+  "python": "3.14.7",
+  "pika_version": "1.4.4",
+  "docker_version": "29.8.0",
+  "governor": "powersave",
+  "loadavg_1m": 3.17,
+  "hyrxmq_git_head": "99a464e",
+  "broker_images": {
+   "hyrxmq": "hyrxmq:latest",
+   "rabbitmq": "rabbitmq:4-management",
+   "lavinmq": "cloudamqp/lavinmq:latest"
+  }
+ },
+ "started_utc": "2026-09-14T14:51:32.551137+00:00",
+ "finished_utc": "2026-09-14T15:12:23.035290+00:00",
+ "duration_s": 1250.5,
+ "protocol": {
+  "heartbeat": 0,
+  "frame_max": 131072,
+  "delivery_mode": 1,
+  "auto_ack": true,
+  "durable": false,
+  "auto_delete": true,
+  "exclusive": true
+ },
+ "method": {
+  "publish_get": "closed-loop publish -> basic_get(auto_ack), batch 128 so queue depth <= 128",
+  "publish_only": "fire-and-forget to an exchange with no bound queue (producer-bound ceiling)",
+  "latency": "publish -> get -> ack round trip, one in flight",
+  "confirms": "confirm_select; timed span is confirm-publish only, drain (64) is untimed",
+  "fanout": "1 fanout exchange -> 4 queues, delivered msgs/s",
+  "concurrency": "N producer+consumer thread pairs, own connection+queue each, fixed duration",
+  "warmup": "first 10% of each rep",
+  "report": "median of >=5 reps"
+ },
+ "quick": false,
+ "reps": 5,
+ "workloads": {
+  "publish_get": {
+   "params": {
+    "64": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 10603,
+      "rates_msgs_per_s": [
+       5554.5,
+       6008.3,
+       6013.5,
+       6183.0,
+       5847.7
+      ],
+      "median_msgs_per_s": 6008.276,
+      "min_msgs_per_s": 5554.5,
+      "max_msgs_per_s": 6183.0,
+      "resources": {
+       "cpu_pct_median": 16.275,
+       "cpu_pct_max": 16.8,
+       "rss_bytes_median": 15938355.2,
+       "rss_bytes_max": 16986931.2,
+       "samples": 6
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0025
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 8180,
+      "rates_msgs_per_s": [
+       4183.0,
+       4773.0,
+       5069.7,
+       4873.5,
+       4824.2
+      ],
+      "median_msgs_per_s": 4824.169,
+      "min_msgs_per_s": 4183.0,
+      "max_msgs_per_s": 5069.7,
+      "resources": {
+       "cpu_pct_median": 43.49,
+       "cpu_pct_max": 45.83,
+       "rss_bytes_median": 140194611.2,
+       "rss_bytes_max": 170813030.4,
+       "samples": 5
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.2485
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 11161,
+      "rates_msgs_per_s": [
+       5742.5,
+       6127.3,
+       6023.1,
+       6216.1,
+       5733.6
+      ],
+      "median_msgs_per_s": 6023.137,
+      "min_msgs_per_s": 5733.6,
+      "max_msgs_per_s": 6216.1,
+      "resources": {
+       "cpu_pct_median": 19.28,
+       "cpu_pct_max": 20.55,
+       "rss_bytes_median": 32149340.16,
+       "rss_bytes_max": 32380026.88,
+       "samples": 5
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0
+     }
+    },
+    "1024": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9435,
+      "rates_msgs_per_s": [
+       5809.5,
+       5407.4,
+       5941.3,
+       5974.6,
+       5573.3
+      ],
+      "median_msgs_per_s": 5809.5,
+      "min_msgs_per_s": 5407.4,
+      "max_msgs_per_s": 5974.6,
+      "resources": {
+       "cpu_pct_median": 15.51,
+       "cpu_pct_max": 16.96,
+       "rss_bytes_median": 16011755.52,
+       "rss_bytes_max": 16619929.6,
+       "samples": 5
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0364
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9118,
+      "rates_msgs_per_s": [
+       4799.6,
+       4457.5,
+       4827.7,
+       4650.8,
+       4754.5
+      ],
+      "median_msgs_per_s": 4754.471,
+      "min_msgs_per_s": 4457.5,
+      "max_msgs_per_s": 4827.7,
+      "resources": {
+       "cpu_pct_median": 44.69,
+       "cpu_pct_max": 47.64,
+       "rss_bytes_median": 135476019.2,
+       "rss_bytes_max": 137048883.2,
+       "samples": 7
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.2664
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 11355,
+      "rates_msgs_per_s": [
+       5526.2,
+       5447.0,
+       6023.8,
+       6027.9,
+       6020.9
+      ],
+      "median_msgs_per_s": 6020.939,
+      "min_msgs_per_s": 5447.0,
+      "max_msgs_per_s": 6027.9,
+      "resources": {
+       "cpu_pct_median": 19.63,
+       "cpu_pct_max": 21.28,
+       "rss_bytes_median": 36023828.48,
+       "rss_bytes_max": 36542873.6,
+       "samples": 6
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0
+     }
+    },
+    "16384": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 10080,
+      "rates_msgs_per_s": [
+       5117.6,
+       4976.4,
+       4903.1,
+       5065.6,
+       4977.5
+      ],
+      "median_msgs_per_s": 4977.464,
+      "min_msgs_per_s": 4903.1,
+      "max_msgs_per_s": 5117.6,
+      "resources": {
+       "cpu_pct_median": 18.495,
+       "cpu_pct_max": 19.4,
+       "rss_bytes_median": 19870515.2,
+       "rss_bytes_max": 21443379.2,
+       "samples": 6
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 7719,
+      "rates_msgs_per_s": [
+       4081.4,
+       3991.1,
+       4461.1,
+       3767.3,
+       4007.5
+      ],
+      "median_msgs_per_s": 4007.542,
+      "min_msgs_per_s": 3767.3,
+      "max_msgs_per_s": 4461.1,
+      "resources": {
+       "cpu_pct_median": 45.1,
+       "cpu_pct_max": 47.15,
+       "rss_bytes_median": 164416716.8,
+       "rss_bytes_max": 187799961.6,
+       "samples": 7
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.242
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 200,
+      "rates_msgs_per_s": [
+       29.8,
+       31.3,
+       30.5,
+       29.8,
+       29.7
+      ],
+      "median_msgs_per_s": 29.767,
+      "min_msgs_per_s": 29.7,
+      "max_msgs_per_s": 31.3,
+      "resources": {
+       "cpu_pct_median": 0.28,
+       "cpu_pct_max": 3.29,
+       "rss_bytes_median": 32280412.16,
+       "rss_bytes_max": 36752588.8,
+       "samples": 20
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 167.2142
+     }
+    },
+    "65536": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6555,
+      "rates_msgs_per_s": [
+       3490.7,
+       3427.4,
+       3376.0,
+       3425.5,
+       3359.1
+      ],
+      "median_msgs_per_s": 3425.478,
+      "min_msgs_per_s": 3359.1,
+      "max_msgs_per_s": 3490.7,
+      "resources": {
+       "cpu_pct_median": 23.96,
+       "cpu_pct_max": 25.53,
+       "rss_bytes_median": 29370613.76,
+       "rss_bytes_max": 29643243.52,
+       "samples": 6
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 4830,
+      "rates_msgs_per_s": [
+       2922.1,
+       2929.8,
+       2859.6,
+       2998.5,
+       2901.0
+      ],
+      "median_msgs_per_s": 2922.085,
+      "min_msgs_per_s": 2859.6,
+      "max_msgs_per_s": 2998.5,
+      "resources": {
+       "cpu_pct_median": 40.44,
+       "cpu_pct_max": 41.11,
+       "rss_bytes_median": 243164774.4,
+       "rss_bytes_max": 261724569.6,
+       "samples": 5
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.1723
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 1806,
+      "rates_msgs_per_s": [
+       1783.7,
+       1350.6,
+       2126.4,
+       1664.9,
+       446.9
+      ],
+      "median_msgs_per_s": 1664.929,
+      "min_msgs_per_s": 446.9,
+      "max_msgs_per_s": 2126.4,
+      "resources": {
+       "cpu_pct_median": 8.81,
+       "cpu_pct_max": 25.88,
+       "rss_bytes_median": 47311749.12,
+       "rss_bytes_max": 52334428.16,
+       "samples": 9
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 2.0574
+     }
+    },
+    "262144": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 2139,
+      "rates_msgs_per_s": [
+       1108.8,
+       1063.6,
+       1023.6,
+       1080.6,
+       947.8
+      ],
+      "median_msgs_per_s": 1063.63,
+      "min_msgs_per_s": 947.8,
+      "max_msgs_per_s": 1108.8,
+      "resources": {
+       "cpu_pct_median": 26.4,
+       "cpu_pct_max": 28.53,
+       "rss_bytes_median": 68409098.24,
+       "rss_bytes_max": 68985815.04,
+       "samples": 7
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 1715,
+      "rates_msgs_per_s": [
+       1013.0,
+       1266.2,
+       1078.0,
+       974.1,
+       950.9
+      ],
+      "median_msgs_per_s": 1012.967,
+      "min_msgs_per_s": 950.9,
+      "max_msgs_per_s": 1266.2,
+      "resources": {
+       "cpu_pct_median": 35.68,
+       "cpu_pct_max": 37.11,
+       "rss_bytes_median": 298844160.0,
+       "rss_bytes_max": 319605964.8,
+       "samples": 5
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 1.05
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 200,
+      "rates_msgs_per_s": [
+       26.2,
+       25.9,
+       24.9,
+       26.4,
+       26.3
+      ],
+      "median_msgs_per_s": 26.154,
+      "min_msgs_per_s": 24.9,
+      "max_msgs_per_s": 26.4,
+      "resources": {
+       "cpu_pct_median": 0.79,
+       "cpu_pct_max": 7.42,
+       "rss_bytes_median": 33690746.88,
+       "rss_bytes_max": 41366323.2,
+       "samples": 23
+      },
+      "all_verified": true,
+      "ratio_vs_fastest": 40.668
+     }
+    }
+   }
+  },
+  "publish_only": {
+   "params": {
+    "64": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 32486,
+      "rates_msgs_per_s": [
+       18100.4,
+       17703.0,
+       17343.6,
+       19366.0,
+       18943.0
+      ],
+      "median_msgs_per_s": 18100.372,
+      "min_msgs_per_s": 17343.6,
+      "max_msgs_per_s": 19366.0,
+      "resources": {
+       "cpu_pct_median": 21.43,
+       "cpu_pct_max": 24.85,
+       "rss_bytes_median": 68314726.4,
+       "rss_bytes_max": 69321359.36,
+       "samples": 6
+      },
+      "ratio_vs_fastest": 1.0487
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 31584,
+      "rates_msgs_per_s": [
+       19403.1,
+       19398.8,
+       18982.7,
+       13582.9,
+       13672.2
+      ],
+      "median_msgs_per_s": 18982.714,
+      "min_msgs_per_s": 13582.9,
+      "max_msgs_per_s": 19403.1,
+      "resources": {
+       "cpu_pct_median": 50.47,
+       "cpu_pct_max": 70.89,
+       "rss_bytes_median": 141138329.6,
+       "rss_bytes_max": 208456908.8,
+       "samples": 7
+      },
+      "ratio_vs_fastest": 1.0
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 34489,
+      "rates_msgs_per_s": [
+       19470.2,
+       19563.4,
+       18170.9,
+       18460.4,
+       17731.1
+      ],
+      "median_msgs_per_s": 18460.416,
+      "min_msgs_per_s": 17731.1,
+      "max_msgs_per_s": 19563.4,
+      "resources": {
+       "cpu_pct_median": 28.77,
+       "cpu_pct_max": 29.44,
+       "rss_bytes_median": 33470545.92,
+       "rss_bytes_max": 33659289.6,
+       "samples": 5
+      },
+      "ratio_vs_fastest": 1.0283
+     }
+    },
+    "1024": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 31926,
+      "rates_msgs_per_s": [
+       18954.7,
+       16801.3,
+       17017.8,
+       17909.5,
+       17948.1
+      ],
+      "median_msgs_per_s": 17909.484,
+      "min_msgs_per_s": 16801.3,
+      "max_msgs_per_s": 18954.7,
+      "resources": {
+       "cpu_pct_median": 21.96,
+       "cpu_pct_max": 24.72,
+       "rss_bytes_median": 68933386.24,
+       "rss_bytes_max": 69258444.8,
+       "samples": 6
+      },
+      "ratio_vs_fastest": 1.0128
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 36652,
+      "rates_msgs_per_s": [
+       19071.7,
+       18139.4,
+       17797.8,
+       12443.1,
+       18638.8
+      ],
+      "median_msgs_per_s": 18139.397,
+      "min_msgs_per_s": 12443.1,
+      "max_msgs_per_s": 19071.7,
+      "resources": {
+       "cpu_pct_median": 67.65,
+       "cpu_pct_max": 74.37,
+       "rss_bytes_median": 140666470.4,
+       "rss_bytes_max": 141243187.2,
+       "samples": 8
+      },
+      "ratio_vs_fastest": 1.0
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 34909,
+      "rates_msgs_per_s": [
+       18141.5,
+       17515.1,
+       17051.9,
+       16545.1,
+       17646.0
+      ],
+      "median_msgs_per_s": 17515.136,
+      "min_msgs_per_s": 16545.1,
+      "max_msgs_per_s": 18141.5,
+      "resources": {
+       "cpu_pct_median": 27.93,
+       "cpu_pct_max": 29.92,
+       "rss_bytes_median": 33622589.44,
+       "rss_bytes_max": 33774632.96,
+       "samples": 6
+      },
+      "ratio_vs_fastest": 1.0356
+     }
+    },
+    "16384": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 29858,
+      "rates_msgs_per_s": [
+       16586.0,
+       15717.8,
+       17266.9,
+       15789.9,
+       15561.9
+      ],
+      "median_msgs_per_s": 15789.881,
+      "min_msgs_per_s": 15561.9,
+      "max_msgs_per_s": 17266.9,
+      "resources": {
+       "cpu_pct_median": 27.3,
+       "cpu_pct_max": 29.49,
+       "rss_bytes_median": 68639784.96,
+       "rss_bytes_max": 68975329.28,
+       "samples": 6
+      },
+      "ratio_vs_fastest": 1.0644
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 33579,
+      "rates_msgs_per_s": [
+       16806.8,
+       16965.7,
+       17201.4,
+       16500.5,
+       16706.7
+      ],
+      "median_msgs_per_s": 16806.813,
+      "min_msgs_per_s": 16500.5,
+      "max_msgs_per_s": 17201.4,
+      "resources": {
+       "cpu_pct_median": 75.365,
+       "cpu_pct_max": 76.68,
+       "rss_bytes_median": 141243187.2,
+       "rss_bytes_max": 141977190.4,
+       "samples": 8
+      },
+      "ratio_vs_fastest": 1.0
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 31854,
+      "rates_msgs_per_s": [
+       15536.5,
+       17662.9,
+       16630.0,
+       15606.2,
+       15640.5
+      ],
+      "median_msgs_per_s": 15640.54,
+      "min_msgs_per_s": 15536.5,
+      "max_msgs_per_s": 17662.9,
+      "resources": {
+       "cpu_pct_median": 32.95,
+       "cpu_pct_max": 34.72,
+       "rss_bytes_median": 33040629.76,
+       "rss_bytes_max": 33439088.64,
+       "samples": 5
+      },
+      "ratio_vs_fastest": 1.0746
+     }
+    },
+    "65536": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 24820,
+      "rates_msgs_per_s": [
+       11771.2,
+       11769.5,
+       11633.1,
+       11621.4,
+       12449.1
+      ],
+      "median_msgs_per_s": 11769.55,
+      "min_msgs_per_s": 11621.4,
+      "max_msgs_per_s": 12449.1,
+      "resources": {
+       "cpu_pct_median": 40.14,
+       "cpu_pct_max": 42.52,
+       "rss_bytes_median": 68629299.2,
+       "rss_bytes_max": 69006786.56,
+       "samples": 7
+      },
+      "ratio_vs_fastest": 1.0847
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 25169,
+      "rates_msgs_per_s": [
+       12788.0,
+       12457.4,
+       12614.2,
+       12961.5,
+       12767.0
+      ],
+      "median_msgs_per_s": 12767.012,
+      "min_msgs_per_s": 12457.4,
+      "max_msgs_per_s": 12961.5,
+      "resources": {
+       "cpu_pct_median": 72.045,
+       "cpu_pct_max": 76.74,
+       "rss_bytes_median": 141243187.2,
+       "rss_bytes_max": 141872332.8,
+       "samples": 8
+      },
+      "ratio_vs_fastest": 1.0
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 25823,
+      "rates_msgs_per_s": [
+       12400.5,
+       12473.6,
+       11625.6,
+       11631.3,
+       11638.3
+      ],
+      "median_msgs_per_s": 11638.298,
+      "min_msgs_per_s": 11625.6,
+      "max_msgs_per_s": 12473.6,
+      "resources": {
+       "cpu_pct_median": 38.745,
+       "cpu_pct_max": 42.4,
+       "rss_bytes_median": 33412874.24,
+       "rss_bytes_max": 33910947.84,
+       "samples": 8
+      },
+      "ratio_vs_fastest": 1.097
+     }
+    },
+    "262144": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6331,
+      "rates_msgs_per_s": [
+       3068.2,
+       3159.4,
+       3151.1,
+       3367.4,
+       3020.2
+      ],
+      "median_msgs_per_s": 3151.081,
+      "min_msgs_per_s": 3020.2,
+      "max_msgs_per_s": 3367.4,
+      "resources": {
+       "cpu_pct_median": 34.4,
+       "cpu_pct_max": 36.94,
+       "rss_bytes_median": 68608327.68,
+       "rss_bytes_max": 68870471.68,
+       "samples": 7
+      },
+      "ratio_vs_fastest": 1.0405
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6031,
+      "rates_msgs_per_s": [
+       3149.4,
+       3268.3,
+       3265.7,
+       3368.8,
+       3081.5
+      ],
+      "median_msgs_per_s": 3265.665,
+      "min_msgs_per_s": 3081.5,
+      "max_msgs_per_s": 3368.8,
+      "resources": {
+       "cpu_pct_median": 37.8,
+       "cpu_pct_max": 38.94,
+       "rss_bytes_median": 147849216.0,
+       "rss_bytes_max": 148373504.0,
+       "samples": 5
+      },
+      "ratio_vs_fastest": 1.004
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6331,
+      "rates_msgs_per_s": [
+       3298.4,
+       3247.1,
+       3321.5,
+       3257.6,
+       3278.8
+      ],
+      "median_msgs_per_s": 3278.795,
+      "min_msgs_per_s": 3247.1,
+      "max_msgs_per_s": 3321.5,
+      "resources": {
+       "cpu_pct_median": 58.935,
+       "cpu_pct_max": 63.75,
+       "rss_bytes_median": 33287045.12,
+       "rss_bytes_max": 34089205.76,
+       "samples": 8
+      },
+      "ratio_vs_fastest": 1.0
+     }
+    }
+   }
+  },
+  "latency": {
+   "params": {
+    "64": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9061,
+      "rates_msgs_per_s": [
+       4410.2,
+       4437.1,
+       4360.3,
+       4376.6,
+       4557.4
+      ],
+      "median_msgs_per_s": 4410.188,
+      "min_msgs_per_s": 4360.3,
+      "max_msgs_per_s": 4557.4,
+      "resources": {
+       "cpu_pct_median": 14.965,
+       "cpu_pct_max": 16.97,
+       "rss_bytes_median": 68802314.24,
+       "rss_bytes_max": 69038243.84,
+       "samples": 6
+      },
+      "latency_us": {
+       "n": 45305,
+       "p50_us": 216.909,
+       "p95_us": 280.549,
+       "p99_us": 339.528,
+       "p99_9_us": 1027.003,
+       "mean_us": 225.874,
+       "min_us": 170.629,
+       "max_us": 2030.528
+      },
+      "latency_per_rep": [
+       {
+        "n": 9061,
+        "p50_us": 213.539,
+        "p95_us": 280.348,
+        "p99_us": 345.358,
+        "p99_9_us": 1028.643,
+        "mean_us": 226.748,
+        "min_us": 193.278,
+        "max_us": 1945.538
+       },
+       {
+        "n": 9061,
+        "p50_us": 219.348,
+        "p95_us": 282.698,
+        "p99_us": 343.348,
+        "p99_9_us": 976.324,
+        "mean_us": 225.372,
+        "min_us": 170.629,
+        "max_us": 1902.499
+       },
+       {
+        "n": 9061,
+        "p50_us": 223.079,
+        "p95_us": 283.478,
+        "p99_us": 342.758,
+        "p99_9_us": 1189.143,
+        "mean_us": 229.343,
+        "min_us": 183.918,
+        "max_us": 2021.798
+       },
+       {
+        "n": 9061,
+        "p50_us": 217.949,
+        "p95_us": 289.498,
+        "p99_us": 355.908,
+        "p99_9_us": 1060.634,
+        "mean_us": 228.486,
+        "min_us": 178.149,
+        "max_us": 2030.528
+       },
+       {
+        "n": 9061,
+        "p50_us": 212.539,
+        "p95_us": 267.928,
+        "p99_us": 302.708,
+        "p99_9_us": 657.506,
+        "mean_us": 219.424,
+        "min_us": 178.339,
+        "max_us": 1423.841
+       }
+      ],
+      "ratio_vs_fastest": 1.0746
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 7082,
+      "rates_msgs_per_s": [
+       3624.8,
+       3829.9,
+       3309.3,
+       3910.6,
+       3769.8
+      ],
+      "median_msgs_per_s": 3769.76,
+      "min_msgs_per_s": 3309.3,
+      "max_msgs_per_s": 3910.6,
+      "resources": {
+       "cpu_pct_median": 47.38,
+       "cpu_pct_max": 49.8,
+       "rss_bytes_median": 142029619.2,
+       "rss_bytes_max": 143654912.0,
+       "samples": 6
+      },
+      "latency_us": {
+       "n": 35410,
+       "p50_us": 257.128,
+       "p95_us": 355.867,
+       "p99_us": 434.907,
+       "p99_9_us": 1478.381,
+       "mean_us": 272.029,
+       "min_us": 213.558,
+       "max_us": 2075.137
+      },
+      "latency_per_rep": [
+       {
+        "n": 7082,
+        "p50_us": 261.408,
+        "p95_us": 340.048,
+        "p99_us": 466.217,
+        "p99_9_us": 1701.18,
+        "mean_us": 275.876,
+        "min_us": 213.558,
+        "max_us": 2075.137
+       },
+       {
+        "n": 7082,
+        "p50_us": 252.988,
+        "p95_us": 310.048,
+        "p99_us": 384.148,
+        "p99_9_us": 602.706,
+        "mean_us": 261.102,
+        "min_us": 223.249,
+        "max_us": 1521.551
+       },
+       {
+        "n": 7082,
+        "p50_us": 274.349,
+        "p95_us": 421.607,
+        "p99_us": 515.347,
+        "p99_9_us": 1798.479,
+        "mean_us": 302.183,
+        "min_us": 222.388,
+        "max_us": 1963.458
+       },
+       {
+        "n": 7082,
+        "p50_us": 246.818,
+        "p95_us": 303.849,
+        "p99_us": 349.958,
+        "p99_9_us": 1270.292,
+        "mean_us": 255.717,
+        "min_us": 214.499,
+        "max_us": 2063.917
+       },
+       {
+        "n": 7082,
+        "p50_us": 257.239,
+        "p95_us": 314.598,
+        "p99_us": 357.908,
+        "p99_9_us": 789.235,
+        "mean_us": 265.269,
+        "min_us": 216.589,
+        "max_us": 1920.089
+       }
+      ],
+      "ratio_vs_fastest": 1.2572
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9450,
+      "rates_msgs_per_s": [
+       4739.2,
+       4427.0,
+       4422.2,
+       4785.9,
+       4821.8
+      ],
+      "median_msgs_per_s": 4739.224,
+      "min_msgs_per_s": 4422.2,
+      "max_msgs_per_s": 4821.8,
+      "resources": {
+       "cpu_pct_median": 9.755,
+       "cpu_pct_max": 21.28,
+       "rss_bytes_median": 33155973.12,
+       "rss_bytes_max": 33900462.08,
+       "samples": 10
+      },
+      "latency_us": {
+       "n": 47250,
+       "p50_us": 207.019,
+       "p95_us": 267.048,
+       "p99_us": 326.828,
+       "p99_9_us": 1460.551,
+       "mean_us": 215.872,
+       "min_us": 171.609,
+       "max_us": 2264.096
+      },
+      "latency_per_rep": [
+       {
+        "n": 9450,
+        "p50_us": 203.778,
+        "p95_us": 252.738,
+        "p99_us": 315.648,
+        "p99_9_us": 1363.952,
+        "mean_us": 211.005,
+        "min_us": 174.249,
+        "max_us": 1968.038
+       },
+       {
+        "n": 9450,
+        "p50_us": 216.358,
+        "p95_us": 288.539,
+        "p99_us": 357.267,
+        "p99_9_us": 1682.099,
+        "mean_us": 225.885,
+        "min_us": 178.849,
+        "max_us": 2264.096
+       },
+       {
+        "n": 9450,
+        "p50_us": 211.359,
+        "p95_us": 279.188,
+        "p99_us": 377.548,
+        "p99_9_us": 1671.89,
+        "mean_us": 226.132,
+        "min_us": 184.029,
+        "max_us": 2215.027
+       },
+       {
+        "n": 9450,
+        "p50_us": 203.199,
+        "p95_us": 247.398,
+        "p99_us": 289.909,
+        "p99_9_us": 787.955,
+        "mean_us": 208.947,
+        "min_us": 174.539,
+        "max_us": 2017.788
+       },
+       {
+        "n": 9450,
+        "p50_us": 201.789,
+        "p95_us": 251.029,
+        "p99_us": 289.568,
+        "p99_9_us": 602.276,
+        "mean_us": 207.39,
+        "min_us": 171.609,
+        "max_us": 2256.316
+       }
+      ],
+      "ratio_vs_fastest": 1.0
+     }
+    },
+    "1024": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9235,
+      "rates_msgs_per_s": [
+       4456.7,
+       4732.7,
+       4191.1,
+       4467.0,
+       4576.0
+      ],
+      "median_msgs_per_s": 4466.971,
+      "min_msgs_per_s": 4191.1,
+      "max_msgs_per_s": 4732.7,
+      "resources": {
+       "cpu_pct_median": 13.75,
+       "cpu_pct_max": 16.61,
+       "rss_bytes_median": 68755128.32,
+       "rss_bytes_max": 69247959.04,
+       "samples": 9
+      },
+      "latency_us": {
+       "n": 46175,
+       "p50_us": 216.439,
+       "p95_us": 276.939,
+       "p99_us": 317.218,
+       "p99_9_us": 681.946,
+       "mean_us": 223.335,
+       "min_us": 176.799,
+       "max_us": 1949.159
+      },
+      "latency_per_rep": [
+       {
+        "n": 9235,
+        "p50_us": 217.349,
+        "p95_us": 279.778,
+        "p99_us": 316.608,
+        "p99_9_us": 462.837,
+        "mean_us": 224.382,
+        "min_us": 182.859,
+        "max_us": 1893.019
+       },
+       {
+        "n": 9235,
+        "p50_us": 203.608,
+        "p95_us": 254.499,
+        "p99_us": 292.999,
+        "p99_9_us": 653.096,
+        "mean_us": 211.295,
+        "min_us": 176.799,
+        "max_us": 1240.193
+       },
+       {
+        "n": 9235,
+        "p50_us": 227.839,
+        "p95_us": 295.308,
+        "p99_us": 339.888,
+        "p99_9_us": 807.986,
+        "mean_us": 238.602,
+        "min_us": 190.709,
+        "max_us": 1949.159
+       },
+       {
+        "n": 9235,
+        "p50_us": 220.969,
+        "p95_us": 275.489,
+        "p99_us": 316.518,
+        "p99_9_us": 672.586,
+        "mean_us": 223.865,
+        "min_us": 180.519,
+        "max_us": 1273.183
+       },
+       {
+        "n": 9235,
+        "p50_us": 211.259,
+        "p95_us": 258.688,
+        "p99_us": 296.638,
+        "p99_9_us": 439.097,
+        "mean_us": 218.53,
+        "min_us": 195.699,
+        "max_us": 1093.954
+       }
+      ],
+      "ratio_vs_fastest": 1.0157
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6886,
+      "rates_msgs_per_s": [
+       3611.1,
+       3553.9,
+       3609.9,
+       3608.5,
+       3510.5
+      ],
+      "median_msgs_per_s": 3608.482,
+      "min_msgs_per_s": 3510.5,
+      "max_msgs_per_s": 3611.1,
+      "resources": {
+       "cpu_pct_median": 50.14,
+       "cpu_pct_max": 50.33,
+       "rss_bytes_median": 141977190.4,
+       "rss_bytes_max": 142291763.2,
+       "samples": 5
+      },
+      "latency_us": {
+       "n": 34430,
+       "p50_us": 271.238,
+       "p95_us": 334.578,
+       "p99_us": 390.468,
+       "p99_9_us": 1121.133,
+       "mean_us": 279.461,
+       "min_us": 227.018,
+       "max_us": 2127.687
+      },
+      "latency_per_rep": [
+       {
+        "n": 6886,
+        "p50_us": 270.208,
+        "p95_us": 330.588,
+        "p99_us": 382.818,
+        "p99_9_us": 896.415,
+        "mean_us": 276.926,
+        "min_us": 233.228,
+        "max_us": 1885.559
+       },
+       {
+        "n": 6886,
+        "p50_us": 275.229,
+        "p95_us": 332.928,
+        "p99_us": 392.588,
+        "p99_9_us": 784.845,
+        "mean_us": 281.378,
+        "min_us": 229.089,
+        "max_us": 1491.261
+       },
+       {
+        "n": 6886,
+        "p50_us": 265.168,
+        "p95_us": 337.588,
+        "p99_us": 422.128,
+        "p99_9_us": 1258.682,
+        "mean_us": 277.018,
+        "min_us": 227.018,
+        "max_us": 1971.498
+       },
+       {
+        "n": 6886,
+        "p50_us": 267.568,
+        "p95_us": 330.589,
+        "p99_us": 380.027,
+        "p99_9_us": 1170.373,
+        "mean_us": 277.125,
+        "min_us": 229.349,
+        "max_us": 2040.318
+       },
+       {
+        "n": 6886,
+        "p50_us": 277.118,
+        "p95_us": 339.348,
+        "p99_us": 383.218,
+        "p99_9_us": 1001.454,
+        "mean_us": 284.857,
+        "min_us": 234.439,
+        "max_us": 2127.687
+       }
+      ],
+      "ratio_vs_fastest": 1.2573
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 7892,
+      "rates_msgs_per_s": [
+       4576.0,
+       4611.7,
+       4459.3,
+       4537.1,
+       4455.1
+      ],
+      "median_msgs_per_s": 4537.069,
+      "min_msgs_per_s": 4455.1,
+      "max_msgs_per_s": 4611.7,
+      "resources": {
+       "cpu_pct_median": 18.21,
+       "cpu_pct_max": 20.33,
+       "rss_bytes_median": 33313259.52,
+       "rss_bytes_max": 33680261.12,
+       "samples": 8
+      },
+      "latency_us": {
+       "n": 39460,
+       "p50_us": 213.919,
+       "p95_us": 269.378,
+       "p99_us": 311.838,
+       "p99_9_us": 1015.384,
+       "mean_us": 220.898,
+       "min_us": 177.739,
+       "max_us": 3541.679
+      },
+      "latency_per_rep": [
+       {
+        "n": 7892,
+        "p50_us": 210.139,
+        "p95_us": 263.268,
+        "p99_us": 306.429,
+        "p99_9_us": 1033.514,
+        "mean_us": 218.531,
+        "min_us": 180.179,
+        "max_us": 3036.842
+       },
+       {
+        "n": 7892,
+        "p50_us": 210.449,
+        "p95_us": 262.829,
+        "p99_us": 296.718,
+        "p99_9_us": 883.335,
+        "mean_us": 216.84,
+        "min_us": 181.049,
+        "max_us": 3516.869
+       },
+       {
+        "n": 7892,
+        "p50_us": 216.049,
+        "p95_us": 263.999,
+        "p99_us": 312.188,
+        "p99_9_us": 816.166,
+        "mean_us": 224.249,
+        "min_us": 186.729,
+        "max_us": 3471.5
+       },
+       {
+        "n": 7892,
+        "p50_us": 216.009,
+        "p95_us": 273.288,
+        "p99_us": 312.718,
+        "p99_9_us": 903.335,
+        "mean_us": 220.407,
+        "min_us": 177.739,
+        "max_us": 3541.679
+       },
+       {
+        "n": 7892,
+        "p50_us": 215.199,
+        "p95_us": 278.109,
+        "p99_us": 325.218,
+        "p99_9_us": 1046.414,
+        "mean_us": 224.463,
+        "min_us": 183.779,
+        "max_us": 3036.372
+       }
+      ],
+      "ratio_vs_fastest": 1.0
+     }
+    },
+    "16384": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 8215,
+      "rates_msgs_per_s": [
+       4133.4,
+       3800.9,
+       4205.3,
+       4227.1,
+       3991.3
+      ],
+      "median_msgs_per_s": 4133.369,
+      "min_msgs_per_s": 3800.9,
+      "max_msgs_per_s": 4227.1,
+      "resources": {
+       "cpu_pct_median": 15.55,
+       "cpu_pct_max": 18.8,
+       "rss_bytes_median": 68555898.88,
+       "rss_bytes_max": 68901928.96,
+       "samples": 8
+      },
+      "latency_us": {
+       "n": 41075,
+       "p50_us": 234.668,
+       "p95_us": 306.118,
+       "p99_us": 353.188,
+       "p99_9_us": 843.585,
+       "mean_us": 245.986,
+       "min_us": 197.149,
+       "max_us": 1920.759
+      },
+      "latency_per_rep": [
+       {
+        "n": 8215,
+        "p50_us": 232.849,
+        "p95_us": 292.978,
+        "p99_us": 334.678,
+        "p99_9_us": 580.567,
+        "mean_us": 241.933,
+        "min_us": 206.489,
+        "max_us": 1920.759
+       },
+       {
+        "n": 8215,
+        "p50_us": 254.659,
+        "p95_us": 328.878,
+        "p99_us": 397.877,
+        "p99_9_us": 1073.623,
+        "mean_us": 263.094,
+        "min_us": 201.299,
+        "max_us": 1714.85
+       },
+       {
+        "n": 8215,
+        "p50_us": 230.689,
+        "p95_us": 277.578,
+        "p99_us": 322.198,
+        "p99_9_us": 452.867,
+        "mean_us": 237.795,
+        "min_us": 211.809,
+        "max_us": 1081.034
+       },
+       {
+        "n": 8215,
+        "p50_us": 229.069,
+        "p95_us": 281.618,
+        "p99_us": 311.498,
+        "p99_9_us": 386.008,
+        "mean_us": 236.567,
+        "min_us": 197.149,
+        "max_us": 839.015
+       },
+       {
+        "n": 8215,
+        "p50_us": 235.699,
+        "p95_us": 314.528,
+        "p99_us": 393.127,
+        "p99_9_us": 1160.113,
+        "mean_us": 250.543,
+        "min_us": 210.879,
+        "max_us": 1611.131
+       }
+      ],
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 6526,
+      "rates_msgs_per_s": [
+       3336.3,
+       3211.6,
+       3157.7,
+       3297.2,
+       3335.7
+      ],
+      "median_msgs_per_s": 3297.208,
+      "min_msgs_per_s": 3157.7,
+      "max_msgs_per_s": 3336.3,
+      "resources": {
+       "cpu_pct_median": 26.46,
+       "cpu_pct_max": 49.35,
+       "rss_bytes_median": 141557760.0,
+       "rss_bytes_max": 142501478.4,
+       "samples": 10
+      },
+      "latency_us": {
+       "n": 32630,
+       "p50_us": 294.338,
+       "p95_us": 372.048,
+       "p99_us": 464.677,
+       "p99_9_us": 850.105,
+       "mean_us": 306.171,
+       "min_us": 251.479,
+       "max_us": 2063.308
+      },
+      "latency_per_rep": [
+       {
+        "n": 6526,
+        "p50_us": 289.868,
+        "p95_us": 357.898,
+        "p99_us": 402.688,
+        "p99_9_us": 689.706,
+        "mean_us": 299.732,
+        "min_us": 262.268,
+        "max_us": 1104.573
+       },
+       {
+        "n": 6526,
+        "p50_us": 297.328,
+        "p95_us": 378.728,
+        "p99_us": 475.297,
+        "p99_9_us": 1116.664,
+        "mean_us": 311.367,
+        "min_us": 258.269,
+        "max_us": 2063.308
+       },
+       {
+        "n": 6526,
+        "p50_us": 302.688,
+        "p95_us": 443.588,
+        "p99_us": 484.437,
+        "p99_9_us": 607.066,
+        "mean_us": 316.683,
+        "min_us": 255.079,
+        "max_us": 1959.559
+       },
+       {
+        "n": 6526,
+        "p50_us": 294.818,
+        "p95_us": 357.488,
+        "p99_us": 417.677,
+        "p99_9_us": 766.445,
+        "mean_us": 303.287,
+        "min_us": 251.479,
+        "max_us": 2044.618
+       },
+       {
+        "n": 6526,
+        "p50_us": 289.798,
+        "p95_us": 355.098,
+        "p99_us": 408.548,
+        "p99_9_us": 708.196,
+        "mean_us": 299.785,
+        "min_us": 260.589,
+        "max_us": 1275.432
+       }
+      ],
+      "ratio_vs_fastest": 1.2536
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 300,
+      "rates_msgs_per_s": [
+       39.9,
+       40.6,
+       40.0,
+       127.1,
+       49.9
+      ],
+      "median_msgs_per_s": 40.583,
+      "min_msgs_per_s": 39.9,
+      "max_msgs_per_s": 127.1,
+      "resources": {
+       "cpu_pct_median": 0.43,
+       "cpu_pct_max": 3.66,
+       "rss_bytes_median": 33669775.36,
+       "rss_bytes_max": 34487664.64,
+       "samples": 21
+      },
+      "latency_us": {
+       "n": 1500,
+       "p50_us": 579.067,
+       "p95_us": 41983.535,
+       "p99_us": 42084.663,
+       "p99_9_us": 42307.933,
+       "mean_us": 20519.968,
+       "min_us": 212.309,
+       "max_us": 42429.263
+      },
+      "latency_per_rep": [
+       {
+        "n": 300,
+        "p50_us": 40940.48,
+        "p95_us": 41992.734,
+        "p99_us": 42078.423,
+        "p99_9_us": 42110.503,
+        "mean_us": 25069.849,
+        "min_us": 224.289,
+        "max_us": 42110.503
+       },
+       {
+        "n": 300,
+        "p50_us": 40924.891,
+        "p95_us": 41961.654,
+        "p99_us": 42036.534,
+        "p99_9_us": 42086.753,
+        "mean_us": 24640.977,
+        "min_us": 214.019,
+        "max_us": 42086.753
+       },
+       {
+        "n": 300,
+        "p50_us": 40952.641,
+        "p95_us": 42015.896,
+        "p99_us": 42159.414,
+        "p99_9_us": 42429.263,
+        "mean_us": 24981.497,
+        "min_us": 221.039,
+        "max_us": 42429.263
+       },
+       {
+        "n": 300,
+        "p50_us": 247.999,
+        "p95_us": 41018.252,
+        "p99_us": 42019.606,
+        "p99_9_us": 42161.446,
+        "mean_us": 7869.787,
+        "min_us": 212.309,
+        "max_us": 42161.446
+       },
+       {
+        "n": 300,
+        "p50_us": 408.878,
+        "p95_us": 41976.507,
+        "p99_us": 42083.975,
+        "p99_9_us": 42225.825,
+        "mean_us": 20037.731,
+        "min_us": 213.108,
+        "max_us": 42225.825
+       }
+      ],
+      "ratio_vs_fastest": 101.8498
+     }
+    },
+    "65536": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 5464,
+      "rates_msgs_per_s": [
+       2758.3,
+       2922.5,
+       3019.7,
+       2861.4,
+       2927.1
+      ],
+      "median_msgs_per_s": 2922.503,
+      "min_msgs_per_s": 2758.3,
+      "max_msgs_per_s": 3019.7,
+      "resources": {
+       "cpu_pct_median": 22.205,
+       "cpu_pct_max": 23.41,
+       "rss_bytes_median": 68954357.76,
+       "rss_bytes_max": 69331845.12,
+       "samples": 6
+      },
+      "latency_us": {
+       "n": 27320,
+       "p50_us": 331.113,
+       "p95_us": 427.914,
+       "p99_us": 539.826,
+       "p99_9_us": 1291.972,
+       "mean_us": 345.397,
+       "min_us": 262.128,
+       "max_us": 2477.554
+      },
+      "latency_per_rep": [
+       {
+        "n": 5464,
+        "p50_us": 340.278,
+        "p95_us": 478.117,
+        "p99_us": 732.116,
+        "p99_9_us": 1630.06,
+        "mean_us": 362.542,
+        "min_us": 262.128,
+        "max_us": 1827.65
+       },
+       {
+        "n": 5464,
+        "p50_us": 334.284,
+        "p95_us": 408.194,
+        "p99_us": 476.755,
+        "p99_9_us": 1288.493,
+        "mean_us": 342.172,
+        "min_us": 267.182,
+        "max_us": 2139.021
+       },
+       {
+        "n": 5464,
+        "p50_us": 318.904,
+        "p95_us": 401.894,
+        "p99_us": 454.324,
+        "p99_9_us": 839.918,
+        "mean_us": 331.159,
+        "min_us": 283.973,
+        "max_us": 1656.876
+       },
+       {
+        "n": 5464,
+        "p50_us": 340.843,
+        "p95_us": 430.914,
+        "p99_us": 524.465,
+        "p99_9_us": 1291.972,
+        "mean_us": 349.478,
+        "min_us": 271.863,
+        "max_us": 2477.554
+       },
+       {
+        "n": 5464,
+        "p50_us": 329.253,
+        "p95_us": 411.704,
+        "p99_us": 490.715,
+        "p99_9_us": 1157.291,
+        "mean_us": 341.634,
+        "min_us": 273.322,
+        "max_us": 1686.696
+       }
+      ],
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 5017,
+      "rates_msgs_per_s": [
+       2502.9,
+       2521.5,
+       2520.3,
+       2621.3,
+       2521.4
+      ],
+      "median_msgs_per_s": 2521.386,
+      "min_msgs_per_s": 2502.9,
+      "max_msgs_per_s": 2621.3,
+      "resources": {
+       "cpu_pct_median": 22.325,
+       "cpu_pct_max": 46.53,
+       "rss_bytes_median": 142029619.2,
+       "rss_bytes_max": 143025766.4,
+       "samples": 10
+      },
+      "latency_us": {
+       "n": 25085,
+       "p50_us": 379.764,
+       "p95_us": 473.585,
+       "p99_us": 561.047,
+       "p99_9_us": 1413.484,
+       "mean_us": 394.198,
+       "min_us": 323.148,
+       "max_us": 2151.422
+      },
+      "latency_per_rep": [
+       {
+        "n": 5017,
+        "p50_us": 384.358,
+        "p95_us": 482.357,
+        "p99_us": 588.686,
+        "p99_9_us": 1304.163,
+        "mean_us": 399.532,
+        "min_us": 323.148,
+        "max_us": 1871.959
+       },
+       {
+        "n": 5017,
+        "p50_us": 382.034,
+        "p95_us": 470.235,
+        "p99_us": 540.305,
+        "p99_9_us": 1224.143,
+        "mean_us": 396.583,
+        "min_us": 334.574,
+        "max_us": 2151.422
+       },
+       {
+        "n": 5017,
+        "p50_us": 382.944,
+        "p95_us": 478.684,
+        "p99_us": 579.496,
+        "p99_9_us": 1547.795,
+        "mean_us": 396.781,
+        "min_us": 325.523,
+        "max_us": 2102.62
+       },
+       {
+        "n": 5017,
+        "p50_us": 367.844,
+        "p95_us": 453.914,
+        "p99_us": 526.265,
+        "p99_9_us": 1430.964,
+        "mean_us": 381.486,
+        "min_us": 323.913,
+        "max_us": 1969.629
+       },
+       {
+        "n": 5017,
+        "p50_us": 381.713,
+        "p95_us": 476.505,
+        "p99_us": 540.565,
+        "p99_9_us": 1242.591,
+        "mean_us": 396.607,
+        "min_us": 339.473,
+        "max_us": 1867.327
+       }
+      ],
+      "ratio_vs_fastest": 1.1591
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 300,
+      "rates_msgs_per_s": [
+       68.7,
+       75.2,
+       76.9,
+       89.6,
+       77.4
+      ],
+      "median_msgs_per_s": 76.86,
+      "min_msgs_per_s": 68.7,
+      "max_msgs_per_s": 89.6,
+      "resources": {
+       "cpu_pct_median": 1.19,
+       "cpu_pct_max": 1.67,
+       "rss_bytes_median": 33533460.48,
+       "rss_bytes_max": 34057748.48,
+       "samples": 14
+      },
+      "latency_us": {
+       "n": 1500,
+       "p50_us": 420.504,
+       "p95_us": 41536.999,
+       "p99_us": 42144.763,
+       "p99_9_us": 42831.923,
+       "mean_us": 12989.21,
+       "min_us": 281.902,
+       "max_us": 44011.625
+      },
+      "latency_per_rep": [
+       {
+        "n": 300,
+        "p50_us": 429.434,
+        "p95_us": 41914.303,
+        "p99_us": 42145.824,
+        "p99_9_us": 44011.625,
+        "mean_us": 14550.67,
+        "min_us": 281.902,
+        "max_us": 44011.625
+       },
+       {
+        "n": 300,
+        "p50_us": 428.244,
+        "p95_us": 41524.928,
+        "p99_us": 42003.294,
+        "p99_9_us": 42145.885,
+        "mean_us": 13304.016,
+        "min_us": 289.362,
+        "max_us": 42145.885
+       },
+       {
+        "n": 300,
+        "p50_us": 417.384,
+        "p95_us": 41286.318,
+        "p99_us": 42117.545,
+        "p99_9_us": 42339.429,
+        "mean_us": 13010.654,
+        "min_us": 283.483,
+        "max_us": 42339.429
+       },
+       {
+        "n": 300,
+        "p50_us": 406.044,
+        "p95_us": 41528.831,
+        "p99_us": 42040.414,
+        "p99_9_us": 42831.923,
+        "mean_us": 11158.187,
+        "min_us": 287.583,
+        "max_us": 42831.923
+       },
+       {
+        "n": 300,
+        "p50_us": 420.864,
+        "p95_us": 41568.824,
+        "p99_us": 42289.229,
+        "p99_9_us": 42482.97,
+        "mean_us": 12922.524,
+        "min_us": 283.282,
+        "max_us": 42482.97
+       }
+      ],
+      "ratio_vs_fastest": 38.0237
+     }
+    },
+    "262144": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 2628,
+      "rates_msgs_per_s": [
+       1325.1,
+       1287.1,
+       1331.1,
+       1294.8,
+       1329.9
+      ],
+      "median_msgs_per_s": 1325.095,
+      "min_msgs_per_s": 1287.1,
+      "max_msgs_per_s": 1331.1,
+      "resources": {
+       "cpu_pct_median": 16.775,
+       "cpu_pct_max": 29.44,
+       "rss_bytes_median": 68603084.8,
+       "rss_bytes_max": 69080186.88,
+       "samples": 10
+      },
+      "latency_us": {
+       "n": 13140,
+       "p50_us": 736.625,
+       "p95_us": 899.346,
+       "p99_us": 1043.959,
+       "p99_9_us": 1752.401,
+       "mean_us": 761.413,
+       "min_us": 645.555,
+       "max_us": 2914.831
+      },
+      "latency_per_rep": [
+       {
+        "n": 2628,
+        "p50_us": 738.767,
+        "p95_us": 856.258,
+        "p99_us": 964.728,
+        "p99_9_us": 1225.571,
+        "mean_us": 754.663,
+        "min_us": 674.956,
+        "max_us": 1591.634
+       },
+       {
+        "n": 2628,
+        "p50_us": 748.476,
+        "p95_us": 954.218,
+        "p99_us": 1103.678,
+        "p99_9_us": 1569.383,
+        "mean_us": 776.912,
+        "min_us": 647.275,
+        "max_us": 2490.79
+       },
+       {
+        "n": 2628,
+        "p50_us": 731.925,
+        "p95_us": 863.796,
+        "p99_us": 980.637,
+        "p99_9_us": 1418.901,
+        "mean_us": 751.26,
+        "min_us": 658.185,
+        "max_us": 2914.831
+       },
+       {
+        "n": 2628,
+        "p50_us": 745.856,
+        "p95_us": 920.287,
+        "p99_us": 1080.258,
+        "p99_9_us": 1902.203,
+        "mean_us": 772.298,
+        "min_us": 645.555,
+        "max_us": 2387.107
+       },
+       {
+        "n": 2628,
+        "p50_us": 724.354,
+        "p95_us": 881.005,
+        "p99_us": 1053.526,
+        "p99_9_us": 1752.401,
+        "mean_us": 751.933,
+        "min_us": 668.044,
+        "max_us": 2057.054
+       }
+      ],
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 2485,
+      "rates_msgs_per_s": [
+       1272.0,
+       1283.5,
+       1292.0,
+       1178.2,
+       1226.0
+      ],
+      "median_msgs_per_s": 1272.001,
+      "min_msgs_per_s": 1178.2,
+      "max_msgs_per_s": 1292.0,
+      "resources": {
+       "cpu_pct_median": 16.495,
+       "cpu_pct_max": 37.17,
+       "rss_bytes_median": 144860774.4,
+       "rss_bytes_max": 146381209.6,
+       "samples": 10
+      },
+      "latency_us": {
+       "n": 12425,
+       "p50_us": 774.756,
+       "p95_us": 962.457,
+       "p99_us": 1095.22,
+       "p99_9_us": 1791.962,
+       "mean_us": 800.745,
+       "min_us": 639.256,
+       "max_us": 2932.96
+      },
+      "latency_per_rep": [
+       {
+        "n": 2485,
+        "p50_us": 770.337,
+        "p95_us": 938.219,
+        "p99_us": 1056.31,
+        "p99_9_us": 1460.753,
+        "mean_us": 786.163,
+        "min_us": 639.256,
+        "max_us": 2413.612
+       },
+       {
+        "n": 2485,
+        "p50_us": 756.386,
+        "p95_us": 906.838,
+        "p99_us": 1047.698,
+        "p99_9_us": 1532.392,
+        "mean_us": 779.114,
+        "min_us": 690.575,
+        "max_us": 2130.558
+       },
+       {
+        "n": 2485,
+        "p50_us": 750.775,
+        "p95_us": 907.377,
+        "p99_us": 1060.587,
+        "p99_9_us": 1698.062,
+        "mean_us": 774.012,
+        "min_us": 672.935,
+        "max_us": 2487.798
+       },
+       {
+        "n": 2485,
+        "p50_us": 845.437,
+        "p95_us": 1012.428,
+        "p99_us": 1113.938,
+        "p99_9_us": 1705.672,
+        "mean_us": 848.755,
+        "min_us": 677.354,
+        "max_us": 2111.185
+       },
+       {
+        "n": 2485,
+        "p50_us": 783.795,
+        "p95_us": 976.506,
+        "p99_us": 1167.348,
+        "p99_9_us": 2358.446,
+        "mean_us": 815.68,
+        "min_us": 710.324,
+        "max_us": 2932.96
+       }
+      ],
+      "ratio_vs_fastest": 1.0417
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 300,
+      "rates_msgs_per_s": [
+       26.8,
+       26.6,
+       27.0,
+       26.0,
+       26.5
+      ],
+      "median_msgs_per_s": 26.577,
+      "min_msgs_per_s": 26.0,
+      "max_msgs_per_s": 27.0,
+      "resources": {
+       "cpu_pct_median": 1.82,
+       "cpu_pct_max": 2.76,
+       "rss_bytes_median": 33218887.68,
+       "rss_bytes_max": 33984348.16,
+       "samples": 35
+      },
+      "latency_us": {
+       "n": 1500,
+       "p50_us": 41943.938,
+       "p95_us": 43019.974,
+       "p99_us": 45033.751,
+       "p99_9_us": 46256.33,
+       "mean_us": 37629.826,
+       "min_us": 831.296,
+       "max_us": 68790.035
+      },
+      "latency_per_rep": [
+       {
+        "n": 300,
+        "p50_us": 41934.113,
+        "p95_us": 43031.384,
+        "p99_us": 45076.08,
+        "p99_9_us": 68790.035,
+        "mean_us": 37250.943,
+        "min_us": 839.087,
+        "max_us": 68790.035
+       },
+       {
+        "n": 300,
+        "p50_us": 41931.745,
+        "p95_us": 43012.769,
+        "p99_us": 45072.159,
+        "p99_9_us": 46256.33,
+        "mean_us": 37626.304,
+        "min_us": 953.207,
+        "max_us": 46256.33
+       },
+       {
+        "n": 300,
+        "p50_us": 41941.118,
+        "p95_us": 42945.374,
+        "p99_us": 44965.911,
+        "p99_9_us": 45872.81,
+        "mean_us": 37089.339,
+        "min_us": 881.596,
+        "max_us": 45872.81
+       },
+       {
+        "n": 300,
+        "p50_us": 41934.275,
+        "p95_us": 43037.556,
+        "p99_us": 45005.098,
+        "p99_9_us": 46131.995,
+        "mean_us": 38403.066,
+        "min_us": 831.296,
+        "max_us": 46131.995
+       },
+       {
+        "n": 300,
+        "p50_us": 41964.218,
+        "p95_us": 43027.375,
+        "p99_us": 44978.347,
+        "p99_9_us": 45966.677,
+        "mean_us": 37779.475,
+        "min_us": 933.156,
+        "max_us": 45966.677
+       }
+      ],
+      "ratio_vs_fastest": 49.8587
+     }
+    }
+   }
+  },
+  "confirms": {
+   "params": {
+    "1024": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 13110,
+      "rates_msgs_per_s": [
+       7292.4,
+       7595.4,
+       7485.4,
+       7624.2,
+       7648.7
+      ],
+      "median_msgs_per_s": 7595.387,
+      "min_msgs_per_s": 7292.4,
+      "max_msgs_per_s": 7648.7,
+      "resources": {
+       "cpu_pct_median": 13.655,
+       "cpu_pct_max": 14.13,
+       "rss_bytes_median": 68975329.28,
+       "rss_bytes_max": 69153587.2,
+       "samples": 10
+      },
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 9689,
+      "rates_msgs_per_s": [
+       4996.9,
+       5194.2,
+       5230.5,
+       5370.0,
+       5230.5
+      ],
+      "median_msgs_per_s": 5230.47,
+      "min_msgs_per_s": 4996.9,
+      "max_msgs_per_s": 5370.0,
+      "resources": {
+       "cpu_pct_median": 35.17,
+       "cpu_pct_max": 36.91,
+       "rss_bytes_median": 142920908.8,
+       "rss_bytes_max": 144284057.6,
+       "samples": 13
+      },
+      "ratio_vs_fastest": 1.4521
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 190,
+      "rates_msgs_per_s": [
+       128.1,
+       129.6,
+       141.5,
+       126.3,
+       144.8
+      ],
+      "median_msgs_per_s": 129.631,
+      "min_msgs_per_s": 126.3,
+      "max_msgs_per_s": 144.8,
+      "resources": {
+       "cpu_pct_median": 14.455,
+       "cpu_pct_max": 16.54,
+       "rss_bytes_median": 33821818.88,
+       "rss_bytes_max": 34319892.48,
+       "samples": 6
+      },
+      "ratio_vs_fastest": 58.5924
+     }
+    }
+   }
+  },
+  "fanout": {
+   "params": {
+    "1024": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 15059,
+      "rates_msgs_per_s": [
+       7801.2,
+       7663.2,
+       7055.4,
+       7579.5,
+       7279.5
+      ],
+      "median_msgs_per_s": 7579.48,
+      "min_msgs_per_s": 7055.4,
+      "max_msgs_per_s": 7801.2,
+      "resources": {
+       "cpu_pct_median": 13.5,
+       "cpu_pct_max": 14.57,
+       "rss_bytes_median": 68472012.8,
+       "rss_bytes_max": 69226987.52,
+       "samples": 25
+      },
+      "publish_msgs_per_s": [
+       1950.3,
+       1915.8,
+       1763.8,
+       1894.9,
+       1819.9
+      ],
+      "median_publish_msgs_per_s": 1894.87,
+      "queues": 4,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 10276,
+      "rates_msgs_per_s": [
+       5724.7,
+       5775.5,
+       5535.1,
+       5578.3,
+       5615.6
+      ],
+      "median_msgs_per_s": 5615.635,
+      "min_msgs_per_s": 5535.1,
+      "max_msgs_per_s": 5775.5,
+      "resources": {
+       "cpu_pct_median": 38.865,
+       "cpu_pct_max": 40.3,
+       "rss_bytes_median": 144860774.4,
+       "rss_bytes_max": 145856921.6,
+       "samples": 24
+      },
+      "publish_msgs_per_s": [
+       1431.2,
+       1443.9,
+       1383.8,
+       1394.6,
+       1403.9
+      ],
+      "median_publish_msgs_per_s": 1403.909,
+      "queues": 4,
+      "ratio_vs_fastest": 1.3497
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": 15233,
+      "rates_msgs_per_s": [
+       7638.2,
+       7147.8,
+       7294.0,
+       6943.0,
+       7029.5
+      ],
+      "median_msgs_per_s": 7147.808,
+      "min_msgs_per_s": 6943.0,
+      "max_msgs_per_s": 7638.2,
+      "resources": {
+       "cpu_pct_median": 16.56,
+       "cpu_pct_max": 18.21,
+       "rss_bytes_median": 33564917.76,
+       "rss_bytes_max": 35263610.88,
+       "samples": 25
+      },
+      "publish_msgs_per_s": [
+       1909.5,
+       1787.0,
+       1823.5,
+       1735.8,
+       1757.4
+      ],
+      "median_publish_msgs_per_s": 1786.952,
+      "queues": 4,
+      "ratio_vs_fastest": 1.0604
+     }
+    }
+   }
+  },
+  "concurrency": {
+   "params": {
+    "1": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       5541.9,
+       5625.4,
+       5303.8,
+       5156.7,
+       5075.9
+      ],
+      "median_msgs_per_s": 5303.753,
+      "min_msgs_per_s": 5075.9,
+      "max_msgs_per_s": 5625.4,
+      "resources": {
+       "cpu_pct_median": 14.31,
+       "cpu_pct_max": 16.81,
+       "rss_bytes_median": 68461527.04,
+       "rss_bytes_max": 68859985.92,
+       "samples": 7
+      },
+      "pairs": 1,
+      "pairs_connected_per_rep": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ],
+      "pairs_connected_median": 1,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       4170.1,
+       4284.2,
+       4320.0,
+       4237.6,
+       4306.7
+      ],
+      "median_msgs_per_s": 4284.233,
+      "min_msgs_per_s": 4170.1,
+      "max_msgs_per_s": 4320.0,
+      "resources": {
+       "cpu_pct_median": 42.43,
+       "cpu_pct_max": 44.29,
+       "rss_bytes_median": 143654912.0,
+       "rss_bytes_max": 145122918.4,
+       "samples": 8
+      },
+      "pairs": 1,
+      "pairs_connected_per_rep": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ],
+      "pairs_connected_median": 1,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.238
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       5004.9,
+       5346.7,
+       5206.8,
+       5176.3,
+       4987.7
+      ],
+      "median_msgs_per_s": 5176.272,
+      "min_msgs_per_s": 4987.7,
+      "max_msgs_per_s": 5346.7,
+      "resources": {
+       "cpu_pct_median": 18.845,
+       "cpu_pct_max": 19.36,
+       "rss_bytes_median": 33182187.52,
+       "rss_bytes_max": 33680261.12,
+       "samples": 8
+      },
+      "pairs": 1,
+      "pairs_connected_per_rep": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ],
+      "pairs_connected_median": 1,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.0246
+     }
+    },
+    "4": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       5729.1,
+       5409.7,
+       5485.3,
+       5769.3,
+       5469.1
+      ],
+      "median_msgs_per_s": 5485.32,
+      "min_msgs_per_s": 5409.7,
+      "max_msgs_per_s": 5769.3,
+      "resources": {
+       "cpu_pct_median": 0.0,
+       "cpu_pct_max": 15.87,
+       "rss_bytes_median": 67129835.52,
+       "rss_bytes_max": 68807557.12,
+       "samples": 27
+      },
+      "pairs": 4,
+      "pairs_connected_per_rep": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ],
+      "pairs_connected_median": 1,
+      "thread_errors_per_rep": [
+       3,
+       3,
+       3,
+       3,
+       3
+      ],
+      "thread_errors": [
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False"
+      ],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       4526.9,
+       4543.2,
+       4735.3,
+       4528.8,
+       4621.7
+      ],
+      "median_msgs_per_s": 4543.245,
+      "min_msgs_per_s": 4526.9,
+      "max_msgs_per_s": 4735.3,
+      "resources": {
+       "cpu_pct_median": 65.71,
+       "cpu_pct_max": 70.77,
+       "rss_bytes_median": 145856921.6,
+       "rss_bytes_max": 146171494.4,
+       "samples": 8
+      },
+      "pairs": 4,
+      "pairs_connected_per_rep": [
+       4,
+       4,
+       4,
+       4,
+       4
+      ],
+      "pairs_connected_median": 4,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.2074
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       5025.0,
+       4969.7,
+       4731.4,
+       4905.0,
+       4873.6
+      ],
+      "median_msgs_per_s": 4905.034,
+      "min_msgs_per_s": 4731.4,
+      "max_msgs_per_s": 5025.0,
+      "resources": {
+       "cpu_pct_median": 23.335,
+       "cpu_pct_max": 24.13,
+       "rss_bytes_median": 33842790.4,
+       "rss_bytes_max": 35462840.32,
+       "samples": 8
+      },
+      "pairs": 4,
+      "pairs_connected_per_rep": [
+       4,
+       4,
+       4,
+       4,
+       4
+      ],
+      "pairs_connected_median": 4,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.1183
+     }
+    },
+    "16": {
+     "hyrxmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       5459.8,
+       5742.6,
+       5561.0,
+       5751.3,
+       5464.0
+      ],
+      "median_msgs_per_s": 5560.991,
+      "min_msgs_per_s": 5459.8,
+      "max_msgs_per_s": 5751.3,
+      "resources": {
+       "cpu_pct_median": 0.0,
+       "cpu_pct_max": 15.11,
+       "rss_bytes_median": 67129835.52,
+       "rss_bytes_max": 68755128.32,
+       "samples": 26
+      },
+      "pairs": 16,
+      "pairs_connected_per_rep": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ],
+      "pairs_connected_median": 1,
+      "thread_errors_per_rep": [
+       15,
+       15,
+       15,
+       15,
+       15
+      ],
+      "thread_errors": [
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False",
+       "ConnectionFailed: hyrxmq: AMQPConnectorStackTimeout: Timeout during AMQP handshake'127.0.0.1'/(<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('127.0.0.1', 5711)); ssl=False"
+      ],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.0
+     },
+     "rabbitmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       3962.9,
+       4031.1,
+       4132.3,
+       4102.0,
+       3964.6
+      ],
+      "median_msgs_per_s": 4031.114,
+      "min_msgs_per_s": 3962.9,
+      "max_msgs_per_s": 4132.3,
+      "resources": {
+       "cpu_pct_median": 37.635,
+       "cpu_pct_max": 81.29,
+       "rss_bytes_median": 151047372.8,
+       "rss_bytes_max": 152148377.6,
+       "samples": 10
+      },
+      "pairs": 16,
+      "pairs_connected_per_rep": [
+       16,
+       16,
+       16,
+       16,
+       16
+      ],
+      "pairs_connected_median": 16,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.3795
+     },
+     "lavinmq": {
+      "status": "OK",
+      "reps_ok": 5,
+      "reps_total": 5,
+      "calibrated_count": null,
+      "rates_msgs_per_s": [
+       4389.2,
+       4403.2,
+       4427.8,
+       4514.2,
+       4458.5
+      ],
+      "median_msgs_per_s": 4427.779,
+      "min_msgs_per_s": 4389.2,
+      "max_msgs_per_s": 4514.2,
+      "resources": {
+       "cpu_pct_median": 12.665,
+       "cpu_pct_max": 25.9,
+       "rss_bytes_median": 35462840.32,
+       "rss_bytes_max": 36679188.48,
+       "samples": 10
+      },
+      "pairs": 16,
+      "pairs_connected_per_rep": [
+       16,
+       16,
+       16,
+       16,
+       16
+      ],
+      "pairs_connected_median": 16,
+      "thread_errors_per_rep": [
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "thread_errors": [],
+      "stuck_threads": 0,
+      "ratio_vs_fastest": 1.2559
+     }
+    }
+   }
+  }
+ },
+ "verdict": {
+  "geomean_ratio_vs_fastest": {
+   "hyrxmq": 1.0207,
+   "rabbitmq": 1.1583,
+   "lavinmq": 4.2627
+  },
+  "fair_cells": [
+   "publish_get|64",
+   "publish_get|1024",
+   "publish_get|16384",
+   "publish_get|65536",
+   "publish_get|262144",
+   "publish_only|64",
+   "publish_only|1024",
+   "publish_only|16384",
+   "publish_only|65536",
+   "publish_only|262144",
+   "latency|64",
+   "latency|1024",
+   "latency|16384",
+   "latency|65536",
+   "latency|262144",
+   "confirms|1024",
+   "fanout|1024",
+   "concurrency|1"
+  ],
+  "fair_cell_count": 18,
+  "ranking": [
+   "hyrxmq",
+   "rabbitmq",
+   "lavinmq"
+  ],
+  "winner": "hyrxmq"
+ }
+}
