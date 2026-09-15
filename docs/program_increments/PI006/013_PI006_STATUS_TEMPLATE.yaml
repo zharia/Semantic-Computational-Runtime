@@ -1,0 +1,26 @@
+program_increment: PI006
+name: Semantic Domain Foundation
+status: PROPOSED
+kernel: State-Context-Transformation-Outcome-Observation
+completion_policy: fail_closed
+wave_1:
+  - core
+  - mathematics/foundations
+  - mathematics/algebra
+  - data
+  - graph
+wave_2:
+  - mathematics/linear_algebra
+  - mathematics/tensor
+  - geometry
+  - topology
+  - mathematics/analysis
+  - dynamics
+wave_3:
+  - field
+  - physics
+  - simulation
+  - agent
+  - neural
+  - rendering
+  - system
