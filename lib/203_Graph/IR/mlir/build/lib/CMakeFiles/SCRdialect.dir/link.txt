@@ -1,2 +1,0 @@
-/usr/bin/ar Dqc libSCRdialect.a CMakeFiles/SCRdialect.dir/SCR/SCRDialect.cpp.o CMakeFiles/SCRdialect.dir/SCR/SCROps.cpp.o CMakeFiles/SCRdialect.dir/SCR/SCRVerification.cpp.o
-/usr/bin/ranlib -D libSCRdialect.a
