@@ -1,0 +1,15 @@
+{
+  "domain": "",
+  "version": "0.0.1",
+  "status": "PLANNED",
+  "parent": null,
+  "dependencies": [],
+  "subdomains": [],
+  "semantic_structures": [],
+  "transformations": [],
+  "observations": [],
+  "laws": [],
+  "formal_artifacts": [],
+  "implementation_artifacts": [],
+  "provider_mappings": []
+}

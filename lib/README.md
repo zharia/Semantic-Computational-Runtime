@@ -1,502 +1,215 @@
-# Program Increment v0.0.1
+# Semantic Computational Runtime — Semantic Library
 
-## AI Agent Instructions
+## 1. Purpose
 
-This document defines the operating rules for AI coding agents working on **Program Increment v0.0.1** of the Semantic Computational Runtime (SCR).
+`lib/` contains the **semantic library of the Semantic Computational Runtime (SCR)**.
 
-The purpose of this document is not merely to tell an agent where files are located. It defines how an agent must reason about the semantic library, how it must distinguish specification from implementation, and how it must avoid accidentally changing the architecture while attempting to implement it.
+The semantic library defines what computational concepts mean, how those concepts relate, what invariants they obey, and what contracts implementations must satisfy.
 
----
+It does **not** define a particular implementation, provider, hardware architecture, storage mechanism, programming language, renderer, messaging system, or execution engine.
 
-# 1. Purpose
+The governing principle is:
 
-SCR is being developed as a semantic computational runtime built on MLIR.
-
-The central architectural principle is:
-
-> **Semantic meaning is authoritative; representation, implementation, execution substrate, and storage mechanism are not.**
-
-AI agents must therefore treat the repository as a semantic system first and a software repository second.
+> **Semantic meaning is authoritative; representation, implementation, execution substrate, storage mechanism, and provider are realizations of that meaning.**
 
 An implementation that works but violates the semantic contract is incorrect.
 
-An implementation that is incomplete but accurately reflects the semantic contract is preferable to an implementation that silently changes the contract.
+An incomplete implementation that accurately preserves the semantic contract is preferable to an implementation that silently changes the contract.
 
 ---
 
 # 2. Governing Principle
 
-The most important rule for all agents is:
+The architecture is not defined by the current source code.
 
-> **The code is not the architecture.**
+The semantic architecture is defined by:
 
-The architecture is expressed through semantic definitions, contracts, interfaces, invariants, and explicitly accepted design decisions.
+* semantic definitions
+* contracts
+* invariants
+* interfaces
+* explicit architectural decisions
+* validated relationships
+* declared execution semantics
 
-The following distinctions MUST remain intact:
+Agents MUST preserve the following distinctions:
 
 ```text
-Specification ≠ Implementation
-Status ≠ Specification
-Graph ≠ Source of Truth
-Provider ≠ Semantic Authority
-Backend ≠ Semantic Meaning
-Representation ≠ Concept
-Transformation ≠ Lowering
-Domain ≠ Implementation
-Filesystem Hierarchy ≠ Semantic Hierarchy
+Specification       ≠ Implementation
+Semantic Meaning    ≠ Representation
+Semantic Identity   ≠ Content Identity
+Domain              ≠ Provider
+Provider            ≠ Adapter
+Provider            ≠ Runtime
+Provider            ≠ Semantic Authority
+Service             ≠ Provider
+Message             ≠ Stream
+Stream              ≠ Transport
+Transport           ≠ Messaging Semantics
+Graph               ≠ Hypergraph
+Filesystem          ≠ Semantic Hierarchy
+Library Graph       ≠ Semantic Authority
+Status              ≠ Specification
+Transformation      ≠ Lowering
+Rendering           ≠ Semantic Truth
+Observation         ≠ Perception
+Event               ≠ Observation
+Action              ≠ Operation
+State               ≠ Representation of State
+Deletion            ≠ Erasure of History
+Absence             ≠ Nonexistence
 ```
+
+Agents MUST NOT collapse these distinctions merely because an implementation makes them convenient to combine.
 
 ---
 
-# 3. Source-of-Truth Hierarchy
+# 3. Repository Boundary
 
-When sources disagree, agents MUST resolve the conflict using the following order:
+The repository is divided into architectural responsibilities.
 
 ```text
-1. Project-level architectural decisions
+lib/
+    Semantic meaning and contracts
+
+docs/
+    Architectural rules and design decisions
+
+providers/
+    Concrete provider integrations
+
+runtime/
+    Executable runtime systems and infrastructure
+
+apps/
+    Applications and application-specific composition
+
+001_agents/
+    Development-agent governance and working procedures
+```
+
+The fundamental boundary is:
+
+```text
+                    SCR
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+      Semantic Layer       Realization Layer
+          │                     │
+        lib/             providers/runtime/apps
+```
+
+`lib/` MUST NOT become a repository for arbitrary implementation code merely because that code implements a semantic concept.
+
+---
+
+# 4. Semantic Authority
+
+The semantic library establishes the meaning of SCR concepts.
+
+The general authority hierarchy is:
+
+```text
+1. Explicit project architectural decisions
 2. Normative parent semantic definition
 3. Normative child semantic definition
-4. Explicit interface / contract specification
-5. Tests expressing normative behaviour
-6. Current implementation
-7. Comments
-8. Examples and documentation
-9. Agent assumptions
+4. Explicit semantic/interface contract
+5. Validated semantic tests
+6. Implementation
+7. Status information
+8. Derived graphs
+9. Examples
+10. Agent assumptions
 ```
 
-`102_status.yaml` is **not** a semantic authority.
-
-It records engineering state and evidence about implementation.
-
-`103_library.graph.json` is **not** a semantic authority.
-
-It is a derived representation of relationships between definitions and implementation state.
-
-Therefore:
-
-```text
-101_definition.md
-        │
-        ▼
- Semantic Contract
-        │
-        ├───────────────┐
-        ▼               ▼
- Implementation      Tests
-        │               │
-        └───────┬───────┘
-                ▼
-            Validation
-                │
-                ▼
-        102_status.yaml
-        (records evidence)
-                │
-                ▼
-      103_library.graph.json
-          (derived graph)
-```
-
-The graph MUST NOT become a second source of architectural truth.
+An agent MUST resolve ambiguity by inspecting authoritative semantic definitions before modifying implementation.
 
 ---
 
-# 4. Program Increment Control Plane
+# 5. Library Control Documents
 
-The Program Increment control plane consists of three complementary artifacts.
-
-```text
-101_definition.md
-    = what the domain means
-
-102_status.yaml
-    = where implementation currently stands
-
-103_library.graph.json
-    = how the library relates as a whole
-```
-
-## 4.1 `101_definition.md`
-
-A normative semantic definition.
-
-It defines:
-
-* domain meaning
-* scope
-* semantic model
-* invariants
-* composition
-* relationships
-* interfaces
-* inputs and outputs
-* state
-* transformations
-* errors
-* observability
-* implementation independence
-* MLIR representation
-* runtime semantics
-* validation requirements
-* testing requirements
-* completeness criteria
-
-The definition MUST describe what the domain means independently of its current implementation.
-
----
-
-## 4.2 `102_status.yaml`
-
-A mutable engineering-state document.
-
-It records facts such as:
-
-* implementation status
-* completed components
-* missing components
-* tests
-* known gaps
-* blockers
-* validation state
-* provider availability
-* lowering availability
-* implementation notes
-* dependencies
-* outstanding semantic questions
-
-Status MUST describe reality.
-
-It MUST NOT redefine the semantic contract.
-
----
-
-## 4.3 `103_library.graph.json`
-
-The library graph is a **derived aggregate representation** of the semantic library.
-
-It should describe relationships such as:
-
-```text
-Core
-  ↓
-Data
-  ↓
-Fields / Graphs / Geometry / Topology
-  ↓
-Morphology / Physics / Dynamics
-  ↓
-Simulation / Agents / Perception / Control
-  ↓
-Optimization / Learning / Adaptation / Evolution / Ecology
-```
-
-and cross-cutting relationships such as:
-
-```text
-Analysis
-Interfaces
-Lowering
-Providers
-Transforms
-Spatial
-Stream
-Render
-```
-
-The graph SHOULD be generated from authoritative definitions and status information wherever practical.
-
-Agents MUST NOT manually modify the aggregate graph merely to make it agree with an implementation.
-
----
-
-# 5. Current Library Structure
-
-The current `lib/` hierarchy contains **700 directories and 33 files**.
-
-The top-level organization is:
-
-```text
-lib/
-├── 000_meta
-├── 101_Core
-├── 201_Data
-├── 202_Math
-├── 203_Graph
-├── 301_Field
-├── 302_Geometry
-├── 303_Topology
-├── 401_Morphology
-├── 501_Physics
-├── 502_Dynamics
-├── 503_Simulation
-├── 601_Agent
-├── 602_Neural
-├── 603_Perception
-├── 604_Control
-├── 701_Optimization
-├── 702_Learning
-├── 703_Adaptation
-├── 704_Evolution
-├── 705_Ecology
-├── 801_Spatial
-├── 802_Stream
-├── 901_Analysis
-├── 902_Interfaces
-├── 903_Lowering
-├── 904_Providers
-├── 905_Transforms
-├── A01_Render
-├── lib.txt
-└── README.md
-```
-
-This hierarchy is intentional.
-
-It should not be interpreted as a simple linear inheritance hierarchy.
-
----
-
-# 6. Library Taxonomy
-
-The library currently contains several different kinds of semantic organization.
-
-## 6.1 Foundational semantic domains
-
-```text
-101_Core
-201_Data
-202_Math
-203_Graph
-301_Field
-302_Geometry
-303_Topology
-401_Morphology
-501_Physics
-502_Dynamics
-503_Simulation
-601_Agent
-602_Neural
-603_Perception
-604_Control
-701_Optimization
-702_Learning
-703_Adaptation
-704_Evolution
-705_Ecology
-```
-
-These define major semantic computational domains.
-
-They are not necessarily a strict inheritance chain.
-
-A domain may depend on, compose with, constrain, specialize, or interact with another domain without being a subtype of it.
-
----
-
-## 6.2 Cross-cutting computational domains
-
-```text
-801_Spatial
-802_Stream
-901_Analysis
-902_Interfaces
-903_Lowering
-904_Providers
-905_Transforms
-A01_Render
-```
-
-These are intentionally different from the primary semantic-domain sequence.
-
-They describe capabilities, computational mechanisms, execution relationships, or cross-domain concerns that apply across multiple semantic domains.
-
-For example:
-
-```text
-Fields ───────────────┐
-Geometry ─────────────┤
-Graphs ───────────────┤
-Morphology ───────────┤
-Physics ──────────────┤
-Simulation ───────────┤
-Agents ───────────────┤
-                       ▼
-                    Analysis
-```
-
-Similarly:
-
-```text
-Semantic Domain
-      │
-      ▼
-   Interface
-      │
-      ▼
-   Analysis
-      │
-      ▼
- Transformation
-      │
-      ├── specialization
-      ├── optimization
-      ├── distribution
-      ├── vectorization
-      ├── tiling
-      ├── scheduling
-      └── lowering
-```
-
----
-
-# 7. `000_meta`
-
-`000_meta` contains metadata, governance, or explanatory material associated with a scope.
-
-It is **not itself a semantic computational domain**.
-
-Metadata MAY occur at different scopes.
-
-For example:
-
-```text
-lib/
-└── 000_meta/
-
-203_Graph/
-└── Hypergraph/
-    └── 000_meta/
-```
-
-Agents MUST therefore not assume that every `000_meta` directory represents the same semantic level.
-
-The meaning of metadata is determined by the scope in which it occurs.
-
----
-
-# 8. Domain Definitions
-
-A directory containing a major semantic domain SHOULD contain:
+Each major semantic domain normally contains:
 
 ```text
 <domain>/
 ├── 101_definition.md
-└── <semantic subdomains>/
+├── 102_status.yaml
+└── 103_library.graph.json
 ```
 
-The `101_definition.md` defines the domain as a whole.
+These have different purposes.
 
-Subdirectories represent semantic subdivisions, not necessarily independent top-level library domains.
+### `101_definition.md`
 
-For example:
+Defines:
 
-```text
-202_Math/
-├── 101_definition.md
-├── Algebra/
-├── Calculus/
-├── Differential/
-├── Optimization/
-├── Probability/
-├── Statistics/
-├── Symbolic/
-└── ...
-```
+* semantic meaning
+* scope
+* ontology
+* relationships
+* invariants
+* contracts
+* state
+* transformations
+* composition
+* errors
+* observability
+* representation independence
+* implementation requirements
+* validation requirements
 
-The presence of:
+This is normative.
 
-```text
-202_Math/Optimization
-```
+### `102_status.yaml`
 
-does not conflict with:
+Records engineering reality:
 
-```text
-701_Optimization
-```
+* implementation status
+* tests
+* known gaps
+* blockers
+* validation state
+* dependencies
+* provider availability
+* unresolved questions
 
-These represent different semantic scopes.
+It MUST NOT redefine semantics.
 
-The former concerns optimization as a mathematical concept.
+### `103_library.graph.json`
 
-The latter defines optimization as a first-class SCR computational domain.
+Represents derived relationships between library concepts and implementation state.
 
-The same principle applies throughout the library.
+It is **not** an independent source of semantic truth.
+
+It SHOULD be generated or validated from authoritative definitions wherever practical.
 
 ---
 
-# 9. Local Concepts vs First-Class Domains
+# 6. Canonical Semantic Hypergraph
 
-Agents MUST distinguish between:
+SCR's foundational computational representation is a:
 
-### Domain-local concept
+> **typed, attributed, role-labelled semantic hypergraph**
 
-A concept needed to express another domain.
+The semantic hypergraph is the canonical representation of relationships between semantic entities.
 
-Example:
-
-```text
-502_Dynamics/Evolution
-```
-
-This concerns evolution as a property or concept of dynamical systems.
-
-### First-class semantic domain
-
-A domain with its own independent semantic contract.
-
-Example:
+At minimum it must be capable of representing:
 
 ```text
-704_Evolution
-```
-
-This defines evolutionary computation/change across populations, lineages, generations, variation, inheritance, selection, and differential persistence.
-
-Therefore:
-
-```text
-Dynamics/Evolution
-        ≠
-Evolution
-```
-
-Likewise:
-
-```text
-Agent/Adaptation
-Learning/Adaptation
-Control/Adaptive
-        ≠
-703_Adaptation
-```
-
-The specialized forms are domain-local manifestations.
-
-`703_Adaptation` defines adaptation as a general semantic computational domain.
-
----
-
-# 10. Core Semantic Model
-
-SCR's foundational relational structure is a typed, attributed, role-labelled semantic hypergraph.
-
-At minimum, the model supports:
-
-```text
-Nodes
-Hyperedges
-Roles
-Attributes
+Entities
 Types
 Properties
+Attributes
+Roles
 Relations
+Hyperrelations
 Regions
 References
 Representations
 Patterns
-Transformations
 Operations
+Transformations
 State
 Deltas
 Events
@@ -505,178 +218,646 @@ Provenance
 Constraints
 Capabilities
 Contracts
+Identity
 ```
 
-Relationships themselves are semantic information.
+Relationships are themselves semantic information.
 
-A higher-order relationship MUST NOT be reduced to pairwise relationships when doing so loses meaning.
+A relationship involving three or more participants MUST NOT automatically be decomposed into binary edges if doing so loses semantic meaning.
 
 ---
 
-# 11. Semantic Identity
+# 7. Hypergraph Before Graph
 
-Agents MUST distinguish:
+A conventional graph is a useful semantic structure, but it is not the fundamental SCR relational model.
+
+```text
+Semantic Hypergraph
+        │
+        ├── Graph projection
+        ├── Binary relation projection
+        ├── Spatial projection
+        ├── Dependency projection
+        ├── Execution projection
+        └── Visualization projection
+```
+
+A graph is therefore a possible representation or restriction of the canonical hypergraph.
+
+Agents MUST NOT redesign the semantic model around graph limitations merely because a particular graph library is convenient.
+
+---
+
+# 8. Nullary Relations
+
+Nullary relations are semantically meaningful where a relation has no participating object references but represents a proposition, assertion, fact, condition, or existence-bearing statement.
+
+Agents MUST NOT assume:
+
+```text
+relation with zero participants = invalid relation
+```
+
+unless the owning semantic domain explicitly requires participants.
+
+Nullary relation semantics MUST be defined consistently with identity, provenance, deletion, and reference semantics.
+
+---
+
+# 9. Identity
+
+SCR distinguishes at least:
 
 ```text
 Semantic Identity
 Content Identity
-Graph/Region Identity
+Region Identity
 Operation Identity
+Execution Identity
+Provider Identity
+Artifact Identity
 ```
-
-These identities have different purposes.
-
-A content identifier identifies content.
-
-A semantic identifier identifies what something means.
-
-A graph-region identity identifies a semantic region.
-
-An operation identity identifies an operation or state transition.
 
 These MUST NOT be conflated.
 
+A content identifier answers:
+
+> What exact content is this?
+
+A semantic identifier answers:
+
+> What semantic entity is this?
+
+A provider identifier answers:
+
+> Which implementation source is this?
+
+An execution identity answers:
+
+> Which runtime manifestation or execution instance is this?
+
 ---
 
-# 12. Representation Independence
+# 10. Semantic Identifiers
 
-A semantic object may have multiple representations.
+A Semantic Identifier (SID) does not need to be self-describing.
+
+SID structure may be domain-specific and selected according to:
+
+* locality
+* hierarchy
+* allocation
+* routing
+* performance
+* namespace requirements
+* domain semantics
+
+The universal requirement is **root-authority verifiability**.
+
+An SID MUST be attributable through a cryptographically verifiable delegation or allocation chain anchored in the SCR root authority.
+
+The following are distinct:
+
+```text
+Identity
+Namespace Metadata
+Delegation
+Allocation
+Authority
+Provenance
+```
+
+Self-description is optional.
+
+Root-anchored provenance is mandatory.
+
+---
+
+# 11. References
+
+A reference is not the referenced entity itself.
+
+References MUST preserve sufficient identity and provenance to distinguish:
+
+```text
+reference to existing entity
+reference to deleted entity
+reference to withdrawn entity
+reference to superseded entity
+reference to unavailable entity
+invalid reference
+unresolved reference
+```
+
+Agents MUST NOT silently replace semantic references with copies of referenced data.
+
+---
+
+# 12. Deletion and Absence
+
+Deletion is a semantic operation, not necessarily erasure of historical information.
+
+SCR MUST distinguish where relevant:
+
+```text
+Never existed
+Unknown
+Unavailable
+Not observed
+Not yet available
+Deleted
+Withdrawn
+Superseded
+Invalidated
+Destroyed
+Hidden
+Inaccessible
+```
+
+These states MUST NOT be collapsed into `null`, missing data, or an empty collection unless the owning contract explicitly defines that equivalence.
+
+Historical provenance MAY remain valid after deletion of the current entity.
+
+---
+
+# 13. Semantic Field
+
+The Semantic Field is foundational to SCR.
+
+A Semantic Field is the computational context in which semantic entities, relationships, state, transformations, observations, and operations exist and interact.
+
+A field is NOT synonymous with:
+
+```text
+Tensor
+Array
+Buffer
+Texture
+Grid
+Database
+Memory region
+GPU allocation
+```
+
+Those may be representations or implementations of field state.
+
+A semantic field may have:
+
+```text
+Identity
+Domain
+Topology
+State
+Entities
+Relationships
+Constraints
+Capabilities
+Temporal properties
+Spatial properties
+Provenance
+Observers
+Actors
+Operations
+Transformations
+```
+
+The semantic field is the authoritative semantic context.
+
+---
+
+# 14. Data
+
+Data concerns meaningful information and its representation.
+
+Data MUST remain distinct from:
+
+```text
+Storage
+Transport
+Memory
+Serialization
+Message
+Stream
+File
+Buffer
+```
+
+Those are possible realizations or containers of data.
+
+---
+
+# 15. State
+
+State represents the semantic condition of an entity, field, system, process, or computational space.
+
+State MUST be distinguished from its representation.
+
+A state transition may be represented as:
+
+```text
+S₀ → S₁
+```
+
+and may produce:
+
+```text
+ΔS
+```
+
+The delta is not automatically equivalent to the resulting state.
+
+---
+
+# 16. Event
+
+An Event represents an occurrence.
+
+An event is not necessarily:
+
+```text
+a message
+an observation
+a state
+a stream element
+a command
+a transport packet
+```
+
+An occurrence may subsequently be:
+
+```text
+observed
+represented
+published
+streamed
+processed
+acted upon
+```
+
+These stages MUST NOT be conflated.
+
+---
+
+# 17. Observation
+
+An Observation represents information acquired or made available about something.
+
+The absence of an observation MUST NOT automatically imply absence of the underlying phenomenon.
+
+Observation is therefore distinct from:
+
+```text
+Event
+State
+Perception
+Inference
+Interpretation
+```
+
+---
+
+# 18. Perception
+
+Perception transforms available observations or information into meaningful representations or interpretations relative to an observer or computational entity.
+
+Conceptually:
+
+```text
+Observation
+    ↓
+Perception
+    ↓
+Meaningful Representation
+    ↓
+Interpretation / Inference
+```
+
+Perception is observer-relative.
+
+The semantic model MUST preserve uncertainty, ambiguity, provenance, confidence, correspondence, and competing interpretations where applicable.
+
+---
+
+# 19. Interaction
+
+`605_Interaction` defines semantic interaction between actors, observers, agents, devices, computational entities, and semantic fields.
+
+Interaction includes:
+
+```text
+Input
+Observation
+Gesture
+Intent
+Action
+Control
+Feedback
+Interaction Session
+Commitment
+Cancellation
+Accessibility
+Multimodal Composition
+```
+
+The fundamental interaction pipeline is:
+
+```text
+Actor / Observer
+        ↓
+Input
+        ↓
+Observation
+        ↓
+Recognition
+        ↓
+Gesture
+        ↓
+Intent
+        ↓
+Action
+        ↓
+Transformation
+        ↓
+Semantic Field
+        ↓
+Feedback
+```
+
+A mouse, touchscreen, VR controller, camera, microphone, API, robot sensor, or physical actuator is a modality or implementation mechanism.
+
+The semantic model is modality-independent.
+
+---
+
+# 20. Gesture
+
+A Gesture is a semantic interpretation of an interaction trajectory or composition of observations.
+
+A pointer path is not inherently a command.
+
+Gesture recognition MAY produce:
+
+```text
+Gesture Candidate
+Confidence
+Trajectory
+Temporal Characteristics
+Spatial Characteristics
+Context
+Constraints
+```
+
+Gestures may compose using:
+
+```text
+A ; B       sequence
+A & B       concurrent chord
+A | B       alternative
+A ?         optional
+A *         repetition
+```
+
+Recognition and interpretation MUST remain distinguishable.
+
+---
+
+# 21. Action and Operation
+
+An Action represents a semantic consequence intended or caused by interaction or agency.
+
+An Operation represents an executable semantic capability or state transformation.
+
+They may relate as:
+
+```text
+Intent
+  ↓
+Action
+  ↓
+Operation
+  ↓
+State Transformation
+```
+
+An Action is not necessarily an implementation call.
+
+An Operation is not merely a programming-language function.
+
+---
+
+# 22. Stream
+
+`802_Stream` defines the semantic organization of information, state, occurrences, or transformations as they become available or evolve through temporal, causal, ordered, partially ordered, continuous, or discrete relationships.
+
+A Stream is NOT fundamentally:
+
+```text
+Transport
+Queue
+Broker
+Pipeline
+Socket
+Message bus
+File
+Buffer
+```
+
+A stream may contain:
+
+```text
+Events
+State Changes
+Deltas
+Observations
+Operations
+Messages
+Signals
+Graph Changes
+Field Updates
+Simulation Updates
+Render Data
+Telemetry
+```
+
+The semantic distinction is:
+
+```text
+Stream
+    = semantic organization/evolution/availability
+
+Message
+    = representation/container of information
+
+Messaging
+    = exchange activity
+
+Transport
+    = mechanism for movement
+
+Provider
+    = implementation capability
+```
+
+A stream may exist historically or conceptually even when no current transport is active.
+
+---
+
+# 23. Availability
+
+Stream semantics MUST distinguish:
+
+```text
+Occurrence
+Observation
+Availability
+Publication
+Processing
+Consumption
+```
 
 For example:
 
 ```text
-Semantic Geometry
-    ├── analytic representation
-    ├── polygonal representation
-    ├── mesh representation
-    ├── voxel representation
-    ├── implicit representation
-    └── procedural representation
+Occurrence      t10
+Observed        t12
+Processed       t13
+Published       t15
+Consumed        t18
 ```
 
-None of these representations automatically becomes the semantic authority.
+These are different semantic events.
 
-The same principle applies to:
+No element currently available to a consumer does not necessarily imply:
 
-* fields
-* graphs
-* morphology
-* neural models
-* simulations
-* rendering
-* streams
-* data
-* physical models
+```text
+nothing occurred
+```
 
 ---
 
-# 13. Fields
+# 24. Messaging
 
-A field is not merely an array.
+Messaging concerns the exchange of messages between computational entities.
 
-A field is meaningful information distributed over a defined domain.
-
-Its semantics may include:
+Messaging is distinct from Stream semantics.
 
 ```text
-Domain
-Value Space
-Coordinates
-Topology
-Sampling
-Interpolation
-Resolution
-Boundary Conditions
-Temporal Semantics
-Uncertainty
-Provenance
+Semantic Stream
+      ↓
+Message representation
+      ↓
+Messaging
+      ↓
+Transport
+      ↓
+Provider / Runtime
 ```
+
+AMQP may provide a realization of messaging semantics.
+
+It does not define the semantic meaning of all SCR messages.
+
+---
+
+# 25. AMQP
+
+AMQP is an implementation/protocol concern within SCR's messaging architecture.
+
+AMQP MUST NOT become the semantic definition of:
+
+```text
+Stream
+Event
+Operation
+Action
+State
+Field
+Application
+Service
+```
+
+SCR may use AMQP as its canonical internal messaging model where appropriate.
+
+---
+
+# 26. HyrxMQ
+
+HyrxMQ is an implementation/provider system.
+
+Its capabilities, including GPU-resident message data and GPU-oriented transport/execution mechanisms, MUST NOT become assumptions in the semantic definitions of Stream or Messaging.
+
+The architecture remains:
+
+```text
+SCR Semantic Contract
+        ↓
+Messaging / Stream Semantics
+        ↓
+Provider Contract
+        ↓
+HyrxMQ
+```
+
+HyrxMQ is therefore a realization of SCR semantics, not their source.
+
+---
+
+# 27. Physics, Dynamics and Simulation
+
+These concepts MUST remain distinct.
+
+### Physics
+
+Defines physical laws, quantities, constraints, and physical relationships.
+
+### Dynamics
+
+Defines how state evolves according to declared relationships and transformations.
+
+### Simulation
+
+Computationally realizes a model of a system or process.
 
 Therefore:
 
 ```text
-Field ≠ Tensor
-Field ≠ Buffer
-Field ≠ Texture
-Field ≠ Grid
+Physics ≠ Dynamics ≠ Simulation
 ```
 
-Those may be representations or implementations of a field.
+A simulation MAY implement physics.
+
+It is not itself the definition of physics.
 
 ---
 
-# 14. Graphs and Hypergraphs
+# 28. Morphology
 
-Graphs are semantic computational structures.
-
-The graph domain includes:
+`401_Morphology` is a first-class semantic domain concerned with:
 
 ```text
-Nodes
-Edges
-Hyperedges
-Paths
-Connectivity
-Topology
-Traversal
-Matching
-Query
-Transformation
-Embedding
-Algorithms
-Dynamic State
-Streams
-Deltas
+Form
+Structure
+Organization
+Pattern
+Shape
+Composition
+Differentiation
+Growth
+Deformation
+Emergence
+Structural Transformation
 ```
 
-The foundational hypergraph model belongs to Core.
-
-`203_Graph` develops graph semantics as a computational domain.
-
-The two MUST NOT be collapsed.
-
----
-
-# 15. Morphology
-
-Morphology is a first-class semantic domain.
-
-It concerns:
-
-* form
-* structure
-* organization
-* differentiation
-* composition
-* parts and wholes
-* pattern
-* shape
-* growth
-* deformation
-* emergence
-* structural transformation
-
-A key architectural principle is the bidirectional relationship:
+Morphology is not merely:
 
 ```text
-Pattern
-   │
-   ▼
-Morphological Interpretation
-   │
-   ▼
-Morphological Structure
-   │
-   ▼
-Structural Analysis
-   │
-   ▼
-Pattern
+Image Processing
+Mesh Generation
+Rendering
+Computer Vision
 ```
 
-Morphology is therefore not merely mesh generation or rendering.
-
-It connects:
+Its relationships include:
 
 ```text
 Information
@@ -689,22 +870,21 @@ Topology
    ↕
 Geometry
    ↕
-Fields
+Field
    ↕
 Dynamics
 ```
 
 ---
 
-# 16. Spatial Semantics
+# 29. Spatial Semantics
 
-`801_Spatial` is a cross-cutting spatial computational domain.
+`801_Spatial` defines cross-domain spatial computation.
 
-It includes concepts such as:
+Spatial semantics include:
 
 ```text
 Coordinates
-Coordinate Systems
 Reference Frames
 Position
 Direction
@@ -713,68 +893,133 @@ Distance
 Proximity
 Neighbourhood
 Regions
+Locality
 Spatial Indexing
 Navigation
-Pathfinding
-Geofencing
-H3
-BVH
-R-tree
-KD-tree
-Octree
-Voxel
+Spatial Queries
+Computational Space
 ```
 
-Spatial semantics MUST remain distinct from geometry.
+Geometry and Spatial semantics overlap but are not identical.
 
 Geometry concerns spatial form and geometric relationships.
 
-Spatial computation also includes locality, indexing, navigation, reference frames, spatial queries, and organization of computational space.
+Spatial computation additionally concerns locality, organization, navigation, indexing, reference frames, and computational location.
 
 ---
 
-# 17. Streams
+# 30. Computational Space
 
-`802_Stream` defines stream-oriented computation.
+A computational Space is a semantic object representing a bounded or structured computational environment.
 
-Streams are not merely transport mechanisms.
-
-They may represent:
+A Space may expose dimensions such as:
 
 ```text
-Events
-Signals
-Messages
-State Changes
-Deltas
-Observations
-Fields
-Graph Changes
-Simulation Updates
-Render Data
-Telemetry
-```
-
-The distinction between:
-
-```text
-Semantic Stream
-Transport
-Messaging Provider
+Identity
+Location
+Meaning
+ISA
+Memory
 Storage
+Network
+Processing
+Security
+Capabilities
+Resources
+Lifecycle
 ```
 
-MUST be maintained.
+Examples may include:
 
-AMQP or another messaging technology may provide an implementation or transport mechanism.
+```text
+Machine
+Node
+VM
+Container
+Process Space
+Namespace
+Device Space
+Storage Space
+Remote Space
+```
 
-It does not define the semantic meaning of the stream.
+A Space is semantic before it is an operating-system abstraction.
 
 ---
 
-# 18. Analysis
+# 31. Computational Field
 
-`901_Analysis` provides cross-domain analytical capabilities.
+A Computational Field is a field containing executable or computationally active semantic structures.
+
+It may contain:
+
+```text
+Processes
+Operations
+Executable Hypergraphs
+State
+Resources
+Observers
+Actors
+Transformations
+Messages
+Streams
+```
+
+Computational Fields may exist within Computational Spaces.
+
+Space and Field are related but distinct:
+
+```text
+Space = where computational existence is situated
+Field = what semantic computational activity exists there
+```
+
+---
+
+# 32. Rendering
+
+`A01_Render` defines rendering as a semantic computation that produces a representation suitable for observation.
+
+Rendering is downstream from semantic truth.
+
+A renderer MUST NOT silently redefine:
+
+```text
+Field
+Geometry
+Morphology
+Physics
+Dynamics
+Simulation
+State
+```
+
+The semantic loop may be:
+
+```text
+Semantic Field
+      ↓
+Rendering
+      ↓
+Observation
+      ↓
+Perception
+      ↓
+Interaction
+      ↓
+Action
+      ↓
+Semantic Field
+```
+
+Rendering is therefore part of a broader observation/interaction loop, not merely a terminal display operation.
+
+---
+
+# 33. Analysis
+
+`901_Analysis` defines cross-domain analysis.
 
 Analysis may determine:
 
@@ -783,33 +1028,31 @@ Capabilities
 Compatibility
 Complexity
 Cost
-Dataflow
 Dependencies
+Dataflow
 Determinism
 Differentiability
 Equivalence
-Geometry
 Locality
 Memory
 Parallelism
-Representation
 Resources
 Scheduling
 Semantics
 Topology
 ```
 
-Analysis informs transformation and execution decisions.
+Analysis informs execution and transformation decisions.
 
-It MUST NOT silently redefine semantics.
+It MUST NOT silently redefine semantic meaning.
 
 ---
 
-# 19. Interfaces
+# 34. Interfaces
 
 `902_Interfaces` defines reusable semantic capabilities and contracts.
 
-Examples include:
+An interface may express:
 
 ```text
 Composable
@@ -820,40 +1063,44 @@ Distributable
 Dynamical
 Integrable
 Learnable
-Morphological
 Observable
 Optimizable
 Parallelizable
 Persistable
-Reducible
 Renderable
-Serializable
 Spatial
 Stateful
 Stateless
 Stochastic
 Streamable
 Temporal
-Tileable
 Transformable
 Vectorizable
 ```
 
-Interfaces MUST express semantic capability or contract.
+These are semantic contracts.
 
-They are not merely language-level interfaces or C++/Rust traits.
-
-Implementation interfaces may realize semantic interfaces, but the semantic contract remains authoritative.
+They are not merely programming-language interfaces or traits.
 
 ---
 
-# 20. Transformations
+# 35. Transformations
 
-`905_Transforms` defines cross-cutting transformations.
+`905_Transforms` defines cross-domain transformation semantics.
 
-A transformation changes some aspect of a computational object while preserving or intentionally modifying explicitly declared semantic properties.
+A transformation changes a computational object while declaring which semantic properties are:
 
-Transformations include:
+```text
+Preserved
+Modified
+Introduced
+Invalidated
+Approximated
+Relaxed
+Specialized
+```
+
+Examples include:
 
 ```text
 Canonicalization
@@ -862,112 +1109,79 @@ Decomposition
 Differentiation
 Distribution
 Fusion
-Hardware Adaptation
-Memory Transformation
 Parallelization
-Representation Transformation
 Scheduling
 Specialization
 Tiling
 Vectorization
-Lowering
+Representation Transformation
 ```
-
-A transformation MUST declare what semantic properties it preserves, modifies, introduces, or invalidates.
 
 ---
 
-# 21. Transformation vs Lowering
+# 36. Lowering
 
-Transformation is the broader concept.
+`903_Lowering` concerns movement toward a lower-level representation, abstraction, or execution target.
+
+Conceptually:
+
+```text
+SCR Semantic Model
+        ↓
+SCR Semantic MLIR
+        ↓
+Domain MLIR
+        ↓
+MLIR Lowering
+        ↓
+Target Representation
+        ↓
+Execution
+```
+
+Lowering is a specialized transformation.
 
 ```text
 Transformation
-├── Representation
-├── Canonicalization
-├── Composition
-├── Decomposition
-├── Differentiation
-├── Distribution
-├── Fusion
-├── Memory
-├── Parallelization
-├── Scheduling
-├── Specialization
-├── Tiling
-├── Vectorization
-└── Lowering
+      ⊃
+   Lowering
 ```
 
-Lowering is a specialized transformation concerned with moving a computation toward a lower-level representation, abstraction, or execution target.
-
-Therefore:
-
-```text
-Transformation ⊃ Lowering
-```
-
-but:
-
-```text
-Transformation ≠ Lowering
-```
-
-This distinction is especially important in the MLIR integration.
-
-MLIR's Transform dialect provides infrastructure for controlling and orchestrating transformations over payload IR, while MLIR Dialect Conversion provides mechanisms for converting operations toward declared legal targets. SCR's semantic definition of transformation remains above these implementation mechanisms.
+Lowering MUST preserve declared semantic meaning unless an explicit approximation, relaxation, specialization, or semantic change is declared.
 
 ---
 
-# 22. Lowering
+# 37. Providers
 
-`903_Lowering` concerns transformations toward lower-level computational representations.
+Providers are **not part of the semantic library ontology**.
 
-Examples include:
-
-```text
-High-level SCR Semantic MLIR
-        ↓
-Domain-specific MLIR dialect
-        ↓
-Tensor / Linalg / SCF / Vector
-        ↓
-MemRef / GPU / SPIR-V / LLVM
-        ↓
-Target representation
-        ↓
-Hardware / Runtime
-```
-
-Lowering MUST preserve declared semantic meaning unless the transformation explicitly declares an approximation, relaxation, specialization, or other semantic change.
-
-MLIR itself supports progressive lowering through multiple dialects, reinforcing the distinction between semantic abstraction levels and target representations.
-
----
-
-# 23. Providers
-
-`904_Providers` defines implementation-provider relationships.
-
-Providers may include:
+They live under:
 
 ```text
-CPU
-GPU
-Accelerator
-Distributed
-External
-Geometry
-Messaging
-Neural
-Numerical
-Physics
-Rendering
-Spatial
-Storage
+providers/
 ```
 
-A provider answers:
+A Provider is a concrete implementation or external capability source satisfying a semantic contract.
+
+The canonical relationship is:
+
+```text
+Semantic Capability
+        ↓
+Semantic Contract
+        ↓
+Implementation Binding
+        ↓
+Executable / Adapter
+        ↓
+Provider
+        ↓
+Execution Runtime
+        ↓
+Computational Resource
+```
+
+A Provider answers:
 
 > How can this semantic capability be realized?
 
@@ -975,174 +1189,739 @@ It does not answer:
 
 > What does this semantic capability mean?
 
-Therefore:
+---
+
+# 38. Provider, Adapter, Implementation and Runtime
+
+These concepts MUST remain distinct.
 
 ```text
-Semantic Contract
-        │
-        ▼
-Capability Analysis
-        │
-        ▼
-Provider Selection
-        │
-        ▼
+Provider
+    concrete capability source
+
+Adapter
+    translator between semantic contract and implementation/provider
+
 Implementation
-        │
-        ▼
-Execution
+    executable realization of a semantic concept
+
+Executable Artifact
+    versioned executable representation
+
+Execution Contract
+    machine-interpretable execution obligations
+
+Entry Point
+    invocation target
+
+Runtime
+    system that executes artifacts
+
+EGS
+    system that resolves and orchestrates executable semantic graph requirements
 ```
 
-Multiple providers may implement the same semantic capability.
+Providers may be:
+
+```text
+Libraries
+Frameworks
+Engines
+Databases
+Services
+Devices
+Compilers
+Accelerators
+Remote Systems
+Executables
+WASM runtimes
+SCR-native implementations
+MLIR provider boundaries
+```
+
+The classification is semantic, not based solely on packaging.
 
 ---
 
-# 24. Rendering
+# 39. Provider Independence
 
-`A01_Render` is a semantic rendering domain.
+Multiple Providers may satisfy the same semantic capability.
 
-Rendering is not merely an output side effect.
+Provider substitution requires preservation of the relevant semantic contract.
 
-It may involve:
+Provider substitution does NOT imply:
 
 ```text
-Scene
-Geometry
-Morphology
+identical implementation
+identical numerical representation
+identical performance
+identical internal state
+```
+
+It means that the declared semantic obligations remain satisfied.
+
+---
+
+# 40. Provider Leakage
+
+Provider-specific concepts MUST NOT enter normative semantic definitions merely because an implementation exposes them.
+
+Examples of concepts that may belong to providers rather than SCR semantics include:
+
+```text
+RabbitMQ Channel
+OGRE SceneNode
+PhysX Actor
+OpenVDB Grid Handle
+CUDA Stream
+GPU Buffer
+CouchDB Document
+Vulkan Command Buffer
+```
+
+They may be represented through adapters or implementation bindings.
+
+They must not silently become SCR ontology.
+
+---
+
+# 41. Application Architecture
+
+Applications compose semantic capabilities.
+
+The preferred architecture is:
+
+```text
+Application
+    ↓
+Module
+    ↓
+Service
+    ↓
+Operation
+    ↓
+Implementation Binding
+```
+
+Inbound boundaries may use:
+
+```text
+Controller
+    ↓
+Port
+    ↓
+Service / Operation
+```
+
+External realization may use:
+
+```text
+Port
+    ↓
+Adapter
+    ↓
+Provider
+```
+
+This architecture is compatible with hexagonal architecture while preserving SCR semantic authority.
+
+---
+
+# 42. Service
+
+A Service is a semantic computational component providing a coherent set of capabilities.
+
+A Service is not synonymous with:
+
+```text
+HTTP service
+Microservice
+OS process
+Provider
+Class
+Library
+```
+
+Its implementation may use any of these mechanisms.
+
+---
+
+# 43. Controller
+
+A Controller is an inbound semantic boundary.
+
+It receives or interprets:
+
+```text
+Observation
+Event
+Command
+Action
+Request
+```
+
+and dispatches them toward appropriate semantic operations.
+
+A Controller is not inherently a GUI component.
+
+---
+
+# 44. Port
+
+A Port defines a semantic contract between an application and an external or replaceable capability.
+
+Ports may be:
+
+```text
+Inbound
+Outbound
+Execution
+Observation
+Interaction
+Persistence
+Messaging
+Provider
+```
+
+The semantic contract remains independent of the concrete implementation.
+
+---
+
+# 45. User Interface
+
+A User Interface is not a separate fundamental ontology.
+
+It is a manifestation of semantic interaction.
+
+Examples:
+
+```text
+Button
+    → Action
+
 Camera
-Lighting
-Materials
-Visibility
-Projection
-Rasterization
-Ray Tracing
-Path Tracing
-Particles
-Volumes
-Textures
-Render Targets
-Render Passes
-Frames
-Streams
-GPU Computation
+    → Observation
+
+Microphone
+    → Observation
+
+Robot Sensor
+    → Observation
+
+API Request
+    → Observation / Command
+
+AI Tool Invocation
+    → Action
+
+Actuator
+    → Action
 ```
 
-Rendering remains downstream from semantic truth.
-
-A renderer MUST NOT silently redefine simulation, geometry, morphology, field, or physical semantics.
-
-An implementation may use a path such as:
+The same semantic application may therefore be manifested through:
 
 ```text
-Semantic Runtime
-      ↓
-Render State
-      ↓
-Render Commands
-      ↓
-Rust Renderer API
-      ↓
-C++ Adapter
-      ↓
-VulkanSceneGraph
-      ↓
-Vulkan
-      ↓
-GPU
+Desktop UI
+Web UI
+CLI
+3D Interface
+VR
+AR
+Agent Interface
+API
+Physical Interface
 ```
-
-This is an implementation path, not a semantic dependency.
 
 ---
 
-# 25. MLIR
+# 46. Semantic Graphs and Repository Graphs
 
-SCR is built **on top of MLIR**.
+SCR must distinguish at least:
 
-MLIR provides compiler infrastructure for:
+### Semantic Hypergraph
 
-* intermediate representation
-* dialects
-* operations
-* types
-* attributes
-* interfaces
-* transformations
-* analyses
-* conversion
-* lowering
-* target translation
+The canonical computational semantic structure.
 
-SCR provides the semantic computational model that determines what those representations mean.
+### Graph Projection
 
-Therefore:
+A graph representation derived from or restricted from semantic hypergraph structure.
+
+### Library Architecture Graph
+
+A representation of relationships between definitions and implementation artifacts.
+
+### Repository/Filesystem Structure
+
+An organizational mechanism for storing project artifacts.
+
+These MUST NOT be treated as equivalent.
 
 ```text
-SCR Semantic Model
-        ↓
-SCR Semantic MLIR
-        ↓
-MLIR
-        ↓
-MLIR Transformations / Lowering
-        ↓
-Target IR
-        ↓
-Execution
+Semantic Hypergraph
+        │
+        ├── Graph projections
+        │
+        └── Semantic views
+
+Library Architecture Graph
+        │
+        └── Derived from repository definitions/status
+
+Filesystem
+        │
+        └── Stores artifacts
 ```
 
-MLIR infrastructure MUST NOT silently become the semantic authority for SCR.
-
-Conversely, SCR SHOULD reuse MLIR mechanisms wherever those mechanisms provide an appropriate realization of an SCR concept.
+Filesystem adjacency MUST NOT be interpreted as semantic dependency.
 
 ---
 
-# 26. Semantic Graph vs Filesystem
+# 47. Representation Independence
 
-The filesystem is an organizational mechanism.
-
-The semantic architecture is a graph.
+A semantic object may have multiple representations.
 
 For example:
 
 ```text
-Filesystem:
-
-201_Data/
-203_Graph/
-301_Field/
-302_Geometry/
-401_Morphology/
-
-
-Semantic relationships:
-
-Fields ────────────────┐
-                       │
-Graphs ────────────────┤
-                       ▼
-                   Morphology
-                       │
-             ┌─────────┼─────────┐
-             ▼         ▼         ▼
-          Geometry  Topology   Fields
-             │         │         │
-             └─────────┼─────────┘
-                       ▼
-                    Dynamics
+Semantic Geometry
+    ├── Analytic
+    ├── Polygonal
+    ├── Mesh
+    ├── Voxel
+    ├── Implicit
+    └── Procedural
 ```
 
-Agents MUST NOT infer semantic relationships solely from filesystem adjacency.
+None becomes semantic authority merely because it is currently implemented.
 
-The filesystem organizes definitions.
+The same principle applies to:
 
-The semantic graph expresses relationships.
+```text
+Fields
+Graphs
+Streams
+Neural Models
+Simulation
+Rendering
+Storage
+Messages
+Executable Artifacts
+```
 
 ---
 
-# 27. Function Development Lifecycle
+# 48. Semantic API vs Implementation API
 
-Every substantive function or capability SHOULD progress through:
+SCR semantic APIs describe semantic capabilities.
+
+Implementation APIs describe how those capabilities are realized.
+
+For example:
+
+```text
+Semantic Operation
+        ↓
+Semantic Contract
+        ↓
+Implementation Binding
+        ↓
+Mojo / MLIR / WASM / Native / Provider API
+```
+
+An implementation API MUST NOT redefine the semantic contract.
+
+---
+
+# 49. MLIR
+
+SCR is an **MLIR extension ecosystem**.
+
+MLIR provides infrastructure for:
+
+```text
+IR
+Dialects
+Operations
+Types
+Attributes
+Interfaces
+Analyses
+Transformations
+Conversion
+Lowering
+Target Translation
+```
+
+SCR defines the semantic computational model represented through that infrastructure.
+
+Therefore:
+
+```text
+SCR Semantics
+      ↓
+SCR Semantic MLIR
+      ↓
+MLIR Infrastructure
+      ↓
+Transform / Analysis / Lowering
+      ↓
+Executable Representation
+```
+
+MLIR is the canonical representation and compilation substrate.
+
+It is not the semantic authority.
+
+SCR SHOULD reuse established MLIR mechanisms whenever they provide an appropriate realization of SCR semantics.
+
+---
+
+# 50. Mojo
+
+Mojo is the primary implementation language for SCR's native implementation.
+
+This does not make Mojo the semantic definition language.
+
+The distinction is:
+
+```text
+Semantic Definition
+        ↓
+Semantic MLIR
+        ↓
+Mojo Implementation
+```
+
+Where appropriate, semantic executable capabilities SHOULD be exposed through MLIR contracts and callable runtime interfaces.
+
+---
+
+# 51. Execution Semantics
+
+Execution is semantic only where execution behaviour affects meaning.
+
+Agents MUST distinguish:
+
+```text
+Semantic Ordering
+Execution Ordering
+
+Semantic Concurrency
+Implementation Parallelism
+
+Semantic State
+Machine State
+
+Semantic Locality
+Memory Locality
+
+Semantic Failure
+Implementation Failure
+```
+
+An implementation detail becomes semantic only when the domain contract declares it meaningful.
+
+---
+
+# 52. Semantic Equivalence
+
+Two implementations are interchangeable only when the relevant semantic equivalence has been established.
+
+Possible equivalence classes include:
+
+```text
+Exact
+Approximate
+Numerical
+Structural
+Observational
+Behavioural
+Temporal
+Spatial
+Representation
+Performance
+```
+
+Agents MUST NOT infer semantic equivalence merely from identical outputs for a limited test case.
+
+---
+
+# 53. Determinism
+
+Where deterministic semantics are declared, implementation nondeterminism MUST NOT silently alter semantic behaviour.
+
+Possible sources include:
+
+```text
+Parallelism
+Scheduling
+Floating-point ordering
+Distributed execution
+Provider behaviour
+Hardware differences
+Randomness
+Concurrency
+```
+
+If nondeterminism is semantically meaningful, it MUST be explicitly represented.
+
+---
+
+# 54. Failure Semantics
+
+Semantic failures MUST remain distinguishable where their meaning differs.
+
+Examples:
+
+```text
+Invalid Input
+Constraint Violation
+Unsupported Capability
+Unavailable Provider
+Invalid Reference
+Failed Transformation
+Failed Lowering
+Runtime Failure
+Numerical Failure
+Resource Exhaustion
+Authority Failure
+Security Failure
+Semantic Inconsistency
+```
+
+Implementation convenience MUST NOT collapse distinct semantic failures into a generic error.
+
+---
+
+# 55. Provenance
+
+Semantic entities, transformations, observations, implementations, providers, and derived representations SHOULD preserve provenance where meaningful.
+
+Provenance may identify:
+
+```text
+Origin
+Authority
+Source
+Transformation
+Provider
+Version
+Time
+Execution
+Observation
+Delegation
+Derivation
+```
+
+Derived information MUST NOT be presented as original semantic authority.
+
+---
+
+# 56. Domain Composition
+
+Domains compose through semantic relationships rather than filesystem hierarchy.
+
+For example:
+
+```text
+Spatial
+   ↓
+Field
+   ↓
+Geometry / Topology
+   ↓
+Morphology
+   ↓
+Physics
+   ↓
+Dynamics
+   ↓
+Simulation
+   ↓
+Agent
+   ↓
+Perception
+   ↓
+Neural
+   ↓
+Control
+   ↓
+Learning / Adaptation
+```
+
+This is an example of composition, not inheritance.
+
+A domain may:
+
+```text
+Depend on
+Compose with
+Constrain
+Observe
+Transform
+Provide input to
+Consume output from
+```
+
+another domain without becoming its subtype.
+
+---
+
+# 57. Domain-Local Concepts vs First-Class Domains
+
+Agents MUST distinguish a local concept from a first-class semantic domain.
+
+For example:
+
+```text
+202_Math/Optimization
+```
+
+concerns optimization as a mathematical concept.
+
+```text
+701_Optimization
+```
+
+defines optimization as an independent computational domain.
+
+Similarly:
+
+```text
+502_Dynamics/Evolution
+        ≠
+704_Evolution
+```
+
+and:
+
+```text
+601_Agent/Adaptation
+702_Learning/Adaptation
+604_Control/Adaptive
+        ≠
+703_Adaptation
+```
+
+Local concepts MUST NOT automatically be promoted to first-class domains.
+
+Promotion requires explicit semantic justification.
+
+---
+
+# 58. Current Library Domains
+
+The semantic library currently includes:
+
+```text
+000_meta
+
+101_Core
+201_Data
+202_Math
+203_Graph
+
+301_Field
+302_Geometry
+303_Topology
+
+401_Morphology
+
+501_Physics
+502_Dynamics
+503_Simulation
+
+601_Agent
+602_Neural
+603_Perception
+604_Control
+605_Interaction
+
+701_Optimization
+702_Learning
+703_Adaptation
+704_Evolution
+705_Ecology
+
+801_Spatial
+802_Stream
+
+901_Analysis
+902_Interfaces
+903_Lowering
+905_Transforms
+
+A01_Render
+```
+
+Providers are intentionally excluded from this semantic-domain list.
+
+They belong under the repository-level `providers/` boundary.
+
+---
+
+# 59. Cross-Cutting Domains
+
+Some library domains operate across many semantic domains.
+
+Examples include:
+
+```text
+801_Spatial
+802_Stream
+901_Analysis
+902_Interfaces
+903_Lowering
+905_Transforms
+A01_Render
+```
+
+These are not necessarily higher or lower in semantic authority.
+
+They provide cross-domain semantics and capabilities.
+
+---
+
+# 60. `000_meta`
+
+`000_meta` contains metadata and governance material.
+
+It is not itself a semantic domain.
+
+Metadata may exist at different scopes:
+
+```text
+lib/000_meta/
+203_Graph/000_meta/
+203_Graph/Hypergraph/000_meta/
+```
+
+The meaning of metadata is determined by its enclosing scope.
+
+---
+
+# 61. Domain Definition Rule
+
+Every major semantic domain SHOULD contain:
+
+```text
+<domain>/
+├── 101_definition.md
+├── 102_status.yaml
+└── 103_library.graph.json
+```
+
+Semantic subdomains SHOULD be represented as directories beneath their owning domain.
+
+The filesystem hierarchy is organizational.
+
+The semantic hierarchy is expressed through definitions and relationships.
+
+---
+
+# 62. Function and Capability Development
+
+Every substantive semantic capability SHOULD follow:
 
 ```text
 DESCRIBE
@@ -1156,45 +1935,47 @@ IMPLEMENT
 VALIDATE
 ```
 
-## Describe
+### Describe
 
 Identify the semantic concept.
 
-## Specify
+### Specify
 
 Define:
 
-* inputs
-* outputs
-* state
-* invariants
-* constraints
-* errors
-* determinism
-* side effects
-* capabilities
-* relationships
+```text
+Inputs
+Outputs
+State
+Invariants
+Constraints
+Relationships
+Errors
+Determinism
+Side Effects
+Capabilities
+```
 
-## Test
+### Test
 
-Write tests that express expected semantics.
+Define tests expressing the intended semantics.
 
-## Implement
+### Implement
 
-Implement the specified behaviour.
+Implement the declared behaviour.
 
-## Validate
+### Validate
 
-Verify implementation against the semantic contract.
+Demonstrate that implementation satisfies the semantic contract.
 
 ---
 
-# 28. Testing Hierarchy
+# 63. Testing Hierarchy
 
-Testing SHOULD progress through multiple semantic levels:
+Testing SHOULD operate across multiple levels:
 
 ```text
-Specification Tests
+Semantic Specification Tests
         ↓
 Unit Tests
         ↓
@@ -1204,414 +1985,156 @@ Composition Tests
         ↓
 MLIR Tests
         ↓
+Transformation Tests
+        ↓
 Lowering Tests
         ↓
 Runtime Tests
         ↓
+Provider Conformance Tests
+        ↓
 Cross-Provider Tests
         ↓
-Cross-Substrate Tests
+System Tests
 ```
 
 A passing unit test does not establish semantic correctness by itself.
 
 ---
 
-# 29. Progressive Abstraction
+# 64. Provider Assessment
 
-SCR development follows:
+Before implementing a capability, agents SHOULD ask:
 
 ```text
-Concept
-   ↓
-Semantic Contract
-   ↓
-Semantic MLIR
-   ↓
-Generic Implementation
-   ↓
-Transformation
-   ↓
-Lowering
-   ↓
-Provider
-   ↓
-Execution Substrate
+1. Does the semantic capability already exist?
+2. Is there a leading implementation?
+3. Is that implementation mature?
+4. Can its behaviour be expressed through a clean semantic contract?
+5. Can it be integrated without leaking its ontology?
+6. Does SCR gain meaningful advantage by implementing it itself?
 ```
 
-These layers MUST remain distinguishable.
+The governing rule is:
 
-An optimization must not become a semantic definition.
+> **Do not build a kernel when a good kernel already exists. Build the semantic bridge that allows it to participate in SCR.**
 
-A provider must not become an API contract.
-
-A hardware limitation must not silently become a domain invariant.
+If no suitable kernel exists, SCR MAY implement the capability itself, but it MUST expose it through a semantic contract so that a future provider can replace it.
 
 ---
 
-# 30. Semantic Equivalence
+# 65. Provider Canonicality
 
-Two implementations MAY be treated as interchangeable only when the relevant semantic equivalence has been established.
+A canonical provider is a preferred or reference implementation.
 
-Equivalence may concern:
-
-```text
-Exact Semantics
-Approximate Semantics
-Numerical Tolerance
-Structural Equivalence
-Observational Equivalence
-Behavioural Equivalence
-Representation Equivalence
-Performance Equivalence
-```
-
-Agents MUST NOT assume:
+Canonical does not mean exclusive.
 
 ```text
-same output
+Semantic Capability
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+Provider A  Provider B  Provider C
 ```
 
-means:
-
-```text
-same semantics
-```
-
-unless the relevant domain contract establishes that equivalence.
+All providers remain subordinate to the same semantic contract.
 
 ---
 
-# 31. Determinism and Nondeterminism
-
-Where a domain declares deterministic behaviour, implementations MUST preserve it unless explicitly authorized otherwise.
-
-Sources of nondeterminism may include:
-
-* parallel execution
-* floating-point reduction ordering
-* scheduling
-* distributed execution
-* stochastic algorithms
-* provider-specific behaviour
-* hardware differences
-
-Nondeterminism MUST be explicit.
-
----
-
-# 32. Errors and Failure Semantics
-
-Errors are semantic outputs where appropriate.
-
-Agents MUST distinguish:
-
-```text
-Invalid Input
-Constraint Violation
-Unsupported Capability
-Unavailable Provider
-Failed Transformation
-Failed Lowering
-Runtime Failure
-Numerical Failure
-Resource Exhaustion
-Semantic Inconsistency
-```
-
-Do not collapse semantically distinct failure modes merely because the implementation language makes that convenient.
-
----
-
-# 33. Performance Semantics
-
-Performance MUST NOT silently redefine semantic behaviour.
-
-Optimization may alter:
-
-```text
-Execution Order
-Memory Layout
-Parallelism
-Scheduling
-Representation
-Provider
-Hardware Target
-```
-
-provided the declared semantic contract is preserved.
-
-Performance requirements that affect semantic correctness MUST be explicitly documented.
-
----
-
-# 34. External Libraries
-
-External libraries are providers or implementation mechanisms.
-
-They are not semantic authorities.
-
-Examples may include:
-
-```text
-Numerical Libraries
-Physics Engines
-Geometry Libraries
-Graph Libraries
-Neural Frameworks
-Rendering Engines
-Messaging Systems
-Storage Systems
-Spatial Libraries
-```
-
-The architecture is:
-
-```text
-SCR Semantic Contract
-        ↓
-Provider Interface
-        ↓
-External Implementation
-```
-
-Never:
-
-```text
-External Library
-        ↓
-SCR Semantic Definition
-```
-
-An external dependency MUST NOT dictate the SCR semantic model merely because it is convenient to integrate.
-
----
-
-# 35. Standards Reuse
-
-SCR SHOULD reuse established open standards wherever an applicable standard exists and can express the required semantics without unacceptable semantic loss.
-
-Potential standards include:
-
-```text
-URI / IRI
-JSON / JSON-LD
-CBOR
-RDF / RDF-star
-SHACL
-OWL / RDFS
-ISO GQL
-ISO 8601
-RFC 3339
-UCUM
-OGC standards
-EPSG spatial references
-glTF
-GeoJSON
-WKT / WKB
-Parquet
-ONNX
-WASM
-COSE / JOSE
-```
-
-Standards provide interoperability mechanisms.
-
-They do not automatically become SCR's semantic authority.
-
----
-
-# 36. Repository Inspection Rules
-
-Before modifying an unfamiliar area, an agent MUST inspect:
-
-1. the relevant `101_definition.md`
-2. parent domain definition
-3. relevant sibling definitions
-4. relevant interfaces
-5. existing implementation
-6. tests
-7. status information
-8. transformation/lowering/provider relationships
-
-Agents MUST NOT modify a file based solely on its filename.
-
----
-
-# 37. No Silent Architecture Changes
+# 66. No Silent Architecture Changes
 
 Agents MUST NOT:
 
 * rename semantic domains without justification
-* merge domains because they appear similar
-* split domains merely because implementation is large
-* move concepts between domains without updating definitions
+* merge domains because their names appear similar
+* split domains solely because implementation is large
+* move concepts without updating semantic definitions
 * redefine terminology locally
-* introduce implementation-specific semantics into normative definitions
-* replace semantic relationships with filesystem relationships
-* make a provider authoritative
-* introduce a new serialization format merely for convenience
-* introduce persistence assumptions into the semantic model
-* introduce hardware-specific assumptions into domain semantics
+* make a provider semantically authoritative
+* introduce provider-specific ontology into normative definitions
+* infer semantics from filesystem structure
+* create a second competing graph authority
+* introduce persistence assumptions into semantic definitions
+* introduce hardware-specific assumptions into semantic definitions
+* silently change identity semantics
+* collapse absence and deletion
+* collapse references into copied values
+* collapse observations into perceptions
+* collapse streams into transports
+* collapse messages into events
+* collapse providers into services
+* treat implementation convenience as semantic authority
 
-Architectural changes require explicit documentation.
+Architectural changes MUST be explicitly documented.
 
 ---
 
-# 38. Current Structural Ambiguities
+# 67. Repository Inspection Rule
 
-The following situations require care rather than automatic cleanup.
-
-## 38.1 Dynamics Evolution vs Evolution
+Before modifying an unfamiliar semantic area, an agent MUST inspect:
 
 ```text
-502_Dynamics/Evolution
-704_Evolution
+1. Relevant 101_definition.md
+2. Parent domain definition
+3. Relevant sibling definitions
+4. Relevant interfaces
+5. Relevant contracts
+6. Existing implementation
+7. Tests
+8. Status information
+9. Transform relationships
+10. Lowering relationships
+11. Provider relationships
+12. Runtime relationships
 ```
 
-These are intentionally distinguishable.
-
-`502_Dynamics/Evolution` concerns evolution of dynamical state.
-
-`704_Evolution` concerns population, lineage, inheritance, variation, selection, and evolutionary change.
-
-Do not merge them.
+Agents MUST NOT modify a semantic definition based solely on its filename or current implementation.
 
 ---
 
-## 38.2 Local Optimization vs Optimization Domain
-
-```text
-202_Math/Optimization
-701_Optimization
-```
-
-The first concerns mathematical optimization.
-
-The second defines optimization as an SCR computational domain.
-
----
-
-## 38.3 Specialized Adaptation vs General Adaptation
-
-```text
-601_Agent/Adaptation
-702_Learning/Adaptation
-604_Control/Adaptive
-703_Adaptation
-```
-
-The first three are specialized manifestations.
-
-`703_Adaptation` is the general semantic domain.
-
----
-
-## 38.4 Transform vs Lowering
-
-```text
-905_Transforms
-903_Lowering
-```
-
-Lowering is a specialized transformation class.
-
-The two MUST remain architecturally distinct.
-
----
-
-## 38.5 Domain-local Transformations
-
-Many domains contain their own transformation concepts:
-
-```text
-101_Core/Transforms
-202_Math/Transforms
-302_Geometry/Transform
-303_Topology/Transformation
-401_Morphology/Transformation
-801_Spatial/Transformations
-802_Stream/Transform
-A01_Render/Transform
-```
-
-These are domain-specific transformation semantics.
-
-`905_Transforms` defines cross-domain transformation mechanisms and classifications.
-
----
-
-# 39. Required Agent Behaviour
-
-Agents SHOULD:
-
-* inspect before modifying
-* prefer small coherent changes
-* preserve existing semantics
-* update definitions when semantics change
-* update tests when behaviour changes
-* update status when implementation state changes
-* preserve provenance
-* distinguish normative and descriptive information
-* use existing abstractions before introducing new ones
-* reuse established standards
-* favour semantic composition over duplication
-* document unresolved questions rather than inventing answers
-
-Agents MUST NOT:
-
-* guess missing architecture
-* silently invent semantics
-* treat TODOs as specifications
-* treat implementation convenience as architectural authority
-* duplicate an existing concept without checking its semantic scope
-* collapse distinct abstractions merely because they have similar names
-
----
-
-# 40. Status Discipline
+# 68. Status Discipline
 
 Implementation status MUST be evidence-based.
 
-Preferred status progression:
+The preferred progression is:
 
 ```text
-concept
-  ↓
-specified
-  ↓
-tested
-  ↓
-implemented
-  ↓
-validated
-  ↓
-integrated
-  ↓
-production-ready
+Concept
+   ↓
+Specified
+   ↓
+Tested
+   ↓
+Implemented
+   ↓
+Validated
+   ↓
+Integrated
+   ↓
+Production Ready
 ```
 
-A domain being present in the filesystem does not imply that it is implemented.
+Presence in the filesystem does not imply implementation.
 
-A `101_definition.md` proves specification exists.
+Presence of `101_definition.md` proves specification exists.
 
 It does not prove implementation exists.
 
 ---
 
-# 41. Completeness Criteria
+# 69. Completeness
 
-A semantic domain is not considered complete merely because its directory exists.
-
-A mature domain SHOULD have:
+A mature semantic domain SHOULD contain:
 
 ```text
 101_definition.md
 102_status.yaml
 Semantic Model
 Invariants
-Interfaces
+Identity Semantics
+Reference Semantics
 Composition Rules
+Interfaces
 Error Semantics
 Implementation
 Tests
@@ -1624,114 +2147,80 @@ Provenance
 Documentation
 ```
 
-Not every domain will require every item immediately.
+Not every domain requires every item immediately.
 
-Status MUST explicitly identify what is missing.
+`102_status.yaml` MUST identify what remains incomplete.
 
 ---
 
-# 42. Definition of Done
+# 70. Definition of Done
 
 For a new semantic capability:
 
 ```text
 [ ] Semantic concept identified
-[ ] Parent domain identified
-[ ] 101_definition.md updated
-[ ] Semantic model defined
+[ ] Owning domain identified
+[ ] Existing concepts searched
+[ ] Semantic definition updated
+[ ] Identity semantics considered
+[ ] Reference semantics considered
+[ ] Nullary relation semantics considered
+[ ] Deletion / absence semantics considered
+[ ] Semantic relationships defined
 [ ] Invariants defined
-[ ] Relationships defined
 [ ] Interfaces identified
-[ ] Inputs/outputs defined
+[ ] Inputs / outputs defined
+[ ] State defined
 [ ] Error semantics defined
 [ ] Tests specified
 [ ] Implementation completed
 [ ] MLIR representation considered
 [ ] Transformations considered
 [ ] Lowering considered
-[ ] Provider strategy considered
+[ ] Provider strategy assessed
 [ ] Validation completed
-[ ] 102_status.yaml updated
-[ ] Library graph regenerated
+[ ] Status updated
+[ ] Derived library graph regenerated
 ```
 
 ---
 
-# 43. Program Increment Workflow
+# 71. Semantic Promotion Rule
 
-The recommended workflow is:
+A concept SHOULD become a first-class semantic-library concept only when it satisfies a meaningful semantic need.
+
+Before introducing a new concept, an agent MUST ask:
 
 ```text
-                    ┌──────────────────────┐
-                    │ Semantic Definition  │
-                    │ 101_definition.md    │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Semantic Contract    │
-                    └──────────┬───────────┘
-                               │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-          Implementation     Tests        MLIR Model
-                │              │              │
-                └──────────────┼──────────────┘
-                               ▼
-                         Validation
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Engineering Status   │
-                    │ 102_status.yaml      │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │ Derived Library Graph│
-                    │ 103_library.graph    │
-                    └──────────────────────┘
+Does this already exist?
+
+If yes:
+    Can the existing concept express the requirement?
+
+If no:
+    Is the difference semantically fundamental?
+
+If yes:
+    Which domain owns it?
+
+Does it require:
+    identity?
+    invariants?
+    relationships?
+    state?
+    contracts?
+    independent composition?
 ```
 
-This is a control-plane workflow, not a runtime execution pipeline.
+Implementation convenience alone is insufficient justification for semantic promotion.
 
 ---
 
-# 44. Runtime Architecture
+# 72. Adaptive Execution
 
-At runtime, the conceptual flow is different:
+SCR is intended to support adaptive execution.
 
-```text
-Application
-     ↓
-Semantic Model
-     ↓
-Semantic MLIR
-     ↓
-Analysis
-     ↓
-Transformation
-     ↓
-Lowering
-     ↓
-Provider Selection
-     ↓
-Scheduling
-     ↓
-Execution
-     ↓
-Observation / Telemetry
-     ↓
-Re-analysis
-```
-
-The runtime MAY dynamically revisit transformation, provider, scheduling, or execution decisions.
-
----
-
-# 45. Adaptive Execution
-
-SCR is intended to support execution decisions based on:
+Execution decisions may depend on:
 
 ```text
 Semantic Requirements
@@ -1749,9 +2238,9 @@ Performance
 Telemetry
 ```
 
-This means execution is not necessarily a fixed compilation pipeline.
+Execution is therefore not necessarily a fixed compilation pipeline.
 
-It may become:
+A runtime may perform:
 
 ```text
 Analyze
@@ -1760,7 +2249,7 @@ Transform
    ↓
 Lower
    ↓
-Select Provider
+Resolve Provider
    ↓
 Execute
    ↓
@@ -1771,139 +2260,222 @@ Re-analyze
 Reconfigure
 ```
 
-This is particularly important for adaptive, distributed, streaming, simulation, neural, and heterogeneous workloads.
+These execution mechanisms MUST remain subordinate to semantic contracts.
 
 ---
 
-# 46. Reference Computational Workload
+# 73. EGS and the Semantic Library
 
-A useful integration workload should exercise several domains simultaneously.
+The Executable Graph Server (EGS) operates on the executable semantic graph.
 
-For example:
+From the SCR perspective:
+
+> **EGS sees hypergraphs and identifiers.**
+
+Applications and providers may internally use:
 
 ```text
-Spatial Environment
-       ↓
-Fields
-       ↓
-Topology / Geometry
-       ↓
+Mojo
+MLIR
+WASM
+Native Code
+GPU APIs
+Libraries
+Frameworks
+Operating-System Facilities
+Remote Services
+```
+
+These implementation details do not replace the canonical semantic graph.
+
+EGS resolves semantic requirements into executable realizations.
+
+---
+
+# 74. Semantic Machine Model
+
+The Semantic Machine Model provides semantic descriptions of computational environments.
+
+A computational machine or space may expose:
+
+```text
+Identity
+ISA
+Processing
+Memory
+Storage
+Network
+Location
+Capabilities
+Resources
+Security
+Lifecycle
+Meaning
+```
+
+This allows SCR to reason about:
+
+```text
+Machine
+Node
+VM
+Container
+Process
+Namespace
+Device
+Storage
+Remote Space
+```
+
+as semantic computational objects rather than merely infrastructure abstractions.
+
+---
+
+# 75. Runtime and Library Separation
+
+The semantic library describes what runtime entities mean.
+
+The runtime implements those meanings.
+
+Therefore:
+
+```text
+lib/
+    What it means
+
+runtime/
+    How it executes
+
+providers/
+    How specialized capabilities are supplied
+
+apps/
+    How capabilities are composed into applications
+```
+
+The runtime MUST NOT silently become the semantic definition of the library.
+
+---
+
+# 76. Reference Integration Pattern
+
+A representative cross-domain computation may look like:
+
+```text
+Semantic Field
+      ↓
+Spatial / Geometry / Topology
+      ↓
 Morphology
-       ↓
+      ↓
 Physics
-       ↓
+      ↓
 Dynamics
-       ↓
-Agents
-       ↓
-Perception
-       ↓
-Neural Computation
-       ↓
-Control
-       ↓
-Learning / Adaptation
-       ↓
-Evolution / Ecology
-       ↓
+      ↓
 Simulation
-       ↓
-Rendering
-       ↓
-Stream / Messaging
+      ↓
+Agent
+      ↓
+Perception
+      ↓
+Neural
+      ↓
+Control
+      ↓
+Learning / Adaptation
+      ↓
+Interaction
+      ↓
+Action
+      ↓
+Semantic Field
 ```
 
-The important property is not the example itself.
-
-The important property is that each domain retains its semantic identity while composing with the others.
-
----
-
-# 47. AI Agent Decision Rule
-
-When uncertain about an implementation, an agent should ask:
-
-### 1. What semantic concept am I implementing?
-
-If the answer is unclear, stop and inspect the relevant definition.
-
-### 2. Which domain owns the concept?
-
-Do not introduce a new abstraction before determining whether the concept already exists elsewhere.
-
-### 3. What does the semantic contract require?
-
-Read the parent and child definitions.
-
-### 4. What invariants must remain true?
-
-Identify them before modifying code.
-
-### 5. Is this semantic, representational, transformational, or implementation-specific?
-
-Classify it explicitly.
-
-### 6. Is this a transformation or a lowering?
-
-Do not conflate them.
-
-### 7. Is this a capability or a provider?
-
-Capabilities describe what is possible.
-
-Providers describe how it is realized.
-
-### 8. Does the change alter meaning or merely realization?
-
-If meaning changes, the semantic definition must be reviewed.
-
-### 9. What evidence supports the implementation status?
-
-Do not claim completion without tests or validation.
-
----
-
-# 48. Final Architectural Principle
-
-SCR is intended to provide a computational environment in which meaning can remain stable while representation, transformation, implementation, provider, execution strategy, and hardware can change.
-
-The architecture therefore depends upon maintaining the following separation:
+Rendering and streaming may provide observation and communication pathways:
 
 ```text
-                 SEMANTIC MEANING
-                        │
-                        ▼
-                 Semantic Contract
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-       Analysis     Transformation  Composition
-          │             │             │
-          └─────────────┼─────────────┘
-                        ▼
-                     Lowering
-                        │
-                        ▼
-                    Provider
-                        │
-                        ▼
-                    Execution
-                        │
-              ┌─────────┴─────────┐
-              ▼                   ▼
-           Hardware            Runtime
+Semantic Field
+      │
+      ├── Rendering → Observation → Perception
+      │
+      └── Stream → Messaging → External Computational Entity
 ```
 
-The implementation may change.
+The example is a composition pattern, not a mandatory execution sequence.
 
-The provider may change.
+---
 
-The representation may change.
+# 77. Architectural Invariants
 
-The hardware may change.
+The following principles are mandatory:
 
-The execution strategy may change.
+```text
+LIB-001  Semantic meaning is authoritative.
+LIB-002  The canonical semantic structure is a hypergraph.
+LIB-003  Graphs are not automatically semantic authority.
+LIB-004  Filesystem hierarchy does not define semantic hierarchy.
+LIB-005  Providers are not semantic authorities.
+LIB-006  Provider implementations live outside lib/.
+LIB-007  Semantic definitions remain implementation-independent.
+LIB-008  Representation does not define ontology.
+LIB-009  Identity and content identity remain distinct.
+LIB-010  References remain distinct from referenced entities.
+LIB-011  Deletion does not imply historical erasure.
+LIB-012  Absence does not imply nonexistence.
+LIB-013  Nullary relations remain semantically representable.
+LIB-014  Stream semantics remain distinct from transport.
+LIB-015  Messaging remains distinct from stream semantics.
+LIB-016  Observation remains distinct from perception.
+LIB-017  Event remains distinct from observation.
+LIB-018  Action remains distinct from operation.
+LIB-019  Physics, dynamics and simulation remain distinct.
+LIB-020  Rendering does not redefine semantic truth.
+LIB-021  MLIR is a representation/compilation substrate, not semantic authority.
+LIB-022  Transformations must declare semantic effects.
+LIB-023  Lowering is a specialized transformation.
+LIB-024  Provider substitution requires semantic conformance.
+LIB-025  Status does not redefine specification.
+LIB-026  Derived graphs do not redefine specification.
+LIB-027  Semantic interfaces are not merely language interfaces.
+LIB-028  Execution behaviour becomes semantic only where explicitly declared.
+LIB-029  Nondeterminism must be explicit where semantics require determinism.
+LIB-030  Provider-specific ontology must not leak into normative semantics.
+LIB-031  Domain composition must be semantic rather than filesystem-derived.
+LIB-032  New semantic concepts require explicit ownership and justification.
+```
 
-The semantic contract must not change accidentally.
+---
 
-> **SCR exists to make computational meaning explicit, composable, transformable, analyzable, and executable across heterogeneous implementations without making any particular implementation the definition of the computation.**
+# 78. Final Agent Principle
+
+When implementing SCR, an agent must continuously ask:
+
+```text
+What does this mean?
+        ↓
+Which semantic domain owns that meaning?
+        ↓
+What is the canonical semantic representation?
+        ↓
+What invariants must hold?
+        ↓
+What contract expresses those invariants?
+        ↓
+What representation expresses the contract?
+        ↓
+What implementation realizes it?
+        ↓
+What provider supplies specialized capability?
+        ↓
+What runtime executes it?
+```
+
+Never reverse that reasoning merely because an implementation already exists.
+
+The governing principle of the SCR semantic library is:
+
+> **Define meaning first. Define the contract second. Choose the realization third.**
+
+And:
+
+> **The semantic model is the architecture. The implementation is a realization of that architecture.**
