@@ -1,0 +1,403 @@
+{
+  "baseline_adversarial": {
+    "total": 25,
+    "passed": 25,
+    "results": [
+      {
+        "index": 1,
+        "name": "normal allocation",
+        "passed": true,
+        "detail": "H={42}"
+      },
+      {
+        "index": 2,
+        "name": "overlapping domain",
+        "passed": true,
+        "detail": "rejected: Requested region [64, 192) overlaps sibling domain DOM_A ([0, 128))"
+      },
+      {
+        "index": 3,
+        "name": "nested domain",
+        "passed": true,
+        "detail": "legal subset accepted"
+      },
+      {
+        "index": 4,
+        "name": "out-of-domain allocation",
+        "passed": true,
+        "detail": "rejected: SID 200 is outside domain DOM_A region [0, 128)"
+      },
+      {
+        "index": 5,
+        "name": "stale authority",
+        "passed": true,
+        "detail": "rejected: Stale authority generation 1, current is 2"
+      },
+      {
+        "index": 6,
+        "name": "authority rotation",
+        "passed": true,
+        "detail": "gen=2"
+      },
+      {
+        "index": 7,
+        "name": "revoked authority",
+        "passed": true,
+        "detail": "rejected: Authority AUTH_A is not ACTIVE: AuthorityState.REVOKED"
+      },
+      {
+        "index": 8,
+        "name": "duplicate commit",
+        "passed": true,
+        "detail": "H={42}"
+      },
+      {
+        "index": 9,
+        "name": "SID reuse after retirement",
+        "passed": true,
+        "detail": "rejected: SID 42 has already been historically allocated"
+      },
+      {
+        "index": 10,
+        "name": "snapshot rollback",
+        "passed": true,
+        "detail": "resurrect rejected: SID 2 has already been historically allocated; H={1, 2}"
+      },
+      {
+        "index": 11,
+        "name": "crash during reservation",
+        "passed": true,
+        "detail": "H=set()"
+      },
+      {
+        "index": 12,
+        "name": "crash after commit",
+        "passed": true,
+        "detail": "H={7}"
+      },
+      {
+        "index": 13,
+        "name": "lost acknowledgement",
+        "passed": true,
+        "detail": "H={7}"
+      },
+      {
+        "index": 14,
+        "name": "retry after commit",
+        "passed": true,
+        "detail": "H={7}"
+      },
+      {
+        "index": 15,
+        "name": "concurrent sibling delegation",
+        "passed": true,
+        "detail": "disjoint siblings accepted"
+      },
+      {
+        "index": 16,
+        "name": "concurrent allocation",
+        "passed": true,
+        "detail": "H={10, 11}"
+      },
+      {
+        "index": 17,
+        "name": "malicious allocation outside domain",
+        "passed": true,
+        "detail": "rejected: SID 999 is outside domain DOM_A region [0, 128)"
+      },
+      {
+        "index": 18,
+        "name": "stale process after key rotation",
+        "passed": true,
+        "detail": "rejected: Stale authority generation 1, current is 2"
+      },
+      {
+        "index": 19,
+        "name": "abandoned domain",
+        "passed": true,
+        "detail": "rejected: Domain DOM_ABANDON is not ACTIVE (state: DomainState.RESERVED)"
+      },
+      {
+        "index": 20,
+        "name": "exhausted domain",
+        "passed": true,
+        "detail": "rejected: SID 2 is outside domain DOM_TINY region [0, 2)"
+      },
+      {
+        "index": 21,
+        "name": "fragmented domain",
+        "passed": true,
+        "detail": "disjoint fragments accepted"
+      },
+      {
+        "index": 22,
+        "name": "deep delegation",
+        "passed": true,
+        "detail": "depth 3 accepted"
+      },
+      {
+        "index": 23,
+        "name": "invalid provenance",
+        "passed": true,
+        "detail": "wrong root rejected"
+      },
+      {
+        "index": 24,
+        "name": "corrupted provenance",
+        "passed": true,
+        "detail": "detected: [('IAM-I007', 'Committed SID 5 has no provenance record in P'), ('IAM-I010', 'Historical SID 5 missing provenance record')]"
+      },
+      {
+        "index": 25,
+        "name": "conflicting deterministic allocation",
+        "passed": true,
+        "detail": "rejected: Transaction TX25 already bound to SID 5; conflicting deterministic allocation for SID 6"
+      }
+    ]
+  },
+  "i017_adversarial": {
+    "total": 3,
+    "passed": 3,
+    "results": [
+      {
+        "scenario": "Adv-26: Orphaned SID in H without Provenance",
+        "detected": true,
+        "violations": [
+          [
+            "IAM-I007",
+            "Committed SID 99 has no provenance record in P"
+          ],
+          [
+            "IAM-I010",
+            "Historical SID 99 missing provenance record"
+          ],
+          [
+            "IAM-I017",
+            "Historical SID 99 missing provenance record in P"
+          ]
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "Adv-27: SID in H and P missing from Domain allocated_sids",
+        "detected": true,
+        "violations": [
+          [
+            "IAM-I017",
+            "Historical SID 20 not registered in domain DOM allocated_sids set"
+          ]
+        ],
+        "passed": true
+      },
+      {
+        "scenario": "Adv-28: Corrupted Domain ID in Provenance Record",
+        "detected": true,
+        "violations": [
+          [
+            "IAM-I006",
+            "Provenance for SID 30 references non-existent domain NON_EXISTENT_DOMAIN"
+          ],
+          [
+            "IAM-I017",
+            "Historical SID 30 provenance references invalid domain NON_EXISTENT_DOMAIN"
+          ]
+        ],
+        "passed": true
+      }
+    ]
+  },
+  "temporal_exploration": {
+    "traces_executed": 3,
+    "total_transitions": 21,
+    "legal_transitions": 19,
+    "rejected_transitions": 2,
+    "invariant_violations": 0,
+    "traces": [
+      {
+        "name": "Canonical 18-Stage Temporal Lifecycle",
+        "steps_executed": 18,
+        "step_log": [
+          "1. Root & Space Created",
+          "2. Partition Reserved (DOM_PARENT [0, 128))",
+          "3. Domain Committed",
+          "4. Authority AUTH_1 Activated (gen 1)",
+          "5. Domain Delegated to AUTH_1",
+          "6. Sub-domain DOM_SUB [0, 64) Partitioned & Delegated",
+          "7. SID 10 Reserved via TX_001",
+          "8. SID 10 Committed",
+          "9. Authority AUTH_1 Rotated to Generation 2",
+          "10. SID 20 Allocated under Generation 2 via TX_002",
+          "11. SIDs 10 and 20 Bound to Semantic Entities",
+          "12. SIDs 10 and 20 Manifested",
+          "13. Snapshot Taken (Step 18, |H|=2)",
+          "14. SID 30 Allocated Post-Snapshot via TX_003",
+          "15. Recovered from Snapshot (H monotonicity & consistency checked)",
+          "16. Authority AUTH_1 Revoked",
+          "17. Idempotent Retry of TX_001 Executed",
+          "18. SID 10 Retired"
+        ],
+        "violations": [],
+        "terminal_H": [
+          10,
+          20,
+          30
+        ],
+        "status": "PASS"
+      },
+      {
+        "name": "Stale Authority Generation Rejection Trace",
+        "rejected_expected": true,
+        "rejection_message": "Stale authority generation 1, current is 2",
+        "status": "PASS"
+      },
+      {
+        "name": "Transaction Rebinding Attack Trace",
+        "rejected_expected": true,
+        "rejection_message": "Transaction TX_UNIQUE already bound to SID 50; conflicting deterministic allocation for SID 51",
+        "status": "PASS"
+      }
+    ]
+  },
+  "recovery_resilience": {
+    "all_passed": true,
+    "evaluations": {
+      "1_historical_monotonicity": {
+        "passed": true,
+        "H_before": [
+          10,
+          11,
+          12
+        ],
+        "H_after": [
+          10,
+          11,
+          12
+        ]
+      },
+      "2_historical_consistency": {
+        "passed": true,
+        "violations": []
+      },
+      "3_no_resurrection": {
+        "passed": true
+      },
+      "4_identity_preservation": {
+        "passed": true
+      },
+      "5_authority_preservation": {
+        "passed": true
+      },
+      "6_transaction_preservation": {
+        "passed": true,
+        "idempotent": true,
+        "rebind_rejected": true
+      },
+      "7_binding_preservation": {
+        "passed": true
+      },
+      "8_manifestation_separation": {
+        "passed": true
+      }
+    }
+  },
+  "generation_fencing": {
+    "rotation_generation": 2,
+    "stale_generation_rejected": true,
+    "current_generation_succeeded": true,
+    "reallocate_retired_rejected": true,
+    "all_passed": true
+  },
+  "concurrency": {
+    "disjoint": {
+      "scenario": "disjoint domain concurrency",
+      "interleavings": 2,
+      "all_succeeded": true,
+      "coordination_required": false,
+      "results": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "success": true,
+          "violations": [],
+          "H": [
+            10,
+            200
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "success": true,
+          "violations": [],
+          "H": [
+            10,
+            200
+          ]
+        }
+      ]
+    },
+    "shared": {
+      "scenario": "shared domain concurrency",
+      "distinct_sid_interleavings": 2,
+      "distinct_sid_all_safe": true,
+      "same_sid_second_tx_rejected": true,
+      "rejection_detail": "SID 1 has already been historically allocated",
+      "violations": [],
+      "coordination_required": true
+    },
+    "overlapping_delegation": {
+      "scenario": "overlapping delegation race",
+      "overlap_rejected": true,
+      "detail": "Requested region [64, 192) overlaps sibling domain DOM_A ([0, 128))",
+      "violations": []
+    },
+    "allocation_race": {
+      "scenario": "allocation race",
+      "duplicate_sid_rejected": true,
+      "detail": "SID 5 has already been historically allocated",
+      "H": [
+        5
+      ],
+      "violations": []
+    }
+  },
+  "multi_root": {
+    "independent_roots_created": [
+      "ROOT_A",
+      "ROOT_B"
+    ],
+    "local_sid_collision": true,
+    "global_identity_distinct": true,
+    "gid_a": [
+      "ROOT_A",
+      42
+    ],
+    "gid_b": [
+      "ROOT_B",
+      42
+    ],
+    "passed": true
+  },
+  "derived_allocation": {
+    "derived_sids": [
+      65,
+      66,
+      67,
+      68
+    ],
+    "containment_ok": true,
+    "injectivity_ok": true,
+    "non_reuse_ok": true,
+    "passed": true
+  },
+  "execution_metadata": {
+    "timestamp": "2026-09-15T19:01:49Z",
+    "total_elapsed_seconds": 0.0421,
+    "python_version": "3.13.13 (main, Apr  7 2026, 18:19:01) [GCC 15.2.0]",
+    "readiness_verdict": "READY FOR SID-001"
+  }
+}
