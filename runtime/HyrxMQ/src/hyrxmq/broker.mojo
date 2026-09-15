@@ -12,7 +12,7 @@
 # broker surface itself binds no socket, so `listening` reports the
 # in-process lifecycle, not a bound socket (see status()).
 
-from std.collections import List, Optional
+from std.collections import List, Optional, Dict
 from std.time import monotonic
 
 from hyrx.core.queue import Delivery
@@ -191,12 +191,29 @@ struct HyrxMQBroker:
         var body: List[UInt8],
         prop_flags: UInt16,
         var prop_bytes: List[UInt8],
+        var headers: Dict[String, String],
     ) raises -> Int:
         """Publish a body + the publisher's own content header (flag word +
-        raw property-list slice). Returns number of queues routed."""
+        raw property-list slice) plus the DECODED headers map for headers-
+        exchange routing. Returns number of queues routed."""
         return self._adapter.publish_with_props(
             self._engine, routing_key^, body^, exchange^,
-            prop_flags, prop_bytes^,
+            prop_flags, prop_bytes^, headers^,
+        )
+
+    # headers-exchange slice: header-only in-process publish (no content-
+    # property slice). Additive sibling of publish_with_props for callers that
+    # route on headers without an AMQP property frame.
+    def publish_with_headers(
+        mut self,
+        var exchange: String,
+        var routing_key: String,
+        var body: List[UInt8],
+        var headers: Dict[String, String],
+    ) raises -> Int:
+        """Publish a body carrying a header map through an exchange."""
+        return self._adapter.publish_with_headers(
+            self._engine, routing_key^, body^, exchange^, headers^,
         )
 
     # 0017 T3: the DEFAULT exchange ("") publish — DIRECT into the queue

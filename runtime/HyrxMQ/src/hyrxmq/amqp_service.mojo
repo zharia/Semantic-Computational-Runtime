@@ -99,8 +99,9 @@
 #   (PendingPublish.prop_flags + _pending_prop_bytes) and re-emitted verbatim
 #   on basic.deliver / basic.get-ok / basic.return (no re-serialization; the
 #   flag word is transmitted as part of the same decode plane). Per-property
-#   VALUES are decoded only at the client (pika) — the service derives,
-#   never stores, them.
+#   VALUES are not re-serialized; the basic `headers` property is the one
+#   value decoded, and only into a routing-only map for a "headers" exchange
+#   (headers-exchange slice — the raw slice above stays authoritative).
 # - delivery-tags are now PER-CHANNEL (0017 T2): get-consumer and
 #   push-consumer deliveries share one namespace per (connection, channel);
 #   ack/nack resolve through the service map, ON TOP of unchanged engine tags.
@@ -602,6 +603,77 @@ struct ByteReader:
         return out^
 
 
+# ---- headers-exchange support: field-table / content-property decodes ----
+#
+# These are DERIVED READS only: the publisher's raw property slice stays the
+# routing-inert source of truth for byte-faithful re-emission (see
+# _on_content_header); the decoded map is used to ROUTE and is never stored
+# back into the AMQP property bytes.
+
+def field_table_to_header_args(ref ft: FieldTable) raises -> HeaderArgs:
+    """Convert a decoded AMQP field table into headers-exchange bind arguments.
+
+    String values bind as strings (the only value type `_headers_match`
+    compares); non-string entries are skipped. Wire order is preserved so the
+    client's `x-match` entry reaches the matcher as sent.
+    """
+    var args = HeaderArgs()
+    var names = ft.keys()
+    for i in range(len(names)):
+        var name = names[i]
+        var sval = ft.get_string(name)
+        if sval.__bool__():
+            args.add(name.copy(), sval.value())
+    return args^
+
+
+def _skip_shortstr(ref data: List[UInt8], pos: Int) -> Int:
+    """Advance past one AMQP shortstr at `pos` (bounds-clamped)."""
+    if pos >= len(data):
+        return pos
+    var n = Int(data[pos])
+    var next = pos + 1 + n
+    if next > len(data):
+        return len(data)
+    return next
+
+
+def decode_headers_property(
+    prop_flags: UInt16, ref prop_bytes: List[UInt8]
+) raises -> Dict[String, String]:
+    """Extract the basic `headers` property (flag 0x2000) as a routing map.
+
+    Reads a COPY of the property-list bytes; `prop_bytes` is untouched and
+    still re-emits the publisher's verbatim slice. Properties that precede
+    `headers` in amqp0-9-1 §3.2.7 order (content-type, content-encoding) are
+    skipped so the field table starts at the right offset. A truncated or
+    malformed table yields an empty map (never route on partial data).
+    """
+    var out = Dict[String, String]()
+    if (prop_flags & 0x2000) == 0:
+        return out^
+    var pos = 0
+    if (prop_flags & 0x8000) != 0:  # content-type: shortstr
+        pos = _skip_shortstr(prop_bytes, pos)
+    if (prop_flags & 0x4000) != 0:  # content-encoding: shortstr
+        pos = _skip_shortstr(prop_bytes, pos)
+    if pos + 4 > len(prop_bytes):
+        return out^
+    var n = (
+        (Int(prop_bytes[pos]) << 24)
+        | (Int(prop_bytes[pos + 1]) << 16)
+        | (Int(prop_bytes[pos + 2]) << 8)
+        | Int(prop_bytes[pos + 3])
+    )
+    if n < 0 or pos + 4 + n > len(prop_bytes):
+        return out^
+    var slice = List[UInt8](capacity=4 + n)
+    for i in range(4 + n):
+        slice.append(prop_bytes[pos + i])
+    var ft = FieldTable.from_bytes(slice^)
+    return ft.to_string_dict()
+
+
 # basic.consume bit-packed flags, packed low-first in spec order:
 # no-local=1, no-ack=2, exclusive=4, no-wait=8.
 def BASIC_CONSUME_BIT_NO_ACK() -> UInt8:
@@ -808,6 +880,9 @@ struct _TxStaged:
     var prop_flags: UInt16
     var body: List[UInt8]
     var props: List[UInt8]
+    # headers-exchange slice: the decoded basic `headers` routing map rides the
+    # staging exactly as it rode the immediate path.
+    var headers: Dict[String, String]
 
     def __init__(
         out self,
@@ -817,6 +892,7 @@ struct _TxStaged:
         flags: UInt16,
         var body_bytes: List[UInt8],
         var prop_bytes: List[UInt8],
+        var hdrs: Dict[String, String],
     ):
         self.exchange = ex^
         self.routing_key = rk^
@@ -824,6 +900,7 @@ struct _TxStaged:
         self.prop_flags = flags
         self.body = body_bytes^
         self.props = prop_bytes^
+        self.headers = hdrs^
 
 
 struct PendingPublish:
@@ -945,6 +1022,9 @@ struct AMQPService:
     # 0017 T2: the in-flight publish's raw property-list bytes (parallel to
     # `_pending`, which can only carry the Copyable flag word).
     var _pending_prop_bytes: Dict[UInt64, List[UInt8]]
+    # headers-exchange slice: the in-flight publish's DECODED basic `headers`
+    # property (routing read; the raw slice above is still re-emitted verbatim).
+    var _pending_headers: Dict[UInt64, Dict[String, String]]
     # 0017 T2: per-(connection, channel) delivery-tag namespaces (the WIRE tag
     # layer, superimposed on the engine's own per-queue tags — see
     # _ChanTagMap above).
@@ -1063,6 +1143,7 @@ struct AMQPService:
         self._pending = Dict[UInt64, PendingPublish]()
         self._pending_bodies = Dict[UInt64, List[UInt8]]()
         self._pending_prop_bytes = Dict[UInt64, List[UInt8]]()
+        self._pending_headers = Dict[UInt64, Dict[String, String]]()
         self._chan_maps = Dict[UInt64, _ChanTagMap]()
         self._chan_key_list = List[UInt64]()
         self._get_cids = Dict[UInt64, UInt64]()
@@ -2197,7 +2278,15 @@ struct AMQPService:
             var bq = self._vhost_scope(conn_id, reader.read_short_string())
             var be = self._vhost_scope(conn_id, reader.read_short_string())
             var brk = reader.read_short_string()
-            _ = self._broker.bind_queue(bq^, be^, brk^, HeaderArgs())
+            # headers-exchange slice: the trailing `arguments` field table
+            # carries x-match + header criteria. Decode it (a table shorter
+            # than its 4-byte length prefix — as some existing senders emit —
+            # is treated as empty, so argument-less binds are unchanged).
+            var bargs = HeaderArgs()
+            if reader.remaining() >= 4:
+                var bft = reader.read_table()
+                bargs = field_table_to_header_args(bft)
+            _ = self._broker.bind_queue(bq^, be^, brk^, bargs^)
             return self._reply(
                 chan,
                 QUEUE_BIND_OK().class_id,
@@ -2256,6 +2345,7 @@ struct AMQPService:
                     s.prop_flags,
                     s.body.copy(),
                     s.props.copy(),
+                    s.headers.copy(),
                     out,
                 )
                 if not ok:
@@ -2817,6 +2907,9 @@ struct AMQPService:
         # 0017 T2: the stored property slice dies with the publish state.
         if conn_id in self._pending_prop_bytes:
             _ = self._pending_prop_bytes.pop(conn_id)
+        # headers-exchange slice: the decoded routing map dies with it too.
+        if conn_id in self._pending_headers:
+            _ = self._pending_headers.pop(conn_id)
 
     def _fail_content(mut self, conn_id: UInt64, var why: String) raises:
         """A content frame violated §2.3.5 ordering/bounds.
@@ -3148,8 +3241,11 @@ struct AMQPService:
         """A content HEADER frame: it must follow a basic.publish METHOD frame.
 
         Only the class-id (must be basic=60) and body-size (§2.3.5.2 offsets
-        0:2 / 4:12) are read; the property-list is deliberately NOT decoded
-        (property fidelity is NOT PROVEN — see module header).
+        0:2 / 4:12) are read for the message envelope; the property-list is
+        stored VERBATIM (byte fidelity for re-emission) and the basic
+        `headers` property is decoded into a routing-only map for a "headers"
+        exchange (headers-exchange slice). The raw slice stays authoritative:
+        no other property value is decoded and nothing is re-serialized.
 
         0017 T1: a content frame on a CLOSED channel is tolerated silently
         (returns None without touching any state); a completed zero-size
@@ -3223,6 +3319,13 @@ struct AMQPService:
         # copy of the raw property bytes per publish).
         var prop_slice = List[UInt8]()
         swap(prop_slice, hdr.properties)
+        # headers-exchange slice: decode the `headers` property into a routing
+        # map from a COPY of the slice. The slice itself is stored untouched
+        # below, so re-emission stays byte-identical whether or not a client
+        # reads it back.
+        self._pending_headers[conn_id] = decode_headers_property(
+            hdr.property_flags, prop_slice
+        )
         self._pending_prop_bytes[conn_id] = prop_slice^
         if size == 0:
             # Zero-length body: exactly ZERO body frames follow (§2.3.5.3).
@@ -3303,6 +3406,7 @@ struct AMQPService:
         prop_flags: UInt16,
         var body: List[UInt8],
         var props: List[UInt8],
+        var headers: Dict[String, String],
         mut out: List[UInt8],
     ) raises -> Bool:
         """Execute ONE publish (immediate or replayed-from-tx) and append the
@@ -3357,9 +3461,12 @@ struct AMQPService:
                 prop_flags, props^,
             )
         else:
+            # headers-exchange slice: the decoded `headers` map reaches the
+            # engine envelope so a "headers" exchange can match on it. The raw
+            # prop slice still rides `props` for byte-faithful re-emission.
             routed = self._broker.publish_with_props(
                 exchange.copy(), routing_key.copy(), body^,
-                prop_flags, props^,
+                prop_flags, props^, headers^,
             )
         if do_echo and routed <= 0:
             # basic.return (60,50) args: reply-code(short)=312 + reply-text
@@ -3417,6 +3524,11 @@ struct AMQPService:
         var props = List[UInt8]()
         if conn_id in self._pending_prop_bytes:
             props = self._pending_prop_bytes.pop(conn_id)
+        # headers-exchange slice: the decoded basic `headers` map (empty when
+        # the publisher sent no headers property).
+        var hdrs = Dict[String, String]()
+        if conn_id in self._pending_headers:
+            hdrs = self._pending_headers.pop(conn_id)
         # 0017 T4 tx mode: STAGE (deferred until tx.commit; the exchange
         # existence check stays IMMEDIATE even in tx mode — rabbit checks
         # the exchange at publish time, not at commit; only a real (or the
@@ -3436,7 +3548,7 @@ struct AMQPService:
                 p.channel,
                 _TxStaged(
                     p.exchange.copy(), p.routing_key.copy(), p.mandatory,
-                    p.prop_flags, body^, props^,
+                    p.prop_flags, body^, props^, hdrs^,
                 ),
             )
             return Optional[List[UInt8]]()
@@ -3450,6 +3562,7 @@ struct AMQPService:
             p.prop_flags,
             body^,
             props^,
+            hdrs^,
             out,
         )
         if len(out) == 0:

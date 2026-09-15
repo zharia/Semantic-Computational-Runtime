@@ -159,14 +159,31 @@ struct AMQPAdapter:
         var exchange_name: String,
         prop_flags: UInt16,
         var prop_bytes: List[UInt8],
+        var headers: Dict[String, String],
     ) raises -> Int:
         """Translate AMQP basic.publish carrying the publisher's own content
-        header (flag word + raw property-list slice). Transmitted outbound
-        byte-identically on deliver/get-ok."""
-        var headers = Dict[String, String]()
+        header (flag word + raw property-list slice). The decoded `headers`
+        map is carried on the envelope for headers-exchange routing; the raw
+        slice is transmitted outbound byte-identically on deliver/get-ok."""
         var env = Envelope(MessageID(0), routing_key^, headers^)
         var buf = Buffer(body^)
         var msg = Message(env^, buf^, prop_flags, prop_bytes^)
+        return engine.publish(msg^, exchange_name^)
+
+    # headers-exchange slice: in-process publish carrying only a header map
+    # (no content-property slice), for direct broker-level headers routing.
+    def publish_with_headers(
+        mut self,
+        mut engine: HyrxEngine,
+        var routing_key: String,
+        var body: List[UInt8],
+        var exchange_name: String,
+        var headers: Dict[String, String],
+    ) raises -> Int:
+        """Translate a header-only publish for a "headers" exchange."""
+        var env = Envelope(MessageID(0), routing_key^, headers^)
+        var buf = Buffer(body^)
+        var msg = Message(env^, buf^)
         return engine.publish(msg^, exchange_name^)
 
     # 0017 T3: the DEFAULT exchange ("") publish — routed DIRECT into the

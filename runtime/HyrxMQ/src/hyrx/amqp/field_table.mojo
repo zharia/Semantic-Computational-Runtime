@@ -3,12 +3,11 @@
 # Field tables are string-keyed maps with typed values.
 # Used in connection.start, exchange.declare, queue.declare, etc.
 #
-# NOT IMPLEMENTED: field tables are not serialized on the wire. to_bytes()/
-# from_bytes() provide the in-memory encoding (tested in
-# tests/phase6/field_table_test.mojo) but NO frame path calls them yet: the
-# `arguments` fields of exchange.declare/queue.declare/basic.consume and the
-# content property table are neither parsed nor emitted (see
-# src/hyrxmq/amqp_service.mojo). Consequence: the encoding is not yet validated
+# WIRE USE (partial): the queue.declare `arguments` table IS decoded by
+# src/hyrxmq/amqp_service.mojo (0017 T3), and the queue.bind `arguments` table
+# plus the basic `headers` content property are decoded for routed headers
+# exchanges (headers-exchange slice). exchange.declare/basic.consume argument
+# tables remain neither parsed nor emitted. The encoding is still not validated
 # against a real AMQP peer, and only the three value types above are covered.
 
 from std.collections import Dict, List
@@ -121,6 +120,27 @@ struct FieldTable:
 
     def has_key(ref self, key: String) -> Bool:
         return key in self._data
+
+    def keys(ref self) -> List[String]:
+        """The table's field names in wire order (owned copies)."""
+        var out = List[String]()
+        for i in range(len(self._keys)):
+            var k = self._keys[i]
+            out.append(k^)
+        return out^
+
+    def to_string_dict(ref self) raises -> Dict[String, String]:
+        """String-valued entries as a Dict, dropping non-string values.
+
+        Routing read only: the field table's wire-order names are preserved;
+        the raw table bytes are never mutated or re-serialized here.
+        """
+        var out = Dict[String, String]()
+        for i in range(len(self._keys)):
+            var k = self._keys[i]
+            if self._data[k].is_string():
+                out[k] = self._data[k].get_string()
+        return out^
 
     def get_string_or(ref self, key: String, default: String) -> String:
         """Non-raising string lookup. Returns default if missing or non-string."""
