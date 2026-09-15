@@ -26,6 +26,15 @@
 - Invariant audit (18 invariants)
 - Documentation truth audit
 - Security audit
+- `HYRXMQ_USERS` environment variable: `username:password[:vhost[:configure,write,read]]`
+- Headers-exchange routing over AMQP: `queue.bind` arguments table and the
+  `basic.publish` `headers` property are decoded and matched (x-match all/any)
+- `frame_max` / `channel_max` negotiation: `min(server, client)` computed on
+  tune-ok, codec re-limited, `channel_max exceeded` (504) above the negotiated
+  channel number
+- `basic.qos` prefetch-count enforced per channel/connection in the delivery path
+- Configurable fuzz iteration count (`HYRXMQ_FUZZ_ITERS`)
+- 1-hour soak PASS and 1,000,000-iteration fuzz bar PASS (evidence)
 
 ### Changed
 - UserRecord now carries vhost, can_configure, can_write, can_read
@@ -80,6 +89,15 @@
   (Linux special-cases init) and were SIGKILLed after the grace period. The web
   binary now installs an exit-on-signal handler; K8s `preStop` uses
   `kill -TERM 1` (dash-safe).
+- **Headers exchanges were dead over the wire**: `queue.bind` discarded the
+  binding-arguments field table and `basic.publish` never decoded the `headers`
+  property, so the (correct) core matcher was unreachable by any client.
+- **`HYRXMQ_USERS` was never read**: credentials, vhost and ACLs could not be
+  configured in a container.
+- **`benchmarks/certification/soak.py --out` was a silent no-op**.
+- **Stale `NOT IMPLEMENTED` comments** in `adapter.mojo` / `exchange.mojo`
+  corrected (headers matching, `basic.ack` multiple=true, and the `requeue` bit
+  are all implemented).
 
 ### Benchmark — HyrxMQ vs RabbitMQ 4.x vs LavinMQ
 
