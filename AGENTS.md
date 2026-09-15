@@ -160,3 +160,25 @@ Detailed subject files in `001_agents/`:
 | `17_agent_behavior.md` | Failure modes, mental model, three questions |
 | `18_final_rules.md` | 20 mandatory rules |
 | `19_subagent_policy.md` | Subagent delegation, output discipline, context budget |
+
+---
+
+## Shell Safety (MANDATORY — non-negotiable)
+
+**NEVER use `pkill -f`.** It matches the full command line and can kill the
+opencode process, the shell, or unrelated user processes. This is a hard ban.
+
+Forbidden patterns:
+- `pkill -f <pattern>`
+- `killall <name>` (same class of hazard)
+- `pkill <name>` without a verified, uniquely-owned PID
+
+Allowed ways to stop a process you started:
+- Keep the PID from the launch (`$!`) and `kill -TERM "$PID"` / `kill -9 "$PID"`.
+- Use a wrapper script with a `trap` that kills only its own child PID.
+- Use `pgrep -x <exact-name>` and verify ownership (same UID, expected parent)
+  **before** killing each PID individually.
+- Prefer `timeout` to bound any foreground command that could hang.
+
+If cleanup of stray processes is genuinely required, list them first with
+`pgrep -a`, show the output, and kill only exact PIDs that belong to the task.
