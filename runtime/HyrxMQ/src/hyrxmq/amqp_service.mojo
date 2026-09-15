@@ -658,16 +658,26 @@ def append_message_frames(
     this so a completed message is written ONCE, into the reply buffer, with no
     intermediate per-message list allocation and no whole-message copy.
     """
-    AMQPFrameCodec.append_method_frame(out, chan, mid.class_id, mid.method_id, args^)
     var body_len = len(body)
+    var chunk = frame_max - 8
+    if chunk < _MIN_BODY_CHUNK():
+        chunk = _MIN_BODY_CHUNK()
+    var nchunks = 0
+    if body_len > 0:
+        nchunks = (body_len + chunk - 1) // chunk
+    out.reserve(
+        len(out)
+        + (12 + len(args))
+        + (22 + len(prop_list))
+        + body_len
+        + 8 * nchunks
+    )
+    AMQPFrameCodec.append_method_frame(out, chan, mid.class_id, mid.method_id, args^)
     AMQPFrameCodec.append_header_frame(
         out, chan, mid.class_id, UInt64(body_len), prop_flags, prop_list^
     )
     if body_len == 0:
         return
-    var chunk = frame_max - 8
-    if chunk < _MIN_BODY_CHUNK():
-        chunk = _MIN_BODY_CHUNK()
     if contiguous_batch_enabled():
         # Contiguous path: no intermediate `part`/`wf` lists — body chunks are
         # read DIRECTLY from the `body` list via unsafe_ptr (count-based
@@ -3575,6 +3585,22 @@ struct AMQPService:
         pure readout source and stays queue-owned; the caller MUST invoke this
         before any ack/reject that destroys the message.
         """
+        var chunk = self._frame_max - 8
+        if chunk < _MIN_BODY_CHUNK():
+            chunk = _MIN_BODY_CHUNK()
+        # Reserve the EXACT reply size up front so the three frame appends and
+        # the payload copy never trigger a geometric realloc (the reply is the
+        # delivery/get hot path for every message). reserve only grows.
+        var nchunks = 0
+        if body_size > 0:
+            nchunks = (body_size + chunk - 1) // chunk
+        out.reserve(
+            len(out)
+            + (12 + len(args))
+            + (22 + len(prop_list))
+            + body_size
+            + 8 * nchunks
+        )
         AMQPFrameCodec.append_method_frame(
             out, chan, mid.class_id, mid.method_id, args^
         )
@@ -3583,9 +3609,6 @@ struct AMQPService:
         )
         if body_size == 0:
             return
-        var chunk = self._frame_max - 8
-        if chunk < _MIN_BODY_CHUNK():
-            chunk = _MIN_BODY_CHUNK()
         var pos = 0
         while pos < body_size:
             var n = chunk

@@ -414,3 +414,140 @@ failed: tests/_selftest/assertion_negfail.mojo   # deliberate negative self-test
 
 Expected baseline; all functional, protocol, storage and fuzz suites pass.
 
+
+---
+
+# Round 3 — 2026-09-15 (targeting the remaining losing cells)
+
+**Method:** interleaved A/B on the SAME host with `build/hyrxmq-listen` (base)
+and the Round-3 binary, two ports, alternating start order, median of N reps,
+using the compiled Go `/tmp/loadgen` (the three-broker load generator). Every
+change was measured against its immediate predecessor; non-wins were reverted.
+`perf record -p <broker-pid>` on the publish path showed **`feed_bytes` 31 %** of
+cycles (nearly all self, i.e. inline memcpy/memmove) and **`try_parse_frame`
+22 %**.
+
+## R5 — direct recv into the codec tail — **CONFIRMED / KEPT**
+
+**Finding.** The event-tier read allocated a fresh `List(want)` per step, then
+`feed_bytes` either adopted it (only when the codec was fully drained) or
+appended it to the existing buffer. For a 64 KiB publish, consecutive messages
+are coalesced and the buffer is *not* drained, so `feed_bytes` fell to the
+compaction memmove (~64 KB) **plus** the append memcpy (~64 KB) per message —
+≈131 KB moved per 64 KB message, on top of the `try_parse_frame` payload copy.
+A byte-level simulation of the codec against the real 65604-byte message
+confirmed `copied_compact ≈ 65443` and `copied_append ≈ 65538` bytes per message.
+
+**Change.** Added an additive direct-recv seam to `AMQPFrameCodec`
+(`stream_reserve` / `stream_ptr` / `stream_commit`); the event-tier read now
+recv(2)s straight into the codec's own tail, removing the per-read temp List and
+the append memcpy. `feed_bytes` is untouched and still drives the blocking tier,
+the tests and embedders. The unparsed-backlog bound is unchanged: the listener
+clamps `want` with the same `frame_limit()+8 - buffered_bytes()` expression, and
+`stream_reserve` re-checks it before writing.
+
+**Refuted:** deferring compaction past the cursor-past-half trigger (physical
+cap = 2 frames). It helped 64 KiB (+3 %) but hurt 262144 c8 (−6.7 %), so the
+amortized half-buffer compaction was kept.
+
+## R6 — exact reply reservation on the delivery/get path — **CONFIRMED / KEPT**
+
+**Finding.** `perf` on `confirm 65536 c8` showed `List::_realloc` at **14 %**:
+`_append_content_from_delivery` / `append_message_frames` grew the reply with
+several `resize` calls (method, header, each body-frame prefix, the payload
+copy, the frame end), forcing geometric reallocations.
+
+**Change.** Both encoders now `out.reserve(...)` the exact frame size
+(method = 12+args, header = 22+props, body = body_size + 8·chunks) before the
+first append. `reserve` only grows, so the reused `dst` in `_flush_deliveries`
+is unaffected after warm-up.
+
+## Round-3 measured before/after (interleaved, 7 reps; ratio = base/r3, <1 = r3 faster)
+
+| workload | payload | conc | BASE msg/s | Round-3 msg/s | ratio | speedup |
+|---|---|---|---|---|---|---|
+| publish | 65536 | 4 | 57,183 | 61,606 | 0.9282 | **+7.7 %** |
+| publish | 65536 | 8 | 57,043 | 59,264 | 0.9625 | **+3.9 %** |
+| publish | 262144 | 4 | 15,000 | 16,435 | 0.9127 | **+9.6 %** |
+| publish | 262144 | 8 | 14,912 | 15,452 | 0.9651 | **+3.6 %** |
+| pubget | 1024 | 8 | 54,818 | 57,586 | 0.9519 | **+5.1 %** |
+| pubget | 262144 | 8 | 4,157 | 4,310 | 0.9646 | **+3.7 %** |
+| confirm | 262144 | 8 | 4,292.9 | 4,692.4 | 0.9149 | **+9.3 %** |
+
+Cumulative check (5 reps) on the broader targeted set: publish 65536 c4 +6.4 %,
+c8 +2.4 %; publish 262144 c4 +5.8 %, c8 +4.2 %; pubget 1024 c8 +4.6 %, c16
++7.1 %; pubget 262144 c8 +11.9 %; confirm 65536 c8 +3.4 %, confirm 262144 c8
++8.0 %; fanout 1024 c1 +1.2 %, c8 +1.8 %.
+
+Regression guard (7 reps) on cells HyrxMQ already won: publish 64 c8 +0.5 %,
+publish 1024 c8 +4.8 %, pubget 16384 c8 +5.2 %, confirm 64 c8 +3.8 %,
+fanout 1024 c8 +2.4 % — no regression anywhere.
+
+## Round-3 projected three-broker ratios
+
+A fresh Docker matrix was **not** re-run (the image build re-compiles the whole
+Mojo tree + frontend, and the deliverable budget did not justify it). The
+projected ratio is `old_ratio / local_speedup`, assuming the other brokers'
+per-cell fastest rates are unchanged. Treat these as *estimates*, not measured
+Docker ratios.
+
+| workload | payload | conc | REPORT_FINAL ratio | speedup | projected ratio | verdict |
+|---|---|---|---|---|---|---|
+| publish | 65536 | 4 | 1.43 | ×1.064 | **1.34** | still behind (RabbitMQ) |
+| publish | 65536 | 8 | 1.41 | ×1.024 | **1.38** | still behind (RabbitMQ) |
+| publish | 262144 | 4 | 1.44 | ×1.058 | **1.36** | still behind (RabbitMQ) |
+| publish | 262144 | 8 | 1.22 | ×1.042 | **1.17** | behind (RabbitMQ) |
+| pubget | 64 | 8 | 1.20 | ×1.014 | **1.18** | behind (LavinMQ) |
+| pubget | 1024 | 8 | 1.13 | ×1.046 | **1.08** | behind (LavinMQ) |
+| pubget | 1024 | 16 | 1.15 | ×1.071 | **1.07** | behind (LavinMQ) |
+| pubget | 262144 | 8 | 1.06 | ×1.04–1.12 | **0.95–1.02** | now at/near fastest |
+| confirm | 262144 | 8 | 1.11 | ×1.08 | **1.03** | near tie |
+| fanout | 1024 | 8 | 1.24 | ×1.019 | **1.22** | largely unchanged |
+
+## Round-3 remaining gaps and why
+
+1. **publish 65536 / 262144 (1.17–1.38×, RabbitMQ).** The dominant residual is
+   now the single codec→payload `memcpy` in `try_parse_frame` (perf: 22 %). It
+   is the ONE inherent copy that gives the queued message its own owned payload.
+   Removing it needs a borrowed/offset *shared* payload whose ownership is
+   ref-counted — the same lifetime problem documented as R3/R4 and **not safe**
+   under the per-message ownership invariant. Direct recv already removed the
+   second copy (feed append); the alloc itself remains but is small.
+2. **fanout (≈1.19–1.22×, LavinMQ).** `perf` shows the residual is dominated by
+   per-message map churn (`Dict::_find_ref`/`__contains__` ≈17 %) rather than the
+   payload copy at 1 KiB; the per-destination payload copy in
+   `Router._fill_destination` is required (a shared buffer would double-release
+   through `ack_reclaim`/pool). Not changed (R4).
+3. **pubget 64/1024 (1.07–1.18×, LavinMQ).** Per-message dictionary work: each
+   `basic.get` resolves the consumer and the queue name repeatedly across ~8
+   router readouts (`queue_payload_size`, `queue_routing_key`,
+   `queue_message_count`, `redelivered`, `content_prop_flags`,
+   `content_prop_bytes_copy`, …), and each `Queue` readout does two hash lookups
+   (`in` then `[]`). A combined per-delivery view (one consumer lookup + one
+   queue lookup) is the next lever but was out of budget for this round; the
+   encoding is not the bottleneck.
+4. **confirm 262144 high conc (≈1.16–1.18× projected at c16/c32, RabbitMQ).**
+   Publish side is copy-bound as in (1); the untimed `basic.get` drain competes
+   for the single serving thread.
+
+## Round-3 files changed
+
+| File | Region |
+|---|---|
+| `src/hyrx/amqp/frame_codec.mojo` | `stream_reserve` / `stream_ptr` / `stream_commit` (additive direct-recv seam) |
+| `src/hyrxmq/listener.mojo` | event-tier read recvs into the codec tail; `feed_bytes` still used by the blocking tier |
+| `src/hyrxmq/amqp_service.mojo` | exact `out.reserve(...)` in `append_message_frames` and `_append_content_from_delivery` |
+
+Semantics preserved: wire frames are byte-identical (`stream_*` only changes
+where the kernel writes incoming bytes), the accumulation/backlog bound is
+re-checked, `feed_bytes` and its tests are untouched, and per-destination
+payload ownership is unchanged.
+
+## Round-3 test result
+
+```
+TOTAL pass=72 fail=1
+failed: tests/_selftest/assertion_negfail.mojo   # deliberate negative self-test
+```
+
+Expected baseline; all functional, protocol, storage and fuzz suites pass.

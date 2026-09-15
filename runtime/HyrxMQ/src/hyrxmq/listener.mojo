@@ -714,22 +714,28 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 if want <= 0:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
-                var buf = List[UInt8](unsafe_uninit_length=want)
+                # Direct-recv seam: recv STRAIGHT into the codec's own tail, so
+                # the kernel writes the chunk once — no temp List and no
+                # feed_bytes append memcpy. Backlog bound identical to
+                # feed_bytes (want was clamped to the remaining room above).
+                var tail = self._codecs[slot].stream_reserve(want)
                 var got = _recv_dontwait(
                     self._conns[slot].value().poll_fd(),
-                    buf.unsafe_ptr(),
+                    self._codecs[slot].stream_ptr() + tail,
                     want,
                 )
                 if got == -1:
+                    # Roll back the reserved tail (never a gap in the buffer).
+                    self._codecs[slot].stream_commit(tail, 0)
                     return SERVE_PARTIAL()
                 if got == 0:
+                    self._codecs[slot].stream_commit(tail, 0)
                     self._close_slot(slot)
                     return SERVE_CLOSED()
+                self._codecs[slot].stream_commit(tail, got)
                 self._last_serve_read = True
                 self._refresh_last_active(slot)
-                if got < want:
-                    buf.resize(unsafe_uninit_length=got)
-                chunk = buf^
+                chunk = List[UInt8]()
             else:
                 # LEGACY tier: the blocking read, byte-identical to before.
                 chunk = self._conns[slot].value().recv_bytes(want)
@@ -738,7 +744,8 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 if len(chunk) == 0:
                     self._close_slot(slot)
                     return SERVE_CLOSED()
-            self._codecs[slot].feed_bytes(chunk^)
+            if not nb_event:
+                self._codecs[slot].feed_bytes(chunk^)
             frame = self._codecs[slot].try_parse_frame()
             if not frame.__bool__():
                 return SERVE_PARTIAL()

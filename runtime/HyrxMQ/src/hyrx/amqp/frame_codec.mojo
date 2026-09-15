@@ -8,7 +8,7 @@
 # size and never retains more than one maximum-size frame.
 
 from std.collections import List
-from std.memory import unsafe_memcpy
+from std.memory import unsafe_memcpy, UnsafePointer
 
 from hyrx.amqp.constants import (
     FRAME_BODY,
@@ -276,6 +276,49 @@ struct AMQPFrameCodec:
         else:
             for i in range(len(data)):
                 self._buffer.append(data[i])
+
+    # ---- direct-recv seam (event tier): recv straight into the codec tail ----
+    #
+    # Additive to feed_bytes, which stays byte-for-byte for the blocking tier,
+    # the tests and every embedder. These three calls let the listener hand the
+    # codec's own tail buffer to recv(2), so an incoming chunk is written ONCE
+    # by the kernel instead of being copied into a temp List and then appended
+    # into the buffer. The unparsed-backlog bound is unchanged: the caller must
+    # clamp the requested size with buffered_bytes()/frame_limit() exactly as it
+    # does for feed_bytes.
+
+    def stream_reserve(mut self, want: Int) raises -> Int:
+        """Make room for `want` writable bytes at the buffer tail; return the
+        byte offset of that tail. Amortized compaction mirrors feed_bytes: the
+        cursor is only collapsed once it passes half the buffer. The caller
+        recvs into ``stream_ptr() + offset`` and then calls stream_commit."""
+        if want <= 0:
+            return len(self._buffer)
+        var limit = self._max_frame_size + _FRAME_OVERHEAD()
+        if want > limit - self.buffered_bytes():
+            _ = _frame_error(
+                "buffer accumulation "
+                + String(self.buffered_bytes() + want)
+                + " bytes exceeds the buffered-frame limit "
+                + String(limit)
+                + " bytes"
+            )
+        if self._cursor > 0 and self._cursor > len(self._buffer) // 2:
+            self._compact()
+        if self._cursor >= len(self._buffer):
+            self._buffer.clear()
+            self._cursor = 0
+        var old = len(self._buffer)
+        self._buffer.resize(unsafe_uninit_length=old + want)
+        return old
+
+    def stream_ptr(mut self) -> UnsafePointer[UInt8, MutUnsafeAnyOrigin]:
+        """Writable base pointer of the codec buffer (see stream_reserve)."""
+        return self._buffer.unsafe_ptr().as_unsafe_any_origin()
+
+    def stream_commit(mut self, offset: Int, got: Int):
+        """Commit `got` bytes recv'd at `offset` (or roll back with got == 0)."""
+        self._buffer.resize(unsafe_uninit_length=offset + got)
 
     def try_parse_frame(mut self) raises -> Optional[AMQPFrame]:
         """Try to parse a complete frame from the buffer.
