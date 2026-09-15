@@ -23,6 +23,27 @@
 
 ---
 
+## Milestone Architecture & Implementation Index
+
+This specification has been decomposed into 11 formal milestones and 37 sprints strictly complying with [`docs/*.md`](../../docs/).  
+Master Roadmap & Compliance Matrix: **[`milestones/README.md`](milestones/README.md)**
+
+| Milestone | Code | Domain | Spec | Sprints |
+| :--- | :--- | :--- | :--- | :--- |
+| **001** | `PI-CAVE-001A` | Semantic Foundation | [`spec.md`](milestones/001_PI-CAVE-001A_semantic_foundation/spec.md) | 3 sprints |
+| **002** | `PI-CAVE-001B` | Semantic Hypergraph | [`spec.md`](milestones/002_PI-CAVE-001B_hypergraph/spec.md) | 4 sprints |
+| **003** | `PI-CAVE-001C` | Spatial Semantics & Frames | [`spec.md`](milestones/003_PI-CAVE-001C_spatial/spec.md) | 3 sprints |
+| **004** | `PI-CAVE-001D` | Desktop Ontology | [`spec.md`](milestones/004_PI-CAVE-001D_desktop_ontology/spec.md) | 4 sprints |
+| **005** | `PI-CAVE-001E` | Wayland & Louvre Adapter | [`spec.md`](milestones/005_PI-CAVE-001E_wayland_louvre/spec.md) | 3 sprints |
+| **006** | `PI-CAVE-001F` | OGRE & OpenGL Rendering | [`spec.md`](milestones/006_PI-CAVE-001F_rendering/spec.md) | 3 sprints |
+| **007** | `PI-CAVE-001G` | DMA-BUF Zero-Copy Pipeline | [`spec.md`](milestones/007_PI-CAVE-001G_dma_buf/spec.md) | 3 sprints |
+| **008** | `PI-CAVE-001H` | OpenVDB Spatial Fields | [`spec.md`](milestones/008_PI-CAVE-001H_openvdb/spec.md) | 3 sprints |
+| **009** | `PI-CAVE-001I` | Semantic Effect Pipeline | [`spec.md`](milestones/009_PI-CAVE-001I_effect/spec.md) | 4 sprints |
+| **010** | `PI-CAVE-001J` | EGS & Reference Executor | [`spec.md`](milestones/010_PI-CAVE-001J_egs_executor/spec.md) | 3 sprints |
+| **011** | `PI-CAVE-001K` | End-to-End Proof & Acceptance | [`spec.md`](milestones/011_PI-CAVE-001K_end_to_end/spec.md) | 4 sprints |
+
+---
+
 # 1. Executive Summary
 
 PI-CAVE-001 establishes the minimum complete implementation required to demonstrate that SCR can act as a **semantic computational substrate for a spatial desktop environment**.
