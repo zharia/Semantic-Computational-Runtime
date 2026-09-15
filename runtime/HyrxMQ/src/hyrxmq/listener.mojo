@@ -38,6 +38,7 @@ from hyrx.amqp.frame_codec import AMQPFrameCodec
 from hyrx.amqp.constants import (
     CONNECTION_CLOSE,
     CONNECTION_OPEN_OK,
+    CONNECTION_TUNE_OK,
     FRAME_HEARTBEAT,
     FRAME_METHOD,
     MethodID,
@@ -305,9 +306,9 @@ struct AMQPConnServing[Conn: AMQPConn]:
     def __init__(out self, var config: HyrxMQConfig):
         # Enforced ceiling handed to every per-connection codec AND advertised in
         # the connection.tune frame_max field. The client may only request a
-        # SMALLER value in tune-ok; we do not renegotiate the codec upward
-        # (NOT IMPLEMENTED: frame_max renegotiation), so this ceiling is the
-        # effective limit for the whole connection.
+        # SMALLER value in tune-ok; the codec is RE-LIMITED to that negotiated
+        # value after the tune-ok frame is dispatched (set_frame_limit), so the
+        # effective limit follows min(config, client) for the connection.
         self._frame_max = config.frame_max
         # The accept-gate authority (see register below): the transport wrapper
         # does not enforce max_connections (TECH DEBT: enforce in one place).
@@ -773,6 +774,7 @@ struct AMQPConnServing[Conn: AMQPConn]:
         # large-payload publish path.
         var is_close = False
         var server_close = False
+        var is_tune_ok = False
         if (
             frame.value().frame_type == FRAME_METHOD()
             and frame.value().payload_size() >= 4
@@ -784,9 +786,19 @@ struct AMQPConnServing[Conn: AMQPConn]:
                 UInt16(frame.value().payload_byte(2)) << 8
             ) | UInt16(frame.value().payload_byte(3))
             is_close = MethodID(class_id, method_id) == CONNECTION_CLOSE()
+            # frame_max negotiation seam: the client's tune-ok carries the
+            # requested frame_max; after dispatch the codec is re-limited to
+            # the negotiated value (min(server, client)) — the tune-ok arrives
+            # AFTER register, so this is the only point where the per-connection
+            # codec ceiling can still shrink.
+            is_tune_ok = MethodID(class_id, method_id) == CONNECTION_TUNE_OK()
 
         var conn_id = self._conns[slot].value().conn_id()
         var resp = self._service._handle_frame_owned(conn_id, frame.take())
+        if is_tune_ok:
+            var negotiated_fm = self._service.negotiated_frame_max(conn_id)
+            if negotiated_fm > 0:
+                self._codecs[slot].set_frame_limit(negotiated_fm)
         if resp.__bool__():
             # open-ok detected pre-send (borrow-safe pattern)
             var open_ok = _resp_is_open_ok(resp.value())

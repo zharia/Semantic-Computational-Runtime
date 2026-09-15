@@ -1015,6 +1015,10 @@ struct AMQPService:
     var _conns: Dict[UInt64, AMQPConnectionState]
     var _consumers: Dict[UInt64, UInt64]
     var _frame_max: Int
+    # SERVER channel-number ceiling ADVERTISED in connection.tune (10,30). The
+    # negotiated per-connection value is min(this, the client's tune-ok) and is
+    # recorded in AMQPConnectionState._channel_max; channel.open enforces it.
+    var _server_channel_max: UInt16
     # Per-connection inbound content reassembly (single in-flight publish per
     # connection, matching the one-frame-in/one-reply-out dispatch contract).
     var _pending: Dict[UInt64, PendingPublish]
@@ -1095,6 +1099,19 @@ struct AMQPService:
     # 0026: per-consumer backpressure — unacked delivery count and ceiling.
     var _unacked_counts: Dict[UInt64, Int]
     var _max_unacked: Int
+    # basic.qos (60,10) prefetch windows. `_prefetch_chan` is keyed by the
+    # per-(connection, channel) key (`_chan_key`, global=0) and
+    # `_prefetch_global` by connection id (global=1). A stored count of 0 means
+    # "no limit" (the AMQP-0-9-1 default). `_prefetch_ceiling` resolves the
+    # effective count for a channel; the delivery paths cap at
+    # min(_max_unacked, that count). prefetch-SIZE is parsed but advisory: it
+    # is NOT enforced (no byte-window accounting exists).
+    var _prefetch_chan: Dict[UInt64, Int]
+    var _prefetch_global: Dict[UInt64, Int]
+    # Channel-scoped prefetch keys, so connection teardown can free windows on
+    # channels that never issued a delivery tag (and thus have no _chan_key_list
+    # entry).
+    var _prefetch_keys: List[UInt64]
     # 0026: per-connection OPEN channel numbers (the max_channels_per_connection
     # ceiling counts these; channel.close/server-error removes the number and a
     # later channel.open re-adds it).
@@ -1174,6 +1191,10 @@ struct AMQPService:
         # codec ceiling by the listener. config.frame_max is validated >= 4096
         # (see HyrxMQConfig.frame_max / validate).
         self._frame_max = fm
+        # SERVER channel-number ceiling advertised in connection.tune. The
+        # negotiated value is min(this, client tune-ok) when the client asks
+        # for a finite limit; 0 from the client means "no limit" -> this value.
+        self._server_channel_max = UInt16(2047)
         self._max_message_size = max_msg
         self._max_queues = max_q
         self._max_exchanges = max_ex
@@ -1187,6 +1208,10 @@ struct AMQPService:
         # 0026: per-consumer backpressure state.
         self._unacked_counts = Dict[UInt64, Int]()
         self._max_unacked = max_unacked
+        # basic.qos prefetch windows (global + per-channel).
+        self._prefetch_chan = Dict[UInt64, Int]()
+        self._prefetch_global = Dict[UInt64, Int]()
+        self._prefetch_keys = List[UInt64]()
         # 0026: resource-limits — open-channel tracking + memory admission.
         self._open_channels = Dict[UInt64, List[UInt16]]()
         self._max_channels_per_connection = max_channels
@@ -1331,6 +1356,15 @@ struct AMQPService:
             _ = self._confirms.pop(key)
         if key in self._tx:
             _ = self._tx.pop(key)
+        # basic.qos: a channel-scoped prefetch window dies with its channel.
+        if key in self._prefetch_chan:
+            _ = self._prefetch_chan.pop(key)
+            var pk = 0
+            while pk < len(self._prefetch_keys):
+                if self._prefetch_keys[pk] == key:
+                    _ = self._prefetch_keys.pop(pk)
+                    break
+                pk += 1
 
     # ---- 0026: resource-limit enforcement helpers ----
 
@@ -1393,6 +1427,53 @@ struct AMQPService:
             _ = self._unacked_counts.pop(conn_id)
         else:
             self._unacked_counts[conn_id] = c
+
+    # ---- basic.qos (60,10) prefetch windows ----
+
+    def _set_prefetch(
+        mut self, conn_id: UInt64, chan: UInt16, global_: Bool, count: Int
+    ) raises:
+        """Record a basic.qos prefetch-count.
+
+        global=1 sets the connection-wide window; global=0 sets the current
+        channel's window. A count of 0 means "no limit" (stored, and treated
+        as unlimited by `_prefetch_ceiling`). prefetch-SIZE is NOT recorded:
+        it is advisory and unenforced (see the field comment).
+        """
+        if global_:
+            self._prefetch_global[conn_id] = count
+        else:
+            var key = _chan_key(conn_id, chan)
+            if key not in self._prefetch_chan:
+                self._prefetch_keys.append(key)
+            self._prefetch_chan[key] = count
+
+    def _prefetch_ceiling(ref self, conn_id: UInt64, chan: UInt16) raises -> Int:
+        """Effective basic.qos prefetch-count for a channel (0 = unlimited).
+
+        The channel-scoped window (global=0) is more specific and wins over the
+        connection-wide window (global=1); an unset/zero window is 0 (no limit).
+        """
+        var key = _chan_key(conn_id, chan)
+        if key in self._prefetch_chan:
+            return self._prefetch_chan[key]
+        if conn_id in self._prefetch_global:
+            return self._prefetch_global[conn_id]
+        return 0
+
+    def _effective_unacked_ceiling(ref self, conn_id: UInt64, chan: UInt16) raises -> Int:
+        """Delivery backpressure ceiling: min(_max_unacked, qos prefetch-count).
+
+        The 0026 engine default (_max_unacked) still applies; a basic.qos
+        prefetch-count can only LOWER the ceiling, never raise it (0 = no
+        additional limit).
+        """
+        var cap = self._max_unacked
+        var pf = self._prefetch_ceiling(conn_id, chan)
+        if pf > 0 and pf < cap:
+            cap = pf
+        return cap
+
 
     def _connection_close_error(
         ref self, code: UInt16, var text: String, failing: MethodID
@@ -1648,17 +1729,18 @@ struct AMQPService:
         )
 
     def _reply_tune(ref self, chan: UInt16) -> Optional[List[UInt8]]:
-        """connection.tune (10,30): channel-max(2047), frame-max, heartbeat.
+        """connection.tune (10,30): channel-max, frame-max, heartbeat.
 
-        0017 T4: heartbeat now ADVERTISES the configured value
-        (`HyrmMQConfig.heartbeat_secs`, default 60). The negotiated value is
-        min(this, the client's tune-ok heartbeat) and is recorded at tune-ok
-        (10,31). PARTIAL scope (no timer subsystem): the broker does NOT send
-        cyclic heartbeats and does NOT close on 2 misses; the listener
-        answers each RECEIVED heartbeat frame immediately (ping-pong).
+        The values are the SERVER ceilings (unchanged): the negotiated
+        per-connection values are min(server, client) computed at tune-ok
+        (10,31) — frame_max and channel_max are re-enforced there, and the
+        heartbeat records the existing min negotiation. PARTIAL heartbeat
+        scope (no timer subsystem): the broker does NOT send cyclic heartbeats
+        and does NOT close on 2 misses; the listener answers each RECEIVED
+        heartbeat frame immediately (ping-pong).
         """
         var args = List[UInt8]()
-        write_u16(args, 2047)  # channel-max (short)
+        write_u16(args, self._server_channel_max)  # channel-max (short)
         write_u32(args, UInt32(self._frame_max))  # frame-max (long)
         write_u16(args, UInt16(self._heartbeat_secs))  # heartbeat (short)
         return self._reply(
@@ -1875,21 +1957,30 @@ struct AMQPService:
 
         if mid == CONNECTION_TUNE_OK():
             # connection.tune-ok (10,31): channel-max(short) + frame-max(long)
-            # + heartbeat(short). 0017 T4: the heartbeat is NEGOTIATED —
-            # min(what we advertised in tune, the client's tune-ok value) —
-            # and recorded on the connection state (0 = disabled). The value
-            # is recorded only (not re-enforced: see the PARTIAL heartbeat
-            # scope in the module header); record + state, no reply.
+            # + heartbeat(short). NEGOTIATION (amqp0-9-1 §2.3.5.3): a client
+            # value > 0 requests a limit and the negotiated value is the
+            # smaller of the two; a client value of 0 means "no limit" and
+            # resolves to the SERVER value. Heartbeat keeps its existing min
+            # rule (0 = disabled). All three are recorded on the connection
+            # state; frame_max is additionally re-enforced on the codec by the
+            # listener, and channel_max by the channel.open guard. Record +
+            # state, no reply.
             if conn_id not in self._conns:
                 self._conns[conn_id] = AMQPConnectionState()
-            _ = reader.read_short()  # channel-max (recorded, not re-enforced)
-            _ = reader.read_long()  # frame-max (recorded, not re-enforced)
+            var client_cm = reader.read_short()
+            var client_fm = reader.read_long()
             var client_hb = reader.read_short()
+            var neg_cm = self._server_channel_max
+            if client_cm > 0 and UInt16(client_cm) < neg_cm:
+                neg_cm = UInt16(client_cm)
+            var neg_fm = self._frame_max
+            if client_fm > 0 and Int(client_fm) < neg_fm:
+                neg_fm = Int(client_fm)
             var neg_hb = self._heartbeat_secs
             if UInt16(client_hb) < UInt16(neg_hb):
                 neg_hb = Int(client_hb)
             self._conns[conn_id].negotiate(
-                UInt16(2047), UInt32(self._frame_max), UInt16(neg_hb)
+                neg_cm, UInt32(neg_fm), UInt16(neg_hb)
             )
             self._heartbeat_negotiated[conn_id] = UInt16(neg_hb)
             return Optional[List[UInt8]]()
@@ -1912,7 +2003,28 @@ struct AMQPService:
             # the ceiling the server answers the normative channel-level 504
             # CHANNEL_ERROR and does NOT open.
             if not self._channel_is_open(conn_id, chan):
-                if self._open_channel_count(conn_id) >= self._max_channels_per_connection:
+                # NEGOTIATED channel_max (amqp0-9-1 §2.3.5.3): a channel
+                # number at or above the negotiated ceiling is a channel error
+                # 504 CHANNEL_ERROR and the channel is NOT opened.
+                var neg_cm = self.negotiated_channel_max(conn_id)
+                if neg_cm > 0 and Int(chan) >= neg_cm:
+                    self._mark_channel_closed(conn_id, chan)
+                    return self._channel_error(
+                        chan,
+                        REPLY_CHANNEL_ERROR(),
+                        "channel_max exceeded",
+                        mid,
+                    )
+                # 0026: the per-connection open-channel ceiling is enforced
+                # here too. Only a channel number not ALREADY counted as open
+                # needs a new slot; the effective cap is the LOWER of the
+                # configured max_channels_per_connection and the negotiated
+                # channel_max. At the ceiling the server answers the normative
+                # channel-level 504 CHANNEL_ERROR and does NOT open.
+                var open_cap = self._max_channels_per_connection
+                if neg_cm > 0 and neg_cm < open_cap:
+                    open_cap = neg_cm
+                if self._open_channel_count(conn_id) >= open_cap:
                     self._mark_channel_closed(conn_id, chan)
                     return self._channel_error(
                         chan,
@@ -2404,12 +2516,19 @@ struct AMQPService:
 
         # ---- basic qos (60,10) — MUST be answered or real clients deadlock ----
         if mid == BASIC_QOS():
-            # prefetch-size(long) + prefetch-count(short) + global bit. NOT
-            # IMPLEMENTED: the flags/values are parsed and ignored (the engine
-            # applies no prefetch window on this path).
-            _ = reader.read_long()
-            _ = reader.read_short()
-            _ = reader.read_octet()
+            # prefetch-size(long) + prefetch-count(short) + global bit.
+            # prefetch-count is stored per (connection, channel) (global=0) or
+            # per connection (global=1) and enforced by the delivery paths via
+            # _effective_unacked_ceiling (min(_max_unacked, count); count 0 =
+            # no limit). prefetch-SIZE is parsed but ADVISORY: it is not
+            # enforced (no byte-window accounting exists in this slice).
+            var qos_size = reader.read_long()
+            var qos_count = reader.read_short()
+            var qos_global = reader.read_octet()
+            _ = qos_size  # advisory, not enforced
+            self._set_prefetch(
+                conn_id, chan, (qos_global & 1) != 0, Int(qos_count)
+            )
             return self._reply(
                 chan,
                 BASIC_QOS_OK().class_id,
@@ -3039,6 +3158,20 @@ struct AMQPService:
             _ = self._open_channels.pop(conn_id)
         if conn_id in self._unacked_counts:
             _ = self._unacked_counts.pop(conn_id)
+        # basic.qos: drop the connection-wide prefetch window and every
+        # channel-scoped window for this connection (its own key list covers
+        # channels that never issued a delivery tag).
+        if conn_id in self._prefetch_global:
+            _ = self._prefetch_global.pop(conn_id)
+        var i_pf = 0
+        while i_pf < len(self._prefetch_keys):
+            var pkey = self._prefetch_keys[i_pf]
+            if pkey // 65536 == conn_id:
+                if pkey in self._prefetch_chan:
+                    _ = self._prefetch_chan.pop(pkey)
+                _ = self._prefetch_keys.pop(i_pf)
+            else:
+                i_pf += 1
         # 0025 M2: drop per-connection vhost + ACL permission state.
         if conn_id in self._conn_vhost:
             _ = self._conn_vhost.pop(conn_id)
@@ -3596,10 +3729,11 @@ struct AMQPService:
             cid = self._broker.consume_register(queue.copy())
             self._get_cids[conn_id] = cid
             self._get_queues[conn_id] = queue.copy()
-        # 0026: backpressure — a connection at its unacked ceiling is answered
+        # 0026/basic.qos: backpressure — a connection at its effective unacked
+        # ceiling (min of _max_unacked and any prefetch-count) is answered
         # get-empty (no message handed out) until acks arrive.
         var get_no_ack = (bits & BASIC_GET_BIT_NO_ACK()) != 0
-        if not get_no_ack and self._unacked_count(conn_id) >= self._max_unacked:
+        if not get_no_ack and self._unacked_count(conn_id) >= self._effective_unacked_ceiling(conn_id, chan):
             var qargs_bp = List[UInt8]()
             write_short_string(qargs_bp, "")
             return self._reply(
@@ -3755,10 +3889,12 @@ struct AMQPService:
             ctag = self._ctags[cid]
         var n = 0
         while n < _CONSUME_FLUSH_MAX():
-            # 0026: backpressure — stop pushing once the connection has
-            # _max_unacked outstanding deliveries (auto-ack consumers never
-            # accumulate, so they are exempt).
-            if not auto_ack and self._unacked_count(conn_id) >= self._max_unacked:
+            # 0026/0027: backpressure — stop pushing once the connection has
+            # its effective unacked ceiling outstanding (min of the engine
+            # default _max_unacked and any basic.qos prefetch-count for this
+            # channel/connection). Auto-ack consumers never accumulate, so they
+            # are exempt.
+            if not auto_ack and self._unacked_count(conn_id) >= self._effective_unacked_ceiling(conn_id, chan):
                 return dst^
             var d = self._broker.deliver(cid)
             if not d.__bool__():
@@ -3904,3 +4040,23 @@ struct AMQPService:
         if conn_id not in self._heartbeat_negotiated:
             return 0
         return Int(self._heartbeat_negotiated[conn_id])
+
+    def negotiated_frame_max(ref self, conn_id: UInt64) raises -> Int:
+        """The connection's negotiated frame_max; 0 before tune-ok.
+
+        The listener reads this after a tune-ok frame and re-limits the
+        connection's codec to it (see AMQPFrameCodec.set_frame_limit).
+        """
+        if conn_id not in self._conns:
+            return 0
+        return Int(self._conns[conn_id].frame_max())
+
+    def negotiated_channel_max(ref self, conn_id: UInt64) raises -> Int:
+        """The connection's negotiated channel_max; 0 before tune-ok.
+
+        channel.open rejects a channel number >= this value with the
+        normative 504 CHANNEL_ERROR ("channel_max exceeded").
+        """
+        if conn_id not in self._conns:
+            return 0
+        return Int(self._conns[conn_id].channel_max())

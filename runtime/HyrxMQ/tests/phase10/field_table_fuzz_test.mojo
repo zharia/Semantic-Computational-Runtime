@@ -12,13 +12,25 @@
 # Both readers are bounds-checked: a malformed table either decodes as far as
 # its bytes reach or raises a catchable error. A segfault or an uncaught raise
 # aborts Mojo, so the final FIELD_TABLE_FUZZ_TEST=PASS line itself proves the
-# process survived all 10000 mutants.
+# process survived all mutants (default 10000; override with HYRXMQ_FUZZ_ITERS).
 
 from std.collections import Dict, List
+from std.os import getenv
 
 from hyrx.amqp.field_table import FieldTable
 from hyrxmq.amqp_service import ByteReader
 from hyrx.testing import check
+
+
+def resolve_iters(var env_name: String, default: Int) raises -> Int:
+    """Iteration count: HYRXMQ_FUZZ_ITERS when set, else `default`.
+
+    Keeps the historical default when no override is present; a malformed
+    value fails loud rather than silently running a smaller bar."""
+    var v = getenv(env_name, "")
+    if len(v.bytes()) == 0:
+        return default
+    return Int(v)
 
 
 # ---- deterministic LCG (glibc params, period 2^32) ----
@@ -315,7 +327,9 @@ def main() raises:
     var seen_sigs = Dict[UInt64, Int]()
     var sig_keys = List[UInt64]()
 
-    var iterations = 10000
+    var iterations = resolve_iters("HYRXMQ_FUZZ_ITERS", 10000)
+    if iterations < 0:
+        iterations = 0
     var exceptions = 0
     var decoded_ok = 0
 

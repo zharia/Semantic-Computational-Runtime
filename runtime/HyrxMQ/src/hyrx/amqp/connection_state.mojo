@@ -18,9 +18,11 @@
 # - SASL secure (10,20) / secure-ok (10,21) challenge round trip.
 # - close handshake: connection.close (10,50) / close-ok (10,51) and the
 #   channel close (20,40)/(20,41) reply sequencing.
-# - frame_max / channel_max NEGOTIATION: tune advertises the configured ceiling
-#   and the codec keeps it; a client tune-ok that requests a smaller value is
-#   recorded but not re-enforced, and an oversized request is not clamped here.
+# - frame_max / channel_max NEGOTIATION: tune advertises the configured server
+#   ceilings and tune-ok computes the negotiated values (min(server, client),
+#   with client 0 = no limit -> server). The negotiated frame_max is
+#   re-enforced on the connection codec by the listener and channel_max by the
+#   channel.open guard.
 # - heartbeat (frame type 8): tune (10,30) ADVERTISES the configured value
 #   (0017 T4) and tune-ok NEGOTIATES (min via AMQPService) into _heartbeat;
 #   the minimal client ping-pong echo runs in the listener serving loop.

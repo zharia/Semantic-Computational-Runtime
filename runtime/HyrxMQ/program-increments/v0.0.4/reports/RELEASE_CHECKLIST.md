@@ -168,10 +168,32 @@ vs 40 000 message probe (+436 KB vs +456 KB).
 
 Report: `benchmarks/certification/results/soak-20260914T133142Z.json`.
 
-> Note: `soak.py --out <path>` is currently a silent no-op (line 531,
-> `path = args.out or write_report(report)` skips the writer). Run without
-> `--out` and read the newest `results/soak-*.json`.
-> The 1-hour (`--duration 3600`) soak remains pending.
+### True 1-hour soak — PASS (2026-09-15, 09:28:18Z → 10:28:18Z)
+
+Ran the full **3600 s** (`--duration 3600 --rate 100 --sample-interval 5`, pika
+mode), 721 samples, 360 000 publish→get round trips, 0 errors, broker alive at
+end. `--out` was verified to write the report file directly (the earlier
+silent-no-op is fixed).
+
+| Metric | Value | Threshold | Verdict |
+|--------|-------|-----------|---------|
+| RSS growth (half-median) | **+4.78 %** (13 868 → 4 032 KB) | ≤ 10 % | **PASS** |
+| RSS min / max over run | 3 568 / 14 416 KB (not monotonic) | — | — |
+| fd growth | 1 (min 6, max 7) | ≤ 16 | PASS |
+| p99 drift | **−30.2 %** (1.435 → 1.002 ms, i.e. faster) | ≤ 25 % | PASS |
+| throughput | 100 msg/s target-limited (360 000 total) | — | — |
+| errors | 0 | — | — |
+
+RSS is **not** strictly monotonic (`rss_monotonic_increase: false`): it warms to a
+~14.4 MB peak then trims back to ~4.0 MB — one-time warm-up plus allocator trim,
+not unbounded per-message growth. The 13.8 MB first sample is the pre-warm state at
+t=0.
+
+Report: `benchmarks/certification/results/soak-3600-20260915T092818Z.json`.
+
+> Contention note: the three phase10 fuzz binaries were compiled and the 1 M fuzz
+> bar was run (≈4 s total) during this soak. The second-half p99 *improved*, so the
+> concurrent load did not degrade the measured drift; the leak/drift numbers stand.
 
 ---
 
@@ -181,7 +203,7 @@ Report: `benchmarks/certification/results/soak-20260914T133142Z.json`.
 |-----|--------|
 | Go interop client (amqp091-go) | **DONE** — `scripts/interop/go_interop/`; consumes 10/10. |
 | Multi-client interop (pika + Node + Java + Go) | **DONE** — `MULTI_INTEROP=PASS`. |
-| True 1-hour soak | **PARTIAL** — 10-minute soak PASS (RSS +0.06%); 1-hour run pending. |
+| True 1-hour soak | **DONE** — full 3600 s PASS (2026-09-15): 360 000 msgs, 0 errors, RSS +4.78 %, fd growth 1, p99 drift −30.2 %. Report `soak-3600-20260915T092818Z.json`. |
 | Segment rotation | **NOT DONE** — single-log WAL. |
 | Permission / read-only-fs failure tests | **DONE** — `disk_failure_harness.sh`, `disk_failure_test.mojo`. |
 | `max_channels_per_connection` / `max_memory_bytes` enforcement | **DONE** — 504 / 506 replies. |
@@ -190,7 +212,7 @@ Report: `benchmarks/certification/results/soak-20260914T133142Z.json`.
 | Dedicated ACL / resource-limit tests | **DONE** — `tests/phase10/acl_test.mojo`. |
 | Log secret redaction | **DONE** — `redact_secret` / `log_json_redacted`. |
 | StatefulSet manifest + live-cluster K8s tests | **PARTIAL** — Deployment validated live on kind (probes, rollout, graceful termination exit 0); StatefulSet not needed (single-instance by design). |
-| Field-table fuzz target; 1M-iteration fuzz bar | **PARTIAL** — field-table fuzzer (10k) + frame (20k) + stateful (5k); 1M bar not run. |
+| Field-table fuzz target; 1M-iteration fuzz bar | **DONE** — `HYRXMQ_FUZZ_ITERS` override added to the three `tests/phase10` fuzzers (defaults unchanged: frame 20k / field-table 10k / stateful 5k). 1,000,000-iteration bar **PASS** (2026-09-15): frame 400k (0 service exceptions, 8 unique sigs), field-table 400k (0 unhandled crashes, 1,123 sigs), stateful 200k (0 exceptions, 0 sigs). All three exited 0 with a `*_FUZZ_TEST=PASS` line. |
 | Half-open TCP / wrong-method-in-state tests | **PARTIAL** — wrong-state covered (`protocol_state_test.mojo`); half-open TCP not isolated. |
 | CI regression-gate integration | **DONE** — `.github/workflows/ci.yml`, `scripts/ci_gate.sh`. |
 | TLS certificate chain validation (expired/self-signed) | **PARTIAL** — config + policy guard; live chain rejection not exercised. |

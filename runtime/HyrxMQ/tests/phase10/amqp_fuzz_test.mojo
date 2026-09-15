@@ -9,11 +9,24 @@
 # AND the service dispatch path with adversarial input.
 
 from std.collections import Dict, List, Optional
+from std.os import getenv
 
 from hyrx.amqp.frame_codec import AMQPFrameCodec, AMQPFrame
 from hyrxmq.amqp_service import AMQPService
 from hyrxmq.config import HyrxMQConfig
 from hyrx.testing import check
+
+
+def resolve_iters(var env_name: String, default: Int) raises -> Int:
+    """Total iteration target: HYRXMQ_FUZZ_ITERS when set, else `default`.
+
+    Keeps the historical default when no override is present so the regular
+    suite behaviour is unchanged; a malformed value fails loud (never silently
+    runs a smaller bar than requested)."""
+    var v = getenv(env_name, "")
+    if len(v.bytes()) == 0:
+        return default
+    return Int(v)
 
 
 # ---- deterministic LCG (glibc params, period 2^32) ----
@@ -302,20 +315,29 @@ def main() raises:
     var seen_sigs = Dict[UInt64, Int]()
     var sig_keys = List[UInt64]()
 
-    # ---- codec-only fuzz: 10000 iterations ----
-    var codec_crashes = fuzz_codec_only(lcg, 10000, seen_sigs, sig_keys)
+    # Total iteration budget: HYRXMQ_FUZZ_ITERS override, else the historical
+    # 20000 (10000 codec-only + 10000 service-level). Split across the two
+    # phases so a requested 1M bar is actually run.
+    var total_target = resolve_iters("HYRXMQ_FUZZ_ITERS", 20000)
+    if total_target < 0:
+        total_target = 0
+    var codec_iters = total_target // 2
+    var svc_iters = total_target - codec_iters
 
-    # ---- service-level fuzz: 10000 iterations ----
+    # ---- codec-only fuzz ----
+    var codec_crashes = fuzz_codec_only(lcg, codec_iters, seen_sigs, sig_keys)
+
+    # ---- service-level fuzz ----
     var config = HyrxMQConfig()
     config.validate()
     var svc = AMQPService(config^)
     svc.start()
 
-    var svc_crashes = fuzz_with_service(lcg, 10000, svc, seen_sigs, sig_keys)
+    var svc_crashes = fuzz_with_service(lcg, svc_iters, svc, seen_sigs, sig_keys)
 
     svc.shutdown()
 
-    var total_iterations = 10000 + 10000
+    var total_iterations = codec_iters + svc_iters
     var total_crashes = codec_crashes + svc_crashes
     var unique_sigs = len(sig_keys)
 

@@ -16,9 +16,11 @@
 # is caught (bare except); the harness asserts no unhandled crash and reports
 # the number of service exceptions + unique exception signatures.
 #
-# Deterministic LCG (no random module), 5000 iterations, bounded broker state.
+# Deterministic LCG (no random module), default 5000 iterations (override with
+# HYRXMQ_FUZZ_ITERS), bounded broker state.
 
 from std.collections import Dict, List
+from std.os import getenv
 
 from hyrx.amqp.constants import (
     BASIC_ACK,
@@ -69,6 +71,17 @@ def simple_hash(var msg: String) -> UInt64:
         h = h ^ UInt64(b[i])
         h = h * 0x100000001B3
     return h
+
+
+def resolve_iters(var env_name: String, default: Int) raises -> Int:
+    """Iteration count: HYRXMQ_FUZZ_ITERS when set, else `default`.
+
+    Keeps the historical default when no override is present; a malformed
+    value fails loud rather than silently running a smaller bar."""
+    var v = getenv(env_name, "")
+    if len(v.bytes()) == 0:
+        return default
+    return Int(v)
 
 
 # ---- frame builders ----------------------------------------------------------
@@ -314,7 +327,9 @@ def main() raises:
 
     var seen_sigs = Dict[UInt64, Int]()
     var sig_keys = List[UInt64]()
-    var iterations = 5000
+    var iterations = resolve_iters("HYRXMQ_FUZZ_ITERS", 5000)
+    if iterations < 0:
+        iterations = 0
     var service_exceptions = 0
 
     for it in range(iterations):

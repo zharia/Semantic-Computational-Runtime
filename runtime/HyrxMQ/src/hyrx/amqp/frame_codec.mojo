@@ -126,10 +126,13 @@ struct HeaderFrame:
         self.properties = properties^
 
 
-# NOT IMPLEMENTED: per-connection frame_max NEGOTIATION (connection.tune /
-# connection.tune-ok, amqp0-9-1 §2.3.5.3). The broker advertises no tune frame,
-# so AMQPFrameCodec.max_frame_size is a provisional FIXED ceiling taken from
-# HyrxMQConfig.frame_max — never describe it as negotiated.
+# frame_max NEGOTIATION (connection.tune / connection.tune-ok, amqp0-9-1
+# §2.3.5.3): a codec is constructed with the SERVER ceiling from
+# HyrxMQConfig.frame_max, and `set_frame_limit` re-limits it to the NEGOTIATED
+# min(server, client) after the client's tune-ok arrives. A client `0` means
+# "no limit" and is resolved to the server value by the service before the
+# setter is called; the setter never raises the ceiling above the configured
+# one.
 
 struct AMQPFrameCodec:
     """Encodes and decodes AMQP 0-9-1 frames.
@@ -140,8 +143,9 @@ struct AMQPFrameCodec:
     beyond `frame_limit() + 8` (one whole frame, worst case). Violations raise
     the catchable `AMQP frame error:` rather than allocating.
 
-    NOTE: `max_frame_size` is a PROVISIONAL FIXED ceiling, NOT a negotiated
-    one — see the NOT IMPLEMENTED marker above this struct.
+    The ceiling starts at the SERVER value passed to __init__ and may be
+    lowered once by `set_frame_limit` to the negotiated min(server, client)
+    after connection.tune-ok (see the negotiation marker above this struct).
 
     P2 cursor design: `_cursor` tracks the current read position in `_buffer`.
     After parsing a frame, `_cursor` advances past it. Compaction (shifting
@@ -166,6 +170,20 @@ struct AMQPFrameCodec:
     def frame_limit(ref self) -> Int:
         """Maximum legal payload size for one frame (bytes)."""
         return self._max_frame_size
+
+    def set_frame_limit(mut self, limit: Int):
+        """Re-limit this codec to a NEGOTIATED payload ceiling.
+
+        Called by the listener after a client's connection.tune-ok so the
+        negotiated min(server frame_max, client frame_max) is enforced on the
+        codec for the rest of the connection (the codec is constructed with
+        the server ceiling at register time, BEFORE tune-ok arrives). A
+        non-positive `limit` is ignored: a client value of 0 means "no limit"
+        and the service resolves it to the server value before calling here,
+        so the ceiling is never removed or raised by this setter.
+        """
+        if limit > 0:
+            self._max_frame_size = limit
 
     def buffered_bytes(ref self) -> Int:
         """Bytes currently retained in the internal buffer (unparsed backlog).
