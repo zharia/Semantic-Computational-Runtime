@@ -179,19 +179,24 @@ Report: `benchmarks/certification/results/soak-20260914T133142Z.json`.
 
 | Gap | Status |
 |-----|--------|
-| Go interop client (amqp091-go) | **NOT DONE** — no Go toolchain available. |
-| True 1-hour soak | **NOT DONE** — quick (15 s) soak only; full run pending. |
+| Go interop client (amqp091-go) | **DONE** — `scripts/interop/go_interop/`; consumes 10/10. |
+| Multi-client interop (pika + Node + Java + Go) | **DONE** — `MULTI_INTEROP=PASS`. |
+| True 1-hour soak | **PARTIAL** — 10-minute soak PASS (RSS +0.06%); 1-hour run pending. |
 | Segment rotation | **NOT DONE** — single-log WAL. |
-| Permission / read-only-fs failure tests | **NOT DONE**. |
-| `max_channels_per_connection` / `max_memory_bytes` enforcement | **NOT DONE** — config keys only. |
-| `max_unacked` delivery-path enforcement | **NOT DONE** — config contract only. |
-| Repeated auth-failure rate limiting | **NOT DONE** — counter only. |
-| Dedicated ACL / resource-limit tests | **NOT DONE** — code-verified (R16, R18). |
-| Log secret redaction | **NOT DONE**. |
-| StatefulSet manifest + live-cluster K8s tests | **NOT DONE**. |
-| Field-table fuzz target; 1M-iteration fuzz bar | **NOT DONE** — 25k iterations run. |
-| Half-open TCP / wrong-method-in-state tests | **NOT DONE**. |
-| CI regression-gate integration | **NOT DONE**. |
+| Permission / read-only-fs failure tests | **DONE** — `disk_failure_harness.sh`, `disk_failure_test.mojo`. |
+| `max_channels_per_connection` / `max_memory_bytes` enforcement | **DONE** — 504 / 506 replies. |
+| `max_unacked` delivery-path enforcement | **DONE** — delivery stops at the ceiling. |
+| Repeated auth-failure rate limiting | **DONE** — `max_auth_failures_per_minute`. |
+| Dedicated ACL / resource-limit tests | **DONE** — `tests/phase10/acl_test.mojo`. |
+| Log secret redaction | **DONE** — `redact_secret` / `log_json_redacted`. |
+| StatefulSet manifest + live-cluster K8s tests | **PARTIAL** — Deployment validated live on kind (probes, rollout, graceful termination exit 0); StatefulSet not needed (single-instance by design). |
+| Field-table fuzz target; 1M-iteration fuzz bar | **PARTIAL** — field-table fuzzer (10k) + frame (20k) + stateful (5k); 1M bar not run. |
+| Half-open TCP / wrong-method-in-state tests | **PARTIAL** — wrong-state covered (`protocol_state_test.mojo`); half-open TCP not isolated. |
+| CI regression-gate integration | **DONE** — `.github/workflows/ci.yml`, `scripts/ci_gate.sh`. |
+| TLS certificate chain validation (expired/self-signed) | **PARTIAL** — config + policy guard; live chain rejection not exercised. |
+| Server-initiated cyclic heartbeats | **DONE (event tier)** — poll-driven; 2x-miss close not implemented. |
+| Vhost as routing boundary | **DONE** — name-prefix isolation, `vhost_isolation_test`. |
+| Performance vs RabbitMQ / LavinMQ | **DONE** — HyrxMQ fastest overall; `REPORT_FINAL2.md`. |
 
 ## Release artifact
 
