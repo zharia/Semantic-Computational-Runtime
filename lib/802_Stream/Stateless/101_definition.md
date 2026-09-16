@@ -1,35 +1,30 @@
-# Stateless
+# SCR Semantic Library — 802 Stream / Stateless
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Stateless/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Stateless  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Stateless`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Stateless** is Stream processing where each element is transformed in total isolation without reference to prior or future elements.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stateless stream processing without retained internal state.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Stateless is not just a pure function; it represents embarrassingly parallelizable, partition-independent stream execution.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Stateless` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STL-INV-001 (Isolation):** Evaluation of element $E_n$ MUST NOT read or mutate any state shared with element $E_{n-1}$.
+* **STL-INV-002 (Partition Freedom):** Stateless operations MAY be distributed or reordered across workers without semantic divergence.
+* **STL-INV-003 (Zero History):** Stateless stages MUST NOT require checkpoints or state snapshots for crash recovery.

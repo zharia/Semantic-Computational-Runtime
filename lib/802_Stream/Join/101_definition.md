@@ -1,35 +1,30 @@
-# Join
+# SCR Semantic Library — 802 Stream / Join
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Join/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Join  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Join`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Join** is The correlation and combination of elements from two or more streams based on shared keys, temporal windows, or causal relations.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream joining operations for combining multiple streams.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Join is not an SQL nested loop; it is a multi-stream semantic correlation across ordered domains.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Join` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **JON-INV-001 (Correlation Boundary):** Temporal stream joins MUST define a finite window or buffer over which correlation occurs.
+* **JON-INV-002 (Causal Consistency):** Joined elements MUST not violate causal precedence between the contributing streams.
+* **JON-INV-003 (Skew Resilience):** Joins MUST tolerate clock skew across streams according to declared watermark bounds.

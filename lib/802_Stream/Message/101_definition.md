@@ -1,35 +1,30 @@
-# Message
+# SCR Semantic Library — 802 Stream / Message
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Message/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Message  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Message`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Message** is A discrete, self-contained semantic unit of communication or observation encapsulated for transmission across stream boundaries.
 
-This directory currently exists as a structural location within the SCR library hierarchy for message representation and message-based stream communication.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A Message is not an AMQP frame, byte payload, or socket packet; it is a semantic package with structured headers, payload typing, and provenance.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Message` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MSG-INV-001 (Payload Independence):** A Message's semantic payload MUST remain independent of the wire serialization format.
+* **MSG-INV-002 (Header Provenance):** Message metadata MUST preserve origin, correlation, and causality attributes across hops.
+* **MSG-INV-003 (Boundary Integrity):** A Message MUST represent a discrete semantic boundary without partial-message interpretation.

@@ -1,35 +1,30 @@
-# Batch
+# SCR Semantic Library — 802 Stream / Batch
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Batch/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Batch  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Batch`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Batch** is A bounded, complete collection of stream elements treated as a finite semantic unit for batch execution.
 
-This directory currently exists as a structural location within the SCR library hierarchy for batch processing strategies for grouped stream elements.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Batch is not an offline disk dump; it is a bounded specialization of a stream where the end-of-stream condition is satisfied.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Batch` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **BAT-INV-001 (Finite Boundary):** A Batch MUST have an explicit, knowable cardinality and termination boundary.
+* **BAT-INV-002 (Stream Duality):** Every batch computation MUST be expressible as a bounded stream window computation.
+* **BAT-INV-003 (Completeness Guarantee):** A Batch MUST NOT be processed as complete until all constituent elements are verified present.

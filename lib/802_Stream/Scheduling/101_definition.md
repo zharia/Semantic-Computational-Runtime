@@ -1,35 +1,30 @@
-# Scheduling
+# SCR Semantic Library — 802 Stream / Scheduling
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Scheduling/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Scheduling  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Scheduling`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Scheduling** is The temporal and computational assignment of stream operators and element batches to execution resources.
 
-This directory currently exists as a structural location within the SCR library hierarchy for scheduling strategies for stream processing execution.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Scheduling is not an OS thread scheduler; it is the realization plan allocating compute units to stream DAG nodes.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Scheduling` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SCH-INV-001 (Semantic Invariance):** Scheduling choices (push, pull, work-stealing) MUST NOT alter stream computation results.
+* **SCH-INV-002 (Fairness and Liveness):** Schedulers MUST guarantee that no active stream branch suffers starvation indefinitely.
+* **SCH-INV-003 (Subordination):** Scheduler optimization MUST remain subordinate to stream ordering and synchronization contracts.

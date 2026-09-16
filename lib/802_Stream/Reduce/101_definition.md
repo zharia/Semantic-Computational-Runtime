@@ -1,35 +1,30 @@
-# Reduce
+# SCR Semantic Library — 802 Stream / Reduce
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Reduce/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Reduce  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Reduce`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Reduce** is An aggregation transformation combining multiple stream elements over a window or running accumulation into summary elements.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream reduction operations and aggregation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Reduce is not an in-memory accumulator variable; it is a formal algebraic reduction over a stream monoid or semigroup.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Reduce` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **RED-INV-001 (Algebraic Explicitness):** The reduction operator (associative, commutative) MUST be explicitly defined.
+* **RED-INV-002 (Boundary Association):** Reductions MUST be bounded by an explicit window, partition, or trigger condition.
+* **RED-INV-003 (State Checkpointing):** Running reductions MUST support deterministic state checkpointing and restoration.

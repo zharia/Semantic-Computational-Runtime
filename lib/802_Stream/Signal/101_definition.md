@@ -1,35 +1,30 @@
-# Signal
+# SCR Semantic Library — 802 Stream / Signal
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Signal/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Signal  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Signal`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Signal** is A continuous or discretely sampled time-varying value representing a physical, virtual, or computational phenomenon.
 
-This directory currently exists as a structural location within the SCR library hierarchy for signal representation and signal-based stream coordination.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A Signal is not an analog voltage, PCM audio buffer, or raw sensor reading; it is a continuous or discrete mapping from a domain to a value space.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Signal` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SIG-INV-001 (Continuity Semantics):** A Signal MUST explicitly declare whether its underlying phenomenon is continuous or discrete.
+* **SIG-INV-002 (Sampling Preservation):** Sampled representations of a continuous signal MUST retain their sampling rate, interpolation, and uncertainty bounds.
+* **SIG-INV-003 (Dimension Explicitness):** The domain of a signal (temporal, spatial, frequency) MUST be explicitly defined.

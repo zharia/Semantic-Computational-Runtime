@@ -1,35 +1,30 @@
-# Operator
+# SCR Semantic Library — 802 Stream / Operator
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Operator/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Operator  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Operator`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Operator** is A discrete unit of computation or transformation applied to one or more streams to produce one or more streams.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream operator abstractions and operator composition.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **An Operator is not a thread, coroutine, or function pointer; it is a semantic transformation contract specifying inputs, outputs, statefulness, and determinism.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Operator` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **OPR-INV-001 (Contract Explicitness):** Every Operator MUST define its input and output stream contracts and type schemas.
+* **OPR-INV-002 (Purity Classification):** An Operator MUST declare whether it is pure stateless, deterministic stateful, or side-effecting.
+* **OPR-INV-003 (Failure Isolation):** Operator failure MUST be semantically isolated and classified rather than causing undefined stream state.

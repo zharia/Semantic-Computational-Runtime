@@ -1,35 +1,30 @@
-# Filter
+# SCR Semantic Library — 802 Stream / Filter
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Filter/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Filter  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Filter`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Filter** is A selective 1-to-(0..1) transformation evaluating a predicate to decide whether an element continues in the stream.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream filtering operations and predicate-based selection.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Filter is not packet dropping or network loss; it is an intentional semantic selection based on predicate truth.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Filter` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLT-INV-001 (Loss Distinction):** Filtered elements MUST be semantically distinguishable from lost or dropped elements.
+* **FLT-INV-002 (Order Preservation):** The relative order of surviving elements MUST remain strictly unchanged.
+* **FLT-INV-003 (Predicate Determinism):** Filter predicates MUST evaluate deterministically given the element and its metadata.

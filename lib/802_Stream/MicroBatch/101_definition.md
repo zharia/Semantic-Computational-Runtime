@@ -1,35 +1,30 @@
-# MicroBatch
+# SCR Semantic Library — 802 Stream / MicroBatch
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/MicroBatch/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / MicroBatch  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/MicroBatch`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream MicroBatch** is A fine-grained, low-latency discretization of a continuous stream into small bounded batches for periodic execution.
 
-This directory currently exists as a structural location within the SCR library hierarchy for micro-batching strategies for small-group stream processing.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **MicroBatch is not a polling loop; it is a temporal discretization strategy trading latency for throughput.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`MicroBatch` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MBT-INV-001 (Discretization Invariant):** Micro-batch intervals MUST preserve element ordering across consecutive micro-batches.
+* **MBT-INV-002 (Zero-Element Semantics):** Empty micro-batches MUST be explicitly represented or skipped without state corruption.
+* **MBT-INV-003 (Deterministic Cutoffs):** Boundary demarcation between successive micro-batches MUST be strictly deterministic.

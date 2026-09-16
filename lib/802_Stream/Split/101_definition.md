@@ -1,35 +1,30 @@
-# Split
+# SCR Semantic Library — 802 Stream / Split
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Split/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Split  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Split`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Split** is The demultiplexing or partitioning of a single stream into multiple output streams based on predicate routing or sharding keys.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream splitting operations for partitioning a stream.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Split is not a hardware bus tap or pub/sub broker; it is a semantic demultiplexing contract.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Split` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SPL-INV-001 (Partition Exhaustiveness):** Routing rules MUST define handling for elements matching zero, one, or multiple branches.
+* **SPL-INV-002 (Branch Independence):** Backpressure or stall in one split branch MUST NOT silently corrupt ordering in sibling branches.
+* **SPL-INV-003 (Identity Preservation):** Elements routed to output branches MUST retain their semantic identity and provenance.

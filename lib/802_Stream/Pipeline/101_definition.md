@@ -1,35 +1,30 @@
-# Pipeline
+# SCR Semantic Library — 802 Stream / Pipeline
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Pipeline/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Pipeline  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Pipeline`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Pipeline** is A composed, directed sequence or graph of stream processing stages transforming source streams into sink streams.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream pipeline construction and pipeline execution.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A Pipeline is not a Unix shell pipe or task queue runner; it is a formal semantic composition of stream transformations.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Pipeline` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **PIP-INV-001 (Stage Isolation):** Pipeline stages MUST communicate strictly via defined stream contracts without hidden state leakage.
+* **PIP-INV-002 (End-to-End Provenance):** A Pipeline MUST preserve element provenance from input source to output sink.
+* **PIP-INV-003 (Composability):** Sub-pipelines MUST be composable into larger pipelines while preserving semantic equivalence.

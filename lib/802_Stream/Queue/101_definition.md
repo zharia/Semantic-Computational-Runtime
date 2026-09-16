@@ -1,35 +1,30 @@
-# Queue
+# SCR Semantic Library — 802 Stream / Queue
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Queue/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Queue  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Queue`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Queue** is A realization structure providing ordered, FIFO, or priority-based staging for stream elements.
 
-This directory currently exists as a structural location within the SCR library hierarchy for queue-based stream buffering and ordering.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A Queue is not Stream; a Queue is a mechanical ordering device used to realize a stream.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Queue` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **QUE-INV-001 (Discipline Explicitness):** The queuing discipline (FIFO, LIFO, Priority) MUST be explicitly defined.
+* **QUE-INV-002 (Queue-Stream Distinction):** Dequeuing an element does not destroy its historical participation in the stream.
+* **QUE-INV-003 (Non-Redefinition):** Queue parameters (capacity, memory layout) MUST NOT alter the stream's semantic definition.

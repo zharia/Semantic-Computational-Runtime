@@ -1,35 +1,30 @@
-# Merge
+# SCR Semantic Library — 802 Stream / Merge
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Merge/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Merge  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Merge`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Merge** is The combination of two or more streams of identical or compatible element types into a single unified stream.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream merging operations for combining stream sources.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Merge is not an interleaved multiplexer or network hub; it is a union of stream elements under a specified ordering strategy.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Merge` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MRG-INV-001 (Ordering Strategy):** A Merge MUST declare its ordering policy (e.g., event-time order, arrival order, round-robin).
+* **MRG-INV-002 (Source Attribution):** Merged elements MUST retain provenance identifying their contributing source stream.
+* **MRG-INV-003 (Completeness Conservation):** No element from any input stream may be silently discarded during a merge.

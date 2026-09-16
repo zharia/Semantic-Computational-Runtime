@@ -1,0 +1,71 @@
+{
+  "$schema": "https://raw.githubusercontent.com/scr-project/schemas/master/v1/library-graph.schema.json",
+  "id": "SCR-LIB-STREAM",
+  "name": "Stream",
+  "version": "0.1.0",
+  "path": "lib/802_Stream",
+  "domain": "Stream",
+  "status": "operational",
+  "upstream_dependencies": [
+    {
+      "id": "SCR-LIB-IDENTITY",
+      "path": "lib/101_Core/Identity",
+      "relationship": "identifies",
+      "required": true
+    },
+    {
+      "id": "SCR-LIB-HYPERGRAPH",
+      "path": "lib/203_Graph/Hypergraph",
+      "relationship": "projects_to",
+      "required": true
+    },
+    {
+      "id": "SCR-LIB-SPATIAL",
+      "path": "lib/801_Spatial",
+      "relationship": "indexes_across",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-FIELDS",
+      "path": "lib/301_Field",
+      "relationship": "evolves_fields",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-PERCEPTION",
+      "path": "lib/603_Perception",
+      "relationship": "streams_observations",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-INTERACTION",
+      "path": "lib/605_Interaction",
+      "relationship": "streams_actions",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-APPLICATION",
+      "path": "lib/804_Application",
+      "relationship": "orchestrated_by",
+      "required": false
+    }
+  ],
+  "downstream_dependents": [
+    {
+      "id": "SCR-APP-CORE",
+      "relationship": "consumes"
+    }
+  ],
+  "subdomains": [
+    "Source", "Sink", "Message", "Signal", "Event", "Temporal", "Window",
+    "Flow", "Pipeline", "Operator", "Transform", "Map", "Filter", "Reduce",
+    "Join", "Merge", "Split", "Batch", "MicroBatch", "Stateful", "Stateless",
+    "Streaming", "Channel", "Buffer", "Queue", "Backpressure", "Scheduling",
+    "Serialization", "Transport", "Distributed", "IR"
+  ],
+  "metadata": {
+    "authoritative_specification": "101_definition.md",
+    "status_file": "102_status.yaml",
+    "invariants_count": 30
+  }
+}

@@ -1,35 +1,30 @@
-# Serialization
+# SCR Semantic Library — 802 Stream / Serialization
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Serialization/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Serialization  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Serialization`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Serialization** is The representation transformation encoding semantic stream elements into linear or binary byte representations for transport or storage.
 
-This directory currently exists as a structural location within the SCR library hierarchy for serialization mechanisms for stream data encoding.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Serialization is not JSON, Protobuf, or Arrow; it is an encoding mapping preserving semantic invariants across boundaries.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Serialization` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SER-INV-001 (Round-Trip Fidelity):** Deserialization of a serialized element MUST reconstruct the original semantic entity without loss.
+* **SER-INV-002 (Schema Evolution):** Serialization formats MUST declare versioning and backward/forward compatibility rules.
+* **SER-INV-003 (Representation Independence):** A change in serialization encoding MUST NOT alter the semantic meaning of the stream.

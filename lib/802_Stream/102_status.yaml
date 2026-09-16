@@ -1,0 +1,161 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-STREAM
+  path: lib/802_Stream
+  name: Stream
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.2.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Stream
+  description: >
+    Normative semantic computational domain defining ordered, causal, continuous,
+    or discrete evolution and availability of information, state, occurrences,
+    observations, operations, and transformations.
+  purpose: >
+    Define streams orthogonally to physical transports, brokers, buffers, and pipelines;
+    formalize element occurrence vs availability vs observation, multi-clock temporal semantics,
+    vector clock causal ordering, state vs delta reconstruction, windowing, and hypergraph projection.
+
+capabilities:
+  - id: CAP-STRM-ELEMENT-OCCURRENCE
+    name: Element Identity, Occurrence, and Availability Semantics
+    status: operational
+  - id: CAP-STRM-MULTI-CLOCK
+    name: Multi-Clock Temporal Semantics & Watermarks
+    status: operational
+  - id: CAP-STRM-CAUSALITY
+    name: Causal and Partial Ordering with Vector Clocks
+    status: operational
+  - id: CAP-STRM-STREAM-TYPES
+    name: State, Delta, Event, Observation, and Operation Streams
+    status: operational
+  - id: CAP-STRM-LIFECYCLE
+    name: Deterministic Stream Lifecycle State Machine
+    status: operational
+  - id: CAP-STRM-WINDOWING
+    name: Tumbling, Sliding, and Session Windows with Watermark Triggers
+    status: operational
+  - id: CAP-STRM-OPERATORS
+    name: Map, Filter, Reduce, Join, Merge, Split Transformations
+    status: operational
+  - id: CAP-STRM-BOUNDARY
+    name: Transport-Independent Source and Sink Boundaries
+    status: operational
+  - id: CAP-STRM-LOSS-EXPLICITNESS
+    name: Explicit Loss, Deletion, Supersession, and Absence Semantics
+    status: operational
+  - id: CAP-STRM-REPLAY-SAFETY
+    name: Deterministic Replay Protection & Side-Effect Segregation
+    status: operational
+  - id: CAP-STRM-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Nullary Relations
+    status: operational
+
+invariants:
+  - id: STREAM-INV-001
+    name: Semantic Independence
+    status: enforced
+  - id: STREAM-INV-002
+    name: Flow Independence
+    status: enforced
+  - id: STREAM-INV-003
+    name: Element Identity
+    status: enforced
+  - id: STREAM-INV-004
+    name: Occurrence Distinction
+    status: enforced
+  - id: STREAM-INV-005
+    name: Availability Distinction
+    status: enforced
+  - id: STREAM-INV-006
+    name: Temporal Explicitness
+    status: enforced
+  - id: STREAM-INV-007
+    name: Ordering Explicitness
+    status: enforced
+  - id: STREAM-INV-008
+    name: Causal Distinction
+    status: enforced
+  - id: STREAM-INV-009
+    name: State/Delta Distinction
+    status: enforced
+  - id: STREAM-INV-010
+    name: Event/State Distinction
+    status: enforced
+  - id: STREAM-INV-011
+    name: Observation Distinction
+    status: enforced
+  - id: STREAM-INV-012
+    name: Lifecycle Explicitness
+    status: enforced
+  - id: STREAM-INV-013
+    name: Absence Semantics
+    status: enforced
+  - id: STREAM-INV-014
+    name: Provenance
+    status: enforced
+  - id: STREAM-INV-015
+    name: Identity/Reference Separation
+    status: enforced
+  - id: STREAM-INV-016
+    name: Deletion Semantics
+    status: enforced
+  - id: STREAM-INV-017
+    name: Nullary Relations
+    status: enforced
+  - id: STREAM-INV-018
+    name: Hypergraph Authority
+    status: enforced
+  - id: STREAM-INV-019
+    name: Provider Independence
+    status: enforced
+  - id: STREAM-INV-020
+    name: Delivery Distinction
+    status: enforced
+  - id: STREAM-INV-021
+    name: Replay Safety
+    status: enforced
+  - id: STREAM-INV-022
+    name: Failure Distinction
+    status: enforced
+  - id: STREAM-INV-023
+    name: Representation Independence
+    status: enforced
+  - id: STREAM-INV-024
+    name: Transformation Contract
+    status: enforced
+  - id: STREAM-INV-025
+    name: Causal Integrity
+    status: enforced
+  - id: STREAM-INV-026
+    name: Temporal Integrity
+    status: enforced
+  - id: STREAM-INV-027
+    name: Completeness Explicitness
+    status: enforced
+  - id: STREAM-INV-028
+    name: Loss Explicitness
+    status: enforced
+  - id: STREAM-INV-029
+    name: Semantic Equivalence
+    status: enforced
+  - id: STREAM-INV-030
+    name: Runtime Subordination
+    status: enforced

@@ -1,35 +1,30 @@
-# Distributed
+# SCR Semantic Library — 802 Stream / Distributed
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Distributed/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Distributed  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Distributed`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Distributed** is Stream execution and coordination across multiple physical or logical machines across a network.
 
-This directory currently exists as a structural location within the SCR library hierarchy for distributed streaming across multiple nodes or processes.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Distributed streaming is not Apache Flink or Spark Streaming; it is distributed state, partitioning, and causal ordering across nodes.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Distributed` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DST-INV-001 (Causal Consistency):** Distributed streams MUST maintain causal ordering via vector clocks or explicit causal tokens.
+* **DST-INV-002 (Partitioning Soundness):** Partitioned streams MUST route correlated keys to consistent partition workers.
+* **DST-INV-003 (Consensus Subordination):** Distributed consensus mechanisms MUST preserve stream lifecycle and delivery contracts.

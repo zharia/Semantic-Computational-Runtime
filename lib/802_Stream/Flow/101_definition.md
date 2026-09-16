@@ -1,35 +1,30 @@
-# Flow
+# SCR Semantic Library — 802 Stream / Flow
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Flow/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Flow  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Flow`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Flow** is The rate, progression, and directional movement of semantic elements across a stream network.
 
-This directory currently exists as a structural location within the SCR library hierarchy for flow control semantics and stream flow management.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Flow is not network bandwidth or socket throughput; it is the semantic rate of occurrence and availability propagation.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Flow` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLW-INV-001 (Rate Preservation):** Transformations MUST account for changes in flow rate without silent element dropping.
+* **FLW-INV-002 (Conservation):** In the absence of filtering or windowing, stream flow across intermediate nodes MUST satisfy semantic element conservation.
+* **FLW-INV-003 (Directional Acyclicity):** Flow graphs MUST explicitly declare feedback loops versus forward acyclic propagation.

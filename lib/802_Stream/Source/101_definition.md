@@ -1,35 +1,36 @@
-# Source
+# SCR Semantic Library — 802 Stream / Source
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Source/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Source  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Source`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Source** is a semantic intake or origin boundary through which semantic elements are made available to a Stream.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream source abstractions for stream origin and ingestion.
+A Source defines:
+* The schema and semantic typing of elements emitted.
+* The temporal clock or reference governing occurrence times.
+* The availability semantics under which elements become accessible.
+* The provenance attribution anchoring emitted elements.
 
-## Current Contents
+---
 
-The directory currently contains:
+## 2. Fundamental Distinction
 
-- `101_definition.md`
+> **A Source is not an I/O socket, network reader, Kafka topic consumer, file reader, or sensor hardware driver.**
 
-No substantive implementation was present when this documentation pass was performed.
+A realization adapter may bind a physical sensor or socket to a Stream Source, but the Source semantically represents the origin contract of elements into the Stream domain.
 
-## Current Role
+---
 
-The directory establishes a documented location for this area of the SCR library.
+## 3. Subdomain Invariants
 
-## Relationship to Parent
-
-`Source` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SRC-INV-001 (Semantic Emittance):** Every element emitted by a Source MUST have a well-defined semantic identity and type.
+* **SRC-INV-002 (Occurrence Attribution):** A Source MUST preserve the distinction between an element's real-world occurrence time and its ingestion/emission time.
+* **SRC-INV-003 (Transport Subordination):** Failure or disconnection of an underlying transport MUST NOT alter the semantic definition of the Source contract.

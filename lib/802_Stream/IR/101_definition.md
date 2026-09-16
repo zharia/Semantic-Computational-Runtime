@@ -1,61 +1,30 @@
+# SCR Semantic Library — 802 Stream / IR
+
+**Document:** `lib/802_Stream/IR/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / IR  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
+
 ---
 
-document: 101_definition
-document_type: normative_semantic_definition
-schema_version: 1.0.0
+## 1. Definition
 
-id: SCR-LIB-STREAM-IR
-name: Stream MLIR Dialect
+A **Stream IR** is The intermediate representation and compilation layer mapping semantic stream graphs to MLIR dialects and native executable pipelines.
 
-version: 0.1.0
-status: draft
-
-created: 2026-09-05
-updated: 2026-09-05
-
-parent: SCR-LIB-STREAM
-
-authority: SCR
-domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Stream MLIR Dialect
+## 2. Fundamental Distinction
 
-> Directory documentation for the current SCR library tree.
+> **IR is not a custom proprietary compiler IR; it is the MLIR-first representation lowering stream semantics to hardware substrates.**
 
-**Path:** `lib/802_Stream/IR`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 3. Subdomain Invariants
 
-This directory is MLIR dialect material for the Stream domain.
-
-## Current Contents
-
-The directory currently contains:
-
-- `101_definition.md`
-
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
-
-## Current Role
-
-The directory establishes the MLIR dialect location for Stream.
-
-## Relationship to Parent
-
-`IR` is a child of `802_Stream` and represents the MLIR dialect scope for the Stream semantic domain.
-
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Stream MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+* **IR-INV-001 (MLIR Primacy):** Stream IR transformations MUST leverage MLIR dialects (`stream`, `async`, `llvm`) rather than inventing shadow IRs.
+* **IR-INV-002 (Semantic Lowering Integrity):** Lowering from semantic stream operations to MLIR MUST preserve all domain invariants.
+* **IR-INV-003 (Verification Passes):** Stream MLIR passes MUST include explicit verification of ordering, window, and state constraints.

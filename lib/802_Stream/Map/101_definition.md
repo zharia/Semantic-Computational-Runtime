@@ -1,35 +1,30 @@
-# Map
+# SCR Semantic Library — 802 Stream / Map
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/802_Stream/Map/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Stream / Map  
+**Parent:** `lib/802_Stream/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/802_Stream/Map`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+A **Stream Map** is A 1-to-1 element-wise stateless transformation applying a function to each element of a stream independently.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stream mapping and element-wise transformation operations.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Map is not a CPU loop or vector instruction; it is a point-wise semantic projection across stream elements.**
 
-- `101_definition.md`
+The semantic structure remains authoritative; realization details, physical formats, and implementation frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Map` is a child of `802_Stream` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MAP-INV-001 (Cardinality Preservation):** Map MUST preserve a 1:1 correspondence between input elements and output elements.
+* **MAP-INV-002 (Order Invariance):** Map MUST preserve the relative ordering and temporal timestamps of elements.
+* **MAP-INV-003 (Statelessness):** Map evaluation MUST NOT depend on prior or future elements in the stream.
