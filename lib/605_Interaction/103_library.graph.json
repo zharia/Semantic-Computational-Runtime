@@ -1,0 +1,47 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-INTERACTION",
+  "name": "Interaction",
+  "layer": "605_Interaction",
+  "node_type": "domain",
+  "version": "0.0.1",
+  "path": "lib/605_Interaction",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "REFINES",
+      "semantics": "Interaction refines foundational entity, identity, lifecycle, and transformation contracts"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "CONSUMES_AND_PRODUCES",
+      "semantics": "Interaction consumes observations and produces interaction expressions and commands"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Interactions, gesture expressions, chords, and intents project directly into the canonical SCR hypergraph"
+    },
+    {
+      "source": "SCR-LIB-PERCEPTION",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "INFORMS",
+      "semantics": "Perception provides perceptual observations and recognition evidence for interaction"
+    },
+    {
+      "source": "SCR-LIB-INTERACTION",
+      "target": "SCR-LIB-CONTROL",
+      "relationship": "FEEDS",
+      "semantics": "Interactions resolve to intents and actions that feed control processes"
+    },
+    {
+      "source": "SCR-LIB-INTERACTION",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "SERVES",
+      "semantics": "Applications consume interaction mappings, commands, and feedback"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-INTERACTION
+  path: lib/605_Interaction
+  name: Interaction
+  version: 0.0.1
+  status: operational
+  created: 2026-09-15
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.0.1
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Interaction
+  description: >
+    Normative semantic computational domain defining the structures through which
+    an actor, observer, agent, process, device, or computational entity participates in a
+    computational field.
+  purpose: >
+    Define actor participation, modality-independent input, gesture recognition,
+    algebraic composition (sequence, chord, multimodal), interaction context and modes,
+    intent representation, action mapping, session lifecycle (capture, commitment, cancellation),
+    closed-loop feedback, and projection into the canonical SCR hypergraph.
+
+subdomains:
+  - Actor
+  - Input
+  - Observation
+  - Gesture
+  - Composition
+  - Context
+  - Target
+  - Intent
+  - Mapping
+  - Session
+  - Feedback
+  - Ergonomics
+
+capabilities:
+  - id: CAP-INT-ACTOR
+    name: Semantic Actor & Observer Modeling
+    status: operational
+  - id: CAP-INT-INPUT
+    name: Modality-Independent Input & Pointer Events
+    status: operational
+  - id: CAP-INT-GESTURE
+    name: Gesture Trajectory, Phases & Recognition
+    status: operational
+  - id: CAP-INT-COMPOSITION
+    name: Algebraic Gesture Composition (Sequence, Chord, Multimodal)
+    status: operational
+  - id: CAP-INT-INTENT
+    name: Explicit Intent Representation & Disambiguation
+    status: operational
+  - id: CAP-INT-SESSION
+    name: Interaction Session Lifecycle (Commitment & Cancellation)
+    status: operational
+  - id: CAP-INT-FEEDBACK
+    name: Closed-Loop Interaction Feedback & Previews
+    status: operational
+  - id: CAP-INT-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Nullary Relations
+    status: operational
+
+invariants:
+  - INT-001
+  - INT-002
+  - INT-003
+  - INT-004
+  - INT-005
+  - INT-006
+  - INT-007
+  - INT-008
+  - INT-009
+  - INT-010
+  - INT-011
+  - INT-012
+  - INT-013
+  - INT-014
+  - INT-015
+  - INT-016
+  - INT-017
+  - INT-018
+  - INT-019
+  - INT-020
+  - INT-021
+  - INT-022
+  - INT-023
+  - INT-024
+  - INT-025
+  - INT-026
+  - INT-027
+  - INT-028
+  - INT-029
+  - INT-030
