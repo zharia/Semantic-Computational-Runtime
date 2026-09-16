@@ -5,7 +5,7 @@ schema_version: 1.0.0
 
 module:
   id: SCR-LIB-REP-TRANSPORT
-  path: transport
+  path: representation/transport
   name: Transport
   version: 0.1.0
   status: operational

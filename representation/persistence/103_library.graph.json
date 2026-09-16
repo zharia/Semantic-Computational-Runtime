@@ -2,17 +2,17 @@
   "schema_version": "1.0.0",
   "nodes": [
     {
-      "id": "SCR-LIB-REP-TRANSPORT",
+      "id": "SCR-LIB-REP-PERSISTENCE",
       "type": "subdomain",
-      "name": "Transport",
-      "path": "transport",
+      "name": "Persistence",
+      "path": "representation/persistence",
       "status": "operational"
     },
     {
       "id": "SCR-LIB-REP",
       "type": "domain",
       "name": "Representation",
-      "path": "lib/representation"
+      "path": "representation"
     },
     {
       "id": "SCR-LIB-101-CORE",
@@ -24,24 +24,24 @@
       "id": "SCR-LIB-REP-SERIALIZATION",
       "type": "subdomain",
       "name": "Serialization",
-      "path": "serialization"
+      "path": "representation/serialization"
     }
   ],
   "edges": [
     {
-      "source": "SCR-LIB-REP-TRANSPORT",
+      "source": "SCR-LIB-REP-PERSISTENCE",
       "target": "SCR-LIB-REP",
       "relation": "REFINES"
     },
     {
-      "source": "SCR-LIB-REP-TRANSPORT",
+      "source": "SCR-LIB-REP-PERSISTENCE",
       "target": "SCR-LIB-101-CORE",
       "relation": "DEPENDS_ON"
     },
     {
-      "source": "SCR-LIB-REP-TRANSPORT",
+      "source": "SCR-LIB-REP-PERSISTENCE",
       "target": "SCR-LIB-REP-SERIALIZATION",
-      "relation": "TRANSPORTS"
+      "relation": "PERSISTS"
     }
   ]
 }

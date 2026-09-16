@@ -1,0 +1,73 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-DOM-REPRESENTATION
+  path: representation
+  name: Representation
+  version: 0.1.0
+  status: operational
+  created: 2026-09-08
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: core-architecture
+    agent: antigravity
+
+domain:
+  name: Representation
+  description: >
+    Top-level domain governing the structural encoding, transport, persistence,
+    interchange, and presentation of semantic information across computational contexts
+    and lifecycle boundaries.
+  purpose: >
+    Provides the boundary between semantic meaning in lib/ and its physical realizations.
+  maturity: operational
+  completeness: 1.0
+
+hierarchy:
+  parent:
+    id: SCR-ROOT
+    relation: REFINES
+  children:
+    - SCR-LIB-REP-INTERCHANGE
+    - SCR-LIB-REP-PERSISTENCE
+    - SCR-LIB-REP-PRESENTATION
+    - SCR-LIB-REP-SERIALIZATION
+    - SCR-LIB-REP-TRANSPORT
+  siblings:
+    - SCR-LIB
+    - SCR-RUNTIME
+    - SCR-PROVIDERS
+
+relationships:
+  - target: SCR-LIB-101-CORE
+    relation: DEPENDS_ON
+    direction: outgoing
+    required: true
+    description: Relies on core Identity and SemanticObject lifecycle contracts.
+  - target: SCR-LIB-203-HYPERGRAPH
+    relation: ENCODES
+    direction: outgoing
+    required: false
+    description: Encodes and preserves hypergraph topology losslessly.
+
+capabilities:
+  - "representation.canonical.serialization"
+  - "representation.context.transport"
+  - "representation.boundary.persistence"
+  - "representation.system.interchange"
+  - "representation.observer.presentation"
+
+invariants:
+  - "REPRESENTATION-I001" # Meaning != Representation
+  - "REPRESENTATION-I002" # Subdomain Separation
+  - "REPRESENTATION-I003" # Reconstructibility and Fidelity

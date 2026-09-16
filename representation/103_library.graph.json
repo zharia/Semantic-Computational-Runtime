@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0.0",
+  "nodes": [
+    {
+      "id": "SCR-DOM-REPRESENTATION",
+      "type": "domain",
+      "name": "Representation",
+      "path": "representation",
+      "status": "operational"
+    },
+    {
+      "id": "SCR-LIB-REP-SERIALIZATION",
+      "type": "subdomain",
+      "name": "Serialization",
+      "path": "representation/serialization"
+    },
+    {
+      "id": "SCR-LIB-REP-TRANSPORT",
+      "type": "subdomain",
+      "name": "Transport",
+      "path": "representation/transport"
+    },
+    {
+      "id": "SCR-LIB-REP-PERSISTENCE",
+      "type": "subdomain",
+      "name": "Persistence",
+      "path": "representation/persistence"
+    },
+    {
+      "id": "SCR-LIB-REP-INTERCHANGE",
+      "type": "subdomain",
+      "name": "Interchange",
+      "path": "representation/interchange"
+    },
+    {
+      "id": "SCR-LIB-REP-PRESENTATION",
+      "type": "subdomain",
+      "name": "Presentation",
+      "path": "representation/presentation"
+    }
+  ],
+  "edges": [
+    {
+      "source": "SCR-DOM-REPRESENTATION",
+      "target": "SCR-LIB-REP-SERIALIZATION",
+      "relation": "CONTAINS"
+    },
+    {
+      "source": "SCR-DOM-REPRESENTATION",
+      "target": "SCR-LIB-REP-TRANSPORT",
+      "relation": "CONTAINS"
+    },
+    {
+      "source": "SCR-DOM-REPRESENTATION",
+      "target": "SCR-LIB-REP-PERSISTENCE",
+      "relation": "CONTAINS"
+    },
+    {
+      "source": "SCR-DOM-REPRESENTATION",
+      "target": "SCR-LIB-REP-INTERCHANGE",
+      "relation": "CONTAINS"
+    },
+    {
+      "source": "SCR-DOM-REPRESENTATION",
+      "target": "SCR-LIB-REP-PRESENTATION",
+      "relation": "CONTAINS"
+    }
+  ]
+}

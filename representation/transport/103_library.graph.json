@@ -2,17 +2,17 @@
   "schema_version": "1.0.0",
   "nodes": [
     {
-      "id": "SCR-LIB-REP-SERIALIZATION",
+      "id": "SCR-LIB-REP-TRANSPORT",
       "type": "subdomain",
-      "name": "Serialization",
-      "path": "serialization",
+      "name": "Transport",
+      "path": "representation/transport",
       "status": "operational"
     },
     {
       "id": "SCR-LIB-REP",
       "type": "domain",
       "name": "Representation",
-      "path": "lib/representation"
+      "path": "representation"
     },
     {
       "id": "SCR-LIB-101-CORE",
@@ -21,27 +21,27 @@
       "path": "lib/101_Core"
     },
     {
-      "id": "SCR-LIB-203-HYPERGRAPH",
+      "id": "SCR-LIB-REP-SERIALIZATION",
       "type": "subdomain",
-      "name": "Hypergraph",
-      "path": "lib/203_Graph/Hypergraph"
+      "name": "Serialization",
+      "path": "representation/serialization"
     }
   ],
   "edges": [
     {
-      "source": "SCR-LIB-REP-SERIALIZATION",
+      "source": "SCR-LIB-REP-TRANSPORT",
       "target": "SCR-LIB-REP",
       "relation": "REFINES"
     },
     {
-      "source": "SCR-LIB-REP-SERIALIZATION",
+      "source": "SCR-LIB-REP-TRANSPORT",
       "target": "SCR-LIB-101-CORE",
       "relation": "DEPENDS_ON"
     },
     {
-      "source": "SCR-LIB-REP-SERIALIZATION",
-      "target": "SCR-LIB-203-HYPERGRAPH",
-      "relation": "ENCODES"
+      "source": "SCR-LIB-REP-TRANSPORT",
+      "target": "SCR-LIB-REP-SERIALIZATION",
+      "relation": "TRANSPORTS"
     }
   ]
 }

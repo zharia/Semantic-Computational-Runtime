@@ -5,7 +5,7 @@ schema_version: 1.0.0
 
 module:
   id: SCR-LIB-REP-SERIALIZATION
-  path: serialization
+  path: representation/serialization
   name: Serialization
   version: 0.1.0
   status: operational
