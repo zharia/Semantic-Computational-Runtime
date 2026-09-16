@@ -1,35 +1,30 @@
-# Spatial
+# SCR Semantic Library — 301 Field / Spatial
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Spatial/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Spatial  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Spatial`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Spatial Field Subdomain** defines fields whose underlying domain is embedded within a physical or abstract spatial metric space $(M, d)$ defined in `801_Spatial`.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Spatial.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `801_Spatial` and `202_Math/Vector`.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Spatial` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-SPT-001 (Metric Invariance):** Spatial distance between domain points MUST satisfy metric space axioms.
+* **FLD-SPT-002 (Reference Frame Tracking):** Spatial fields MUST explicitly reference their spatial coordinate system and datum.
+* **FLD-SPT-003 (Boundary Boundedness):** Spatial domains MUST declare finite or infinite boundary bounding hulls.

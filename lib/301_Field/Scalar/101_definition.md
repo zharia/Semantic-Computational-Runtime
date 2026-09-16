@@ -1,35 +1,30 @@
-# Scalar
+# SCR Semantic Library — 301 Field / Scalar
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Scalar/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Scalar  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Scalar`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Scalar Field Subdomain** defines the semantic structure defining fields whose values at every domain point are scalars in ℝ or ℂ, invariant under coordinate frame rotations.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Scalar.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Scalar`, representing 0-rank tensor fields such as temperature, pressure, or signed distance fields.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Scalar` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-SCL-001 (Rotational Invariance):** A scalar field evaluation MUST yield identical scalar values regardless of coordinate basis rotation.
+* **FLD-SCL-002 (Differentiability Domain):** Scalar fields declaring gradients MUST be differentiable over their interior domain.
+* **FLD-SCL-003 (Arithmetic Closure):** Linear combinations $a \phi_1 + b \phi_2$ of scalar fields MUST form a vector space over the underlying field.

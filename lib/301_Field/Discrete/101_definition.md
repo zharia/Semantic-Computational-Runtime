@@ -1,35 +1,30 @@
-# Discrete
+# SCR Semantic Library — 301 Field / Discrete
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Discrete/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Discrete  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Discrete`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Discrete Field Subdomain** defines the semantic classification of fields defined at discrete sample locations, lattice nodes, mesh vertices, or voxel centers.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Discrete.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Approximation` and `202_Math/Interpolation`.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Discrete` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-DSC-001 (Sample Topology Explicitness):** Discrete fields MUST declare their node topology (regular Cartesian grid, rectilinear, curvilinear, unstructured simplex).
+* **FLD-DSC-002 (Interpolation Coupling):** Evaluation between discrete nodes MUST explicitly declare its interpolation semantics.
+* **FLD-DSC-003 (Resolution Transparency):** Grid spacing $\Delta x$ and sample resolution MUST be explicitly parameterized.

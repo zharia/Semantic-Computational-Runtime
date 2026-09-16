@@ -20,10 +20,10 @@
       "semantics": "Fields provide structured distributed information over domains"
     },
     {
-      "source": "SCR-LIB-MATH",
+      "source": "SCR-LIB-MATHEMATICS",
       "target": "SCR-LIB-FIELDS",
       "relationship": "DEPENDS_ON",
-      "semantics": "Mathematical structures describe vector calculus and differential operators"
+      "semantics": "Mathematical structures describe vector calculus, algebra, dual numbers and differential operators"
     },
     {
       "source": "SCR-LIB-SPATIAL",
@@ -55,5 +55,12 @@
       "relationship": "INFORMS",
       "semantics": "Radiance fields, density fields, and level sets inform visual synthesis"
     }
+  ],
+  "subdomains": [
+    "Advection", "Boundary", "Composition", "Continuous", "Convolution",
+    "Curl", "Diffusion", "Discrete", "Divergence", "Extrapolation",
+    "Gradient", "IR", "InitialConditions", "Interpolation", "Laplacian",
+    "Operators", "Sampling", "Scalar", "Solvers", "Spatial",
+    "Spatiotemporal", "Temporal", "Tensor", "Transformation", "Vector"
   ]
 }

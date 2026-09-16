@@ -10,5 +10,6 @@ license = "Apache-2.0"
 scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
 scr-spatial = { path = "../../../801_Spatial/301_Implementation/rust" }
 scr-identity = { path = "../../../101_Core/Identity/301_Implementation/rust" }
+scr-math = { path = "../../../202_Math/301_Implementation/rust" }
 
 [dev-dependencies]

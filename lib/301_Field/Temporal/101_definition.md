@@ -1,35 +1,30 @@
-# Temporal
+# SCR Semantic Library — 301 Field / Temporal
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Temporal/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Temporal  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Temporal`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Temporal Field Subdomain** defines fields whose values vary over a one-dimensional ordered temporal domain $t \in T$.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Temporal.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Calculus` and `802_Stream/Temporal`.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Temporal` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-TMP-001 (Monotonic Time Dimension):** Temporal field coordinates MUST advance monotonically according to an explicit clock.
+* **FLD-TMP-002 (Causal Independence):** Evaluation at time $t$ MUST NOT depend on future states $t' > t$ unless explicitly retrocausal.
+* **FLD-TMP-003 (Time Derivative Existence):** Time-varying fields declaring dynamics MUST define their temporal derivative $\partial\phi/\partial t$.

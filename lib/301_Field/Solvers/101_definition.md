@@ -1,35 +1,30 @@
-# Solvers
+# SCR Semantic Library — 301 Field / Solvers
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Solvers/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Solvers  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Solvers`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Solvers Field Subdomain** defines computational engines solving partial and ordinary differential equations governing field evolution (Poisson, Navier-Stokes, Helmholtz, Wave).
 
-This directory currently exists as a structural location within the SCR library hierarchy for Solvers.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Numerical` and `202_Math/Differential`.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Solvers` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-SLV-001 (Residual Boundedness):** Solver convergence MUST certify that the equation residual $\|L\phi - f\|$ is within declared tolerance.
+* **FLD-SLV-002 (Conservation Laws):** Solvers MUST conserve physical quantities declared conservative by the field equation.
+* **FLD-SLV-003 (Stability Certification):** Numerical solvers MUST declare stability bounds (e.g. CFL, von Neumann stability).

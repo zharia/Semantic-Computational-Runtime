@@ -1,35 +1,30 @@
-# Diffusion
+# SCR Semantic Library — 301 Field / Diffusion
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Diffusion/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Diffusion  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Diffusion`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Diffusion Field Subdomain** defines the spontaneous net transport of matter, energy, or field concentration down a gradient, governed by parabolic PDE $\partial\phi/\partial t = D \nabla^2 \phi$.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Diffusion.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Calculus` and parabolic differential equations.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Diffusion` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-DIF-001 (Entropy / Smoothing Invariant):** Diffusion MUST non-strictly decrease total field variance/energy over time: $\frac{d}{dt} \int |\nabla \phi|^2 dV \le 0$.
+* **FLD-DIF-002 (Non-Negativity Preservation):** Diffusion of a non-negative concentration field MUST NOT produce negative values.
+* **FLD-DIF-003 (Maximum Principle):** The extrema of the diffused field must occur at the initial time or domain boundary.

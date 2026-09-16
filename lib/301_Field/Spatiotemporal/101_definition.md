@@ -1,35 +1,30 @@
-# Spatiotemporal
+# SCR Semantic Library — 301 Field / Spatiotemporal
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Spatiotemporal/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Spatiotemporal  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Spatiotemporal`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Spatiotemporal Field Subdomain** defines unified fields $\phi(x, t)$ defined over product domains $\Omega \times T$ of space and time.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Spatiotemporal.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `801_Spatial`, `802_Stream`, and `202_Math` multidimensional analysis.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Spatiotemporal` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-STP-001 (Product Space Decomposition):** Evaluation MUST support spatial slicing at fixed $t$ and temporal tracing at fixed $x$.
+* **FLD-STP-002 (Relativistic / Galilean Invariance):** Spatiotemporal transformations MUST preserve declared physical relativity invariants.
+* **FLD-STP-003 (Mixed Derivatives):** Mixed partial derivatives $\frac{\partial^2 \phi}{\partial t \partial x_i} = \frac{\partial^2 \phi}{\partial x_i \partial t}$ MUST hold for $C^2$ fields.

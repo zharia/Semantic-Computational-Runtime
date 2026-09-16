@@ -1,35 +1,30 @@
-# Continuous
+# SCR Semantic Library — 301 Field / Continuous
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Continuous/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Continuous  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Continuous`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Continuous Field Subdomain** defines the semantic classification of fields defined over continuous manifolds, Euclidean spaces, or measure spaces capable of exact analytical evaluation at arbitrary coordinates.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Continuous.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Functions` and `202_Math/Calculus`.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Continuous` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-CNT-001 (Infinite Point Density):** Continuous fields MUST admit evaluation at any valid point $x \in \Omega$ without grid discretization assumptions.
+* **FLD-CNT-002 (Analytic Smoothness):** Continuous fields declaring analytical representations MUST preserve exact function semantics.
+* **FLD-CNT-003 (Grid Independence):** Evaluation of a continuous field MUST NOT depend upon external spatial mesh or lattice structure.

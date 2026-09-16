@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "scr-hypergraph",
  "scr-identity",
+ "scr-math",
  "scr-spatial",
 ]
 
@@ -20,6 +21,15 @@ name = "scr-identity"
 version = "0.1.0"
 dependencies = [
  "scr-hypergraph",
+]
+
+[[package]]
+name = "scr-math"
+version = "0.1.0"
+dependencies = [
+ "scr-hypergraph",
+ "scr-identity",
+ "scr-spatial",
 ]
 
 [[package]]

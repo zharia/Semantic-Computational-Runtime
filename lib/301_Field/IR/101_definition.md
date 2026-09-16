@@ -1,61 +1,30 @@
+# SCR Semantic Library — 301 Field / IR
+
+**Document:** `lib/301_Field/IR/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / IR  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
+
 ---
 
-document: 101_definition
-document_type: normative_semantic_definition
-schema_version: 1.0.0
+## 1. Definition
 
-id: SCR-LIB-FIELD-IR
-name: Field MLIR Dialect
+The **IR Field Subdomain** defines the intermediate representation layer compiling field operations to MLIR dialects (`math`, `linalg`, `affine`, `gpu`).
 
-version: 0.1.0
-status: draft
-
-created: 2026-09-05
-updated: 2026-09-05
-
-parent: SCR-LIB-FIELDS
-
-authority: SCR
-domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Field MLIR Dialect
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-> Directory documentation for the current SCR library tree.
+> **Grounded in `202_Math/IR` and MLIR compiler infrastructure.**
 
-**Path:** `lib/301_Field/IR`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 3. Subdomain Invariants
 
-This directory is MLIR dialect material for the Fields domain.
-
-## Current Contents
-
-The directory currently contains:
-
-- `101_definition.md`
-
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
-
-## Current Role
-
-The directory establishes the MLIR dialect location for Fields.
-
-## Relationship to Parent
-
-`IR` is a child of `301_Field` and represents the MLIR dialect scope for the Fields semantic domain.
-
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Fields MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+* **FLD-IR-001 (MLIR Primacy):** Field IR lowering MUST target established MLIR dialects rather than creating custom shadow IRs.
+* **FLD-IR-002 (Operator Fusion Integrity):** Lowering passes fusing field operators MUST preserve mathematical semantics.
+* **FLD-IR-003 (Verification Passes):** Field MLIR passes MUST include explicit verification of boundary and domain constraints.

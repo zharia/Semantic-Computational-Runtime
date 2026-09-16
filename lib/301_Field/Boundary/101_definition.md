@@ -1,35 +1,30 @@
-# Boundary
+# SCR Semantic Library — 301 Field / Boundary
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Boundary/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Boundary  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Boundary`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Boundary Field Subdomain** defines the semantic specification of field behavior on the domain boundary $\partial \Omega$ (Dirichlet, Neumann, Robin, Periodic).
 
-This directory currently exists as a structural location within the SCR library hierarchy for Boundary.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Calculus` and boundary value problems (BVP).**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Boundary` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-BND-001 (Boundary Exhaustiveness):** The field MUST define boundary conditions across 100% of $\partial \Omega$.
+* **FLD-BND-002 (Dirichlet Value Fulfillment):** On Dirichlet boundaries, $\phi(x)|_{\partial \Omega} = g(x)$ MUST be strictly satisfied.
+* **FLD-BND-003 (Neumann Normal Flux Fulfillment):** On Neumann boundaries, $\nabla\phi(x) \cdot \hat{n} = h(x)$ MUST be strictly satisfied.

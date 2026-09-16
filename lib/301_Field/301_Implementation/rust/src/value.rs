@@ -208,3 +208,74 @@ impl fmt::Display for FieldValue {
         }
     }
 }
+
+impl From<scr_math::Vector> for FieldValue {
+    fn from(v: scr_math::Vector) -> Self {
+        let slice = v.as_slice();
+        match v.dim() {
+            2 => FieldValue::Vector2([slice[0], slice[1]]),
+            3 => FieldValue::Vector3([slice[0], slice[1], slice[2]]),
+            _ => FieldValue::VectorN(slice.to_vec()),
+        }
+    }
+}
+
+impl TryFrom<&FieldValue> for scr_math::Vector {
+    type Error = FieldError;
+
+    fn try_from(val: &FieldValue) -> Result<Self, Self::Error> {
+        match val {
+            FieldValue::Scalar(s) | FieldValue::Probability(s) => Ok(scr_math::Vector::new(vec![*s])),
+            FieldValue::Vector2([x, y]) => Ok(scr_math::Vector::new(vec![*x, *y])),
+            FieldValue::Vector3([x, y, z]) => Ok(scr_math::Vector::new(vec![*x, *y, *z])),
+            FieldValue::VectorN(v) => Ok(scr_math::Vector::new(v.clone())),
+            other => Err(FieldError::ConversionError(format!(
+                "Cannot convert FieldValue {:?} to scr_math::Vector",
+                other.space()
+            ))),
+        }
+    }
+}
+
+impl TryFrom<FieldValue> for scr_math::Vector {
+    type Error = FieldError;
+
+    fn try_from(val: FieldValue) -> Result<Self, Self::Error> {
+        scr_math::Vector::try_from(&val)
+    }
+}
+
+impl From<[[f64; 3]; 3]> for FieldValue {
+    fn from(m: [[f64; 3]; 3]) -> Self {
+        FieldValue::Tensor3x3(m)
+    }
+}
+
+impl TryFrom<&FieldValue> for scr_math::Matrix {
+    type Error = FieldError;
+
+    fn try_from(val: &FieldValue) -> Result<Self, Self::Error> {
+        match val {
+            FieldValue::Tensor3x3(m) => {
+                let data = vec![
+                    m[0][0], m[0][1], m[0][2],
+                    m[1][0], m[1][1], m[1][2],
+                    m[2][0], m[2][1], m[2][2],
+                ];
+                scr_math::Matrix::new(3, 3, data).map_err(|e| FieldError::ConversionError(e.to_string()))
+            }
+            other => Err(FieldError::ConversionError(format!(
+                "Cannot convert FieldValue {:?} to scr_math::Matrix",
+                other.space()
+            ))),
+        }
+    }
+}
+
+impl TryFrom<FieldValue> for scr_math::Matrix {
+    type Error = FieldError;
+
+    fn try_from(val: FieldValue) -> Result<Self, Self::Error> {
+        scr_math::Matrix::try_from(&val)
+    }
+}

@@ -59,6 +59,39 @@ capabilities:
     name: Canonical Hypergraph Projection & Dual Mapping
     status: operational
 
+dependencies:
+  - id: SCR-LIB-MATHEMATICS
+    path: lib/202_Math
+    status: operational
+    relationship: provides_calculus_and_differential_operators
+
+subdomains:
+  - Advection
+  - Boundary
+  - Composition
+  - Continuous
+  - Convolution
+  - Curl
+  - Diffusion
+  - Discrete
+  - Divergence
+  - Extrapolation
+  - Gradient
+  - IR
+  - InitialConditions
+  - Interpolation
+  - Laplacian
+  - Operators
+  - Sampling
+  - Scalar
+  - Solvers
+  - Spatial
+  - Spatiotemporal
+  - Temporal
+  - Tensor
+  - Transformation
+  - Vector
+
 invariants:
   - FIELD-INV-001
   - FIELD-INV-002

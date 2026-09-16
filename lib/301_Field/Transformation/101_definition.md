@@ -1,35 +1,30 @@
-# Transformation
+# SCR Semantic Library — 301 Field / Transformation
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Transformation/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Transformation  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Transformation`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Transformation Field Subdomain** defines pullback, pushforward, and coordinate transformations of fields under spatial diffeomorphisms $y = \Phi(x)$.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Transformation.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Differential` and differential geometry.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Transformation` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-TRF-001 (Pullback Invariant):** For scalar fields, the pullback $\Phi^*\phi = \phi \circ \Phi$ MUST preserve scalar values.
+* **FLD-TRF-002 (Jacobian Scaling for Densities):** Volume density fields MUST scale by the determinant of the Jacobian $\det(J_\Phi)$.
+* **FLD-TRF-003 (Invertibility):** Diffeomorphic transformations MUST declare their inverse mapping $\Phi^{-1}$.

@@ -1,35 +1,30 @@
-# Operators
+# SCR Semantic Library — 301 Field / Operators
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Operators/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Operators  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Operators`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Operators Field Subdomain** defines formal linear and non-linear mappings $L: \mathcal{F}_1 \to \mathcal{F}_2$ between field spaces.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Operators.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Functions` and functional analysis.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Operators` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-OPR-001 (Domain/Codomain Typing):** Operators MUST declare their input field space and output field space.
+* **FLD-OPR-002 (Linearity Verification):** Linear operators MUST satisfy $L(a f + b g) = a L(f) + b L(g)$.
+* **FLD-OPR-003 (Self-Adjointness):** Operators claiming self-adjointness MUST satisfy $\langle L f, g \rangle = \langle f, L g \rangle$.

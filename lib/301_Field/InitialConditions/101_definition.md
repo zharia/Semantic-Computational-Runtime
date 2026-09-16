@@ -1,35 +1,30 @@
-# InitialConditions
+# SCR Semantic Library — 301 Field / InitialConditions
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/InitialConditions/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / InitialConditions  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/InitialConditions`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **InitialConditions Field Subdomain** defines the specification of Cauchy initial field state $\phi(x, t_0)$ and initial rates $\partial\phi/\partial t(x, t_0)$ at the beginning of dynamic simulation.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Initial Conditions.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Differential` and initial value problems (IVP).**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`InitialConditions` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-INC-001 (Temporal Horizon Anchor):** Initial conditions MUST specify a unique initial time coordinate $t_0$.
+* **FLD-INC-002 (Spatial Completeness):** Initial conditions MUST define values across the entire spatial domain $\Omega$ at $t_0$.
+* **FLD-INC-003 (Boundary Compatibility):** Initial conditions MUST be mathematically compatible with boundary conditions at $\partial \Omega$ for $t=t_0$.

@@ -20,6 +20,7 @@ pub enum FieldError {
     OperatorError(String),
     HypergraphMappingError(String),
     InvariantViolation(String),
+    ConversionError(String),
 }
 
 impl fmt::Display for FieldError {
@@ -48,6 +49,7 @@ impl fmt::Display for FieldError {
             Self::OperatorError(msg) => write!(f, "Operator error: {}", msg),
             Self::HypergraphMappingError(msg) => write!(f, "Hypergraph mapping error: {}", msg),
             Self::InvariantViolation(msg) => write!(f, "Invariant violation: {}", msg),
+            Self::ConversionError(msg) => write!(f, "Conversion error: {}", msg),
         }
     }
 }

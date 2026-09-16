@@ -1,35 +1,30 @@
-# Gradient
+# SCR Semantic Library — 301 Field / Gradient
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/301_Field/Gradient/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Field / Gradient  
+**Parent:** `lib/301_Field/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/301_Field/Gradient`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Gradient Field Subdomain** defines the differential vector operator mapping a differentiable scalar field $\phi$ to a vector field $\nabla \phi$ pointing in the direction of greatest rate of increase.
 
-This directory currently exists as a structural location within the SCR library hierarchy for Gradient.
+---
 
-## Current Contents
+## 2. Mathematical Foundation & Relationship to 202_Math
 
-The directory currently contains:
+> **Grounded in `202_Math/Calculus` and `202_Math/Differential`, representing the exterior derivative $d\phi$ converted to a vector via the metric.**
 
-- `101_definition.md`
+In accordance with `FIELD-INV-001` and `MATH-INV-001`, mathematical meaning is authoritative over field representations. Grids, arrays, textures, and GPU kernels remain subordinate realization mechanisms.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Gradient` is a child of `301_Field` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FLD-GRD-001 (Orthogonality to Level Sets):** The gradient $\nabla \phi$ MUST be orthogonal to the tangent space of the level set $\phi(x) = c$.
+* **FLD-GRD-002 (Magnitude as Directional Maximum):** The norm $\|\nabla \phi\|$ MUST equal the maximum directional derivative of $\phi$ at that point.
+* **FLD-GRD-003 (Curl-Free Invariant):** For any twice continuously differentiable scalar field, $\nabla \times (\nabla \phi) = \vec{0}$ MUST hold identically.
