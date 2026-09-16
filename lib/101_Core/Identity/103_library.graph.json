@@ -1,0 +1,47 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-IDENTITY",
+  "name": "Identity",
+  "layer": "101_Core",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/101_Core/Identity",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-IDENTITY",
+      "relationship": "DEFINES",
+      "semantics": "Core defines the foundational identity and addressing contract"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-HYPERGRAPH",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity provides canonical semantic coordinates for hypergraph elements and relations"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-REPRESENTATION",
+      "relationship": "DISTINGUISHES_FROM",
+      "semantics": "Identity coordinate is strictly distinguished from its computational representation"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "ANCHORS",
+      "semantics": "Identity anchors perceived entities across observation frames"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "IDENTIFIES_ACTORS",
+      "semantics": "Identity provides authentic coordinate addressing for interaction actors and targets"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "LOCATES",
+      "semantics": "Identity addresses spatial entities, domains, and reference frames"
+    }
+  ]
+}

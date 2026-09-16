@@ -1,0 +1,78 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-IDENTITY
+  path: lib/101_Core/Identity
+  name: Identity
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: core-semantic-architecture
+    agent: antigravity
+
+domain:
+  name: Identity
+  description: >
+    Normative semantic domain governing Semantic Identity and Coordinate Addressing
+    in SCR, establishing the authority hierarchy from Genesis to Manifestation.
+  purpose: >
+    Define the identity address space, multi-root scoped addressing, hierarchical allocation
+    domains, authority delegation, generation fencing, transaction immutability, durable
+    non-reuse, historical consistency across snapshots and crashes, and canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-ID-GENESIS-ROOT
+    name: Genesis & Root Authority Scoping (Model B)
+    status: operational
+  - id: CAP-ID-ADDRESS-SPACE
+    name: Identity Address Space & Region Partitioning
+    status: operational
+  - id: CAP-ID-DOMAIN-TREE
+    name: Hierarchical Allocation Domains & Disjointness Enforcement
+    status: operational
+  - id: CAP-ID-AUTHORITY-FENCING
+    name: Authority Generation Rotation & Fencing
+    status: operational
+  - id: CAP-ID-ALLOCATION
+    name: Atomic Coordinate Allocation & Durable Non-Reuse
+    status: operational
+  - id: CAP-ID-TRANSACTIONS
+    name: Transaction Immutability & Non-Rebinding (IAM-R018)
+    status: operational
+  - id: CAP-ID-RECOVERY
+    name: Snapshot Safety & Historical Consistency (IAM-R017)
+    status: operational
+  - id: CAP-ID-HYPERGRAPH
+    name: Canonical Hypergraph Identity Projection & Dual Mapping
+    status: operational
+
+invariants:
+  - IAM-I001
+  - IAM-I002
+  - IAM-I003
+  - IAM-I004
+  - IAM-I005
+  - IAM-I006
+  - IAM-I007
+  - IAM-I008
+  - IAM-I009
+  - IAM-I010
+  - IAM-I011
+  - IAM-I012
+  - IAM-I013
+  - IAM-I014
+  - IAM-I015
+  - IAM-I016
+  - IAM-I017
