@@ -1,0 +1,59 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-FIELDS",
+  "name": "Fields",
+  "layer": "301_Field",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/301_Field",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "SPECIALIZES",
+      "semantics": "Fields specialize foundational semantic structures, entities, and state"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "REFINES",
+      "semantics": "Fields provide structured distributed information over domains"
+    },
+    {
+      "source": "SCR-LIB-MATH",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "DEPENDS_ON",
+      "semantics": "Mathematical structures describe vector calculus and differential operators"
+    },
+    {
+      "source": "SCR-LIB-SPATIAL",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "SITUATES",
+      "semantics": "Spatial provides coordinate spaces, reference frames, and distance metrics for spatial fields"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic coordinates for fields and sample points"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Fields and field evaluations project directly into the canonical SCR hypergraph"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "SUPPORTS",
+      "semantics": "Physical quantities are represented as continuous and discrete fields"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "INFORMS",
+      "semantics": "Radiance fields, density fields, and level sets inform visual synthesis"
+    }
+  ]
+}

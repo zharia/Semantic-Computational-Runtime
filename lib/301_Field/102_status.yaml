@@ -1,0 +1,80 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-FIELDS
+  path: lib/301_Field
+  name: Fields
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Fields
+  description: >
+    Normative semantic computational domain defining fields as structures assigning,
+    relating, or evolving meaningful information over a defined domain.
+  purpose: >
+    Provide continuous and discrete field abstractions, value spaces (scalar, vector, tensor),
+    differential operators (gradient, divergence, curl, Laplacian), advection, diffusion,
+    interpolation, boundary conditions, level sets / signed distance fields, and canonical
+    hypergraph projection.
+
+capabilities:
+  - id: CAP-FLD-DOMAIN-VALUE
+    name: Field Domains & Multi-Dimensional Value Spaces
+    status: operational
+  - id: CAP-FLD-ASSIGNMENTS
+    name: Analytic, Discrete Grid & Sparse Sampled Representations
+    status: operational
+  - id: CAP-FLD-INTERPOLATION
+    name: Multi-Dimensional Interpolation Schemes
+    status: operational
+  - id: CAP-FLD-BOUNDARY
+    name: Explicit Boundary Semantics (Dirichlet, Neumann, Periodic, Clamped)
+    status: operational
+  - id: CAP-FLD-OPERATORS
+    name: Differential Operators (Gradient, Divergence, Curl, Laplacian)
+    status: operational
+  - id: CAP-FLD-DYNAMICS
+    name: Field Advection & Dynamics
+    status: operational
+  - id: CAP-FLD-LEVEL-SET
+    name: Level Sets & Signed Distance Fields (SDF)
+    status: operational
+  - id: CAP-FLD-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Dual Mapping
+    status: operational
+
+invariants:
+  - FIELD-INV-001
+  - FIELD-INV-002
+  - FIELD-INV-003
+  - FIELD-INV-004
+  - FIELD-INV-005
+  - FIELD-INV-006
+  - FIELD-INV-007
+  - FIELD-INV-008
+  - FIELD-INV-009
+  - FIELD-INV-010
+  - FIELD-INV-011
+  - FIELD-INV-012
+  - FIELD-INV-013
+  - FIELD-INV-014
+  - FIELD-INV-015
+  - FIELD-INV-016
+  - FIELD-INV-017
+  - FIELD-INV-018
