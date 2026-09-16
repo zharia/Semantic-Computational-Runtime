@@ -1,35 +1,30 @@
-# Statistics
+# SCR Semantic Library — 202 Math / Statistics
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Statistics/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Statistics  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Statistics`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Statistics Domain** defines the science of collecting, analyzing, interpreting, presenting, and organizing quantitative data, including descriptive and inferential statistics.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Statistics.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Statistics is not a mean() function; it is the mathematical inference of population characteristics from sample distributions.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Statistics` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STA-INV-001 (Sample Moment Consistency):** Sample variance and higher moments MUST use unbiased estimators where specified.
+* **STA-INV-002 (Correlation Boundedness):** Pearson and Spearman correlation coefficients MUST lie strictly within $[-1.0, 1.0]$.
+* **STA-INV-003 (Hypothesis Transparency):** Statistical tests MUST declare null hypotheses, significance levels $\alpha$, and test statistics.

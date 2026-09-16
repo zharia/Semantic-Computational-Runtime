@@ -1,35 +1,30 @@
-# Integral
+# SCR Semantic Library — 202 Math / Integral
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Integral/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Integral  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Integral`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Integral Domain** defines the theory of integration, Lebesgue measures, line integrals, surface integrals, and numerical quadrature.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Integral.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Integration is not a Riemann sum loop; it is a measure-theoretic functional mapping integrable functions to scalar quantities.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Integral` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **INT-INV-001 (Additivity):** For disjoint domains $A \cap B = \emptyset$, $\int_{A \cup B} f = \int_A f + \int_B f$ MUST hold.
+* **INT-INV-002 (Monotonicity):** If $f \le g$ on domain $\Omega$, then $\int_\Omega f \le \int_\Omega g$ MUST hold.
+* **INT-INV-003 (Boundedness):** Integrals over bounded functions on finite measures MUST yield finite values.

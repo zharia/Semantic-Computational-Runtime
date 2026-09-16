@@ -1,35 +1,30 @@
-# Approximation
+# SCR Semantic Library — 202 Math / Approximation
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Approximation/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Approximation  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Approximation`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Approximation Domain** defines the semantic domain governing inexact representations, asymptotic expansions, Taylor series, Chebyshev approximations, and bounded error bounds.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Approximation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Approximation is not floating-point rounding error; it is an intentional mathematical mapping from an exact mathematical entity to a simpler or computable surrogate with explicit error bounds.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Approximation` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **APP-INV-001 (Error Bound Explicitness):** Approximations MUST declare strict upper bounds on absolute or relative error.
+* **APP-INV-002 (Convergence Domain):** The domain of convergence over which the approximation is valid MUST be explicitly stated.
+* **APP-INV-003 (No Masking):** Approximations MUST NOT masquerade as exact mathematical entities.

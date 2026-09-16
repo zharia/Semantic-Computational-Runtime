@@ -1,35 +1,30 @@
-# Calculus
+# SCR Semantic Library — 202 Math / Calculus
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Calculus/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Calculus  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Calculus`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Calculus Domain** defines the mathematical study of continuous change, encompassing differential calculus (rates of change, slopes) and integral calculus (accumulation, areas).
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Calculus.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Calculus is not numerical loops; it is the formal mathematical framework of limits, continuity, derivatives, integrals, and differential forms.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Calculus` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **CAL-INV-001 (Fundamental Theorem):** Differentiation and integration MUST satisfy the Fundamental Theorem of Calculus: $\int_a^b f'(x)dx = f(b) - f(a)$.
+* **CAL-INV-002 (Continuity Requirement):** Operations requiring continuity or differentiability MUST enforce domain validity.
+* **CAL-INV-003 (Linearity):** Differentiation and integration MUST be strictly linear operators.

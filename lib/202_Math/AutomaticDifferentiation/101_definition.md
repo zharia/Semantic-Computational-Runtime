@@ -1,35 +1,30 @@
-# AutomaticDifferentiation
+# SCR Semantic Library — 202 Math / AutomaticDifferentiation
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/AutomaticDifferentiation/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / AutomaticDifferentiation  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/AutomaticDifferentiation`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **AutomaticDifferentiation Domain** defines the algorithmic evaluation of exact derivatives of functions specified by computer programs using dual numbers (forward mode) or adjoint computational graphs (reverse mode).
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for AutomaticDifferentiation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Automatic differentiation is not finite differences; it evaluates analytical derivatives to machine precision by applying the chain rule to elementary operations.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`AutomaticDifferentiation` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **AD-INV-001 (Exactness to Precision):** Derivatives computed via automatic differentiation MUST NOT introduce discretization truncation error.
+* **AD-INV-002 (Chain Rule Invariance):** Composition of differentiable operations MUST strictly satisfy the chain rule $D(f \circ g) = (Df \circ g) \cdot Dg$.
+* **AD-INV-003 (Dual Algebra Soundness):** Forward-mode AD MUST evaluate over dual numbers satisfying $\epsilon^2 = 0$.

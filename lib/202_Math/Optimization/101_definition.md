@@ -1,35 +1,30 @@
-# Optimization
+# SCR Semantic Library — 202 Math / Optimization
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Optimization/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Optimization  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Optimization`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Optimization Domain** defines the mathematical theory and algorithms for finding the minima or maxima of objective functions subject to constraints.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Optimization.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Optimization is not gradient descent heuristic tuning; it is the mathematical characterization of extrema over constrained manifolds.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Optimization` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **OPT-INV-001 (Feasibility):** Optimal solutions MUST strictly satisfy all active equality and inequality constraints.
+* **OPT-INV-002 (First-Order Optimality):** At unconstrained local minima, the gradient $\nabla f(x^*)$ MUST equal zero.
+* **OPT-INV-003 (Convexity Guarantees):** Convex optimization problems MUST guarantee that local minima are global minima.

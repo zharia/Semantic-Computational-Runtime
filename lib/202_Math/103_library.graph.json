@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/scr-project/schemas/master/v1/library-graph.schema.json",
+  "id": "SCR-LIB-MATHEMATICS",
+  "name": "Mathematics",
+  "version": "0.1.0",
+  "path": "lib/202_Math",
+  "domain": "Mathematics",
+  "status": "operational",
+  "upstream_dependencies": [
+    {
+      "id": "SCR-LIB-IDENTITY",
+      "path": "lib/101_Core/Identity",
+      "relationship": "identifies",
+      "required": true
+    },
+    {
+      "id": "SCR-LIB-HYPERGRAPH",
+      "path": "lib/203_Graph/Hypergraph",
+      "relationship": "projects_to",
+      "required": true
+    }
+  ],
+  "downstream_dependents": [
+    {
+      "id": "SCR-LIB-SPATIAL",
+      "relationship": "provides_geometry_and_algebra"
+    },
+    {
+      "id": "SCR-LIB-FIELDS",
+      "relationship": "provides_calculus_and_differential_operators"
+    },
+    {
+      "id": "SCR-LIB-STREAM",
+      "relationship": "provides_orderings_and_watermarks"
+    },
+    {
+      "id": "SCR-LIB-INTERFACES",
+      "relationship": "provides_capability_foundations"
+    },
+    {
+      "id": "SCR-LIB-APPLICATION",
+      "relationship": "provides_computational_primitives"
+    }
+  ],
+  "subdomains": [
+    "Algebra", "Approximation", "Arithmetic", "AutomaticDifferentiation",
+    "Calculus", "Complex", "Differential", "Dual", "Functions", "IR",
+    "Integral", "Interpolation", "Matrix", "Numerical", "Optimization",
+    "Polynomial", "Probability", "Quaternion", "Random", "Scalar",
+    "Statistics", "Symbolic", "Tensor", "Transforms", "Vector"
+  ],
+  "metadata": {
+    "authoritative_specification": "101_definition.md",
+    "status_file": "102_status.yaml",
+    "invariants_count": 17
+  }
+}

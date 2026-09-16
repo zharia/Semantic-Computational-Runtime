@@ -1,35 +1,30 @@
-# Quaternion
+# SCR Semantic Library — 202 Math / Quaternion
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Quaternion/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Quaternion  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Quaternion`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Quaternion Domain** defines the four-dimensional normed division algebra $\mathbb{H}$ extending complex numbers, widely used for spatial rotations in $SO(3)$.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Quaternion.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Quaternions form a non-commutative division ring where $i^2 = j^2 = k^2 = ijk = -1$.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Quaternion` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **QAT-INV-001 (Hamilton Fundamental Formula):** $i^2 = j^2 = k^2 = ijk = -1$ MUST hold exactly.
+* **QAT-INV-002 (Non-Commutativity):** Quaternion multiplication is associative but non-commutative ($ij = k$, $ji = -k$).
+* **QAT-INV-003 (Unit Norm Rotation):** Unit quaternions ($\|q\| = 1$) represent spatial rotations in $SO(3)$ without gimbal lock.

@@ -1,35 +1,30 @@
-# Dual
+# SCR Semantic Library — 202 Math / Dual
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Dual/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Dual  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Dual`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Dual Domain** defines the algebra of dual numbers $a + b\epsilon$ where $\epsilon \neq 0$ and $\epsilon^2 = 0$, providing hypercomplex foundations for kinematics and exact forward differentiation.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Dual.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Dual numbers are an associative unital algebra extending the reals with an infinitesimal nilpotent element.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Dual` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DUL-INV-001 (Nilpotency):** The dual unit $\epsilon$ MUST satisfy $\epsilon^2 = 0$ exactly.
+* **DUL-INV-002 (Taylor Truncation Identity):** For any analytic function $f$, $f(a + b\epsilon) = f(a) + b f'(a)\epsilon$ MUST hold identically.
+* **DUL-INV-003 (Ring Structure):** Dual numbers MUST form a commutative ring with identity.

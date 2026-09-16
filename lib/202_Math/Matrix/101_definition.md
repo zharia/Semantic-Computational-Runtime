@@ -1,35 +1,30 @@
-# Matrix
+# SCR Semantic Library — 202 Math / Matrix
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Matrix/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Matrix  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Matrix`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Matrix Domain** defines rectangular arrays of numbers, symbols, or expressions arranged in rows and columns representing linear transformations and systems of equations.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Matrix.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A matrix is not a 2D float array in row-major order; it is a representation of a linear map $T: V \to W$ relative to chosen bases.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Matrix` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MTX-INV-001 (Dimension Conformance):** Multiplication $A \cdot B$ is valid if and only if cols(A) == rows(B).
+* **MTX-INV-002 (Determinant Multiplicativity):** For square matrices, $\det(AB) = \det(A)\det(B)$ MUST hold.
+* **MTX-INV-003 (Transpose Distribution):** The transpose of a product MUST satisfy $(AB)^T = B^T A^T$.

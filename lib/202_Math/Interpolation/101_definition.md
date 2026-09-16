@@ -1,35 +1,30 @@
-# Interpolation
+# SCR Semantic Library — 202 Math / Interpolation
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Interpolation/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Interpolation  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Interpolation`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Interpolation Domain** defines the construction of new data points within the range of a discrete set of known data points using polynomial, spline, or radial basis functions.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Interpolation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Interpolation is not linear blending in a shader; it is an exact passage through given coordinate-value pairs $f(x_i) = y_i$.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Interpolation` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **ITP-INV-001 (Exact Fitting):** An interpolant $P$ MUST satisfy $P(x_i) = y_i$ for all interpolation nodes.
+* **ITP-INV-002 (Continuity Class):** Splines and higher-order interpolants MUST declare and preserve their continuity order ($C^0, C^1, C^2$).
+* **ITP-INV-003 (Domain Convex Hull):** Interpolation MUST distinguish interpolation inside the convex hull from extrapolation outside.

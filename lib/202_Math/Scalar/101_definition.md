@@ -1,35 +1,30 @@
-# Scalar
+# SCR Semantic Library — 202 Math / Scalar
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Scalar/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Scalar  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Scalar`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Scalar Domain** defines one-dimensional mathematical quantities that can be described by a single real, complex, rational, or integer value, invariant under coordinate rotation.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Scalar.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A scalar is not an IEEE 754 float variable; it is a 0-tensor invariant under coordinate transformations.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Scalar` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SCL-INV-001 (Rotational Invariance):** A scalar quantity MUST remain invariant under coordinate frame transformations.
+* **SCL-INV-002 (Total Ordering of Reals):** Real scalars MUST obey total ordering (trichotomy).
+* **SCL-INV-003 (Field Operations):** Scalars participating in a field MUST support addition, subtraction, multiplication, and non-zero division.

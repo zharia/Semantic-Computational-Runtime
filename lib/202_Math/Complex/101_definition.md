@@ -1,35 +1,30 @@
-# Complex
+# SCR Semantic Library — 202 Math / Complex
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Complex/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Complex  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Complex`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Complex Domain** defines the field of complex numbers $\mathbb{C} = \{a + bi \mid a,b \in \mathbb{R}, i^2 = -1\}$ and holomorphic functions defined over the complex plane.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Complex.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Complex numbers are not a struct of two floats; they form an algebraically closed field satisfying the fundamental theorem of algebra.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Complex` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **CPX-INV-001 (Imaginary Unit Axiom):** The imaginary unit MUST satisfy $i^2 = -1$ exactly.
+* **CPX-INV-002 (Field Axioms):** Complex addition and multiplication MUST satisfy all mathematical field axioms.
+* **CPX-INV-003 (Conjugate Symmetry):** Complex conjugation MUST satisfy $\overline{z_1 z_2} = \overline{z_1} \cdot \overline{z_2}$ and $z \overline{z} = |z|^2$.

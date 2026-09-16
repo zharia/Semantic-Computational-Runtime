@@ -1,35 +1,30 @@
-# Transforms
+# SCR Semantic Library — 202 Math / Transforms
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Transforms/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Transforms  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Transforms`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Transforms Domain** defines integral and discrete transformations mapping functions or sequences between mathematical domains (Fourier, Laplace, Wavelet, Hilbert).
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Transforms.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A transform is not an FFT algorithm; it is an isomorphism between function spaces (e.g. time domain to frequency domain).**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Transforms` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **TRF-INV-001 (Invertibility):** Where an inverse transform exists, $T^{-1}(T(f)) = f$ MUST hold within declared precision bounds.
+* **TRF-INV-002 (Parseval/Plancherel Energy Conservation):** Unitary transforms MUST conserve $L^2$ norm / energy: $\|T(f)\| = \|f\|$.
+* **TRF-INV-003 (Linearity):** Transforms MUST satisfy $T(af + bg) = aT(f) + bT(g)$.

@@ -1,35 +1,30 @@
-# Probability
+# SCR Semantic Library — 202 Math / Probability
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Probability/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Probability  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Probability`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Probability Domain** defines the mathematical branch dealing with uncertainty, random events, probability measures, distributions, and stochastic variables.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Probability.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Probability is not random numbers; it is a Kolmogorov probability space $(\Omega, \mathcal{F}, P)$.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Probability` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **PRB-INV-001 (Kolmogorov Axiom 1 (Non-negativity)):** $P(E) \ge 0$ for all events $E \in \mathcal{F}$.
+* **PRB-INV-002 (Kolmogorov Axiom 2 (Unitarity)):** $P(\Omega) = 1.0$ exactly.
+* **PRB-INV-003 (Kolmogorov Axiom 3 (Additivity)):** For mutually exclusive events, $P(\bigcup_i E_i) = \sum_i P(E_i)$.

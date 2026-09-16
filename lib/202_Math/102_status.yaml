@@ -1,0 +1,113 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-MATHEMATICS
+  path: lib/202_Math
+  name: Mathematics
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Mathematics
+  description: >
+    Foundational normative semantic domain defining mathematical structures, relations,
+    operations, spaces, quantities, and algebraic laws as first-class computational objects.
+  purpose: >
+    Establish formal mathematical meaning decoupled from floating-point hardware and libraries;
+    formalize exact vs approximate tolerance contracts, algebraic structures (Monoid, Group, Ring, Field),
+    linear algebra (vectors, matrices, quaternions), forward-mode automatic differentiation (dual numbers),
+    calculus contracts, and canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-MATH-EXACT-APPROXIMATE
+    name: Exact vs Approximate Arithmetic & Tolerance Contracts
+    status: operational
+  - id: CAP-MATH-ALGEBRAIC-STRUCTURES
+    name: Monoid, Group, Ring, and Field Structure Verification
+    status: operational
+  - id: CAP-MATH-LINEAR-ALGEBRA
+    name: Multi-Dimensional Vectors, Matrices, and Tensor Algebra
+    status: operational
+  - id: CAP-MATH-QUATERNIONS
+    name: Hypercomplex Quaternions & SO(3) Spatial Rotations
+    status: operational
+  - id: CAP-MATH-DUAL-NUMBERS
+    name: Dual Numbers & Algorithmic Forward-Mode Automatic Differentiation
+    status: operational
+  - id: CAP-MATH-POLYNOMIALS
+    name: Polynomial Horner Evaluation, Arithmetic, and Root Invariants
+    status: operational
+  - id: CAP-MATH-STATISTICS
+    name: Summary Statistics, Moments, and Covariance
+    status: operational
+  - id: CAP-MATH-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Ambient Mathematical Axioms
+    status: operational
+
+invariants:
+  - id: MATH-INV-001
+    name: Mathematical Primacy
+    status: enforced
+  - id: MATH-INV-002
+    name: Representation Independence
+    status: enforced
+  - id: MATH-INV-003
+    name: Equality Integrity
+    status: enforced
+  - id: MATH-INV-004
+    name: Exactness Integrity
+    status: enforced
+  - id: MATH-INV-005
+    name: Algebraic Integrity
+    status: enforced
+  - id: MATH-INV-006
+    name: Domain Integrity
+    status: enforced
+  - id: MATH-INV-007
+    name: Transformation Integrity
+    status: enforced
+  - id: MATH-INV-008
+    name: Dimensional Integrity
+    status: enforced
+  - id: MATH-INV-009
+    name: Approximation Transparency
+    status: enforced
+  - id: MATH-INV-010
+    name: Numerical Contract Integrity
+    status: enforced
+  - id: MATH-INV-011
+    name: Function Integrity
+    status: enforced
+  - id: MATH-INV-012
+    name: Composition Integrity
+    status: enforced
+  - id: MATH-INV-013
+    name: Equivalence Integrity
+    status: enforced
+  - id: MATH-INV-014
+    name: Execution Independence
+    status: enforced
+  - id: MATH-INV-015
+    name: Provider Independence
+    status: enforced
+  - id: MATH-INV-016
+    name: Core Conformance
+    status: enforced
+  - id: MATH-INV-017
+    name: Domain Independence
+    status: enforced

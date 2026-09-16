@@ -1,35 +1,30 @@
-# Functions
+# SCR Semantic Library — 202 Math / Functions
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Functions/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Functions  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Functions`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Functions Domain** defines formal mathematical mappings $f: X \to Y$ relating elements of a domain $X$ to a codomain $Y$ under well-defined semantic rules.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Functions.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A mathematical function is not a subprogram routine; it is a single-valued relation assigning exactly one codomain element to each domain element.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Functions` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **FNC-INV-001 (Domain Well-Definedness):** A function MUST be evaluated strictly within its defined domain.
+* **FNC-INV-002 (Determinism of Mapping):** Identical domain elements MUST map to identical codomain elements.
+* **FNC-INV-003 (Bijectivity Explicitness):** Where injectivity, surjectivity, or bijectivity is claimed, it MUST be mathematically sound.

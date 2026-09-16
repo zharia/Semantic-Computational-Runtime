@@ -1,35 +1,30 @@
-# Polynomial
+# SCR Semantic Library — 202 Math / Polynomial
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Polynomial/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Polynomial  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Polynomial`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Polynomial Domain** defines algebraic expressions consisting of variables and coefficients involving only addition, subtraction, multiplication, and non-negative integer exponentiation.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Polynomial.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Polynomials form a commutative ring $R[x]$ with unique factorization and root multiplicities.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Polynomial` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **POL-INV-001 (Degree Axiom):** The degree of the product of non-zero polynomials over an integral domain MUST equal the sum of their degrees: $\deg(pq) = \deg(p) + \deg(q)$.
+* **POL-INV-002 (Fundamental Theorem of Algebra):** A polynomial of degree $n$ over $\mathbb{C}$ has exactly $n$ roots counting multiplicity.
+* **POL-INV-003 (Evaluation Soundness):** Polynomial evaluation MUST be invariant under Horner's method vs expanded form.

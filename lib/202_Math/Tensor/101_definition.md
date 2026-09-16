@@ -1,35 +1,30 @@
-# Tensor
+# SCR Semantic Library — 202 Math / Tensor
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/202_Math/Tensor/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Math / Tensor  
+**Parent:** `lib/202_Math/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/202_Math/Tensor`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Tensor Domain** defines multilinear geometric objects describing linear relations between geometric vectors, scalars, and other tensors with explicit transformation rules.
 
-This directory currently exists as a structural location within the SCR library hierarchy for mathematical computation primitives for Tensor.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **A tensor is not an n-dimensional NumPy array; it is a multilinear map that transforms covariantly and contravariantly under change of basis.**
 
-- `101_definition.md`
+Mathematical semantics remain authoritative; physical arrays, hardware registers, GPU buffers, and numerical libraries remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Tensor` is a child of `202_Math` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **TNS-INV-001 (Transformation Covariance):** Tensor components MUST transform according to their covariant and contravariant rank under coordinate changes.
+* **TNS-INV-002 (Rank Integrity):** The rank and shape of a tensor MUST be preserved across invariant operations.
+* **TNS-INV-003 (Contraction Consistency):** Tensor contraction MUST be invariant under basis changes.
