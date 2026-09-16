@@ -1,0 +1,35 @@
+{
+  "module": "SCR-LIB-203-HYPERGRAPH",
+  "domain": "203_Graph",
+  "subdomain": "Hypergraph",
+  "status": "operational",
+  "dependencies": [
+    "SCR-LIB-101-CORE"
+  ],
+  "dependents": [
+    "SCR-LIB-804-APPLICATION",
+    "SCR-APP-CAVE"
+  ],
+  "specifications": [
+    "101_spec.md"
+  ],
+  "implementations": [
+    "301_Implementation/rust"
+  ],
+  "artifacts": [
+    "tests/hypergraph_conformance.rs"
+  ],
+  "capabilities": [
+    "hypergraph.topology.generalized",
+    "hypergraph.incidence.first_class",
+    "hypergraph.relation.nullary",
+    "hypergraph.role.typed",
+    "hypergraph.projection.bipartite",
+    "hypergraph.projection.clique",
+    "hypergraph.mutation.atomic"
+  ],
+  "provenance": {
+    "task": "HGT-001",
+    "completion_date": "2026-09-16"
+  }
+}

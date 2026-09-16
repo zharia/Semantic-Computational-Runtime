@@ -1,0 +1,36 @@
+provider: dmabuf
+domain: system
+subdomain: gpu
+
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
+
+canonical: true
+reference: false
+
+capabilities:
+  - "system.gpu.dmabuf_import"
+  - "system.gpu.egl_image_bind"
+  - "system.gpu.zero_copy_verify"
+  - "system.gpu.fence_synchronization"
+
+supported_versions:
+  - "Linux DRM / PRIME DMA-BUF"
+  - "EGL_EXT_image_dma_buf_import"
+
+platforms:
+  - "linux"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
+dependencies:
+  - "libdrm"
+  - "mesa"
+  - "libGL"
+
+limitations:
+  - "Requires kernel DRM driver with PRIME buffer sharing enabled"

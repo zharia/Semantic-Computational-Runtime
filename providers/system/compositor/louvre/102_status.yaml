@@ -1,0 +1,38 @@
+provider: louvre
+domain: system
+subdomain: compositor
+
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
+
+canonical: true
+reference: false
+
+capabilities:
+  - "system.compositor.wayland_protocol"
+  - "system.compositor.surface_lifecycle"
+  - "system.compositor.buffer_commit"
+  - "system.compositor.pointer_input"
+
+supported_versions:
+  - "Louvre C++ 1.x"
+  - "Headless / Synthetic Wayland C ABI Reference Adapter"
+
+platforms:
+  - "linux"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
+dependencies:
+  - "wayland"
+  - "wayland-protocols"
+  - "libxkbcommon"
+  - "libinput"
+  - "libdrm"
+
+limitations:
+  - "Direct hardware display presentation requires Linux KMS/DRM permissions"

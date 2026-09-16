@@ -1,0 +1,46 @@
+{
+  "provider": "louvre",
+  "domain": "system",
+  "subdomain": "compositor",
+  "status": "operational",
+  "capabilities": [
+    "system.compositor.wayland_protocol",
+    "system.compositor.surface_lifecycle",
+    "system.compositor.buffer_commit",
+    "system.compositor.pointer_input"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/louvre_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/louvre_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_louvre_contract.cpp"
+  ],
+  "dependencies": [
+    "wayland",
+    "wayland-protocols",
+    "libxkbcommon",
+    "libinput",
+    "libdrm"
+  ],
+  "resources": [
+    "wayland_socket",
+    "epoll_fd"
+  ],
+  "platforms": [
+    "linux"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "provenance": {
+    "authoritative_source": "Cuarzo Software / Louvre Wayland Compositor",
+    "integration_date": "2026-09-16"
+  }
+}

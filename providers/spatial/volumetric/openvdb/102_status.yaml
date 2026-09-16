@@ -2,17 +2,37 @@ provider: openvdb
 domain: spatial
 subdomain: volumetric
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
-dependencies: []
-limitations: []
+capabilities:
+  - "spatial.volumetric.sparse_grid"
+  - "field.scalar.float_grid"
+  - "field.vector.vec3s_grid"
+  - "field.transformation.advection"
+  - "field.levelset.narrow_band"
+
+supported_versions:
+  - "OpenVDB 9.x - 11.x"
+  - "Self-contained C ABI reference adapter"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
+dependencies:
+  - "openvdb"
+  - "tbb"
+  - "cblosc"
+
+limitations:
+  - "Multi-threaded writes require external synchronization"

@@ -1,0 +1,43 @@
+{
+  "provider": "ogre",
+  "domain": "render",
+  "subdomain": "graphics",
+  "status": "operational",
+  "capabilities": [
+    "render.scene_graph.node_hierarchy",
+    "render.surface_quad.mesh_geometry",
+    "render.texture.rgba_upload",
+    "render.presentation.frame_tick"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/ogre_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/ogre_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_ogre_contract.cpp"
+  ],
+  "dependencies": [
+    "ogre",
+    "mesa",
+    "libGL"
+  ],
+  "resources": [
+    "gpu_context"
+  ],
+  "platforms": [
+    "linux"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "provenance": {
+    "authoritative_source": "OGRE 3D Community / SCR Cave",
+    "integration_date": "2026-09-16"
+  }
+}

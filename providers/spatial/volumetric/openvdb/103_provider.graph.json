@@ -2,15 +2,44 @@
   "provider": "openvdb",
   "domain": "spatial",
   "subdomain": "volumetric",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
-  "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "status": "operational",
+  "capabilities": [
+    "spatial.volumetric.sparse_grid",
+    "field.scalar.float_grid",
+    "field.vector.vec3s_grid",
+    "field.transformation.advection",
+    "field.levelset.narrow_band"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/openvdb_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/openvdb_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_openvdb_contract.cpp"
+  ],
+  "dependencies": [
+    "openvdb",
+    "tbb",
+    "cblosc"
+  ],
+  "resources": [
+    "heap_memory"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "provenance": {
+    "authoritative_source": "Academy Software Foundation / OpenVDB",
+    "integration_date": "2026-09-16"
+  }
 }

@@ -1,0 +1,36 @@
+provider: ogre
+domain: render
+subdomain: graphics
+
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
+
+canonical: true
+reference: false
+
+capabilities:
+  - "render.scene_graph.node_hierarchy"
+  - "render.surface_quad.mesh_geometry"
+  - "render.texture.rgba_upload"
+  - "render.presentation.frame_tick"
+
+supported_versions:
+  - "OGRE 13.x - 14.x"
+  - "Offscreen / Headless C ABI Reference Adapter"
+
+platforms:
+  - "linux"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
+dependencies:
+  - "ogre"
+  - "mesa"
+  - "libGL"
+
+limitations:
+  - "Requires OpenGL/EGL runtime for hardware frame rasterization"
