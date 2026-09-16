@@ -1,0 +1,87 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-APPLICATION
+  path: lib/804_Application
+  name: Application
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Application
+  description: >
+    Normative semantic computational domain defining bounded application systems,
+    modular composition, hexagonal service-port-adapter-provider boundaries, and implementation bindings.
+  purpose: >
+    Define application structure (modules, services, operations, controllers), interaction boundaries
+    (ports, adapters, providers), implementation bindings to executable artifacts (Mojo, MLIR, WASM, native, GPU),
+    formal lifecycle state machines, processes, resources, policies, and canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-APP-MODULAR
+    name: Modular Application Composition
+    status: operational
+  - id: CAP-APP-SERVICE-OPERATION
+    name: Services & Semantic Operation Execution Contracts
+    status: operational
+  - id: CAP-APP-HEXAGONAL
+    name: Hexagonal Port-Adapter-Provider Isolation
+    status: operational
+  - id: CAP-APP-CONTROLLER
+    name: Inbound Interaction Translation & Command Mediation
+    status: operational
+  - id: CAP-APP-BINDING
+    name: Multi-Target Implementation Bindings (Mojo, MLIR, WASM, Native, GPU)
+    status: operational
+  - id: CAP-APP-LIFECYCLE
+    name: Formal Application Lifecycle State Machine
+    status: operational
+  - id: CAP-APP-PROCESS
+    name: Workflow Coordination & Step Execution
+    status: operational
+  - id: CAP-APP-POLICY
+    name: Declarative Policy & Authorization Enforcement
+    status: operational
+  - id: CAP-APP-HYPERGRAPH
+    name: Canonical Hypergraph Architecture Projection
+    status: operational
+
+invariants:
+  - APP-INV-A01
+  - APP-INV-A02
+  - APP-INV-A03
+  - APP-INV-A04
+  - APP-INV-A05
+  - APP-INV-A06
+  - APP-INV-A07
+  - APP-INV-A08
+  - APP-INV-A09
+  - APP-INV-A10
+  - APP-INV-A11
+  - APP-INV-A12
+  - APP-INV-A13
+  - APP-INV-A14
+  - APP-INV-A15
+  - APP-INV-A16
+  - APP-INV-A17
+  - APP-INV-A18
+  - APP-INV-A19
+  - APP-INV-A20
+  - APP-INV-A21
+  - APP-INV-A22
+  - APP-INV-A23

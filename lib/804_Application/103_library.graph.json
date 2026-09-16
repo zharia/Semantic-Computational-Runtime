@@ -1,0 +1,53 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-APPLICATION",
+  "name": "Application",
+  "layer": "804_Application",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/804_Application",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "COMPOSES",
+      "semantics": "Application composes core entities, state, and execution contracts"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "USES",
+      "semantics": "Application structures domain state and parameter schemas using data types"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical coordinates for application modules, services, and operations"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "REPRESENTS_WITH",
+      "semantics": "Application structure, services, and ports project canonically into the SCR hypergraph"
+    },
+    {
+      "source": "SCR-LIB-INTERACTION",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "INVOKES",
+      "semantics": "Interaction controllers and dialogues dispatch to application inbound ports"
+    },
+    {
+      "source": "SCR-LIB-SPATIAL",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "LOCATES",
+      "semantics": "Spatial provides spatial context, boundaries, and frames for application execution"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-APPLICATION",
+      "relationship": "MANAGES",
+      "semantics": "Application services coordinate field evaluations and transformations"
+    }
+  ]
+}
