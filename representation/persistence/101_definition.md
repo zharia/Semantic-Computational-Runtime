@@ -2,7 +2,7 @@
 
 # Persistence — Definition
 
-**Document:** `persistence/101_definition.md`
+**Document:** `representation/persistence/101_definition.md`
 **Semantic ID:** `representation.persistence`
 **Version:** `0.1.0`
 **Status:** Normative Semantic Definition

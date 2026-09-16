@@ -2,7 +2,7 @@
 
 # Transport — Definition
 
-**Document:** `lib/representation/transport/101_definition.md`
+**Document:** `representation/transport/101_definition.md`
 **Semantic ID:** `representation.transport`
 **Version:** `0.1.0`
 **Status:** Normative Semantic Definition
@@ -1779,13 +1779,13 @@ Transport validity MUST NOT be treated as representation validity or semantic va
 The transport subdomain belongs beneath:
 
 ```text
-lib/representation/
+representation/
 ```
 
 with the canonical structure:
 
 ```text
-lib/representation/transport/
+representation/transport/
 ├── README.md
 ├── 101_definition.md
 ├── 102_status.yaml

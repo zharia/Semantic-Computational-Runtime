@@ -2,7 +2,7 @@
 
 # Presentation — Definition
 
-**Document:** `lib/representation/presentation/101_definition.md`
+**Document:** `representation/presentation/101_definition.md`
 **Semantic ID:** `representation.presentation`
 **Version:** `0.1.0`
 **Status:** Normative Semantic Definition
@@ -1611,13 +1611,13 @@ A presentation MUST NOT claim semantic preservation that has not been validated 
 The presentation subdomain belongs beneath:
 
 ```text
-lib/representation/
+representation/
 ```
 
 with the canonical structure:
 
 ```text
-lib/representation/presentation/
+representation/presentation/
 ├── README.md
 ├── 101_definition.md
 ├── 102_status.yaml

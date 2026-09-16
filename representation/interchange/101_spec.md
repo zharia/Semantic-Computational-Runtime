@@ -2,11 +2,11 @@
 
 # Interchange
 
-**Document:** `lib/representation/interchange/101_spec.md`
+**Document:** `representation/interchange/101_spec.md`
 **Version:** `0.1.0`
 **Status:** Normative Semantic Specification
 **Domain:** `representation.interchange`
-**Parent Specification:** `lib/representation/101_spec.md`
+**Parent Specification:** `representation/101_definition.md`
 **Architectural Authority:** `docs/119_SEMANTIC_REPRESENTATION_AND_INTERCHANGE_MODEL.md`
 
 ---
@@ -1506,7 +1506,7 @@ An interchange subdomain MUST follow the structure defined by `118_LIBRARY_DOMAI
 For example:
 
 ```text
-lib/representation/interchange/
+representation/interchange/
 ├── README.md
 ├── 101_spec.md
 ├── 102_status.yaml
@@ -1527,7 +1527,7 @@ Each concrete format subdomain MUST define its own specification.
 glTF SHOULD be represented as:
 
 ```text
-lib/representation/interchange/gltf/
+representation/interchange/gltf/
 ```
 
 Its specification MUST define:

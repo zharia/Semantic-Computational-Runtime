@@ -2,7 +2,7 @@
 
 # Serialization — Definition
 
-**Document:** `lib/representation/serialization/101_definition.md`
+**Document:** `representation/serialization/101_definition.md`
 **Semantic ID:** `representation.serialization`
 **Version:** `0.1.0`
 **Status:** Normative Semantic Definition
@@ -1694,13 +1694,13 @@ Deserialized state MUST be validated before being treated as valid SCR semantic 
 The serialization subdomain belongs beneath:
 
 ```text
-lib/representation/
+representation/
 ```
 
 with the canonical structure:
 
 ```text
-lib/representation/serialization/
+representation/serialization/
 ├── README.md
 ├── 101_definition.md
 ├── 102_status.yaml
