@@ -1,0 +1,53 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-PERCEPTION",
+  "name": "Perception",
+  "layer": "603_Perception",
+  "node_type": "domain",
+  "version": "0.2.0",
+  "path": "lib/603_Perception",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "REFINES",
+      "semantics": "Perception uses foundational semantic identity, state, relation, and transformation semantics"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "CONSUMES_AND_PRODUCES",
+      "semantics": "Perception consumes and produces structured information representations"
+    },
+    {
+      "source": "SCR-LIB-MATH",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "USES",
+      "semantics": "Perception uses mathematical transformations, statistics, and inference"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Perceptual results and relations project directly into the canonical SCR hypergraph"
+    },
+    {
+      "source": "SCR-LIB-PERCEPTION",
+      "target": "SCR-LIB-AGENT",
+      "relationship": "SERVES",
+      "semantics": "Agents consume perceptual representations to inform decisions"
+    },
+    {
+      "source": "SCR-LIB-PERCEPTION",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "INFORMS",
+      "semantics": "Perception provides information without redefining interaction or control semantics"
+    },
+    {
+      "source": "SCR-LIB-PERCEPTION",
+      "target": "SCR-LIB-CONTROL",
+      "relationship": "INFORMS",
+      "semantics": "Perceptual representations feed control loops"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-PERCEPTION
+  path: lib/603_Perception
+  name: Perception
+  version: 0.2.0
+  status: operational
+  created: 2026-09-15
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.2.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Perception
+  description: >
+    Normative semantic computational domain for transforming available observations
+    and information into representations that are meaningful to a declared perceiving system,
+    process, agent, or computational context.
+  purpose: >
+    Define observer-relative perceptual processes P = (O, C, K, T, R, U, X), feature extraction,
+    detection, classification, identification, tracking, segmentation, perceptual uncertainty,
+    ambiguity representation, and projection into the canonical SCR semantic hypergraph.
+
+capabilities:
+  - id: CAP-PER-OBSERVE
+    name: Observation Boundary Processing
+    status: operational
+  - id: CAP-PER-TRANSFORM
+    name: Observer-Relative Perceptual Transformation
+    status: operational
+  - id: CAP-PER-UNCERTAINTY
+    name: Explicit Uncertainty & Ambiguity Maintenance
+    status: operational
+  - id: CAP-PER-IDENTIFICATION
+    name: Persistent Semantic Identification
+    status: operational
+  - id: CAP-PER-TRACKING
+    name: Temporal Correspondence & Trajectory Tracking
+    status: operational
+  - id: CAP-PER-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Nullary Relations
+    status: operational
+
+invariants:
+  - PERCEPTION-INV-001
+  - PERCEPTION-INV-002
+  - PERCEPTION-INV-003
+  - PERCEPTION-INV-004
+  - PERCEPTION-INV-005
+  - PERCEPTION-INV-006
+  - PERCEPTION-INV-007
+  - PERCEPTION-INV-008
+  - PERCEPTION-INV-009
+  - PERCEPTION-INV-010
+  - PERCEPTION-INV-011
+  - PERCEPTION-INV-012
+  - PERCEPTION-INV-013
+  - PERCEPTION-INV-014
+  - PERCEPTION-INV-015
+  - PERCEPTION-INV-016
+  - PERCEPTION-INV-017
+  - PERCEPTION-INV-018
+  - PERCEPTION-INV-019
+  - PERCEPTION-INV-020
+  - PERCEPTION-INV-021
+  - PERCEPTION-INV-022
+  - PERCEPTION-INV-023
+  - PERCEPTION-INV-024
+  - PERCEPTION-INV-025
+  - PERCEPTION-INV-026
+  - PERCEPTION-INV-027
+  - PERCEPTION-INV-028

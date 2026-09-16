@@ -1,0 +1,12 @@
+[package]
+name = "scr-perception"
+version = "0.1.0"
+edition = "2021"
+authors = ["SCR Architectural Group"]
+description = "Authoritative Normative Perception Semantic Foundation for SCR (SCR-LIB-PERCEPTION)"
+license = "Apache-2.0"
+
+[dependencies]
+scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
+
+[dev-dependencies]
