@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "nodes": [
+    {
+      "id": "SCR-LIB-REP-PERSISTENCE",
+      "type": "subdomain",
+      "name": "Persistence",
+      "path": "persistence",
+      "status": "operational"
+    },
+    {
+      "id": "SCR-LIB-REP",
+      "type": "domain",
+      "name": "Representation",
+      "path": "lib/representation"
+    },
+    {
+      "id": "SCR-LIB-101-CORE",
+      "type": "domain",
+      "name": "Core",
+      "path": "lib/101_Core"
+    },
+    {
+      "id": "SCR-LIB-REP-SERIALIZATION",
+      "type": "subdomain",
+      "name": "Serialization",
+      "path": "serialization"
+    }
+  ],
+  "edges": [
+    {
+      "source": "SCR-LIB-REP-PERSISTENCE",
+      "target": "SCR-LIB-REP",
+      "relation": "REFINES"
+    },
+    {
+      "source": "SCR-LIB-REP-PERSISTENCE",
+      "target": "SCR-LIB-101-CORE",
+      "relation": "DEPENDS_ON"
+    },
+    {
+      "source": "SCR-LIB-REP-PERSISTENCE",
+      "target": "SCR-LIB-REP-SERIALIZATION",
+      "relation": "PERSISTS"
+    }
+  ]
+}

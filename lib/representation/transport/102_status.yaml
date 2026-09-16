@@ -1,0 +1,72 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-REP-TRANSPORT
+  path: transport
+  name: Transport
+  version: 0.1.0
+  status: operational
+  created: 2026-09-08
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Representation / Transport
+  description: >
+    Normative transport semantic foundation defining the movement of structured
+    information between computational contexts under explicit delivery, ordering,
+    and reliability contracts.
+  purpose: >
+    Manages endpoints, addresses, envelopes, delivery states, flow control, and acknowledgements.
+  maturity: operational
+  completeness: 1.0
+
+hierarchy:
+  parent:
+    id: SCR-LIB-REP
+    relation: REFINES
+  children: []
+  siblings:
+    - SCR-LIB-REP-INTERCHANGE
+    - SCR-LIB-REP-SERIALIZATION
+    - SCR-LIB-REP-PERSISTENCE
+
+relationships:
+  - target: SCR-LIB-101-CORE
+    relation: DEPENDS_ON
+    direction: outgoing
+    required: true
+    description: Relies on core Identity and SemanticObject lifecycle.
+  - target: SCR-LIB-REP-SERIALIZATION
+    relation: TRANSPORTS
+    direction: outgoing
+    required: false
+    description: Moves encoded representations produced by serialization across contexts.
+
+capabilities:
+  - "transport.endpoint.addressing"
+  - "transport.message.envelope"
+  - "transport.delivery.state_tracking"
+  - "transport.delivery.guarantees"
+  - "transport.flow.backpressure"
+  - "transport.routing.topologies"
+  - "transport.idempotence.deduplication"
+
+invariants:
+  - "TRANSPORT-I001" # Transport != Execution != Representation != Persistence
+  - "TRANSPORT-I002" # Explicit Delivery State Transition
+  - "TRANSPORT-I003" # Causal and FIFO Ordering
+  - "TRANSPORT-I004" # Idempotence & Deduplication
+  - "TRANSPORT-I005" # Backpressure Integrity

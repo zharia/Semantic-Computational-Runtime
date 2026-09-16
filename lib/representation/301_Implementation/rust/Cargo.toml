@@ -1,0 +1,12 @@
+[package]
+name = "scr-representation"
+version = "0.1.0"
+edition = "2021"
+authors = ["SCR Core Architectural Group"]
+description = "Normative Representation domain implementation for SCR: Serialization, Transport, and Persistence"
+license = "Apache-2.0"
+
+[dependencies]
+scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
+
+[dev-dependencies]
