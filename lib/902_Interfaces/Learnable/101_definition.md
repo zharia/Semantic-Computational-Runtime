@@ -1,35 +1,30 @@
-# Learnable
+# SCR Semantic Library — 902 Interfaces / Learnable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Learnable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Learnable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Learnable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Learnable Interface** defines the semantic interface exposing parameter adaptation, optimization objectives, loss evaluation, and update rules from observed data.
 
-This directory currently exists as a structural location within the SCR library hierarchy for learnability interface for constructs supporting learning or adaptation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Learnable is not a neural network training loop; it is the formal adaptation contract parameterizing behavioral improvement.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Learnable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **LRN-INV-001 (Parameter Explicitness):** Learnable parameters and their structural constraints MUST be explicitly exposed.
+* **LRN-INV-002 (Loss Association):** Parameter updates MUST be guided by declared objective or loss functions.
+* **LRN-INV-003 (Convergence Stability):** Update step invariants MUST bound parameter divergence during adaptation.

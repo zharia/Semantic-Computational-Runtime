@@ -1,35 +1,30 @@
-# Vectorizable
+# SCR Semantic Library — 902 Interfaces / Vectorizable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Vectorizable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Vectorizable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Vectorizable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Vectorizable Interface** defines the semantic contract guaranteeing that operations can be evaluated across SIMD, SIMT, or tensor vector lanes concurrently without cross-lane dependencies.
 
-This directory currently exists as a structural location within the SCR library hierarchy for vectorizability interface for constructs supporting SIMD or vector operations.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Vectorizable is not AVX-512 instructions; it is data-parallel semantic independence across uniform coordinate arrays.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Vectorizable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **VEC-INV-001 (Uniform Control Flow):** Vectorized operations MUST execute without divergent per-lane conditional dependencies.
+* **VEC-INV-002 (Alignment & Stride):** Memory access patterns for vectorized data MUST declare contiguous or uniform striding.
+* **VEC-INV-003 (Lane Independence):** Evaluation in lane $k$ MUST NOT depend on the result of lane $j$ within the same vector step.

@@ -1,35 +1,30 @@
-# Reducible
+# SCR Semantic Library — 902 Interfaces / Reducible
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Reducible/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Reducible  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Reducible`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Reducible Interface** defines the semantic interface defining algebraic aggregation over collections or streams through associative binary operations.
 
-This directory currently exists as a structural location within the SCR library hierarchy for reducibility interface for constructs supporting aggregation or reduction.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Reducible is not a foldl loop; it is an algebraic monoid or semigroup structure $(S, \oplus, e)$.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Reducible` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **RED-INV-001 (Associativity):** The reduction operator $\oplus$ MUST satisfy $(a \oplus b) \oplus c = a \oplus (b \oplus c)$.
+* **RED-INV-002 (Identity Element):** Where a monoid is claimed, $a \oplus e = e \oplus a = a$ MUST hold.
+* **RED-INV-003 (Tree Reducibility):** Associativity MUST permit hierarchical or parallel tree reductions with invariant results.

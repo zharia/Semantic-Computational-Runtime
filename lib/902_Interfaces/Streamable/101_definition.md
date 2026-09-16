@@ -1,35 +1,30 @@
-# Streamable
+# SCR Semantic Library — 902 Interfaces / Streamable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Streamable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Streamable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Streamable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Streamable Interface** defines the semantic interface exposing data or state as an ordered, causal, or temporal sequence of elements emitted over time.
 
-This directory currently exists as a structural location within the SCR library hierarchy for streamability interface for constructs that support streaming processing.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Streamable is not an iterator; it is participation in the SCR Stream domain with explicit watermarks, occurrences, and lifecycle.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Streamable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STR-INV-001 (Stream Domain Conformance):** Streamable entities MUST conform to `SCR-LIB-STREAM` normative contracts.
+* **STR-INV-002 (Backpressure Accommodation):** A streamable source MUST respond safely to consumer rate-limiting signals.
+* **STR-INV-003 (Element Identity Preservation):** Elements emitted into a stream MUST preserve their semantic identity.

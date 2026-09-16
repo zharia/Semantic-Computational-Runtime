@@ -1,35 +1,30 @@
-# Stateful
+# SCR Semantic Library — 902 Interfaces / Stateful
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Stateful/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Stateful  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Stateful`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Stateful Interface** defines the semantic interface exposing internal memory where future outputs depend upon the history of previous operations and inputs.
 
-This directory currently exists as a structural location within the SCR library hierarchy for statefulness interface for constructs that maintain internal state.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Stateful is not class instance variables; it is a formal state transition system $(S, s_0, \delta)$ with explicit state boundaries.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Stateful` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STF-INV-001 (State Space Explicitness):** The allowable state space $S$ and initial state $s_0$ MUST be formally declared.
+* **STF-INV-002 (Transition Determinism):** State transition $\delta(s, i) \to s'$ MUST be deterministic given identical inputs.
+* **STF-INV-003 (Snapshot Accessibility):** Stateful entities MUST permit inspecting or checkpointing their current state.

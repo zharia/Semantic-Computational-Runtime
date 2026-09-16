@@ -1,35 +1,30 @@
-# Dynamical
+# SCR Semantic Library — 902 Interfaces / Dynamical
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Dynamical/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Dynamical  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Dynamical`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Dynamical Interface** defines the semantic interface representing time-varying state evolution governed by differential, difference, or discrete transition dynamics.
 
-This directory currently exists as a structural location within the SCR library hierarchy for dynamical interface for constructs with time-evolving state.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Dynamical is not a while loop with a delta_t variable; it is the formal representation of state trajectory evolution $dx/dt = f(x, u, t)$.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Dynamical` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DYN-INV-001 (Trajectory Continuity):** State evolution MUST satisfy declared continuity or discrete step guarantees.
+* **DYN-INV-002 (Conservation Laws):** Dynamical systems declaring physical conservation (energy, momentum) MUST preserve invariants under integration.
+* **DYN-INV-003 (Time Invariance Declaration):** Autonomous vs non-autonomous (explicit time dependency) MUST be declared.

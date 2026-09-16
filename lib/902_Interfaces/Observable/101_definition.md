@@ -1,35 +1,30 @@
-# Observable
+# SCR Semantic Library — 902 Interfaces / Observable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Observable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Observable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Observable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Observable Interface** defines the semantic boundary through which internal states, metrics, signals, and events can be passively inspected without perturbing execution.
 
-This directory currently exists as a structural location within the SCR library hierarchy for observability interface for constructs that expose observation outputs.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Observability is not print debugging or Prometheus metrics; it is the semantic mapping from internal state to observable output manifolds.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Observable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **OBS-INV-001 (Observer Non-Interference):** Observation MUST NOT perturb the primary computational state or trajectory.
+* **OBS-INV-002 (State Observability):** The observable projection MUST declare what subspace of internal state is reconstructible.
+* **OBS-INV-003 (Temporal Coherence):** Observed values MUST be timestamped relative to a coherent clock domain.

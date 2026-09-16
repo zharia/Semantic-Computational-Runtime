@@ -1,35 +1,30 @@
-# Optimizable
+# SCR Semantic Library — 902 Interfaces / Optimizable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Optimizable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Optimizable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Optimizable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Optimizable Interface** defines the semantic interface exposing objective functions, decision variables, and constraint spaces for mathematical optimization.
 
-This directory currently exists as a structural location within the SCR library hierarchy for optimizability interface for constructs supporting optimization.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Optimizable is not a gradient descent loop; it is the mathematical problem formulation $\min f(x)$ subject to $g(x) \le 0$.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Optimizable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **OPT-INV-001 (Feasibility Verification):** Constraints MUST be explicitly testable for candidate solution points.
+* **OPT-INV-002 (Objective Monotonicity):** Optimization steps MUST certify non-deterioration of the declared objective function.
+* **OPT-INV-003 (Optimality Criteria):** Convergence conditions (KKT, duality gap, tolerance) MUST be declared.

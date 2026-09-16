@@ -1,35 +1,30 @@
-# Tileable
+# SCR Semantic Library — 902 Interfaces / Tileable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Tileable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Tileable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Tileable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Tileable Interface** defines the semantic interface permitting spatial, volumetric, or computational domains to be partitioned into regular or irregular contiguous tiles for cache locality and hardware acceleration.
 
-This directory currently exists as a structural location within the SCR library hierarchy for tileability interface for constructs that support tiling decomposition.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Tileable is not GPU block sizing; it is the topological decomposition of a domain into boundary-conforming subdomains.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Tileable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **TIL-INV-001 (Domain Partitioning Completeness):** The union of all tiles MUST equal the original domain without gaps or uncoordinated overlaps.
+* **TIL-INV-002 (Boundary Halo Explicitness):** Halo or ghost-cell overlap requirements across tile boundaries MUST be declared.
+* **TIL-INV-003 (Kernel Equivalence):** Evaluating tiled computations MUST yield identical results to whole-domain evaluation.

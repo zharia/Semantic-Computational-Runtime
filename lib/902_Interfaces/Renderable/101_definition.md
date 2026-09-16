@@ -1,35 +1,30 @@
-# Renderable
+# SCR Semantic Library — 902 Interfaces / Renderable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Renderable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Renderable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Renderable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Renderable Interface** defines the semantic boundary projecting computational entities into perceptual, visual, acoustic, or haptic sensory representations.
 
-This directory currently exists as a structural location within the SCR library hierarchy for renderability interface for constructs that can produce render output.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Renderable is not OpenGL draw calls; it is the semantic projection from high-dimensional computational entities to human perceptual fields.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Renderable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **RND-INV-001 (Perceptual Mapping):** The projection from domain entity to visual/sensory representation MUST be explicit.
+* **RND-INV-002 (Resolution Invariance):** Underlying semantics MUST remain invariant under changes in render resolution or LOD.
+* **RND-INV-003 (Material/Geometry Separation):** Intrinsic spatial geometry MUST remain distinguishable from surface shading/rendering attributes.

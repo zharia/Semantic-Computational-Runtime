@@ -1,35 +1,30 @@
-# Morphological
+# SCR Semantic Library — 902 Interfaces / Morphological
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Morphological/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Morphological  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Morphological`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Morphological Interface** defines the semantic interface exposing structural, geometric, topological, or shape-based transformations (erosion, dilation, skeletons, level sets).
 
-This directory currently exists as a structural location within the SCR library hierarchy for morphological interface for constructs with structural pattern properties.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Morphology is not pixel image processing; it is the formal algebraic theory of shape and topology transformations.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Morphological` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **MRP-INV-001 (Topological Invariance):** Transformations declaring homeomorphisms MUST preserve Euler characteristic and genus.
+* **MRP-INV-002 (Structuring Element Contract):** Morphological operations MUST define their structuring neighborhood or kernel.
+* **MRP-INV-003 (Idempotence of Closure):** Morphological opening and closing operations MUST be idempotent.

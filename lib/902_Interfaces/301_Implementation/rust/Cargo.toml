@@ -1,0 +1,14 @@
+[package]
+name = "scr-interfaces"
+version = "0.1.0"
+edition = "2021"
+authors = ["SCR Architectural Group"]
+description = "Authoritative Normative Interface Semantic Foundation for SCR (SCR-LIB-INTERFACES)"
+license = "Apache-2.0"
+
+[dependencies]
+scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
+scr-identity = { path = "../../../101_Core/Identity/301_Implementation/rust" }
+scr-spatial = { path = "../../../801_Spatial/301_Implementation/rust" }
+
+[dev-dependencies]

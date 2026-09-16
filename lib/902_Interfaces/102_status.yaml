@@ -1,0 +1,120 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-INTERFACES
+  path: lib/902_Interfaces
+  name: Interfaces
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Interfaces
+  description: >
+    Cross-cutting normative semantic domain defining interaction boundaries,
+    capabilities, preconditions, postconditions, invariants, behavioural contracts,
+    effects, and provider substitutability across computational domains.
+  purpose: >
+    Provide stable semantic boundaries (what may be relied upon) decoupled from concrete
+    implementations (how it is realized); formalize the conceptual model
+    I = (N, O, T, C, B, S, E, R, K, V, P), 25 capability interfaces, refinement,
+    composition, and canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-INTF-IDENTITY-NAMESPACING
+    name: Stable Interface Identity & Namespacing
+    status: operational
+  - id: CAP-INTF-OPERATION-CONTRACTS
+    name: Operations, Signatures, and Typed Schemas
+    status: operational
+  - id: CAP-INTF-BEHAVIORAL-CONTRACTS
+    name: Preconditions, Postconditions, and Invariant Verification
+    status: operational
+  - id: CAP-INTF-EFFECT-TRANSPARENCY
+    name: Explicit Effect & Error Semantics
+    status: operational
+  - id: CAP-INTF-CAPABILITY-SET
+    name: 25 Cross-Cutting Capability Interfaces
+    status: operational
+  - id: CAP-INTF-SUBSTITUTABILITY
+    name: Contract Refinement & Provider Substitutability Analysis
+    status: operational
+  - id: CAP-INTF-COMPOSITION
+    name: Interface Composition & Guarantee Preservation
+    status: operational
+  - id: CAP-INTF-PROVIDER-INDEPENDENCE
+    name: Decoupled Provider Realization & Binding
+    status: operational
+  - id: CAP-INTF-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Nullary Relations
+    status: operational
+
+invariants:
+  - id: INTERFACE-INV-001
+    name: Semantic Primacy
+    status: enforced
+  - id: INTERFACE-INV-002
+    name: Implementation Independence
+    status: enforced
+  - id: INTERFACE-INV-003
+    name: Stable Identity
+    status: enforced
+  - id: INTERFACE-INV-004
+    name: Contract Completeness
+    status: enforced
+  - id: INTERFACE-INV-005
+    name: Type Insufficiency
+    status: enforced
+  - id: INTERFACE-INV-006
+    name: Preconditions
+    status: enforced
+  - id: INTERFACE-INV-007
+    name: Postconditions
+    status: enforced
+  - id: INTERFACE-INV-008
+    name: Effect Transparency
+    status: enforced
+  - id: INTERFACE-INV-009
+    name: Error Transparency
+    status: enforced
+  - id: INTERFACE-INV-010
+    name: Capability Integrity
+    status: enforced
+  - id: INTERFACE-INV-011
+    name: Substitutability
+    status: enforced
+  - id: INTERFACE-INV-012
+    name: Refinement Integrity
+    status: enforced
+  - id: INTERFACE-INV-013
+    name: Composition Integrity
+    status: enforced
+  - id: INTERFACE-INV-014
+    name: Representation Independence
+    status: enforced
+  - id: INTERFACE-INV-015
+    name: Provider Independence
+    status: enforced
+  - id: INTERFACE-INV-016
+    name: Version Transparency
+    status: enforced
+  - id: INTERFACE-INV-017
+    name: Projection Integrity
+    status: enforced
+  - id: INTERFACE-INV-018
+    name: Contract Traceability
+    status: enforced

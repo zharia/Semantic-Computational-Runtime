@@ -1,35 +1,30 @@
-# Transformable
+# SCR Semantic Library — 902 Interfaces / Transformable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Transformable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Transformable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Transformable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Transformable Interface** defines the semantic interface permitting an entity to undergo coordinate, topological, representation, or algebraic transformation.
 
-This directory currently exists as a structural location within the SCR library hierarchy for transformability interface for constructs supporting spatial or data transformations.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Transformable is not matrix multiplication; it is a morphism between semantic spaces preserving structural invariants.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Transformable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **TRF-INV-001 (Morphism Soundness):** A transformation MUST preserve declared structural invariants between domain and codomain.
+* **TRF-INV-002 (Invertibility Declaration):** If a transformation is invertible, the inverse mapping and condition number MUST be specified.
+* **TRF-INV-003 (Provenance Tracking):** Transformed entities MUST record the transformation applied in their provenance lineage.

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/scr-project/schemas/master/v1/library-graph.schema.json",
+  "id": "SCR-LIB-INTERFACES",
+  "name": "Interfaces",
+  "version": "0.1.0",
+  "path": "lib/902_Interfaces",
+  "domain": "Interfaces",
+  "status": "operational",
+  "upstream_dependencies": [
+    {
+      "id": "SCR-LIB-IDENTITY",
+      "path": "lib/101_Core/Identity",
+      "relationship": "identifies",
+      "required": true
+    },
+    {
+      "id": "SCR-LIB-HYPERGRAPH",
+      "path": "lib/203_Graph/Hypergraph",
+      "relationship": "projects_to",
+      "required": true
+    },
+    {
+      "id": "SCR-LIB-SPATIAL",
+      "path": "lib/801_Spatial",
+      "relationship": "specifies_spatial_interfaces",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-FIELDS",
+      "path": "lib/301_Field",
+      "relationship": "specifies_field_interfaces",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-STREAM",
+      "path": "lib/802_Stream",
+      "relationship": "specifies_stream_interfaces",
+      "required": false
+    },
+    {
+      "id": "SCR-LIB-APPLICATION",
+      "path": "lib/804_Application",
+      "relationship": "binds_service_interfaces",
+      "required": false
+    }
+  ],
+  "downstream_dependents": [
+    {
+      "id": "SCR-APP-CORE",
+      "relationship": "consumes"
+    }
+  ],
+  "subdomains": [
+    "Composable", "Controllable", "Deterministic", "Differentiable",
+    "Distributable", "Dynamical", "Integrable", "Learnable",
+    "Morphological", "Observable", "Optimizable", "Parallelizable",
+    "Persistable", "Reducible", "Renderable", "Serializable",
+    "Spatial", "Stateful", "Stateless", "Stochastic",
+    "Streamable", "Temporal", "Tileable", "Transformable",
+    "Vectorizable"
+  ],
+  "metadata": {
+    "authoritative_specification": "101_definition.md",
+    "status_file": "102_status.yaml",
+    "invariants_count": 18
+  }
+}

@@ -1,35 +1,30 @@
-# Integrable
+# SCR Semantic Library — 902 Interfaces / Integrable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Integrable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Integrable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Integrable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Integrable Interface** defines the semantic capability admitting numerical or analytical integration over temporal, spatial, manifold, or measure-theoretic domains.
 
-This directory currently exists as a structural location within the SCR library hierarchy for integrability interface for constructs supporting numerical integration.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Integrable is not Runge-Kutta 4 in C; it is the mathematical guarantee that a field or rate function admits measure-preserving accumulation.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Integrable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **INT-INV-001 (Measure Definition):** The domain measure (Lebesgue, surface area, volume) MUST be explicitly defined.
+* **INT-INV-002 (Order of Accuracy):** Numerical integrators satisfying the interface MUST declare minimum convergence orders.
+* **INT-INV-003 (Symplectic Preservation):** Hamiltonian systems MUST require symplectic integration to conserve phase space volume.

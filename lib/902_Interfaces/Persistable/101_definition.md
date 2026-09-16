@@ -1,35 +1,30 @@
-# Persistable
+# SCR Semantic Library — 902 Interfaces / Persistable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Persistable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Persistable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Persistable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Persistable Interface** defines the semantic interface guaranteeing that state can be serialized to non-volatile storage and restored with identity and integrity intact.
 
-This directory currently exists as a structural location within the SCR library hierarchy for persistability interface for constructs that support serialization and storage.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Persistable is not an SQL database or file write; it is the semantic survival of state across computational session lifecycles.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Persistable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **PST-INV-001 (Restoration Fidelity):** Restoring a persisted snapshot MUST yield semantic equivalence with the snapshot point.
+* **PST-INV-002 (Durable Versioning):** Persisted artifacts MUST record schema versions to enable migration or compatibility checking.
+* **PST-INV-003 (Crash Consistency):** Atomic persistence points MUST be well-defined to prevent partial-state corruption.

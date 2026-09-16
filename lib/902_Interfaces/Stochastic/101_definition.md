@@ -1,35 +1,30 @@
-# Stochastic
+# SCR Semantic Library — 902 Interfaces / Stochastic
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Stochastic/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Stochastic  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Stochastic`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Stochastic Interface** defines the semantic interface governing non-deterministic, probabilistic, or random computational processes defined over probability distributions.
 
-This directory currently exists as a structural location within the SCR library hierarchy for stochastic interface for constructs with random or probabilistic behavior.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Stochastic is not rand(); it is a measure-theoretic probability space $(\Omega, \mathcal{F}, P)$ with explicit random seeds.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Stochastic` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STO-INV-001 (Distribution Explicitness):** The probability distribution governing random variables MUST be mathematically defined.
+* **STO-INV-002 (Seed Reproducibility):** Given an identical pseudo-random seed and distribution parameters, evaluation MUST be repeatable.
+* **STO-INV-003 (Expectation Consistency):** Statistical moments (mean, variance) MUST converge to theoretical limits under sampling.

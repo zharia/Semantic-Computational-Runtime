@@ -1,35 +1,30 @@
-# Controllable
+# SCR Semantic Library — 902 Interfaces / Controllable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Controllable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Controllable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Controllable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Controllable Interface** defines the semantic boundary through which an external controller or agent can observe and drive system state toward target objectives via defined control inputs.
 
-This directory currently exists as a structural location within the SCR library hierarchy for controllability interface for constructs that expose control inputs.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Controllability is not an RPC endpoint or GUI slider; it is the formal mathematical reachability of system state trajectories under bounded control signals.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Controllable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **CTL-INV-001 (Actuation Bounds):** Control inputs MUST declare valid dynamic ranges and actuation limits.
+* **CTL-INV-002 (Reachability Contract):** A controllable interface MUST specify whether the target state space is fully or partially reachable.
+* **CTL-INV-003 (Latency Transparency):** The delay between control input application and actuation effect MUST be bounded and declared.

@@ -1,35 +1,30 @@
-# Spatial
+# SCR Semantic Library — 902 Interfaces / Spatial
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Spatial/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Spatial  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Spatial`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Spatial Interface** defines the semantic interface embedding computational entities within an explicit continuous or discrete spatial coordinate space.
 
-This directory currently exists as a structural location within the SCR library hierarchy for spatial interface for constructs with spatial extent or positioning.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Spatial is not a Vec3 struct; it is an embedding in a defined metric space $(M, d)$ with coordinate reference systems.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Spatial` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SPT-INV-001 (Metric Reference Explicitness):** Spatial coordinates MUST declare their metric, dimensionality, and coordinate frame.
+* **SPT-INV-002 (Transformation Covariance):** Spatial operations MUST transform covariantly under coordinate frame changes.
+* **SPT-INV-003 (Distance Function Soundness):** Distance evaluations MUST satisfy metric space axioms (triangle inequality, identity).

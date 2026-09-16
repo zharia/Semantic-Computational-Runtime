@@ -1,35 +1,30 @@
-# Temporal
+# SCR Semantic Library — 902 Interfaces / Temporal
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Temporal/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Temporal  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Temporal`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Temporal Interface** defines the semantic interface governing time-indexed behavior, duration, delays, clocks, and temporal validity intervals.
 
-This directory currently exists as a structural location within the SCR library hierarchy for temporality interface for constructs with time-dependent behavior.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Temporal is not time.now(); it is the explicit association of computational entities with time coordinates across multi-clock domains.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Temporal` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **TMP-INV-001 (Clock Domain Explicitness):** Temporal references MUST identify their reference clock (Event, Ingestion, Processing, Simulated).
+* **TMP-INV-002 (Duration Dimensionality):** Time intervals and durations MUST declare their physical or discrete units.
+* **TMP-INV-003 (Temporal Ordering Soundness):** Past, present, and future horizons MUST obey causal precedence.

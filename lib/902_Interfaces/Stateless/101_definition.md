@@ -1,35 +1,30 @@
-# Stateless
+# SCR Semantic Library — 902 Interfaces / Stateless
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Stateless/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Stateless  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Stateless`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Stateless Interface** defines the semantic interface guaranteeing pure functional behavior where outputs depend solely upon immediate inputs without historical retention.
 
-This directory currently exists as a structural location within the SCR library hierarchy for statelessness interface for constructs without retained internal state.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Stateless is not just a function without globals; it is the guarantee of referential transparency and total history independence.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Stateless` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **STL-INV-001 (Referential Transparency):** Multiple invocations with identical arguments MUST return identical values without side effects.
+* **STL-INV-002 (Zero Historical Dependence):** Output MUST NOT be influenced by prior invocations or external mutable environment.
+* **STL-INV-003 (Parallel Scalability):** Stateless interfaces MAY be replicated arbitrarily across threads or workers without coordination.

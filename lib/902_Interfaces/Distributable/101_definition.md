@@ -1,35 +1,30 @@
-# Distributable
+# SCR Semantic Library — 902 Interfaces / Distributable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Distributable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Distributable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Distributable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Distributable Interface** defines the semantic boundary permitting computation, state, or communication to be partitioned, scheduled, and synchronized across distributed execution nodes.
 
-This directory currently exists as a structural location within the SCR library hierarchy for distributability interface for constructs that can be distributed across substrates.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Distributability is not a cluster manager or MPI rank; it is the capability of decomposing computation without altering semantic correctness.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Distributable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DST-INV-001 (Partition Independence):** Partitioning of a distributable operation MUST preserve equivalence with centralized evaluation.
+* **DST-INV-002 (Consistency Model):** The consistency model (strict serializability, eventual consistency, causal) MUST be declared.
+* **DST-INV-003 (Fault Boundary):** Node failure and partial disconnection semantics MUST be explicitly defined.

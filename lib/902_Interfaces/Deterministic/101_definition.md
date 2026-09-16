@@ -1,35 +1,30 @@
-# Deterministic
+# SCR Semantic Library — 902 Interfaces / Deterministic
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Deterministic/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Deterministic  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Deterministic`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Deterministic Interface** defines the semantic guarantee that identical sequences of inputs and initial states produce strictly identical outputs, state transitions, and observable behaviors.
 
-This directory currently exists as a structural location within the SCR library hierarchy for determinism interface for constructs with reproducible behavior.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Determinism is not single-threaded execution; it is semantic reproducibility across execution substrates, schedulers, and environments.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Deterministic` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DET-INV-001 (Reproducibility):** Given identical inputs and initial state, evaluation MUST produce identical outputs.
+* **DET-INV-002 (Substrate Independence):** Determinism MUST hold across conforming compilers, providers, and hardware targets.
+* **DET-INV-003 (Side-Effect Freedom):** Deterministic operations MUST NOT perform uncoordinated external side effects.

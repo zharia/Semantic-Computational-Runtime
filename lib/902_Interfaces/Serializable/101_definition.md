@@ -1,35 +1,30 @@
-# Serializable
+# SCR Semantic Library — 902 Interfaces / Serializable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Serializable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Serializable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Serializable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Serializable Interface** defines the semantic capability encoding an entity into a sequence of bytes preserving complete semantic structure, types, and values.
 
-This directory currently exists as a structural location within the SCR library hierarchy for serializability interface for constructs supporting data serialization.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Serializable is not JSON.stringify(); it is an encoding isomorphism between an in-memory semantic entity and a linear representation.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Serializable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **SER-INV-001 (Isomorphic Round-Trip):** Decode(Encode(X)) MUST be semantically identical to X.
+* **SER-INV-002 (Type Schema Integrity):** Serialized payloads MUST embed or link to their authoritative semantic schema.
+* **SER-INV-003 (Endian/Architecture Neutrality):** Serialization encodings MUST NOT depend on host CPU endianness or word width.

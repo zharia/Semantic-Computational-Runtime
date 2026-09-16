@@ -1,35 +1,30 @@
-# Differentiable
+# SCR Semantic Library — 902 Interfaces / Differentiable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Differentiable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Differentiable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Differentiable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Differentiable Interface** defines the semantic capability exposing formal derivative, gradient, Jacobian, or VJP/JVP pullback operations over continuous computational spaces.
 
-This directory currently exists as a structural location within the SCR library hierarchy for differentiability interface for constructs supporting differentiation.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Differentiability is not PyTorch autograd or reverse-mode tape; it is the mathematical property of admitting tangent and cotangent linear transformations.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Differentiable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **DIF-INV-001 (Derivative Consistency):** Reverse-mode (VJP) and forward-mode (JVP) evaluations MUST be numerically consistent within declared tolerances.
+* **DIF-INV-002 (Smoothness Domain):** The domain over which differentiability holds (continuous, piecewise smooth) MUST be explicitly bounded.
+* **DIF-INV-003 (Higher-Order Preservation):** Higher-order derivative orders supported MUST be declared in the interface contract.

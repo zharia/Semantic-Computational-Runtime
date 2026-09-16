@@ -1,35 +1,30 @@
-# Parallelizable
+# SCR Semantic Library — 902 Interfaces / Parallelizable
 
-> Directory documentation for the current SCR library tree.
+**Document:** `lib/902_Interfaces/Parallelizable/101_definition.md`  
+**Version:** `0.1.0`  
+**Status:** Normative semantic definition  
+**Domain:** Interfaces / Parallelizable  
+**Parent:** `lib/902_Interfaces/101_definition.md`  
+**Authority:** Semantic Computational Runtime (SCR)  
 
-**Path:** `lib/902_Interfaces/Parallelizable`
+---
 
-**Documentation role:** Repository inventory
+## 1. Definition
 
-## Purpose
+The **Parallelizable Interface** defines the semantic contract guaranteeing that an operation can be decomposed into concurrent execution units without race conditions or semantic alteration.
 
-This directory currently exists as a structural location within the SCR library hierarchy for parallelizability interface for constructs that can execute concurrently.
+---
 
-## Current Contents
+## 2. Fundamental Distinction
 
-The directory currently contains:
+> **Parallelizability is not OpenMP pragmas or thread pools; it is Bernstein's conditions and mathematical concurrency freedom.**
 
-- `101_definition.md`
+The semantic contract remains authoritative; hardware acceleration, compiler vectorizers, threads, and realization frameworks remain subordinate.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 3. Subdomain Invariants
 
-The directory establishes a documented location for this area of the SCR library.
-
-## Relationship to Parent
-
-`Parallelizable` is a child of `902_Interfaces` within the SCR library hierarchy.
-
-## Scope Boundary
-
-No additional semantic contract is inferred from the directory's existence alone.
-
-## Notes
-
-Further semantic or implementation definition is outside the scope of this documentation pass.
+* **PAR-INV-001 (Disjointness):** Concurrent sub-tasks MUST operate on disjoint memory or commutative monoids.
+* **PAR-INV-002 (Determinism Preservation):** Parallel execution MUST yield bitwise or numerically equivalent results to sequential evaluation.
+* **PAR-INV-003 (Work-Span Boundedness):** Theoretical work $T_1$ and span $T_\infty$ complexity MUST be declared.
