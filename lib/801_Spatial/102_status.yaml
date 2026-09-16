@@ -1,0 +1,80 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-SPATIAL
+  path: lib/801_Spatial
+  name: Spatial
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Spatial
+  description: >
+    Normative semantic computational domain defining where entities and information exist,
+    how they relate spatially, how spatial context is established, and how spatial structure
+    participates in computation.
+  purpose: >
+    Define spatial domains, reference frames, coordinate systems, position distinction,
+    metrics, distances, regions, spatial relationships, spatial transformations, spatial queries,
+    dynamic trajectories, uncertainty, and projection into the canonical SCR hypergraph.
+
+capabilities:
+  - id: CAP-SPA-REFERENCE
+    name: Reference Frames & Coordinate Systems
+    status: operational
+  - id: CAP-SPA-POSITION
+    name: Position Distinction & Multi-Dimensional Representation
+    status: operational
+  - id: CAP-SPA-METRICS
+    name: Distance & Proximity Metrics (Euclidean, Manhattan, Geodesic, Graph)
+    status: operational
+  - id: CAP-SPA-RELATIONS
+    name: Spatial Relationships & Topological Predicates
+    status: operational
+  - id: CAP-SPA-TRANSFORM
+    name: Frame-Preserving Spatial Transformations
+    status: operational
+  - id: CAP-SPA-QUERY
+    name: Spatial Queries & Bounded Searches
+    status: operational
+  - id: CAP-SPA-DYNAMIC
+    name: Dynamic Spatial State & Trajectories
+    status: operational
+  - id: CAP-SPA-HYPERGRAPH
+    name: Canonical Hypergraph Projection & Nullary Relations
+    status: operational
+
+invariants:
+  - SPATIAL-INV-001
+  - SPATIAL-INV-002
+  - SPATIAL-INV-003
+  - SPATIAL-INV-004
+  - SPATIAL-INV-005
+  - SPATIAL-INV-006
+  - SPATIAL-INV-007
+  - SPATIAL-INV-008
+  - SPATIAL-INV-009
+  - SPATIAL-INV-010
+  - SPATIAL-INV-011
+  - SPATIAL-INV-012
+  - SPATIAL-INV-013
+  - SPATIAL-INV-014
+  - SPATIAL-INV-015
+  - SPATIAL-INV-016
+  - SPATIAL-INV-017
+  - SPATIAL-INV-018

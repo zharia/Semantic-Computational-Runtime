@@ -1,0 +1,53 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-SPATIAL",
+  "name": "Spatial",
+  "layer": "801_Spatial",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/801_Spatial",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "REFINES",
+      "semantics": "Spatial refines foundational entity, identity, state, and transformation contracts"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "REPRESENTS_WITH",
+      "semantics": "Spatial uses structured data carriers for spatial attributes and values"
+    },
+    {
+      "source": "SCR-LIB-MATH",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "USES",
+      "semantics": "Spatial uses linear algebra, metrics, vectors, matrices, and geometric algebra"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Spatial entities, regions, coordinates, and relationships project directly into the canonical SCR hypergraph"
+    },
+    {
+      "source": "SCR-LIB-SPATIAL",
+      "target": "SCR-LIB-FIELD",
+      "relationship": "SITUATES",
+      "semantics": "Spatial provides coordinate spaces and reference frames for continuous and discrete fields"
+    },
+    {
+      "source": "SCR-LIB-SPATIAL",
+      "target": "SCR-LIB-PERCEPTION",
+      "relationship": "INFORMS",
+      "semantics": "Spatial informs perceptual localization, spatial extent, and spatial relations"
+    },
+    {
+      "source": "SCR-LIB-SPATIAL",
+      "target": "SCR-LIB-INTERACTION",
+      "relationship": "INFORMS",
+      "semantics": "Spatial informs pointer locations, gestures, spatial boundaries, and targets"
+    }
+  ]
+}
