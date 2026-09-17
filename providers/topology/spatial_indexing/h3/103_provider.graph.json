@@ -2,15 +2,53 @@
   "provider": "h3",
   "domain": "topology",
   "subdomain": "spatial_indexing",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "topology.spatial_indexing.geo_to_h3",
+    "topology.spatial_indexing.h3_to_geo",
+    "topology.spatial_indexing.k_ring",
+    "topology.spatial_indexing.resolution_hierarchy"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/h3_adapter.c"
+  ],
+  "adapters": [
+    "adapter/h3_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_h3_contract.c"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "host_cpu"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "h3",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "REALIZES",
+      "semantics": "Implements discrete spatial indexing and hexagonal cellular complex partitioning"
+    },
+    {
+      "source": "h3",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "SUPPORTS",
+      "semantics": "Supports geodesic coordinate transforms and spatial indexing"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "Uber H3 Open Source / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

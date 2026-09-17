@@ -1,0 +1,13 @@
+[package]
+name = "scr-topology"
+version = "0.1.0"
+edition = "2021"
+authors = ["SCR Architectural Group"]
+description = "Authoritative Normative Topology Semantic Foundation for SCR (SCR-LIB-TOPOLOGY)"
+license = "Apache-2.0"
+
+[dependencies]
+scr-identity = { path = "../../../101_Core/Identity/301_Implementation/rust" }
+scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
+
+[dev-dependencies]

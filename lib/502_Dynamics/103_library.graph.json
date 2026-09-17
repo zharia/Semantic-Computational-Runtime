@@ -1,0 +1,74 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-DYNAMICS",
+  "name": "Dynamics",
+  "layer": "502_Dynamics",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/502_Dynamics",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "REFINES",
+      "semantics": "Dynamics specializes foundational state, operation, temporal, and transformation semantics"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "SPECIALIZES",
+      "semantics": "Dynamical state is structured semantic information"
+    },
+    {
+      "source": "SCR-LIB-MATHEMATICS",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "DEPENDS_ON",
+      "semantics": "Dynamical models use mathematical vector fields, differential forms, and algebra"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic IDs for dynamical systems, states, and trajectories"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "COMPOSES",
+      "semantics": "State transition structures, trajectories, and causal dependencies project to hypergraphs"
+    },
+    {
+      "source": "SCR-LIB-PHYSICS",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "SPECIALIZES",
+      "semantics": "Physical laws define equations of motion and conservation rules for dynamical systems"
+    },
+    {
+      "source": "SCR-LIB-DYNAMICS",
+      "target": "SCR-LIB-SIMULATION",
+      "relationship": "IMPLEMENTED_BY",
+      "semantics": "Simulation engines computationally realize dynamical systems"
+    },
+    {
+      "source": "SCR-LIB-DYNAMICS",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "OBSERVED_BY",
+      "semantics": "Rendering pipelines produce perceptual representations of evolving dynamical states"
+    },
+    {
+      "source": "SCR-LIB-DYNAMICS",
+      "target": "chrono",
+      "relationship": "REALIZED_BY",
+      "semantics": "Forward time integration and multibody state evolution realized by Chrono"
+    }
+  ],
+  "subdomains": [
+    "Attractor", "Bifurcation", "Chaos", "Continuous", "Coupling",
+    "Deterministic", "Difference", "Differential", "Discrete", "DynamicalSystem",
+    "DynamicsSystem", "Equilibrium", "Evolution", "Feedback", "Hybrid",
+    "IR", "Integration", "Integrators", "Linear", "Nonlinear",
+    "Operators", "OrdinaryDifferential", "Oscillation", "PartialDifferential", "PhaseSpace",
+    "Resonance", "Solvers", "Stability", "State", "StateSpace",
+    "StateTransition", "Stochastic", "Synchronization", "Time", "Timescale"
+  ]
+}

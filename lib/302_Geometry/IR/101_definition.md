@@ -5,57 +5,54 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-GEOMETRY-IR
-name: Geometry MLIR Dialect
+name: Geometry IR
 
 version: 0.1.0
-status: draft
+status: operational
 
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-16
 
 parent: SCR-LIB-GEOMETRY
-
 authority: SCR
 domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Geometry MLIR Dialect
+# SCR Geometry — IR
 
-> Directory documentation for the current SCR library tree.
+## 1. Definition
 
-**Path:** `lib/302_Geometry/IR`
+**IR** is the normative geometric subdomain within `SCR-LIB-GEOMETRY` responsible for:
+> MLIR dialect interfaces and compiler IR representations for geometric semantics and lowering pipelines.
 
-**Documentation role:** Repository inventory
+In accordance with the foundational governing principle:
+```text
+Geometry Semantic Meaning ≠ Representation ≠ Storage Format ≠ Renderer ≠ Hardware Execution
+```
 
-## Purpose
+---
 
-This directory is MLIR dialect material for the Geometry domain.
+## 2. Invariants
 
-## Current Contents
+This subdomain enforces the following normative domain invariants:
+- **GEOMETRY-INV-001 (Identity)**: Entities possess immutable semantic identities independent of coordinate representation.
+- **GEOMETRY-INV-002 (Dimensional Integrity)**: Dimension is preserved under non-dimensional transformations.
+- **GEOMETRY-INV-003 (Coordinate Integrity)**: Transformations preserve declared reference coordinate semantics.
+- **GEOMETRY-INV-006 (Transformation Integrity)**: Spatial operations satisfy declared geometric group laws.
+- **GEOMETRY-INV-013 (Representation Independence)**: Meaning does not depend on physical array or mesh layout.
 
-The directory currently contains:
+---
 
-- `101_definition.md`
+## 3. Semantic Contracts
 
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
+1. **Explicit Mathematical Grounding**: Grounded in `SCR-LIB-MATHEMATICS` (vector spaces, affine spaces, metric spaces).
+2. **Affine vs Linear Separation**: Points (locations) and vectors (displacements) remain semantically and operationally distinct.
+3. **Hypergraph Projection**: Semantic geometric relationships project into the canonical hypergraph `SCR-LIB-HYPERGRAPH`.
+4. **Technology Independence**: External libraries (CGAL, libigl, OpenCASCADE) act strictly as subordinate providers under SCR contracts.
 
-## Current Role
+---
 
-The directory establishes the MLIR dialect location for Geometry.
+## 4. Derived & Subordinate Relationships
 
-## Relationship to Parent
-
-`IR` is a child of `302_Geometry` and represents the MLIR dialect scope for the Geometry semantic domain.
-
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Geometry MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+- **Upstream Dependencies**: `SCR-LIB-GEOMETRY`, `SCR-LIB-MATHEMATICS`, `SCR-LIB-CORE` (Identity).
+- **Downstream Beneficiaries**: `SCR-LIB-FIELDS`, `SCR-LIB-SPATIAL`, `SCR-LIB-RENDER`, `SCR-LIB-PHYSICS`.

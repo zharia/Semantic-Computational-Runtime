@@ -59,6 +59,13 @@
     "Streamable", "Temporal", "Tileable", "Transformable",
     "Vectorizable"
   ],
+  "realizing_providers": [
+    { "id": "louvre", "interfaces": ["Controllable", "Streamable"] },
+    { "id": "dmabuf", "interfaces": ["Spatial", "Transformable"] },
+    { "id": "vulkan", "interfaces": ["Renderable", "Parallelizable"] },
+    { "id": "rabbitmq", "interfaces": ["Distributable", "Streamable"] },
+    { "id": "cuda", "interfaces": ["Parallelizable", "Vectorizable"] }
+  ],
   "metadata": {
     "authoritative_specification": "101_definition.md",
     "status_file": "102_status.yaml",

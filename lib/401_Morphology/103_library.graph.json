@@ -1,0 +1,79 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-MORPHOLOGY",
+  "name": "Morphology",
+  "layer": "401_Morphology",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/401_Morphology",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "SPECIALIZES",
+      "semantics": "Morphology specialises foundational semantic structures"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "REFINES",
+      "semantics": "Morphology organises meaningful information into structure"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic IDs for morphological entities and components"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Morphological hierarchy, patterns, and component relations project to canonical hypergraphs"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Geometry provides spatial realisation, boundaries, and metric embedding"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "CONSTRAINS",
+      "semantics": "Topology provides connectivity invariants and topological constraints on form"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Fields can generate, evolve, and describe morphology"
+    },
+    {
+      "source": "SCR-LIB-MORPHOLOGY",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "MANIFESTS_AS",
+      "semantics": "Morphology acquires visual and perceptual manifestations in rendering pipelines"
+    },
+    {
+      "source": "SCR-LIB-MORPHOLOGY",
+      "target": "cgal",
+      "relationship": "REALIZED_BY",
+      "semantics": "Skeletal structures, medial axis computation, and polygon operations realized by CGAL"
+    },
+    {
+      "source": "SCR-LIB-MORPHOLOGY",
+      "target": "openvdb",
+      "relationship": "REALIZED_BY",
+      "semantics": "Volumetric morphological operators and level-set shape evolution realized by OpenVDB"
+    }
+  ],
+  "subdomains": [
+    "Aggregation", "Boundary", "Composition", "Correspondence", "Decomposition",
+    "Deformation", "Erosion", "Feature", "Form", "Fracture",
+    "Generation", "Growth", "Implicit", "IR", "Mesh",
+    "Morphism", "Parametric", "Particle", "Primitive", "Procedural",
+    "Reconstruction", "Representation", "Shape", "Similarity", "Skeleton",
+    "Structure", "Surface", "Transformation", "Volume", "Voxel"
+  ]
+}

@@ -2,15 +2,54 @@
   "provider": "blas",
   "domain": "math",
   "subdomain": "linear_algebra",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "math.linear_algebra.blas.gemm",
+    "math.linear_algebra.blas.gemv",
+    "math.linear_algebra.blas.dot",
+    "math.linear_algebra.blas.nrm2",
+    "math.linear_algebra.blas.axpy"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/blas_adapter.c"
+  ],
+  "adapters": [
+    "adapter/blas_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_blas_contract.c"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "host_cpu"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "blas",
+      "target": "SCR-LIB-MATHEMATICS",
+      "relationship": "REALIZES",
+      "semantics": "Implements linear algebra matrix and vector routines"
+    },
+    {
+      "source": "blas",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "SUPPORTS",
+      "semantics": "Computes tensor and vector fields evaluations"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "Netlib / OpenBLAS / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

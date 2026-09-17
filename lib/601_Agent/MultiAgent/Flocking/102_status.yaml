@@ -1,0 +1,17 @@
+id: SCR-DOM-AGENT-FLOCKING
+name: Multi-Dimensional Flocking & Swarm Semantics
+domain_path: lib/601_Agent/MultiAgent/Flocking
+status: active
+maturity: stable
+dimensions_supported:
+  - 2D
+  - 3D
+  - 4D
+species_count: 5
+environmental_coupling:
+  - Aerial Atmosphere
+  - Pelagic Ocean Lagoon
+  - Volcanic Caldera Chimney
+  - Coastal Beach Dune
+  - 4D Hyperspace Manifold
+last_updated: 2026-09-17

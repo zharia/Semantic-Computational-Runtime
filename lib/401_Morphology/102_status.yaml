@@ -1,0 +1,133 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-MORPHOLOGY
+  path: lib/401_Morphology
+  name: Morphology
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Morphology
+  description: >
+    Normative semantic computational domain concerned with form, structure, organisation,
+    differentiation, arrangement, and transformation of meaningful entities and patterns.
+  purpose: >
+    Provide representation-independent morphological semantics (hierarchical structural organisation,
+    part-whole relationships, bidirectional pattern-morphology mappings, morphological features,
+    branching, symmetry, skeletonisation, growth, erosion, and fracture transformations) with
+    canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-MORPH-STRUCTURE
+    name: Hierarchical Structural Organisation & Part-Whole Relations
+    status: operational
+  - id: CAP-MORPH-PATTERN
+    name: Bidirectional Pattern-Morphology Mappings & Generation
+    status: operational
+  - id: CAP-MORPH-FEATURES
+    name: Morphological Features, Symmetry & Medial Axis Skeletons
+    status: operational
+  - id: CAP-MORPH-TRANSFORMATION
+    name: Morphological Transformations (Growth, Erosion, Fracture, Deformation)
+    status: operational
+  - id: CAP-MORPH-INVARIANTS
+    name: Morphological Invariant Conformance & Preservation Contracts
+    status: operational
+  - id: CAP-MORPH-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+dependencies:
+  - id: SCR-LIB-IDENTITY
+    path: lib/101_Core/Identity
+    status: operational
+    relationship: provides_semantic_identity
+  - id: SCR-LIB-HYPERGRAPH
+    path: lib/203_Graph/Hypergraph
+    status: operational
+    relationship: provides_hypergraph_representation
+  - id: SCR-LIB-GEOMETRY
+    path: lib/302_Geometry
+    status: operational
+    relationship: provides_spatial_realisation
+  - id: SCR-LIB-TOPOLOGY
+    path: lib/303_Topology
+    status: operational
+    relationship: provides_structural_invariants
+
+subdomains:
+  - Aggregation
+  - Boundary
+  - Composition
+  - Correspondence
+  - Decomposition
+  - Deformation
+  - Erosion
+  - Feature
+  - Form
+  - Fracture
+  - Generation
+  - Growth
+  - Implicit
+  - IR
+  - Mesh
+  - Morphism
+  - Parametric
+  - Particle
+  - Primitive
+  - Procedural
+  - Reconstruction
+  - Representation
+  - Shape
+  - Similarity
+  - Skeleton
+  - Structure
+  - Surface
+  - Transformation
+  - Volume
+  - Voxel
+
+invariants:
+  - MORPHOLOGY-INV-001
+  - MORPHOLOGY-INV-002
+  - MORPHOLOGY-INV-003
+  - MORPHOLOGY-INV-004
+  - MORPHOLOGY-INV-005
+  - MORPHOLOGY-INV-006
+  - MORPHOLOGY-INV-007
+  - MORPHOLOGY-INV-008
+  - MORPHOLOGY-INV-009
+  - MORPHOLOGY-INV-010
+  - MORPHOLOGY-INV-011
+  - MORPHOLOGY-INV-012
+  - MORPHOLOGY-INV-013
+  - MORPHOLOGY-INV-014
+  - MORPHOLOGY-INV-015
+  - MORPHOLOGY-INV-016
+  - MORPHOLOGY-INV-017
+  - MORPHOLOGY-INV-018
+
+providers:
+  - id: cgal
+    role: skeletal_structures_and_polygon_morphology
+    status: operational
+  - id: openvdb
+    role: volumetric_morphology_and_levelsets
+    status: operational
+

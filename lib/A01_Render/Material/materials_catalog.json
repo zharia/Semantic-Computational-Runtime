@@ -1,0 +1,4060 @@
+{
+  "schema_version": "1.0.0",
+  "title": "SCR Unified Materials Catalog (Universal Sandbox & Simulation Semantics)",
+  "description": "Unified semantic inventory distilled from universal materials across Minecraft, Terraria, and physics/rendering engines.",
+  "total_materials": 96,
+  "materials": [
+    {
+      "id": "soil.dirt",
+      "name": "Dirt / Loam",
+      "category": "geological_soil",
+      "description": "Unconsolidated organic-mineral soil aggregate with moisture retention.",
+      "domains": [
+        "Minecraft (Dirt)",
+        "Terraria (Dirt Block)",
+        "Universal Sandbox/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 1450.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 0.05,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.65,
+        "restitution": 0.05,
+        "blast_resistance_j": 500.0,
+        "thermal_conductivity_w_mk": 0.25,
+        "specific_heat_j_kgk": 800.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.34,
+          0.23,
+          0.15
+        ],
+        "roughness": 0.92,
+        "metallic": 0.0,
+        "ior": 1.45,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_OREN_NAYAR",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "soil.mud",
+      "name": "Mud",
+      "category": "geological_soil",
+      "description": "Water-saturated cohesive clay-silt matrix with low shear strength.",
+      "domains": [
+        "Minecraft (Mud)",
+        "Terraria (Mud Block)",
+        "Universal Hydrology/Soil"
+      ],
+      "physical": {
+        "density_kg_m3": 1750.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.01,
+        "poisson_ratio": 0.45,
+        "friction_coefficient": 0.3,
+        "restitution": 0.01,
+        "blast_resistance_j": 400.0,
+        "thermal_conductivity_w_mk": 0.6,
+        "specific_heat_j_kgk": 1800.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.22,
+          0.18,
+          0.14
+        ],
+        "roughness": 0.35,
+        "metallic": 0.0,
+        "ior": 1.34,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "water_sheen_over_soil"
+      }
+    },
+    {
+      "id": "soil.clay",
+      "name": "Clay",
+      "category": "geological_soil",
+      "description": "Hydrous aluminium phyllosilicate mineral aggregate with plastic deformation when wet.",
+      "domains": [
+        "Minecraft (Clay)",
+        "Terraria (Clay Block)",
+        "Universal Ceramic/Sediment"
+      ],
+      "physical": {
+        "density_kg_m3": 1600.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 0.1,
+        "poisson_ratio": 0.4,
+        "friction_coefficient": 0.55,
+        "restitution": 0.05,
+        "blast_resistance_j": 600.0,
+        "thermal_conductivity_w_mk": 0.45,
+        "specific_heat_j_kgk": 920.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.62,
+          0.65,
+          0.7
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 480.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "soil.sand",
+      "name": "Sand",
+      "category": "geological_soil",
+      "description": "Granular aggregate of weathered quartz particles subject to angle of repose and kinematic collapse.",
+      "domains": [
+        "Minecraft (Sand)",
+        "Terraria (Sand Block)",
+        "Universal Granular Physics"
+      ],
+      "physical": {
+        "density_kg_m3": 1600.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 0.08,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.55,
+        "restitution": 0.1,
+        "blast_resistance_j": 500.0,
+        "thermal_conductivity_w_mk": 0.27,
+        "specific_heat_j_kgk": 830.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.86,
+          0.78,
+          0.56
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 350.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DISCRETE_GRANULAR",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "soil.gravel",
+      "name": "Gravel",
+      "category": "geological_soil",
+      "description": "Unconsolidated rock fragments and pebbles exhibiting kinematic gravity and high permeability.",
+      "domains": [
+        "Minecraft (Gravel)",
+        "Terraria (Gravel)",
+        "Universal Civil/Sediment"
+      ],
+      "physical": {
+        "density_kg_m3": 1800.0,
+        "mohs_hardness": 3.5,
+        "youngs_modulus_gpa": 0.15,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.6,
+        "restitution": 0.15,
+        "blast_resistance_j": 600.0,
+        "thermal_conductivity_w_mk": 0.38,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.55,
+          0.53,
+          0.52
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 420.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DISCRETE_GRANULAR",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.stone",
+      "name": "Stone / Natural Rock",
+      "category": "geological_lithic",
+      "description": "Intact silicate/carbonate continental crust with compressive strength and brittle fracture.",
+      "domains": [
+        "Minecraft (Stone)",
+        "Terraria (Stone Block)",
+        "Universal Geological/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 2650.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 50.0,
+        "poisson_ratio": 0.22,
+        "friction_coefficient": 0.7,
+        "restitution": 0.2,
+        "blast_resistance_j": 6000.0,
+        "thermal_conductivity_w_mk": 2.2,
+        "specific_heat_j_kgk": 790.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "roughness": 0.8,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 850.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.cobblestone",
+      "name": "Cobblestone / Fractured Lithic",
+      "category": "geological_lithic",
+      "description": "Quarried and fractured aggregate stone assembled with frictional interlocking.",
+      "domains": [
+        "Minecraft (Cobblestone)",
+        "Terraria (Cobblestone)",
+        "Universal Architectural"
+      ],
+      "physical": {
+        "density_kg_m3": 2400.0,
+        "mohs_hardness": 5.0,
+        "youngs_modulus_gpa": 35.0,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.75,
+        "restitution": 0.15,
+        "blast_resistance_j": 5500.0,
+        "thermal_conductivity_w_mk": 1.8,
+        "specific_heat_j_kgk": 800.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse_with_displacement",
+        "base_color_srgb": [
+          0.42,
+          0.42,
+          0.42
+        ],
+        "roughness": 0.88,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 900.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_MICROFACET_ROUGH",
+        "layering": "diffuse_plus_mortar_edges"
+      }
+    },
+    {
+      "id": "rock.granite",
+      "name": "Granite",
+      "category": "geological_lithic",
+      "description": "Felsic coarse-grained intrusive igneous rock containing quartz and feldspar.",
+      "domains": [
+        "Minecraft (Granite)",
+        "Terraria (Granite Block)",
+        "Universal Lithic/Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 2700.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 60.0,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.7,
+        "restitution": 0.22,
+        "blast_resistance_j": 6500.0,
+        "thermal_conductivity_w_mk": 2.8,
+        "specific_heat_j_kgk": 820.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.6,
+          0.42,
+          0.36
+        ],
+        "roughness": 0.65,
+        "metallic": 0.0,
+        "ior": 1.55,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 880.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.diorite",
+      "name": "Diorite",
+      "category": "geological_lithic",
+      "description": "Intermediate intrusive igneous rock dominated by plagioclase feldspar and hornblende.",
+      "domains": [
+        "Minecraft (Diorite)",
+        "Universal Lithic/Geological"
+      ],
+      "physical": {
+        "density_kg_m3": 2850.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 65.0,
+        "poisson_ratio": 0.22,
+        "friction_coefficient": 0.68,
+        "restitution": 0.2,
+        "blast_resistance_j": 6500.0,
+        "thermal_conductivity_w_mk": 2.5,
+        "specific_heat_j_kgk": 810.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.72,
+          0.72,
+          0.72
+        ],
+        "roughness": 0.7,
+        "metallic": 0.0,
+        "ior": 1.55,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 850.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.andesite",
+      "name": "Andesite",
+      "category": "geological_lithic",
+      "description": "Extrusive volcanic intermediate rock with fine-grained crystalline groundmass.",
+      "domains": [
+        "Minecraft (Andesite)",
+        "Universal Lithic/Geological"
+      ],
+      "physical": {
+        "density_kg_m3": 2600.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 45.0,
+        "poisson_ratio": 0.23,
+        "friction_coefficient": 0.68,
+        "restitution": 0.2,
+        "blast_resistance_j": 6000.0,
+        "thermal_conductivity_w_mk": 2.1,
+        "specific_heat_j_kgk": 820.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.52,
+          0.52,
+          0.52
+        ],
+        "roughness": 0.78,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 870.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.basalt",
+      "name": "Basalt",
+      "category": "geological_lithic",
+      "description": "Aphanitic mafic volcanic rock forming columnar joints with high compressive strength.",
+      "domains": [
+        "Minecraft (Basalt)",
+        "Terraria (Basalt / Underworld Lithic)",
+        "Universal Volcanology"
+      ],
+      "physical": {
+        "density_kg_m3": 2900.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 70.0,
+        "poisson_ratio": 0.23,
+        "friction_coefficient": 0.72,
+        "restitution": 0.2,
+        "blast_resistance_j": 7000.0,
+        "thermal_conductivity_w_mk": 2.0,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.25,
+          0.25,
+          0.27
+        ],
+        "roughness": 0.75,
+        "metallic": 0.0,
+        "ior": 1.58,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 920.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.obsidian",
+      "name": "Obsidian",
+      "category": "geological_lithic",
+      "description": "Extrusive volcanic glass formed by rapid quenching of felsic lava; extremely high blast resistance.",
+      "domains": [
+        "Minecraft (Obsidian)",
+        "Terraria (Obsidian)",
+        "Universal Geological/Volcanology"
+      ],
+      "physical": {
+        "density_kg_m3": 2600.0,
+        "mohs_hardness": 7.0,
+        "youngs_modulus_gpa": 80.0,
+        "poisson_ratio": 0.18,
+        "friction_coefficient": 0.5,
+        "restitution": 0.4,
+        "blast_resistance_j": 12000.0,
+        "thermal_conductivity_w_mk": 1.3,
+        "specific_heat_j_kgk": 820.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "diamond_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.08,
+          0.06,
+          0.12
+        ],
+        "roughness": 0.12,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.02,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_MICROFACET",
+        "layering": "glossy_dielectric"
+      }
+    },
+    {
+      "id": "rock.sandstone",
+      "name": "Sandstone",
+      "category": "geological_lithic",
+      "description": "Sedimentary clastic rock composed of mineral particles and cemented silica grains.",
+      "domains": [
+        "Minecraft (Sandstone)",
+        "Terraria (Sandstone Block)",
+        "Universal Architectural/Geology"
+      ],
+      "physical": {
+        "density_kg_m3": 2200.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 25.0,
+        "poisson_ratio": 0.26,
+        "friction_coefficient": 0.65,
+        "restitution": 0.15,
+        "blast_resistance_j": 4000.0,
+        "thermal_conductivity_w_mk": 1.7,
+        "specific_heat_j_kgk": 920.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.82,
+          0.74,
+          0.52
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 750.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.marble",
+      "name": "Marble",
+      "category": "geological_lithic",
+      "description": "Metamorphosed recrystallized carbonate rock with fine polish and subsurface light scattering.",
+      "domains": [
+        "Terraria (Marble Block)",
+        "Minecraft (Calcite/Quartz Lithic)",
+        "Universal Architectural/Statuary"
+      ],
+      "physical": {
+        "density_kg_m3": 2700.0,
+        "mohs_hardness": 4.0,
+        "youngs_modulus_gpa": 55.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.55,
+        "restitution": 0.25,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 2.8,
+        "specific_heat_j_kgk": 880.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.92,
+          0.92,
+          0.9
+        ],
+        "roughness": 0.3,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.15,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 200.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "rock.slate",
+      "name": "Slate / Deepslate",
+      "category": "geological_lithic",
+      "description": "Fine-grained foliated metamorphic rock characterized by high density and planar cleavage.",
+      "domains": [
+        "Minecraft (Deepslate)",
+        "Terraria (Slate/Shale)",
+        "Universal Metamorphic Geology"
+      ],
+      "physical": {
+        "density_kg_m3": 2800.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 65.0,
+        "poisson_ratio": 0.21,
+        "friction_coefficient": 0.7,
+        "restitution": 0.2,
+        "blast_resistance_j": 7500.0,
+        "thermal_conductivity_w_mk": 2.0,
+        "specific_heat_j_kgk": 760.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.28,
+          0.28,
+          0.3
+        ],
+        "roughness": 0.72,
+        "metallic": 0.0,
+        "ior": 1.55,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 950.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "ore.coal",
+      "name": "Coal / Carbon Solid",
+      "category": "ore_and_metal",
+      "description": "Combustible black sedimentary rock composed primarily of carbon with associated hydrocarbons.",
+      "domains": [
+        "Minecraft (Coal Ore)",
+        "Terraria (Coal / Black Mineral)",
+        "Universal Metallurgy/Energy"
+      ],
+      "physical": {
+        "density_kg_m3": 1350.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 4.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.6,
+        "restitution": 0.1,
+        "blast_resistance_j": 3000.0,
+        "thermal_conductivity_w_mk": 0.26,
+        "specific_heat_j_kgk": 1260.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.12,
+          0.12,
+          0.12
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.8,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1200.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "metal.iron",
+      "name": "Iron",
+      "category": "ore_and_metal",
+      "description": "High-tensile ferromagnetic transition metal forming foundational structural tools and armaments.",
+      "domains": [
+        "Minecraft (Iron)",
+        "Terraria (Iron)",
+        "Universal Structural Metallurgy"
+      ],
+      "physical": {
+        "density_kg_m3": 7874.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 211.0,
+        "poisson_ratio": 0.29,
+        "friction_coefficient": 0.4,
+        "restitution": 0.45,
+        "blast_resistance_j": 10000.0,
+        "thermal_conductivity_w_mk": 80.0,
+        "specific_heat_j_kgk": 450.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "stone_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.77,
+          0.78,
+          0.78
+        ],
+        "roughness": 0.35,
+        "metallic": 1.0,
+        "ior": 2.95,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.copper",
+      "name": "Copper",
+      "category": "ore_and_metal",
+      "description": "Ductile, malleable metal with high thermal and electrical conductivity, prone to verdigris patina.",
+      "domains": [
+        "Minecraft (Copper)",
+        "Terraria (Copper)",
+        "Universal Electrical/Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 8960.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 110.0,
+        "poisson_ratio": 0.34,
+        "friction_coefficient": 0.35,
+        "restitution": 0.4,
+        "blast_resistance_j": 9000.0,
+        "thermal_conductivity_w_mk": 401.0,
+        "specific_heat_j_kgk": 385.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "stone_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.95,
+          0.64,
+          0.54
+        ],
+        "roughness": 0.25,
+        "metallic": 1.0,
+        "ior": 0.27,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2800.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.gold",
+      "name": "Gold",
+      "category": "ore_and_metal",
+      "description": "Noble transition metal with high density, resistance to corrosion, and intense yellow spectral reflectance.",
+      "domains": [
+        "Minecraft (Gold)",
+        "Terraria (Gold)",
+        "Universal Precious Metals"
+      ],
+      "physical": {
+        "density_kg_m3": 19300.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 78.0,
+        "poisson_ratio": 0.44,
+        "friction_coefficient": 0.3,
+        "restitution": 0.3,
+        "blast_resistance_j": 8000.0,
+        "thermal_conductivity_w_mk": 314.0,
+        "specific_heat_j_kgk": 129.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          1.0,
+          0.77,
+          0.34
+        ],
+        "roughness": 0.18,
+        "metallic": 1.0,
+        "ior": 0.18,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 3200.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.silver",
+      "name": "Silver",
+      "category": "ore_and_metal",
+      "description": "Precious metal exhibiting highest electrical and optical conductivity and highest reflectivity in visible spectrum.",
+      "domains": [
+        "Terraria (Silver)",
+        "Universal Precious Metals/Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 10490.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 83.0,
+        "poisson_ratio": 0.37,
+        "friction_coefficient": 0.35,
+        "restitution": 0.35,
+        "blast_resistance_j": 8500.0,
+        "thermal_conductivity_w_mk": 429.0,
+        "specific_heat_j_kgk": 235.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.97,
+          0.96,
+          0.95
+        ],
+        "roughness": 0.12,
+        "metallic": 1.0,
+        "ior": 0.14,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 3500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.tin",
+      "name": "Tin",
+      "category": "ore_and_metal",
+      "description": "Malleable post-transition metal with low melting point, used to produce bronze alloys.",
+      "domains": [
+        "Terraria (Tin)",
+        "Universal Metallurgy/Bronze Age"
+      ],
+      "physical": {
+        "density_kg_m3": 7310.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 50.0,
+        "poisson_ratio": 0.36,
+        "friction_coefficient": 0.4,
+        "restitution": 0.25,
+        "blast_resistance_j": 7000.0,
+        "thermal_conductivity_w_mk": 66.8,
+        "specific_heat_j_kgk": 228.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.85,
+          0.85,
+          0.84
+        ],
+        "roughness": 0.3,
+        "metallic": 1.0,
+        "ior": 1.8,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2200.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.lead",
+      "name": "Lead",
+      "category": "ore_and_metal",
+      "description": "Dense, soft, corrosion-resistant heavy metal with radiation shielding and radiation damping capabilities.",
+      "domains": [
+        "Terraria (Lead)",
+        "Universal Metallurgy/Nuclear Shielding"
+      ],
+      "physical": {
+        "density_kg_m3": 11340.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 16.0,
+        "poisson_ratio": 0.44,
+        "friction_coefficient": 0.45,
+        "restitution": 0.05,
+        "blast_resistance_j": 8000.0,
+        "thermal_conductivity_w_mk": 35.3,
+        "specific_heat_j_kgk": 129.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.45,
+          0.46,
+          0.48
+        ],
+        "roughness": 0.4,
+        "metallic": 1.0,
+        "ior": 2.05,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.platinum",
+      "name": "Platinum",
+      "category": "ore_and_metal",
+      "description": "Extremely dense, malleable noble metal with outstanding catalytic properties and corrosion immunity.",
+      "domains": [
+        "Terraria (Platinum)",
+        "Universal Metallurgy/Precious Metal"
+      ],
+      "physical": {
+        "density_kg_m3": 21450.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 168.0,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.35,
+        "restitution": 0.35,
+        "blast_resistance_j": 11000.0,
+        "thermal_conductivity_w_mk": 71.6,
+        "specific_heat_j_kgk": 133.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.82,
+          0.84,
+          0.86
+        ],
+        "roughness": 0.15,
+        "metallic": 1.0,
+        "ior": 2.3,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 3100.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.steel",
+      "name": "Steel / Refined Ferrous Alloy",
+      "category": "ore_and_metal",
+      "description": "Alloy of iron and carbon providing maximum structural tensile strength and fatigue resistance.",
+      "domains": [
+        "Minecraft (Industrial/Modded)",
+        "Terraria (Late Pre-Hardmode)",
+        "Universal Structural Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 7850.0,
+        "mohs_hardness": 6.5,
+        "youngs_modulus_gpa": 200.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.38,
+        "restitution": 0.5,
+        "blast_resistance_j": 12000.0,
+        "thermal_conductivity_w_mk": 50.0,
+        "specific_heat_j_kgk": 490.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.75,
+          0.77,
+          0.8
+        ],
+        "roughness": 0.2,
+        "metallic": 1.0,
+        "ior": 2.8,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2700.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "gem.quartz",
+      "name": "Quartz",
+      "category": "gemstone_silicate",
+      "description": "Crystalline silicon dioxide exhibiting piezoelectricity, glassy luster, and high optical clarity.",
+      "domains": [
+        "Minecraft (Nether/Overworld Quartz)",
+        "Terraria (Quartz/Gems)",
+        "Universal Electronics/Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 2650.0,
+        "mohs_hardness": 7.0,
+        "youngs_modulus_gpa": 95.0,
+        "poisson_ratio": 0.17,
+        "friction_coefficient": 0.4,
+        "restitution": 0.55,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 1.4,
+        "specific_heat_j_kgk": 730.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.94,
+          0.94,
+          0.94
+        ],
+        "roughness": 0.08,
+        "metallic": 0.0,
+        "ior": 1.544,
+        "transmission": 0.9,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 5.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "refractive_dielectric"
+      }
+    },
+    {
+      "id": "gem.diamond",
+      "name": "Diamond",
+      "category": "gemstone_silicate",
+      "description": "Allotrope of carbon in face-centered cubic lattice; highest hardness, thermal conductivity, and refractive brilliance.",
+      "domains": [
+        "Minecraft (Diamond)",
+        "Terraria (Diamond)",
+        "Universal Cutting Tools/Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 3515.0,
+        "mohs_hardness": 10.0,
+        "youngs_modulus_gpa": 1220.0,
+        "poisson_ratio": 0.07,
+        "friction_coefficient": 0.1,
+        "restitution": 0.85,
+        "blast_resistance_j": 15000.0,
+        "thermal_conductivity_w_mk": 2200.0,
+        "specific_heat_j_kgk": 509.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.7,
+          0.92,
+          0.95
+        ],
+        "roughness": 0.02,
+        "metallic": 0.0,
+        "ior": 2.418,
+        "transmission": 0.95,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_DISPERSIVE",
+        "layering": "high_index_refractive"
+      }
+    },
+    {
+      "id": "gem.emerald",
+      "name": "Emerald",
+      "category": "gemstone_silicate",
+      "description": "Chromium-bearing cyclosilicate beryl crystal with characteristic rich green vitreous luster.",
+      "domains": [
+        "Minecraft (Emerald)",
+        "Terraria (Emerald)",
+        "Universal Mineralogy/Economy"
+      ],
+      "physical": {
+        "density_kg_m3": 2760.0,
+        "mohs_hardness": 7.8,
+        "youngs_modulus_gpa": 200.0,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.35,
+        "restitution": 0.6,
+        "blast_resistance_j": 6000.0,
+        "thermal_conductivity_w_mk": 4.0,
+        "specific_heat_j_kgk": 700.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.1,
+          0.8,
+          0.35
+        ],
+        "roughness": 0.05,
+        "metallic": 0.0,
+        "ior": 1.58,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 15.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "gem.ruby",
+      "name": "Ruby",
+      "category": "gemstone_silicate",
+      "description": "Chromium-doped aluminium oxide corundum crystal exhibiting deep crimson red transmission and high durability.",
+      "domains": [
+        "Terraria (Ruby)",
+        "Minecraft (Redstone crystal analogue)",
+        "Universal Mineralogy/Laser Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 4020.0,
+        "mohs_hardness": 9.0,
+        "youngs_modulus_gpa": 400.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.25,
+        "restitution": 0.7,
+        "blast_resistance_j": 9000.0,
+        "thermal_conductivity_w_mk": 35.0,
+        "specific_heat_j_kgk": 750.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.88,
+          0.12,
+          0.22
+        ],
+        "roughness": 0.04,
+        "metallic": 0.0,
+        "ior": 1.77,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 20.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "gem.sapphire",
+      "name": "Sapphire",
+      "category": "gemstone_silicate",
+      "description": "Corundum crystal colored by trace iron and titanium, used in scratch-resistant optical windows and instrumentation.",
+      "domains": [
+        "Terraria (Sapphire)",
+        "Universal Optics/Mineralogy"
+      ],
+      "physical": {
+        "density_kg_m3": 3980.0,
+        "mohs_hardness": 9.0,
+        "youngs_modulus_gpa": 400.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.25,
+        "restitution": 0.7,
+        "blast_resistance_j": 9000.0,
+        "thermal_conductivity_w_mk": 35.0,
+        "specific_heat_j_kgk": 750.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.1,
+          0.25,
+          0.85
+        ],
+        "roughness": 0.04,
+        "metallic": 0.0,
+        "ior": 1.77,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 20.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "gem.amethyst",
+      "name": "Amethyst",
+      "category": "gemstone_silicate",
+      "description": "Violet variety of quartz irradiated with ferric iron impurities, producing geometric geode cluster formations.",
+      "domains": [
+        "Minecraft (Amethyst)",
+        "Terraria (Amethyst)",
+        "Universal Mineralogy/Decor"
+      ],
+      "physical": {
+        "density_kg_m3": 2650.0,
+        "mohs_hardness": 7.0,
+        "youngs_modulus_gpa": 90.0,
+        "poisson_ratio": 0.17,
+        "friction_coefficient": 0.4,
+        "restitution": 0.55,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 1.4,
+        "specific_heat_j_kgk": 730.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.6,
+          0.25,
+          0.8
+        ],
+        "roughness": 0.06,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.8,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 30.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "wood.hardwood",
+      "name": "Hardwood / Oak",
+      "category": "organic_botanical",
+      "description": "Dense fibrous angiosperm cellular wood matrix offering structural load-bearing capacity.",
+      "domains": [
+        "Minecraft (Oak Wood)",
+        "Terraria (Wood)",
+        "Universal Forestry/Carpentry"
+      ],
+      "physical": {
+        "density_kg_m3": 720.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 12.0,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.6,
+        "restitution": 0.2,
+        "blast_resistance_j": 2000.0,
+        "thermal_conductivity_w_mk": 0.17,
+        "specific_heat_j_kgk": 2000.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse_anisotropic",
+        "base_color_srgb": [
+          0.65,
+          0.45,
+          0.28
+        ],
+        "roughness": 0.68,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_ANISOTROPIC_ROUGH",
+        "layering": "anisotropic_grain"
+      }
+    },
+    {
+      "id": "wood.softwood",
+      "name": "Softwood / Pine & Boreal",
+      "category": "organic_botanical",
+      "description": "Lighter gymnosperm coniferous wood rich in resins, easily worked for framing and cellulose pulp.",
+      "domains": [
+        "Minecraft (Spruce Wood)",
+        "Terraria (Boreal Wood)",
+        "Universal Construction Timber"
+      ],
+      "physical": {
+        "density_kg_m3": 510.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 9.0,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.58,
+        "restitution": 0.2,
+        "blast_resistance_j": 1800.0,
+        "thermal_conductivity_w_mk": 0.13,
+        "specific_heat_j_kgk": 2300.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse_anisotropic",
+        "base_color_srgb": [
+          0.45,
+          0.32,
+          0.2
+        ],
+        "roughness": 0.72,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 580.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_ANISOTROPIC_ROUGH",
+        "layering": "anisotropic_grain"
+      }
+    },
+    {
+      "id": "wood.birch",
+      "name": "Birch",
+      "category": "organic_botanical",
+      "description": "Fine-grained hardwood with distinctive white betulin-rich outer bark and light internal timber.",
+      "domains": [
+        "Minecraft (Birch)",
+        "Universal Botany/Woodworking"
+      ],
+      "physical": {
+        "density_kg_m3": 670.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 14.0,
+        "poisson_ratio": 0.36,
+        "friction_coefficient": 0.58,
+        "restitution": 0.22,
+        "blast_resistance_j": 2000.0,
+        "thermal_conductivity_w_mk": 0.15,
+        "specific_heat_j_kgk": 1900.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse_anisotropic",
+        "base_color_srgb": [
+          0.85,
+          0.82,
+          0.75
+        ],
+        "roughness": 0.65,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 590.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_ANISOTROPIC_ROUGH",
+        "layering": "anisotropic_grain"
+      }
+    },
+    {
+      "id": "botanical.bamboo",
+      "name": "Bamboo",
+      "category": "organic_botanical",
+      "description": "Fast-growing woody grass characterized by hollow internodal culms and outstanding longitudinal tensile strength.",
+      "domains": [
+        "Minecraft (Bamboo)",
+        "Terraria (Bamboo)",
+        "Universal Sustainable Scaffolding"
+      ],
+      "physical": {
+        "density_kg_m3": 600.0,
+        "mohs_hardness": 3.5,
+        "youngs_modulus_gpa": 18.0,
+        "poisson_ratio": 0.32,
+        "friction_coefficient": 0.5,
+        "restitution": 0.35,
+        "blast_resistance_j": 1500.0,
+        "thermal_conductivity_w_mk": 0.16,
+        "specific_heat_j_kgk": 1600.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.38,
+          0.62,
+          0.22
+        ],
+        "roughness": 0.4,
+        "metallic": 0.0,
+        "ior": 1.51,
+        "transmission": 0.05,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "waxy_sheen_over_fibers"
+      }
+    },
+    {
+      "id": "botanical.foliage",
+      "name": "Foliage / Plant Canopy",
+      "category": "organic_botanical",
+      "description": "Thin photosynthetic leaves exhibiting high optical translucency, subsurface scattering, and low mechanical density.",
+      "domains": [
+        "Minecraft (Leaves)",
+        "Terraria (Foliage/Vines)",
+        "Universal Vegetation/Biosphere"
+      ],
+      "physical": {
+        "density_kg_m3": 250.0,
+        "mohs_hardness": 0.5,
+        "youngs_modulus_gpa": 0.01,
+        "poisson_ratio": 0.4,
+        "friction_coefficient": 0.7,
+        "restitution": 0.05,
+        "blast_resistance_j": 200.0,
+        "thermal_conductivity_w_mk": 0.08,
+        "specific_heat_j_kgk": 2500.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "two_sided_thin_surface_translucent",
+        "base_color_srgb": [
+          0.24,
+          0.52,
+          0.18
+        ],
+        "roughness": 0.55,
+        "metallic": 0.0,
+        "ior": 1.42,
+        "transmission": 0.35,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 120.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_THIN_SURFACE_TRANSLUCENT",
+        "layering": "chlorophyll_translucent"
+      }
+    },
+    {
+      "id": "organic.bone",
+      "name": "Bone / Osseous Tissue",
+      "category": "organic_botanical",
+      "description": "Rigid biological composite of hydroxyapatite minerals and collagen fibers with high compressive strength.",
+      "domains": [
+        "Minecraft (Bone Block)",
+        "Terraria (Bone Block)",
+        "Universal Biomechanics"
+      ],
+      "physical": {
+        "density_kg_m3": 1900.0,
+        "mohs_hardness": 4.0,
+        "youngs_modulus_gpa": 18.0,
+        "poisson_ratio": 0.31,
+        "friction_coefficient": 0.55,
+        "restitution": 0.3,
+        "blast_resistance_j": 4000.0,
+        "thermal_conductivity_w_mk": 0.52,
+        "specific_heat_j_kgk": 1250.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.88,
+          0.86,
+          0.78
+        ],
+        "roughness": 0.45,
+        "metallic": 0.0,
+        "ior": 1.55,
+        "transmission": 0.08,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 350.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "organic.fiber",
+      "name": "Silk / Fibers / Webbing",
+      "category": "organic_botanical",
+      "description": "Polymer protein fibrils with extreme tensile strength, high elasticity, and dramatic kinematic velocity damping.",
+      "domains": [
+        "Minecraft (Cobweb/Wool)",
+        "Terraria (Cobweb/Silk)",
+        "Universal Textiles/Biopolymers"
+      ],
+      "physical": {
+        "density_kg_m3": 1300.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 10.0,
+        "poisson_ratio": 0.4,
+        "friction_coefficient": 0.95,
+        "restitution": 0.0,
+        "blast_resistance_j": 400.0,
+        "thermal_conductivity_w_mk": 0.1,
+        "specific_heat_j_kgk": 1380.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "sword"
+      },
+      "optical": {
+        "bsdf_model": "microfiber_sheen",
+        "base_color_srgb": [
+          0.88,
+          0.88,
+          0.88
+        ],
+        "roughness": 0.6,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.4,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 80.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_SHEEN_CLOTH",
+        "layering": "dielectric_microfiber"
+      }
+    },
+    {
+      "id": "fluid.water",
+      "name": "Water",
+      "category": "fluid_multiphase",
+      "description": "Transparent Newtonian fluid with density of 1000 kg/m^3, low viscosity, and high specific heat capacity.",
+      "domains": [
+        "Minecraft (Water)",
+        "Terraria (Water)",
+        "Universal Fluid Dynamics/Hydrology"
+      ],
+      "physical": {
+        "density_kg_m3": 1000.0,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 2.2,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.05,
+        "restitution": 0.0,
+        "blast_resistance_j": 50000.0,
+        "thermal_conductivity_w_mk": 0.6,
+        "specific_heat_j_kgk": 4184.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_refractive_volume",
+        "base_color_srgb": [
+          0.82,
+          0.9,
+          0.95
+        ],
+        "roughness": 0.01,
+        "metallic": 0.0,
+        "ior": 1.333,
+        "transmission": 0.98,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 0.05
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_LIQUID",
+        "layering": "specular_boundary_plus_vdf"
+      }
+    },
+    {
+      "id": "fluid.lava",
+      "name": "Lava / Magma",
+      "category": "fluid_multiphase",
+      "description": "High-temperature molten silicate fluid exhibiting extreme viscosity, thermal emission, and severe destructive contact.",
+      "domains": [
+        "Minecraft (Lava)",
+        "Terraria (Lava)",
+        "Universal Geophysics/Volcanology"
+      ],
+      "physical": {
+        "density_kg_m3": 2800.0,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 5.0,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.2,
+        "restitution": 0.0,
+        "blast_resistance_j": 40000.0,
+        "thermal_conductivity_w_mk": 2.5,
+        "specific_heat_j_kgk": 1200.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "emissive_blackbody_fluid",
+        "base_color_srgb": [
+          1.0,
+          0.4,
+          0.05
+        ],
+        "roughness": 0.25,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 25000.0,
+        "extinction_sigma_t": 2000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_PLUS_EDF_EMISSIVE",
+        "layering": "diffuse_plus_blackbody_edf"
+      }
+    },
+    {
+      "id": "fluid.honey",
+      "name": "Honey",
+      "category": "fluid_multiphase",
+      "description": "Supersaturated viscous non-Newtonian sugar fluid exhibiting significant velocity retardation and adhesion.",
+      "domains": [
+        "Minecraft (Honey Block/Fluid)",
+        "Terraria (Honey)",
+        "Universal Fluid Rheology"
+      ],
+      "physical": {
+        "density_kg_m3": 1420.0,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 0.1,
+        "poisson_ratio": 0.49,
+        "friction_coefficient": 0.9,
+        "restitution": 0.01,
+        "blast_resistance_j": 2000.0,
+        "thermal_conductivity_w_mk": 0.38,
+        "specific_heat_j_kgk": 2520.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_refractive_volume",
+        "base_color_srgb": [
+          0.95,
+          0.68,
+          0.15
+        ],
+        "roughness": 0.08,
+        "metallic": 0.0,
+        "ior": 1.49,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 15.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_LIQUID",
+        "layering": "specular_boundary_plus_vdf"
+      }
+    },
+    {
+      "id": "synthetic.glass",
+      "name": "Glass",
+      "category": "synthetic_masonry",
+      "description": "Amorphous non-crystalline inorganic silicate solid with high transparency and brittle fracture.",
+      "domains": [
+        "Minecraft (Glass)",
+        "Terraria (Glass)",
+        "Universal Architecture/Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 2500.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 70.0,
+        "poisson_ratio": 0.22,
+        "friction_coefficient": 0.4,
+        "restitution": 0.65,
+        "blast_resistance_j": 1500.0,
+        "thermal_conductivity_w_mk": 1.05,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "silk_touch_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.95,
+          0.98,
+          0.99
+        ],
+        "roughness": 0.01,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.98,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 0.02
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "pure_dielectric"
+      }
+    },
+    {
+      "id": "synthetic.brick",
+      "name": "Brick / Fired Ceramic",
+      "category": "synthetic_masonry",
+      "description": "Fired clay masonry block offering high fire resistance, compressive strength, and thermal mass.",
+      "domains": [
+        "Minecraft (Bricks)",
+        "Terraria (Red Brick)",
+        "Universal Civil Masonry"
+      ],
+      "physical": {
+        "density_kg_m3": 1900.0,
+        "mohs_hardness": 5.0,
+        "youngs_modulus_gpa": 20.0,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.7,
+        "restitution": 0.2,
+        "blast_resistance_j": 6000.0,
+        "thermal_conductivity_w_mk": 0.75,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.65,
+          0.28,
+          0.2
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 700.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.concrete",
+      "name": "Concrete / Mortar",
+      "category": "synthetic_masonry",
+      "description": "Composite structural solid formed from hydration of Portland cement binder and graded mineral aggregate.",
+      "domains": [
+        "Minecraft (Concrete)",
+        "Universal Modern Construction"
+      ],
+      "physical": {
+        "density_kg_m3": 2400.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 30.0,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.65,
+        "restitution": 0.15,
+        "blast_resistance_j": 9000.0,
+        "thermal_conductivity_w_mk": 1.7,
+        "specific_heat_j_kgk": 880.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.65,
+          0.65,
+          0.65
+        ],
+        "roughness": 0.88,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 850.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.terracotta",
+      "name": "Terracotta / Hardened Clay",
+      "category": "synthetic_masonry",
+      "description": "Earthenware glazed or baked clay matrix with earthy chromatic pigmentation and high thermal durability.",
+      "domains": [
+        "Minecraft (Terracotta)",
+        "Terraria (Clay/Tile)",
+        "Universal Architectural Ceramics"
+      ],
+      "physical": {
+        "density_kg_m3": 2000.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 22.0,
+        "poisson_ratio": 0.22,
+        "friction_coefficient": 0.65,
+        "restitution": 0.25,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 1.0,
+        "specific_heat_j_kgk": 900.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.72,
+          0.44,
+          0.32
+        ],
+        "roughness": 0.8,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 720.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.asphalt",
+      "name": "Asphalt / Bitumen Roadway",
+      "category": "synthetic_masonry",
+      "description": "Viscoelastic bituminous composite yielding high tire traction and high velocity conveyance.",
+      "domains": [
+        "Terraria (Asphalt Block - accelerates movement)",
+        "Universal Civil Infrastructure"
+      ],
+      "physical": {
+        "density_kg_m3": 2300.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 4.0,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.85,
+        "restitution": 0.1,
+        "blast_resistance_j": 4500.0,
+        "thermal_conductivity_w_mk": 0.75,
+        "specific_heat_j_kgk": 920.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.18,
+          0.18,
+          0.18
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1100.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "cryo.ice",
+      "name": "Ice / Glacial Ice",
+      "category": "cryogenic_volatile",
+      "description": "Hexagonal crystalline solid phase of water (Ih) with low kinetic friction and brittle fracture under impact.",
+      "domains": [
+        "Minecraft (Ice)",
+        "Terraria (Ice Block)",
+        "Universal Cryology/Glaciology"
+      ],
+      "physical": {
+        "density_kg_m3": 917.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 9.3,
+        "poisson_ratio": 0.33,
+        "friction_coefficient": 0.05,
+        "restitution": 0.2,
+        "blast_resistance_j": 600.0,
+        "thermal_conductivity_w_mk": 2.22,
+        "specific_heat_j_kgk": 2090.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "silk_touch_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.85,
+          0.92,
+          0.98
+        ],
+        "roughness": 0.08,
+        "metallic": 0.0,
+        "ior": 1.31,
+        "transmission": 0.92,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 10.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "translucent_dielectric"
+      }
+    },
+    {
+      "id": "cryo.packed_ice",
+      "name": "Compacted Glacial Firn / Packed Ice",
+      "category": "cryogenic_volatile",
+      "description": "Sintered and compressed granular ice crystals depleted of air pores, preventing rapid thermal melting.",
+      "domains": [
+        "Minecraft (Packed Ice)",
+        "Universal Glaciology"
+      ],
+      "physical": {
+        "density_kg_m3": 900.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 8.8,
+        "poisson_ratio": 0.32,
+        "friction_coefficient": 0.03,
+        "restitution": 0.25,
+        "blast_resistance_j": 1200.0,
+        "thermal_conductivity_w_mk": 2.1,
+        "specific_heat_j_kgk": 2100.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.78,
+          0.88,
+          0.96
+        ],
+        "roughness": 0.15,
+        "metallic": 0.0,
+        "ior": 1.315,
+        "transmission": 0.45,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 40.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "cryo.blue_ice",
+      "name": "High-Density Blue Glacial Ice",
+      "category": "cryogenic_volatile",
+      "description": "Extremely compressed basal glacial ice with structural bubble exclusion and minimal surface friction.",
+      "domains": [
+        "Minecraft (Blue Ice)",
+        "CAD Cryology"
+      ],
+      "physical": {
+        "density_kg_m3": 917.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 9.5,
+        "poisson_ratio": 0.31,
+        "friction_coefficient": 0.01,
+        "restitution": 0.3,
+        "blast_resistance_j": 1800.0,
+        "thermal_conductivity_w_mk": 2.3,
+        "specific_heat_j_kgk": 2050.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.55,
+          0.75,
+          0.98
+        ],
+        "roughness": 0.05,
+        "metallic": 0.0,
+        "ior": 1.32,
+        "transmission": 0.6,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 25.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "cryo.snow",
+      "name": "Consolidated Snow Pack",
+      "category": "cryogenic_volatile",
+      "description": "Sintered ice crystal matrix with high porosity, high solar albedo, and insulating thermal resistance.",
+      "domains": [
+        "Minecraft (Snow Block)",
+        "Terraria (Snow Block)",
+        "Universal Meteorology"
+      ],
+      "physical": {
+        "density_kg_m3": 350.0,
+        "mohs_hardness": 0.5,
+        "youngs_modulus_gpa": 0.05,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.2,
+        "restitution": 0.05,
+        "blast_resistance_j": 250.0,
+        "thermal_conductivity_w_mk": 0.15,
+        "specific_heat_j_kgk": 2090.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.98,
+          0.98,
+          0.98
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.3,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 300.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "cryo.powder_snow",
+      "name": "Unconsolidated Powder Snow",
+      "category": "cryogenic_volatile",
+      "description": "Loose, high-porosity dendritic snow crystals unable to support mechanical loads, producing sinking.",
+      "domains": [
+        "Minecraft (Powder Snow)",
+        "Universal Avalanche Mechanics"
+      ],
+      "physical": {
+        "density_kg_m3": 100.0,
+        "mohs_hardness": 0.1,
+        "youngs_modulus_gpa": 0.001,
+        "poisson_ratio": 0.1,
+        "friction_coefficient": 0.85,
+        "restitution": 0.0,
+        "blast_resistance_j": 50.0,
+        "thermal_conductivity_w_mk": 0.06,
+        "specific_heat_j_kgk": 2090.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.99,
+          0.99,
+          1.0
+        ],
+        "roughness": 0.98,
+        "metallic": 0.0,
+        "ior": 1.25,
+        "transmission": 0.1,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 150.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "cryo.permafrost",
+      "name": "Frozen Lithic Cryosol / Permafrost",
+      "category": "cryogenic_volatile",
+      "description": "Soil, gravel, or fractured rock permanently cemented by ground ice at temperatures below 273.15 K.",
+      "domains": [
+        "CAD Geotechnical/Cryopedology"
+      ],
+      "physical": {
+        "density_kg_m3": 1950.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 25.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.5,
+        "restitution": 0.15,
+        "blast_resistance_j": 4500.0,
+        "thermal_conductivity_w_mk": 2.5,
+        "specific_heat_j_kgk": 1200.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.45,
+          0.42,
+          0.4
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.48,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.limestone",
+      "name": "Limestone / Carbonate Rock",
+      "category": "geological_lithic",
+      "description": "Sedimentary carbonate rock composed largely of calcite and aragonite; precursor to quicklime and cement.",
+      "domains": [
+        "Universal Civil/Geological Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 2550.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 45.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.65,
+        "restitution": 0.2,
+        "blast_resistance_j": 4500.0,
+        "thermal_conductivity_w_mk": 2.0,
+        "specific_heat_j_kgk": 880.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.78,
+          0.74,
+          0.68
+        ],
+        "roughness": 0.82,
+        "metallic": 0.0,
+        "ior": 1.57,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.calcite",
+      "name": "Calcite Crystalline Carbonate",
+      "category": "geological_lithic",
+      "description": "Trigonal polymorph of calcium carbonate exhibiting strong optical birefringence and rhombohedral cleavage.",
+      "domains": [
+        "Minecraft (Calcite)",
+        "Universal Optical Crystallography"
+      ],
+      "physical": {
+        "density_kg_m3": 2710.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 60.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.55,
+        "restitution": 0.35,
+        "blast_resistance_j": 4000.0,
+        "thermal_conductivity_w_mk": 2.2,
+        "specific_heat_j_kgk": 850.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.92,
+          0.9,
+          0.88
+        ],
+        "roughness": 0.35,
+        "metallic": 0.0,
+        "ior": 1.658,
+        "transmission": 0.1,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 120.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "rock.tuff",
+      "name": "Volcanic Tuff",
+      "category": "geological_lithic",
+      "description": "Pyroclastic consolidated volcanic rock formed from consolidated ash, shards, and lithic fragments.",
+      "domains": [
+        "Minecraft (Tuff)",
+        "Universal Volcanic Masonry"
+      ],
+      "physical": {
+        "density_kg_m3": 2100.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 30.0,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.7,
+        "restitution": 0.15,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 1.5,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.42,
+          0.4,
+          0.38
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 550.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "rock.pumice",
+      "name": "Vesicular Pumice",
+      "category": "geological_lithic",
+      "description": "Highly porous vesicular volcanic glass with density lower than water, granting buoyant flotation.",
+      "domains": [
+        "Universal Geophysics/Hydraulic Buoyancy"
+      ],
+      "physical": {
+        "density_kg_m3": 650.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 15.0,
+        "poisson_ratio": 0.18,
+        "friction_coefficient": 0.85,
+        "restitution": 0.1,
+        "blast_resistance_j": 2500.0,
+        "thermal_conductivity_w_mk": 0.35,
+        "specific_heat_j_kgk": 800.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.7,
+          0.68,
+          0.64
+        ],
+        "roughness": 0.92,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "soil.peat",
+      "name": "Peat / Organic Turf",
+      "category": "geological_soil",
+      "description": "Partially decayed accumulation of vegetable matter and sphagnum moss; natural carbonaceous fuel precursor.",
+      "domains": [
+        "Universal Fuel/Wetland Geology"
+      ],
+      "physical": {
+        "density_kg_m3": 1100.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.02,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.7,
+        "restitution": 0.02,
+        "blast_resistance_j": 400.0,
+        "thermal_conductivity_w_mk": 0.22,
+        "specific_heat_j_kgk": 1800.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.24,
+          0.16,
+          0.1
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.46,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "soil.podzol",
+      "name": "Podzol / Forest Humus Soil",
+      "category": "geological_soil",
+      "description": "Highly leached boreal soil characterized by a bleached eluvial horizon beneath organic humus.",
+      "domains": [
+        "Minecraft (Podzol)",
+        "Universal Soil Pedology"
+      ],
+      "physical": {
+        "density_kg_m3": 1350.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 0.04,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.65,
+        "restitution": 0.05,
+        "blast_resistance_j": 500.0,
+        "thermal_conductivity_w_mk": 0.28,
+        "specific_heat_j_kgk": 950.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.3,
+          0.22,
+          0.16
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.48,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 550.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "mineral.salt",
+      "name": "Halite / Rock Salt",
+      "category": "mineral_silicate",
+      "description": "Isometric ionic crystal composed of sodium chloride (NaCl); highly soluble in water, depresses ice melting point.",
+      "domains": [
+        "Universal Chemical/Culinary Mineralogy"
+      ],
+      "physical": {
+        "density_kg_m3": 2160.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 40.0,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.5,
+        "restitution": 0.4,
+        "blast_resistance_j": 2500.0,
+        "thermal_conductivity_w_mk": 6.5,
+        "specific_heat_j_kgk": 880.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.96,
+          0.96,
+          0.97
+        ],
+        "roughness": 0.12,
+        "metallic": 0.0,
+        "ior": 1.544,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 20.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "refractive_dielectric"
+      }
+    },
+    {
+      "id": "mineral.sulfur",
+      "name": "Sulfur / Brimstone",
+      "category": "mineral_silicate",
+      "description": "Bright yellow orthorhombic non-metallic crystal with low melting point (388.36 K), combustible with blue flame.",
+      "domains": [
+        "Universal Energetics/Chemical Precursors"
+      ],
+      "physical": {
+        "density_kg_m3": 2070.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 15.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.4,
+        "restitution": 0.2,
+        "blast_resistance_j": 2000.0,
+        "thermal_conductivity_w_mk": 0.205,
+        "specific_heat_j_kgk": 710.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.92,
+          0.82,
+          0.15
+        ],
+        "roughness": 0.6,
+        "metallic": 0.0,
+        "ior": 1.95,
+        "transmission": 0.05,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 350.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "mineral.gypsum",
+      "name": "Gypsum / Hydrous Calcium Sulfate",
+      "category": "mineral_silicate",
+      "description": "Soft sulfate mineral capable of thermal calcination into plaster of Paris.",
+      "domains": [
+        "Universal Civil/Masonry Mineralogy"
+      ],
+      "physical": {
+        "density_kg_m3": 2310.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 12.0,
+        "poisson_ratio": 0.33,
+        "friction_coefficient": 0.45,
+        "restitution": 0.1,
+        "blast_resistance_j": 2200.0,
+        "thermal_conductivity_w_mk": 0.17,
+        "specific_heat_j_kgk": 1090.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.9,
+          0.88,
+          0.86
+        ],
+        "roughness": 0.55,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "mineral.ash",
+      "name": "Combustion / Volcanic Ash",
+      "category": "mineral_silicate",
+      "description": "Fine particulate mineral residue of pulverized volcanic rock or completed vegetative pyrolysis.",
+      "domains": [
+        "Universal Geology/Civil Cement"
+      ],
+      "physical": {
+        "density_kg_m3": 750.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.01,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.5,
+        "restitution": 0.05,
+        "blast_resistance_j": 150.0,
+        "thermal_conductivity_w_mk": 0.12,
+        "specific_heat_j_kgk": 800.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.35,
+          0.35,
+          0.35
+        ],
+        "roughness": 0.98,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "ore.iron_ore",
+      "name": "Banded Iron Formation / Hematite Ore",
+      "category": "ore_and_metal",
+      "description": "Sedimentary rock matrix containing high concentrations of hematite and magnetite oxides.",
+      "domains": [
+        "Minecraft (Iron Ore)",
+        "Terraria (Iron Ore)",
+        "Universal Metallurgy"
+      ],
+      "physical": {
+        "density_kg_m3": 4800.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 110.0,
+        "poisson_ratio": 0.26,
+        "friction_coefficient": 0.65,
+        "restitution": 0.2,
+        "blast_resistance_j": 7500.0,
+        "thermal_conductivity_w_mk": 4.5,
+        "specific_heat_j_kgk": 650.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "stone_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.45,
+          0.35,
+          0.32
+        ],
+        "roughness": 0.8,
+        "metallic": 0.1,
+        "ior": 2.2,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 800.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "ore.copper_ore",
+      "name": "Copper Ore / Malachite-Quartz Matrix",
+      "category": "ore_and_metal",
+      "description": "Mineral aggregate containing copper sulfides and carbonates embedded in silicate host rock.",
+      "domains": [
+        "Minecraft (Copper Ore)",
+        "Terraria (Copper Ore)",
+        "Universal Metallurgy"
+      ],
+      "physical": {
+        "density_kg_m3": 4100.0,
+        "mohs_hardness": 4.0,
+        "youngs_modulus_gpa": 85.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.6,
+        "restitution": 0.2,
+        "blast_resistance_j": 6500.0,
+        "thermal_conductivity_w_mk": 6.0,
+        "specific_heat_j_kgk": 600.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "stone_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.32,
+          0.55,
+          0.48
+        ],
+        "roughness": 0.75,
+        "metallic": 0.1,
+        "ior": 1.85,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 750.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "ore.bauxite",
+      "name": "Bauxite / Aluminum Hydroxide Ore",
+      "category": "ore_and_metal",
+      "description": "Sedimentary rock with high aluminum content consisting mostly of gibbsite, boehmite, and diaspore.",
+      "domains": [
+        "Universal Industrial Metallurgy/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 2450.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 40.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.6,
+        "restitution": 0.15,
+        "blast_resistance_j": 4000.0,
+        "thermal_conductivity_w_mk": 1.2,
+        "specific_heat_j_kgk": 900.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.72,
+          0.48,
+          0.36
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "ior": 1.6,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "ore.gold_ore",
+      "name": "Native Gold Quartz Matrix",
+      "category": "ore_and_metal",
+      "description": "Hydrothermal vein quartz hosting micro- and macroscopic inclusions of native elemental gold.",
+      "domains": [
+        "Minecraft (Gold Ore)",
+        "Terraria (Gold Ore)",
+        "Universal Precious Geology"
+      ],
+      "physical": {
+        "density_kg_m3": 3200.0,
+        "mohs_hardness": 6.5,
+        "youngs_modulus_gpa": 85.0,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.55,
+        "restitution": 0.3,
+        "blast_resistance_j": 7000.0,
+        "thermal_conductivity_w_mk": 3.5,
+        "specific_heat_j_kgk": 700.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "iron_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.65,
+          0.62,
+          0.52
+        ],
+        "roughness": 0.65,
+        "metallic": 0.15,
+        "ior": 1.58,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "metal.bronze",
+      "name": "Bronze Alloy (Cu0.88Sn0.12)",
+      "category": "ore_and_metal",
+      "description": "Classical structural alloy of copper and tin offering superior hardness and corrosion resistance.",
+      "domains": [
+        "Universal Historical Metallurgy/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 8800.0,
+        "mohs_hardness": 4.0,
+        "youngs_modulus_gpa": 115.0,
+        "poisson_ratio": 0.34,
+        "friction_coefficient": 0.36,
+        "restitution": 0.45,
+        "blast_resistance_j": 10000.0,
+        "thermal_conductivity_w_mk": 60.0,
+        "specific_heat_j_kgk": 380.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.9,
+          0.68,
+          0.42
+        ],
+        "roughness": 0.22,
+        "metallic": 1.0,
+        "ior": 0.55,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.brass",
+      "name": "Brass Alloy (Cu0.70Zn0.30)",
+      "category": "ore_and_metal",
+      "description": "Malleable acoustic copper-zinc alloy characterized by low friction against other metals and bright golden luster.",
+      "domains": [
+        "Universal Instrument/Machine Tool Metallurgy"
+      ],
+      "physical": {
+        "density_kg_m3": 8500.0,
+        "mohs_hardness": 3.5,
+        "youngs_modulus_gpa": 105.0,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.32,
+        "restitution": 0.48,
+        "blast_resistance_j": 9500.0,
+        "thermal_conductivity_w_mk": 115.0,
+        "specific_heat_j_kgk": 380.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.95,
+          0.78,
+          0.35
+        ],
+        "roughness": 0.18,
+        "metallic": 1.0,
+        "ior": 0.42,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.aluminum",
+      "name": "Aluminum / Pure Light Metal",
+      "category": "ore_and_metal",
+      "description": "Low-density post-transition metal with high specific strength and self-passivating alumina oxide layer.",
+      "domains": [
+        "Universal Modern Aerospace/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 2700.0,
+        "mohs_hardness": 2.75,
+        "youngs_modulus_gpa": 70.0,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.4,
+        "restitution": 0.55,
+        "blast_resistance_j": 9000.0,
+        "thermal_conductivity_w_mk": 237.0,
+        "specific_heat_j_kgk": 900.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.91,
+          0.92,
+          0.92
+        ],
+        "roughness": 0.16,
+        "metallic": 1.0,
+        "ior": 1.44,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.titanium",
+      "name": "Titanium / Refractory Transition Metal",
+      "category": "ore_and_metal",
+      "description": "Lustrous transition metal with low density, extreme tensile strength, and high corrosion resistance.",
+      "domains": [
+        "Terraria (Titanium)",
+        "Universal Extreme Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 4506.0,
+        "mohs_hardness": 6.0,
+        "youngs_modulus_gpa": 116.0,
+        "poisson_ratio": 0.32,
+        "friction_coefficient": 0.36,
+        "restitution": 0.6,
+        "blast_resistance_j": 14000.0,
+        "thermal_conductivity_w_mk": 21.9,
+        "specific_heat_j_kgk": 523.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "diamond_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.76,
+          0.73,
+          0.69
+        ],
+        "roughness": 0.22,
+        "metallic": 1.0,
+        "ior": 2.7,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.zinc",
+      "name": "Zinc / Galvanic Metal",
+      "category": "ore_and_metal",
+      "description": "Diamagnetic metal with sacrificial anode galvanic properties and moderate melting point (692.68 K).",
+      "domains": [
+        "Universal Industrial Metallurgy/Chemistry"
+      ],
+      "physical": {
+        "density_kg_m3": 7140.0,
+        "mohs_hardness": 2.5,
+        "youngs_modulus_gpa": 108.0,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.42,
+        "restitution": 0.35,
+        "blast_resistance_j": 7500.0,
+        "thermal_conductivity_w_mk": 116.0,
+        "specific_heat_j_kgk": 388.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.82,
+          0.84,
+          0.86
+        ],
+        "roughness": 0.28,
+        "metallic": 1.0,
+        "ior": 1.9,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "metal.tungsten",
+      "name": "Tungsten / Heavy Wolfram",
+      "category": "ore_and_metal",
+      "description": "Ultra-dense transition metal possessing the highest melting point (3695 K) and high tensile strength.",
+      "domains": [
+        "Terraria (Tungsten)",
+        "Universal High-Energy Physics/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 19300.0,
+        "mohs_hardness": 7.5,
+        "youngs_modulus_gpa": 411.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.3,
+        "restitution": 0.65,
+        "blast_resistance_j": 16000.0,
+        "thermal_conductivity_w_mk": 173.0,
+        "specific_heat_j_kgk": 132.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "diamond_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.72,
+          0.74,
+          0.76
+        ],
+        "roughness": 0.18,
+        "metallic": 1.0,
+        "ior": 3.4,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "gem.lapis_lazuli",
+      "name": "Lazurite / Ultramarine Silicate",
+      "category": "gemstone_silicate",
+      "description": "Deep-blue feldspathoid sodium calcium aluminosilicate containing sulfur ions producing historic ultramarine pigment.",
+      "domains": [
+        "Minecraft (Lapis Lazuli)",
+        "Universal Historic Pigment/Mineralogy"
+      ],
+      "physical": {
+        "density_kg_m3": 2800.0,
+        "mohs_hardness": 5.5,
+        "youngs_modulus_gpa": 55.0,
+        "poisson_ratio": 0.25,
+        "friction_coefficient": 0.6,
+        "restitution": 0.25,
+        "blast_resistance_j": 4500.0,
+        "thermal_conductivity_w_mk": 2.1,
+        "specific_heat_j_kgk": 800.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "stone_pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.08,
+          0.16,
+          0.58
+        ],
+        "roughness": 0.65,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "gem.topaz",
+      "name": "Topaz / Aluminum Fluorosilicate",
+      "category": "gemstone_silicate",
+      "description": "Nesosilicate mineral of aluminum and fluorine; Mohs standard 8.0 with high optical dispersion.",
+      "domains": [
+        "Terraria (Topaz)",
+        "Universal Gemology/Optics"
+      ],
+      "physical": {
+        "density_kg_m3": 3530.0,
+        "mohs_hardness": 8.0,
+        "youngs_modulus_gpa": 260.0,
+        "poisson_ratio": 0.24,
+        "friction_coefficient": 0.25,
+        "restitution": 0.65,
+        "blast_resistance_j": 8000.0,
+        "thermal_conductivity_w_mk": 12.0,
+        "specific_heat_j_kgk": 780.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.98,
+          0.82,
+          0.28
+        ],
+        "roughness": 0.03,
+        "metallic": 0.0,
+        "ior": 1.62,
+        "transmission": 0.9,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 15.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_DISPERSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "gem.jade",
+      "name": "Jade / Nephrite & Jadeite Aggregate",
+      "category": "gemstone_silicate",
+      "description": "Interlocking microcrystalline pyroxene/amphibole mineral fibers offering unprecedented impact fracture toughness.",
+      "domains": [
+        "Universal Tough Mineral/Statuary"
+      ],
+      "physical": {
+        "density_kg_m3": 3300.0,
+        "mohs_hardness": 6.5,
+        "youngs_modulus_gpa": 160.0,
+        "poisson_ratio": 0.26,
+        "friction_coefficient": 0.4,
+        "restitution": 0.5,
+        "blast_resistance_j": 11000.0,
+        "thermal_conductivity_w_mk": 3.5,
+        "specific_heat_j_kgk": 820.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.22,
+          0.65,
+          0.42
+        ],
+        "roughness": 0.2,
+        "metallic": 0.0,
+        "ior": 1.66,
+        "transmission": 0.2,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 150.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "gem.amber",
+      "name": "Amber / Fossilized Tree Resin",
+      "category": "gemstone_silicate",
+      "description": "Amorphous biogenic macromolecular polymer formed from fossilized plant resin; natural electrostatic charging medium.",
+      "domains": [
+        "Terraria (Amber)",
+        "Universal Paleontology/Dielectrics"
+      ],
+      "physical": {
+        "density_kg_m3": 1080.0,
+        "mohs_hardness": 2.2,
+        "youngs_modulus_gpa": 3.5,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.45,
+        "restitution": 0.3,
+        "blast_resistance_j": 800.0,
+        "thermal_conductivity_w_mk": 0.18,
+        "specific_heat_j_kgk": 1300.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular",
+        "base_color_srgb": [
+          0.96,
+          0.62,
+          0.12
+        ],
+        "roughness": 0.08,
+        "metallic": 0.0,
+        "ior": 1.54,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 25.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "colored_refractive"
+      }
+    },
+    {
+      "id": "mineral.phosphor",
+      "name": "Phosphorescent / Luminescent Crystal",
+      "category": "gemstone_silicate",
+      "description": "Doped alkaline-earth aluminate crystal capable of storing photon energy and emitting sustained visible radiance.",
+      "domains": [
+        "Minecraft (Glowstone/Shroomlight)",
+        "Universal Solid-State Radiance"
+      ],
+      "physical": {
+        "density_kg_m3": 2600.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 35.0,
+        "poisson_ratio": 0.24,
+        "friction_coefficient": 0.5,
+        "restitution": 0.3,
+        "blast_resistance_j": 3000.0,
+        "thermal_conductivity_w_mk": 1.2,
+        "specific_heat_j_kgk": 750.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "emissive_blackbody_fluid",
+        "base_color_srgb": [
+          0.95,
+          0.9,
+          0.45
+        ],
+        "roughness": 0.3,
+        "metallic": 0.0,
+        "ior": 1.65,
+        "transmission": 0.3,
+        "emission_cd_m2": 12000.0,
+        "extinction_sigma_t": 80.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_PLUS_EDF_EMISSIVE",
+        "layering": "diffuse_plus_blackbody_edf"
+      }
+    },
+    {
+      "id": "organic.leather",
+      "name": "Tanned Leather / Animal Dermis",
+      "category": "organic_botanical",
+      "description": "Cross-linked fibrous collagen matrix yielding flexibility, high tear resistance, and barrier properties.",
+      "domains": [
+        "Minecraft (Leather)",
+        "Terraria (Leather)",
+        "Universal Biopolymers"
+      ],
+      "physical": {
+        "density_kg_m3": 850.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 0.05,
+        "poisson_ratio": 0.4,
+        "friction_coefficient": 0.55,
+        "restitution": 0.1,
+        "blast_resistance_j": 1200.0,
+        "thermal_conductivity_w_mk": 0.15,
+        "specific_heat_j_kgk": 1500.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.42,
+          0.26,
+          0.16
+        ],
+        "roughness": 0.6,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "organic.chitin",
+      "name": "Chitin / Arthropod Exoskeleton",
+      "category": "organic_botanical",
+      "description": "Long-chain polymer of N-acetylglucosamine forming rigid protective invertebrate armor.",
+      "domains": [
+        "Universal Biopolymer Architecture"
+      ],
+      "physical": {
+        "density_kg_m3": 1400.0,
+        "mohs_hardness": 3.5,
+        "youngs_modulus_gpa": 15.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.4,
+        "restitution": 0.45,
+        "blast_resistance_j": 3500.0,
+        "thermal_conductivity_w_mk": 0.25,
+        "specific_heat_j_kgk": 1200.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.28,
+          0.22,
+          0.18
+        ],
+        "roughness": 0.35,
+        "metallic": 0.0,
+        "ior": 1.56,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "coated_diffuse"
+      }
+    },
+    {
+      "id": "organic.rubber",
+      "name": "Natural Rubber / Polyisoprene Elastomer",
+      "category": "organic_botanical",
+      "description": "Hyperelastic hydrocarbon polymer exhibiting extreme reversible elongation and restitution (0.85).",
+      "domains": [
+        "Minecraft (Slime/Bounce analogue)",
+        "Universal Polymer Mechanics"
+      ],
+      "physical": {
+        "density_kg_m3": 950.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.005,
+        "poisson_ratio": 0.49,
+        "friction_coefficient": 0.9,
+        "restitution": 0.85,
+        "blast_resistance_j": 2500.0,
+        "thermal_conductivity_w_mk": 0.13,
+        "specific_heat_j_kgk": 1900.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.15,
+          0.15,
+          0.15
+        ],
+        "roughness": 0.8,
+        "metallic": 0.0,
+        "ior": 1.52,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 800.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "organic.wax",
+      "name": "Hydrocarbon Wax / Beeswax & Tallow",
+      "category": "organic_botanical",
+      "description": "Lipid ester mixture solid at room temperature with low melting point (335 K), used as hydrophobic sealant.",
+      "domains": [
+        "Minecraft (Honeycomb/Wax)",
+        "Universal Chemical Sealing"
+      ],
+      "physical": {
+        "density_kg_m3": 960.0,
+        "mohs_hardness": 0.5,
+        "youngs_modulus_gpa": 0.02,
+        "poisson_ratio": 0.42,
+        "friction_coefficient": 0.2,
+        "restitution": 0.05,
+        "blast_resistance_j": 300.0,
+        "thermal_conductivity_w_mk": 0.25,
+        "specific_heat_j_kgk": 2400.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.92,
+          0.82,
+          0.55
+        ],
+        "roughness": 0.3,
+        "metallic": 0.0,
+        "ior": 1.44,
+        "transmission": 0.3,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 100.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "wood.charcoal",
+      "name": "Pyrolyzed Biomass Carbon / Charcoal",
+      "category": "organic_botanical",
+      "description": "Porous black carbon residue derived from thermal pyrolysis of hardwood in low-oxygen conditions.",
+      "domains": [
+        "Minecraft (Charcoal)",
+        "Universal Metallurgy/Fuel"
+      ],
+      "physical": {
+        "density_kg_m3": 450.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 2.5,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.6,
+        "restitution": 0.1,
+        "blast_resistance_j": 1000.0,
+        "thermal_conductivity_w_mk": 0.08,
+        "specific_heat_j_kgk": 1000.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.05,
+          0.05,
+          0.05
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.75,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 900.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "botanical.moss",
+      "name": "Bryophyte Ground Mat / Moss",
+      "category": "organic_botanical",
+      "description": "Dense non-vascular photosynthetic plant carpet exhibiting high capillary moisture absorption and impact damping.",
+      "domains": [
+        "Minecraft (Moss Block)",
+        "Terraria (Moss)",
+        "Universal Botany/Ecology"
+      ],
+      "physical": {
+        "density_kg_m3": 400.0,
+        "mohs_hardness": 0.5,
+        "youngs_modulus_gpa": 0.005,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.75,
+        "restitution": 0.02,
+        "blast_resistance_j": 300.0,
+        "thermal_conductivity_w_mk": 0.1,
+        "specific_heat_j_kgk": 2200.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.28,
+          0.48,
+          0.18
+        ],
+        "roughness": 0.92,
+        "metallic": 0.0,
+        "ior": 1.45,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 400.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "botanical.mycelium",
+      "name": "Fungal Hyphal Matrix / Mycelium",
+      "category": "organic_botanical",
+      "description": "Vegetative fungal colony composed of branched hyphae capable of decomposing organic detritus with faint luminescence.",
+      "domains": [
+        "Minecraft (Mycelium)",
+        "Terraria (Glowing Mushroom)",
+        "Universal Mycology"
+      ],
+      "physical": {
+        "density_kg_m3": 1250.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.02,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.65,
+        "restitution": 0.05,
+        "blast_resistance_j": 450.0,
+        "thermal_conductivity_w_mk": 0.25,
+        "specific_heat_j_kgk": 1600.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.45,
+          0.38,
+          0.42
+        ],
+        "roughness": 0.88,
+        "metallic": 0.0,
+        "ior": 1.48,
+        "transmission": 0.0,
+        "emission_cd_m2": 200.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "botanical.cactus",
+      "name": "Xerophyte Cactus Stem",
+      "category": "organic_botanical",
+      "description": "Succulent plant stem with thickened fleshy parenchyma storing water enclosed in tough waxy cuticle with spines.",
+      "domains": [
+        "Minecraft (Cactus)",
+        "Terraria (Cactus)",
+        "Universal Arid Botany"
+      ],
+      "physical": {
+        "density_kg_m3": 850.0,
+        "mohs_hardness": 2.0,
+        "youngs_modulus_gpa": 0.1,
+        "poisson_ratio": 0.35,
+        "friction_coefficient": 0.6,
+        "restitution": 0.1,
+        "blast_resistance_j": 500.0,
+        "thermal_conductivity_w_mk": 0.35,
+        "specific_heat_j_kgk": 3500.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.22,
+          0.52,
+          0.18
+        ],
+        "roughness": 0.45,
+        "metallic": 0.0,
+        "ior": 1.5,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 450.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "coated_diffuse"
+      }
+    },
+    {
+      "id": "fluid.oil",
+      "name": "Crude Petroleum / Liquid Hydrocarbon",
+      "category": "fluid_multiphase",
+      "description": "Viscous liquid mixture of hydrocarbons exhibiting density lower than water (850 kg/m^3) and flammability.",
+      "domains": [
+        "Universal Energy/Fluid Mechanics"
+      ],
+      "physical": {
+        "density_kg_m3": 850.0,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 1.2,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.02,
+        "restitution": 0.0,
+        "blast_resistance_j": 10000.0,
+        "thermal_conductivity_w_mk": 0.14,
+        "specific_heat_j_kgk": 2000.0,
+        "kinematic_gravity": true,
+        "flammable": true,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.05,
+          0.04,
+          0.03
+        ],
+        "roughness": 0.05,
+        "metallic": 0.0,
+        "ior": 1.48,
+        "transmission": 0.01,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 1000.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "specular_boundary_plus_vdf"
+      }
+    },
+    {
+      "id": "fluid.acid",
+      "name": "Mineral Acid / Corrosive Hydronium Solution",
+      "category": "fluid_multiphase",
+      "description": "Highly reactive aqueous hydronium solvent capable of rapidly etching and dissolving metals and carbonates.",
+      "domains": [
+        "Universal Industrial Chemistry/Hazard"
+      ],
+      "physical": {
+        "density_kg_m3": 1250.0,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 2.4,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.05,
+        "restitution": 0.0,
+        "blast_resistance_j": 20000.0,
+        "thermal_conductivity_w_mk": 0.55,
+        "specific_heat_j_kgk": 3500.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "bucket"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_refractive_volume",
+        "base_color_srgb": [
+          0.45,
+          0.95,
+          0.25
+        ],
+        "roughness": 0.01,
+        "metallic": 0.0,
+        "ior": 1.38,
+        "transmission": 0.9,
+        "emission_cd_m2": 50.0,
+        "extinction_sigma_t": 15.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_LIQUID",
+        "layering": "specular_boundary_plus_vdf"
+      }
+    },
+    {
+      "id": "gas.steam",
+      "name": "Water Vapor / Steam",
+      "category": "fluid_multiphase",
+      "description": "Gaseous phase of water formed by vaporization above 373.15 K with positive upward convective buoyancy.",
+      "domains": [
+        "Universal Thermodynamics/Fluid Power"
+      ],
+      "physical": {
+        "density_kg_m3": 0.6,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 0.0001,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.0,
+        "restitution": 0.0,
+        "blast_resistance_j": 100000.0,
+        "thermal_conductivity_w_mk": 0.025,
+        "specific_heat_j_kgk": 2080.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "none"
+      },
+      "optical": {
+        "bsdf_model": "two_sided_thin_surface_translucent",
+        "base_color_srgb": [
+          0.95,
+          0.95,
+          0.98
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.00028,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 2.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_THIN_SURFACE_TRANSLUCENT",
+        "layering": "pure_participating_volume"
+      }
+    },
+    {
+      "id": "gas.air",
+      "name": "Ambient Atmospheric Gas",
+      "category": "fluid_multiphase",
+      "description": "Standard terrestrial gas mixture (78% N2, 21% O2); baseline drag and diffusion medium.",
+      "domains": [
+        "Universal Atmosphere/Aero Mechanics"
+      ],
+      "physical": {
+        "density_kg_m3": 1.225,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 0.0001,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.0,
+        "restitution": 0.0,
+        "blast_resistance_j": 100000.0,
+        "thermal_conductivity_w_mk": 0.026,
+        "specific_heat_j_kgk": 1005.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "none"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_refractive_volume",
+        "base_color_srgb": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "roughness": 0.0,
+        "metallic": 0.0,
+        "ior": 1.000293,
+        "transmission": 1.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 0.001
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "pure_dielectric"
+      }
+    },
+    {
+      "id": "gas.smoke",
+      "name": "Particulate Combustion Aerosol",
+      "category": "fluid_multiphase",
+      "description": "Colloidal suspension of airborne solid soot carbon particles and liquid droplets obscuring light.",
+      "domains": [
+        "Universal Fire Dynamics/Radiative Obscuration"
+      ],
+      "physical": {
+        "density_kg_m3": 0.95,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 0.0001,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.0,
+        "restitution": 0.0,
+        "blast_resistance_j": 100000.0,
+        "thermal_conductivity_w_mk": 0.028,
+        "specific_heat_j_kgk": 1050.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "none"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.18,
+          0.18,
+          0.18
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.0003,
+        "transmission": 0.2,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 50.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "pure_participating_volume"
+      }
+    },
+    {
+      "id": "gas.methane",
+      "name": "Volatile Methane / Natural Gas",
+      "category": "fluid_multiphase",
+      "description": "Light, colorless, flammable gaseous hydrocarbon (CH4) forming explosive mixtures with oxygen.",
+      "domains": [
+        "Universal Gas/Hazardous Energetics"
+      ],
+      "physical": {
+        "density_kg_m3": 0.668,
+        "mohs_hardness": 0.0,
+        "youngs_modulus_gpa": 0.0001,
+        "poisson_ratio": 0.5,
+        "friction_coefficient": 0.0,
+        "restitution": 0.0,
+        "blast_resistance_j": 100000.0,
+        "thermal_conductivity_w_mk": 0.034,
+        "specific_heat_j_kgk": 2220.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "none"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_refractive_volume",
+        "base_color_srgb": [
+          0.98,
+          0.98,
+          1.0
+        ],
+        "roughness": 0.0,
+        "metallic": 0.0,
+        "ior": 1.00044,
+        "transmission": 1.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 0.005
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_DIELECTRIC_TRANSMISSIVE",
+        "layering": "pure_dielectric"
+      }
+    },
+    {
+      "id": "granular.concrete_powder",
+      "name": "Dry Concrete Precursor Powder",
+      "category": "synthetic_masonry",
+      "description": "Granular aggregate of pulverized Portland cement clinker and silica sand; subject to gravity until hydrated.",
+      "domains": [
+        "Minecraft (Concrete Powder)",
+        "Universal Construction Masonry"
+      ],
+      "physical": {
+        "density_kg_m3": 1600.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 0.08,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.55,
+        "restitution": 0.05,
+        "blast_resistance_j": 400.0,
+        "thermal_conductivity_w_mk": 0.3,
+        "specific_heat_j_kgk": 850.0,
+        "kinematic_gravity": true,
+        "flammable": false,
+        "harvest_tool": "shovel"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.62,
+          0.62,
+          0.62
+        ],
+        "roughness": 0.95,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 500.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.mortar",
+      "name": "Hydraulic Masonry Mortar",
+      "category": "synthetic_masonry",
+      "description": "Workable cementitious binder paste used to bind stones and concrete blocks into monolithic masonry.",
+      "domains": [
+        "Universal Masonry/Civil Engineering"
+      ],
+      "physical": {
+        "density_kg_m3": 2000.0,
+        "mohs_hardness": 4.5,
+        "youngs_modulus_gpa": 18.0,
+        "poisson_ratio": 0.22,
+        "friction_coefficient": 0.7,
+        "restitution": 0.1,
+        "blast_resistance_j": 5000.0,
+        "thermal_conductivity_w_mk": 1.1,
+        "specific_heat_j_kgk": 840.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.72,
+          0.7,
+          0.66
+        ],
+        "roughness": 0.85,
+        "metallic": 0.0,
+        "ior": 1.53,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 550.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.aerogel",
+      "name": "Silica Aerogel / Solid Smoke",
+      "category": "synthetic_masonry",
+      "description": "Ultra-low-density mesoporous synthetic solid with lowest thermal conductivity and Rayleigh opalescence.",
+      "domains": [
+        "Universal Extreme Thermal Insulation/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 100.0,
+        "mohs_hardness": 1.0,
+        "youngs_modulus_gpa": 0.01,
+        "poisson_ratio": 0.2,
+        "friction_coefficient": 0.4,
+        "restitution": 0.1,
+        "blast_resistance_j": 300.0,
+        "thermal_conductivity_w_mk": 0.015,
+        "specific_heat_j_kgk": 1000.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "subsurface_scattering_dielectric",
+        "base_color_srgb": [
+          0.75,
+          0.88,
+          0.98
+        ],
+        "roughness": 0.05,
+        "metallic": 0.0,
+        "ior": 1.02,
+        "transmission": 0.85,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 10.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BSSRDF_DIPOLE",
+        "layering": "subsurface_dielectric"
+      }
+    },
+    {
+      "id": "synthetic.plastic",
+      "name": "Thermoplastic Polymer / Polycarbonate",
+      "category": "synthetic_masonry",
+      "description": "Synthetic organic polymer capable of plastic flow when heated and rigid impact durability when cooled.",
+      "domains": [
+        "Universal Modern Manufacturing/CAD"
+      ],
+      "physical": {
+        "density_kg_m3": 1200.0,
+        "mohs_hardness": 3.0,
+        "youngs_modulus_gpa": 3.0,
+        "poisson_ratio": 0.38,
+        "friction_coefficient": 0.35,
+        "restitution": 0.4,
+        "blast_resistance_j": 3000.0,
+        "thermal_conductivity_w_mk": 0.2,
+        "specific_heat_j_kgk": 1300.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "axe"
+      },
+      "optical": {
+        "bsdf_model": "dielectric_specular_coated_diffuse",
+        "base_color_srgb": [
+          0.85,
+          0.85,
+          0.85
+        ],
+        "roughness": 0.15,
+        "metallic": 0.0,
+        "ior": 1.58,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 600.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_COATED_DIFFUSE",
+        "layering": "coated_diffuse"
+      }
+    },
+    {
+      "id": "synthetic.silicon",
+      "name": "Elemental Silicon / Polycrystalline Wafer",
+      "category": "synthetic_masonry",
+      "description": "Tetravalent metalloid semiconductor forming foundational substrates for microelectronics and logic cells.",
+      "domains": [
+        "Universal Electronics/Semiconductors"
+      ],
+      "physical": {
+        "density_kg_m3": 2330.0,
+        "mohs_hardness": 6.5,
+        "youngs_modulus_gpa": 130.0,
+        "poisson_ratio": 0.28,
+        "friction_coefficient": 0.3,
+        "restitution": 0.55,
+        "blast_resistance_j": 6000.0,
+        "thermal_conductivity_w_mk": 149.0,
+        "specific_heat_j_kgk": 700.0,
+        "kinematic_gravity": false,
+        "flammable": false,
+        "harvest_tool": "pickaxe"
+      },
+      "optical": {
+        "bsdf_model": "conductor_fresnel_ggx",
+        "base_color_srgb": [
+          0.55,
+          0.62,
+          0.68
+        ],
+        "roughness": 0.08,
+        "metallic": 0.85,
+        "ior": 3.88,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 900.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_CONDUCTOR_GGX",
+        "layering": "homogeneous_metal"
+      }
+    },
+    {
+      "id": "synthetic.explosive",
+      "name": "Chemical High Explosive (TNT / Energetic Solid)",
+      "category": "synthetic_masonry",
+      "description": "Stable chemical solid containing nitro-groups; undergoes rapid detonation producing supersonic shockwaves.",
+      "domains": [
+        "Minecraft (TNT)",
+        "Terraria (Explosives)",
+        "Universal Demolition Physics"
+      ],
+      "physical": {
+        "density_kg_m3": 1650.0,
+        "mohs_hardness": 1.5,
+        "youngs_modulus_gpa": 8.0,
+        "poisson_ratio": 0.3,
+        "friction_coefficient": 0.5,
+        "restitution": 0.1,
+        "blast_resistance_j": 50.0,
+        "thermal_conductivity_w_mk": 0.22,
+        "specific_heat_j_kgk": 1400.0,
+        "kinematic_gravity": false,
+        "flammable": true,
+        "harvest_tool": "shears"
+      },
+      "optical": {
+        "bsdf_model": "burley_diffuse",
+        "base_color_srgb": [
+          0.78,
+          0.22,
+          0.15
+        ],
+        "roughness": 0.8,
+        "metallic": 0.0,
+        "ior": 1.55,
+        "transmission": 0.0,
+        "emission_cd_m2": 0.0,
+        "extinction_sigma_t": 700.0
+      },
+      "hypergraph": {
+        "closure_type": "BSDF_BURLEY",
+        "layering": "single_diffuse"
+      }
+    }
+  ]
+}

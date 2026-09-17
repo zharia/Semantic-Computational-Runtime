@@ -1,0 +1,1136 @@
+<?xml version="1.0" ?>
+<materialx xmlns="http://www.materialx.org/XML/v1" version="1.38">
+  <!-- SCR Universal Materials Catalog MaterialX Export (96 Materials) -->
+  <standard_surface name="SR_soil_dirt" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.3400, 0.2300, 0.1500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9200"/>
+    <input name="specular_IOR" type="float" value="1.4500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_dirt" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_dirt"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_mud" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2200, 0.1800, 0.1400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3500"/>
+    <input name="specular_IOR" type="float" value="1.3400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_mud" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_mud"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_clay" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6200, 0.6500, 0.7000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_clay" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_clay"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_sand" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8600, 0.7800, 0.5600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_sand" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_sand"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_gravel" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.5500, 0.5300, 0.5200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_gravel" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_gravel"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_stone" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.5000, 0.5000, 0.5000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8000"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_stone" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_stone"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_cobblestone" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4200, 0.4200, 0.4200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8800"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_cobblestone" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_cobblestone"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_granite" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6000, 0.4200, 0.3600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6500"/>
+    <input name="specular_IOR" type="float" value="1.5500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_granite" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_granite"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_diorite" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7200, 0.7200, 0.7200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7000"/>
+    <input name="specular_IOR" type="float" value="1.5500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_diorite" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_diorite"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_andesite" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.5200, 0.5200, 0.5200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7800"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_andesite" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_andesite"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_basalt" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2500, 0.2500, 0.2700"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7500"/>
+    <input name="specular_IOR" type="float" value="1.5800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_basalt" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_basalt"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_obsidian" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.0800, 0.0600, 0.1200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1200"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.0200"/>
+    <input name="transmission_color" type="color3" value="0.0800, 0.0600, 0.1200"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_obsidian" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_obsidian"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_sandstone" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8200, 0.7400, 0.5200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_sandstone" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_sandstone"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_marble" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9200, 0.9200, 0.9000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3000"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.1500"/>
+    <input name="transmission_color" type="color3" value="0.9200, 0.9200, 0.9000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_marble" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_marble"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_slate" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2800, 0.2800, 0.3000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7200"/>
+    <input name="specular_IOR" type="float" value="1.5500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_slate" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_slate"/>
+  </surfacematerial>
+  <standard_surface name="SR_ore_coal" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1200, 0.1200, 0.1200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.8000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_ore_coal" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_ore_coal"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_iron" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7700, 0.7800, 0.7800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3500"/>
+    <input name="specular_IOR" type="float" value="2.9500"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_iron" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_iron"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_copper" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.6400, 0.5400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2500"/>
+    <input name="specular_IOR" type="float" value="0.2700"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_copper" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_copper"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_gold" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="1.0000, 0.7700, 0.3400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1800"/>
+    <input name="specular_IOR" type="float" value="0.1800"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_gold" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_gold"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_silver" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9700, 0.9600, 0.9500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1200"/>
+    <input name="specular_IOR" type="float" value="0.1400"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_silver" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_silver"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_tin" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8500, 0.8500, 0.8400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3000"/>
+    <input name="specular_IOR" type="float" value="1.8000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_tin" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_tin"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_lead" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.4600, 0.4800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.4000"/>
+    <input name="specular_IOR" type="float" value="2.0500"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_lead" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_lead"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_platinum" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8200, 0.8400, 0.8600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1500"/>
+    <input name="specular_IOR" type="float" value="2.3000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_platinum" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_platinum"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_steel" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7500, 0.7700, 0.8000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2000"/>
+    <input name="specular_IOR" type="float" value="2.8000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_steel" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_steel"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_quartz" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9400, 0.9400, 0.9400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0800"/>
+    <input name="specular_IOR" type="float" value="1.5440"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9000"/>
+    <input name="transmission_color" type="color3" value="0.9400, 0.9400, 0.9400"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_quartz" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_quartz"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_diamond" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7000, 0.9200, 0.9500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0200"/>
+    <input name="specular_IOR" type="float" value="2.4180"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9500"/>
+    <input name="transmission_color" type="color3" value="0.7000, 0.9200, 0.9500"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_diamond" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_diamond"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_emerald" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1000, 0.8000, 0.3500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0500"/>
+    <input name="specular_IOR" type="float" value="1.5800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.1000, 0.8000, 0.3500"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_emerald" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_emerald"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_ruby" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8800, 0.1200, 0.2200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0400"/>
+    <input name="specular_IOR" type="float" value="1.7700"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.8800, 0.1200, 0.2200"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_ruby" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_ruby"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_sapphire" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1000, 0.2500, 0.8500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0400"/>
+    <input name="specular_IOR" type="float" value="1.7700"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.1000, 0.2500, 0.8500"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_sapphire" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_sapphire"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_amethyst" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6000, 0.2500, 0.8000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0600"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8000"/>
+    <input name="transmission_color" type="color3" value="0.6000, 0.2500, 0.8000"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_amethyst" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_amethyst"/>
+  </surfacematerial>
+  <standard_surface name="SR_wood_hardwood" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6500, 0.4500, 0.2800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6800"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_wood_hardwood" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_wood_hardwood"/>
+  </surfacematerial>
+  <standard_surface name="SR_wood_softwood" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.3200, 0.2000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7200"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_wood_softwood" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_wood_softwood"/>
+  </surfacematerial>
+  <standard_surface name="SR_wood_birch" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8500, 0.8200, 0.7500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6500"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_wood_birch" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_wood_birch"/>
+  </surfacematerial>
+  <standard_surface name="SR_botanical_bamboo" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.3800, 0.6200, 0.2200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.4000"/>
+    <input name="specular_IOR" type="float" value="1.5100"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.0500"/>
+    <input name="transmission_color" type="color3" value="0.3800, 0.6200, 0.2200"/>
+  </standard_surface>
+  <surfacematerial name="M_botanical_bamboo" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_botanical_bamboo"/>
+  </surfacematerial>
+  <standard_surface name="SR_botanical_foliage" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2400, 0.5200, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.5500"/>
+    <input name="specular_IOR" type="float" value="1.4200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.3500"/>
+    <input name="transmission_color" type="color3" value="0.2400, 0.5200, 0.1800"/>
+  </standard_surface>
+  <surfacematerial name="M_botanical_foliage" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_botanical_foliage"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_bone" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8800, 0.8600, 0.7800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.4500"/>
+    <input name="specular_IOR" type="float" value="1.5500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.0800"/>
+    <input name="transmission_color" type="color3" value="0.8800, 0.8600, 0.7800"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_bone" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_bone"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_fiber" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8800, 0.8800, 0.8800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6000"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.4000"/>
+    <input name="transmission_color" type="color3" value="0.8800, 0.8800, 0.8800"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_fiber" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_fiber"/>
+  </surfacematerial>
+  <standard_surface name="SR_fluid_water" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8200, 0.9000, 0.9500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0100"/>
+    <input name="specular_IOR" type="float" value="1.3330"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9800"/>
+    <input name="transmission_color" type="color3" value="0.8200, 0.9000, 0.9500"/>
+  </standard_surface>
+  <surfacematerial name="M_fluid_water" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_fluid_water"/>
+  </surfacematerial>
+  <standard_surface name="SR_fluid_lava" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="1.0000, 0.4000, 0.0500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2500"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="emission" type="float" value="1.0000"/>
+    <input name="emission_color" type="color3" value="1.0000, 0.4000, 0.0500"/>
+  </standard_surface>
+  <surfacematerial name="M_fluid_lava" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_fluid_lava"/>
+  </surfacematerial>
+  <standard_surface name="SR_fluid_honey" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.6800, 0.1500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0800"/>
+    <input name="specular_IOR" type="float" value="1.4900"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.9500, 0.6800, 0.1500"/>
+  </standard_surface>
+  <surfacematerial name="M_fluid_honey" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_fluid_honey"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_glass" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.9800, 0.9900"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0100"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9800"/>
+    <input name="transmission_color" type="color3" value="0.9500, 0.9800, 0.9900"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_glass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_glass"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_brick" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6500, 0.2800, 0.2000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_brick" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_brick"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_concrete" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6500, 0.6500, 0.6500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8800"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_concrete" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_concrete"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_terracotta" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7200, 0.4400, 0.3200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8000"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_terracotta" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_terracotta"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_asphalt" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1800, 0.1800, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_asphalt" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_asphalt"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_ice" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8500, 0.9200, 0.9800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0800"/>
+    <input name="specular_IOR" type="float" value="1.3100"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9200"/>
+    <input name="transmission_color" type="color3" value="0.8500, 0.9200, 0.9800"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_ice" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_ice"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_packed_ice" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7800, 0.8800, 0.9600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1500"/>
+    <input name="specular_IOR" type="float" value="1.3150"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.4500"/>
+    <input name="transmission_color" type="color3" value="0.7800, 0.8800, 0.9600"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_packed_ice" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_packed_ice"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_blue_ice" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.5500, 0.7500, 0.9800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0500"/>
+    <input name="specular_IOR" type="float" value="1.3200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.6000"/>
+    <input name="transmission_color" type="color3" value="0.5500, 0.7500, 0.9800"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_blue_ice" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_blue_ice"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_snow" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9800, 0.9800, 0.9800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.3000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_snow" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_snow"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_powder_snow" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9900, 0.9900, 1.0000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9800"/>
+    <input name="specular_IOR" type="float" value="1.2500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.1000"/>
+    <input name="transmission_color" type="color3" value="0.9900, 0.9900, 1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_powder_snow" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_powder_snow"/>
+  </surfacematerial>
+  <standard_surface name="SR_cryo_permafrost" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.4200, 0.4000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.4800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_cryo_permafrost" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_cryo_permafrost"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_limestone" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7800, 0.7400, 0.6800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8200"/>
+    <input name="specular_IOR" type="float" value="1.5700"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_limestone" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_limestone"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_calcite" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9200, 0.9000, 0.8800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3500"/>
+    <input name="specular_IOR" type="float" value="1.6580"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.1000"/>
+    <input name="transmission_color" type="color3" value="0.9200, 0.9000, 0.8800"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_calcite" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_calcite"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_tuff" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4200, 0.4000, 0.3800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_tuff" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_tuff"/>
+  </surfacematerial>
+  <standard_surface name="SR_rock_pumice" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7000, 0.6800, 0.6400"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9200"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_rock_pumice" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_rock_pumice"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_peat" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2400, 0.1600, 0.1000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.4600"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_peat" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_peat"/>
+  </surfacematerial>
+  <standard_surface name="SR_soil_podzol" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.3000, 0.2200, 0.1600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.4800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_soil_podzol" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_soil_podzol"/>
+  </surfacematerial>
+  <standard_surface name="SR_mineral_salt" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9600, 0.9600, 0.9700"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1200"/>
+    <input name="specular_IOR" type="float" value="1.5440"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.9600, 0.9600, 0.9700"/>
+  </standard_surface>
+  <surfacematerial name="M_mineral_salt" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_mineral_salt"/>
+  </surfacematerial>
+  <standard_surface name="SR_mineral_sulfur" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9200, 0.8200, 0.1500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6000"/>
+    <input name="specular_IOR" type="float" value="1.9500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.0500"/>
+    <input name="transmission_color" type="color3" value="0.9200, 0.8200, 0.1500"/>
+  </standard_surface>
+  <surfacematerial name="M_mineral_sulfur" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_mineral_sulfur"/>
+  </surfacematerial>
+  <standard_surface name="SR_mineral_gypsum" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9000, 0.8800, 0.8600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.5500"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_mineral_gypsum" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_mineral_gypsum"/>
+  </surfacematerial>
+  <standard_surface name="SR_mineral_ash" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.3500, 0.3500, 0.3500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9800"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_mineral_ash" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_mineral_ash"/>
+  </surfacematerial>
+  <standard_surface name="SR_ore_iron_ore" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.3500, 0.3200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8000"/>
+    <input name="specular_IOR" type="float" value="2.2000"/>
+    <input name="metalness" type="float" value="0.1000"/>
+  </standard_surface>
+  <surfacematerial name="M_ore_iron_ore" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_ore_iron_ore"/>
+  </surfacematerial>
+  <standard_surface name="SR_ore_copper_ore" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.3200, 0.5500, 0.4800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.7500"/>
+    <input name="specular_IOR" type="float" value="1.8500"/>
+    <input name="metalness" type="float" value="0.1000"/>
+  </standard_surface>
+  <surfacematerial name="M_ore_copper_ore" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_ore_copper_ore"/>
+  </surfacematerial>
+  <standard_surface name="SR_ore_bauxite" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7200, 0.4800, 0.3600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9000"/>
+    <input name="specular_IOR" type="float" value="1.6000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_ore_bauxite" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_ore_bauxite"/>
+  </surfacematerial>
+  <standard_surface name="SR_ore_gold_ore" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6500, 0.6200, 0.5200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6500"/>
+    <input name="specular_IOR" type="float" value="1.5800"/>
+    <input name="metalness" type="float" value="0.1500"/>
+  </standard_surface>
+  <surfacematerial name="M_ore_gold_ore" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_ore_gold_ore"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_bronze" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9000, 0.6800, 0.4200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2200"/>
+    <input name="specular_IOR" type="float" value="0.5500"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_bronze" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_bronze"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_brass" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.7800, 0.3500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1800"/>
+    <input name="specular_IOR" type="float" value="0.4200"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_brass" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_brass"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_aluminum" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9100, 0.9200, 0.9200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1600"/>
+    <input name="specular_IOR" type="float" value="1.4400"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_aluminum" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_aluminum"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_titanium" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7600, 0.7300, 0.6900"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2200"/>
+    <input name="specular_IOR" type="float" value="2.7000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_titanium" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_titanium"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_zinc" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8200, 0.8400, 0.8600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2800"/>
+    <input name="specular_IOR" type="float" value="1.9000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_zinc" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_zinc"/>
+  </surfacematerial>
+  <standard_surface name="SR_metal_tungsten" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7200, 0.7400, 0.7600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1800"/>
+    <input name="specular_IOR" type="float" value="3.4000"/>
+    <input name="metalness" type="float" value="1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_metal_tungsten" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_metal_tungsten"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_lapis_lazuli" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.0800, 0.1600, 0.5800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6500"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_lapis_lazuli" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_lapis_lazuli"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_topaz" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9800, 0.8200, 0.2800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0300"/>
+    <input name="specular_IOR" type="float" value="1.6200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9000"/>
+    <input name="transmission_color" type="color3" value="0.9800, 0.8200, 0.2800"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_topaz" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_topaz"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_jade" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2200, 0.6500, 0.4200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.2000"/>
+    <input name="specular_IOR" type="float" value="1.6600"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.2000"/>
+    <input name="transmission_color" type="color3" value="0.2200, 0.6500, 0.4200"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_jade" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_jade"/>
+  </surfacematerial>
+  <standard_surface name="SR_gem_amber" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9600, 0.6200, 0.1200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0800"/>
+    <input name="specular_IOR" type="float" value="1.5400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.9600, 0.6200, 0.1200"/>
+  </standard_surface>
+  <surfacematerial name="M_gem_amber" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gem_amber"/>
+  </surfacematerial>
+  <standard_surface name="SR_mineral_phosphor" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.9000, 0.4500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3000"/>
+    <input name="specular_IOR" type="float" value="1.6500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.3000"/>
+    <input name="transmission_color" type="color3" value="0.9500, 0.9000, 0.4500"/>
+    <input name="emission" type="float" value="1.0000"/>
+    <input name="emission_color" type="color3" value="0.9500, 0.9000, 0.4500"/>
+  </standard_surface>
+  <surfacematerial name="M_mineral_phosphor" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_mineral_phosphor"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_leather" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4200, 0.2600, 0.1600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.6000"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_leather" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_leather"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_chitin" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2800, 0.2200, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3500"/>
+    <input name="specular_IOR" type="float" value="1.5600"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_chitin" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_chitin"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_rubber" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1500, 0.1500, 0.1500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8000"/>
+    <input name="specular_IOR" type="float" value="1.5200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_rubber" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_rubber"/>
+  </surfacematerial>
+  <standard_surface name="SR_organic_wax" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9200, 0.8200, 0.5500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.3000"/>
+    <input name="specular_IOR" type="float" value="1.4400"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.3000"/>
+    <input name="transmission_color" type="color3" value="0.9200, 0.8200, 0.5500"/>
+  </standard_surface>
+  <surfacematerial name="M_organic_wax" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_organic_wax"/>
+  </surfacematerial>
+  <standard_surface name="SR_wood_charcoal" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.0500, 0.0500, 0.0500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.7500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_wood_charcoal" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_wood_charcoal"/>
+  </surfacematerial>
+  <standard_surface name="SR_botanical_moss" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2800, 0.4800, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9200"/>
+    <input name="specular_IOR" type="float" value="1.4500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_botanical_moss" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_botanical_moss"/>
+  </surfacematerial>
+  <standard_surface name="SR_botanical_mycelium" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.3800, 0.4200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8800"/>
+    <input name="specular_IOR" type="float" value="1.4800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="emission" type="float" value="0.2000"/>
+    <input name="emission_color" type="color3" value="0.4500, 0.3800, 0.4200"/>
+  </standard_surface>
+  <surfacematerial name="M_botanical_mycelium" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_botanical_mycelium"/>
+  </surfacematerial>
+  <standard_surface name="SR_botanical_cactus" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.2200, 0.5200, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.4500"/>
+    <input name="specular_IOR" type="float" value="1.5000"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_botanical_cactus" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_botanical_cactus"/>
+  </surfacematerial>
+  <standard_surface name="SR_fluid_oil" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.0500, 0.0400, 0.0300"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0500"/>
+    <input name="specular_IOR" type="float" value="1.4800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.0100"/>
+    <input name="transmission_color" type="color3" value="0.0500, 0.0400, 0.0300"/>
+  </standard_surface>
+  <surfacematerial name="M_fluid_oil" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_fluid_oil"/>
+  </surfacematerial>
+  <standard_surface name="SR_fluid_acid" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.4500, 0.9500, 0.2500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0100"/>
+    <input name="specular_IOR" type="float" value="1.3800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.9000"/>
+    <input name="transmission_color" type="color3" value="0.4500, 0.9500, 0.2500"/>
+    <input name="emission" type="float" value="0.0500"/>
+    <input name="emission_color" type="color3" value="0.4500, 0.9500, 0.2500"/>
+  </standard_surface>
+  <surfacematerial name="M_fluid_acid" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_fluid_acid"/>
+  </surfacematerial>
+  <standard_surface name="SR_gas_steam" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9500, 0.9500, 0.9800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.0003"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.9500, 0.9500, 0.9800"/>
+  </standard_surface>
+  <surfacematerial name="M_gas_steam" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gas_steam"/>
+  </surfacematerial>
+  <standard_surface name="SR_gas_air" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="1.0000, 1.0000, 1.0000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0000"/>
+    <input name="specular_IOR" type="float" value="1.0003"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="1.0000"/>
+    <input name="transmission_color" type="color3" value="1.0000, 1.0000, 1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_gas_air" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gas_air"/>
+  </surfacematerial>
+  <standard_surface name="SR_gas_smoke" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.1800, 0.1800, 0.1800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.0003"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.2000"/>
+    <input name="transmission_color" type="color3" value="0.1800, 0.1800, 0.1800"/>
+  </standard_surface>
+  <surfacematerial name="M_gas_smoke" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gas_smoke"/>
+  </surfacematerial>
+  <standard_surface name="SR_gas_methane" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.9800, 0.9800, 1.0000"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0000"/>
+    <input name="specular_IOR" type="float" value="1.0004"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="1.0000"/>
+    <input name="transmission_color" type="color3" value="0.9800, 0.9800, 1.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_gas_methane" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_gas_methane"/>
+  </surfacematerial>
+  <standard_surface name="SR_granular_concrete_powder" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.6200, 0.6200, 0.6200"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.9500"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_granular_concrete_powder" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_granular_concrete_powder"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_mortar" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7200, 0.7000, 0.6600"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8500"/>
+    <input name="specular_IOR" type="float" value="1.5300"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_mortar" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_mortar"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_aerogel" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7500, 0.8800, 0.9800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0500"/>
+    <input name="specular_IOR" type="float" value="1.0200"/>
+    <input name="metalness" type="float" value="0.0000"/>
+    <input name="transmission" type="float" value="0.8500"/>
+    <input name="transmission_color" type="color3" value="0.7500, 0.8800, 0.9800"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_aerogel" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_aerogel"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_plastic" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.8500, 0.8500, 0.8500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.1500"/>
+    <input name="specular_IOR" type="float" value="1.5800"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_plastic" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_plastic"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_silicon" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.5500, 0.6200, 0.6800"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.0800"/>
+    <input name="specular_IOR" type="float" value="3.8800"/>
+    <input name="metalness" type="float" value="0.8500"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_silicon" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_silicon"/>
+  </surfacematerial>
+  <standard_surface name="SR_synthetic_explosive" type="surfaceshader">
+    <input name="base" type="float" value="1.0"/>
+    <input name="base_color" type="color3" value="0.7800, 0.2200, 0.1500"/>
+    <input name="specular" type="float" value="1.0"/>
+    <input name="specular_roughness" type="float" value="0.8000"/>
+    <input name="specular_IOR" type="float" value="1.5500"/>
+    <input name="metalness" type="float" value="0.0000"/>
+  </standard_surface>
+  <surfacematerial name="M_synthetic_explosive" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_synthetic_explosive"/>
+  </surfacematerial>
+</materialx>

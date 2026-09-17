@@ -1,0 +1,92 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-GEOMETRY",
+  "name": "Geometry",
+  "layer": "302_Geometry",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/302_Geometry",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "SPECIALIZES",
+      "semantics": "Geometry specialises foundational spatial structures, entities, and state"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "REFINES",
+      "semantics": "Geometry provides structured spatial information"
+    },
+    {
+      "source": "SCR-LIB-MATHEMATICS",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "USES",
+      "semantics": "Mathematical structures define geometric operations, vector spaces, and algebra"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic IDs for geometric entities"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Geometric entities and spatial relations project into the canonical hypergraph"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Fields are defined over geometric manifolds and evaluate geometric coordinates"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-SPATIAL",
+      "relationship": "SITUATES",
+      "semantics": "Spatial frames and coordinates situate geometric forms in computational space"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "CONSUMED_BY",
+      "semantics": "Rendering systems consume geometric surfaces, boundaries, and meshes"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "SUPPORTS",
+      "semantics": "Physical collisions, boundaries, and kinematic bodies depend on geometry"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "cgal",
+      "relationship": "REALIZED_BY",
+      "semantics": "Computational geometry algorithms, Delaunay triangulations, and convex hulls realized by CGAL"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "ogre",
+      "relationship": "REALIZED_BY",
+      "semantics": "Surface mesh quad geometry and rendering visualization realized by OGRE"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "openvdb",
+      "relationship": "REALIZED_BY",
+      "semantics": "Implicit level-set and signed-distance geometry realized by OpenVDB"
+    }
+  ],
+  "subdomains": [
+    "Collision", "Computational", "Containment", "CoordinateSystems", "Curve",
+    "Delaunay", "Distance", "Implicit", "Intersection", "IR",
+    "Line", "Mesh", "Parametric", "Plane", "Point",
+    "Polygon", "Polyhedron", "Primitive", "Projection", "Proximity",
+    "Ray", "Rotation", "Scale", "Segment", "SignedDistance",
+    "Solid", "Surface", "Tessellation", "Transform", "Translation",
+    "Triangulation", "Vector", "Voronoi"
+  ]
+}

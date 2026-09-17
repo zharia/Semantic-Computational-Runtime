@@ -1,0 +1,688 @@
+{
+  "schema_version": "1.0.0",
+  "title": "SCR Universal Material Reactions and Kinematic Transitions",
+  "reactions": [
+    {
+      "id": "reaction.lava_water_quench",
+      "name": "Lava Quenching / Solidification",
+      "category": "thermal_phase_change",
+      "description": "Rapid thermal quenching of molten lava by water across a topological face adjacency.",
+      "preconditions": {
+        "primary": "fluid.lava",
+        "adjacent": "fluid.water",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "primary.is_source_block == True",
+          "outcome": "rock.obsidian",
+          "byproduct": "fluid.steam",
+          "energy_released_j": 15000.0
+        },
+        {
+          "condition": "primary.is_source_block == False",
+          "outcome": "rock.cobblestone",
+          "byproduct": "fluid.steam",
+          "energy_released_j": 8000.0
+        }
+      ],
+      "conservations": [
+        "mass_conservation",
+        "enthalpy_dissipation"
+      ]
+    },
+    {
+      "id": "reaction.sand_vitrification",
+      "name": "Sand Vitrification (Glass Synthesis)",
+      "category": "thermal_phase_change",
+      "description": "Endothermic thermal fusion of quartz sand grains into amorphous glass solid.",
+      "preconditions": {
+        "primary": "soil.sand",
+        "thermal_threshold_k": 1973.0,
+        "flux_agent": "optional_soda_ash"
+      },
+      "transformations": [
+        {
+          "condition": "temperature >= 1973.0 K",
+          "outcome": "synthetic.glass",
+          "byproduct": "gas.co2",
+          "energy_absorbed_j": 3200.0
+        }
+      ],
+      "conservations": [
+        "silica_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.clay_pyrolysis",
+      "name": "Clay Ceramic Sintering",
+      "category": "thermal_sintering",
+      "description": "Dehydroxylation and crystalline sintering of hydrous phyllosilicate clay into durable ceramic brick/terracotta.",
+      "preconditions": {
+        "primary": "soil.clay",
+        "thermal_threshold_k": 1173.0
+      },
+      "transformations": [
+        {
+          "condition": "temperature in [1173.0, 1373.0] K",
+          "outcome": "synthetic.terracotta",
+          "byproduct": "vapor.water",
+          "energy_absorbed_j": 1800.0
+        },
+        {
+          "condition": "temperature > 1373.0 K",
+          "outcome": "synthetic.brick",
+          "byproduct": "vapor.water",
+          "energy_absorbed_j": 2400.0
+        }
+      ],
+      "conservations": [
+        "alumina_silicate_conservation"
+      ]
+    },
+    {
+      "id": "reaction.concrete_hydration",
+      "name": "Concrete Hydraulic Setting",
+      "category": "hydration_reaction",
+      "description": "Hydraulic exothermic reaction between Portland clinker phases and water creating interlocking calcium silicate hydrate crystals.",
+      "preconditions": {
+        "primary": "granular.concrete_powder",
+        "adjacent": "fluid.water",
+        "adjacency_type": "moisture_contact"
+      },
+      "transformations": [
+        {
+          "condition": "water_contact == True",
+          "outcome": "synthetic.concrete",
+          "byproduct": null,
+          "energy_released_j": 500.0
+        }
+      ],
+      "conservations": [
+        "aggregate_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.dirt_hydration",
+      "name": "Soil Hydration (Mud Formation)",
+      "category": "hydration_reaction",
+      "description": "Saturation of organic loam soil by liquid water, collapsing shear modulus and producing cohesive mud.",
+      "preconditions": {
+        "primary": "soil.dirt",
+        "adjacent": "fluid.water",
+        "adjacency_type": "percolation_contact"
+      },
+      "transformations": [
+        {
+          "condition": "saturation_fraction >= 0.85",
+          "outcome": "soil.mud",
+          "byproduct": null,
+          "energy_released_j": 50.0
+        }
+      ],
+      "conservations": [
+        "mineral_mass_conservation",
+        "fluid_volume_conservation"
+      ]
+    },
+    {
+      "id": "reaction.iron_smelting",
+      "name": "Ferrous Carbothermic Reduction",
+      "category": "metallurgical_reduction",
+      "description": "High-temperature reduction of iron oxides via elemental carbon, yielding structural metallic iron.",
+      "preconditions": {
+        "primary": "ore.iron_ore",
+        "reducing_agent": "ore.coal",
+        "thermal_threshold_k": 1523.0
+      },
+      "transformations": [
+        {
+          "condition": "temperature >= 1523.0 K and carbon_present == True",
+          "outcome": "metal.iron",
+          "byproduct": "gas.co2",
+          "energy_absorbed_j": 4500.0
+        }
+      ],
+      "conservations": [
+        "elemental_iron_conservation"
+      ]
+    },
+    {
+      "id": "reaction.wood_combustion",
+      "name": "Cellulose Pyrolysis & Combustion",
+      "category": "chemical_oxidation",
+      "description": "Exothermic oxidation of botanical cellulose, lignins, and resins yielding blackbody radiant heat and carbon residue.",
+      "preconditions": {
+        "primary": [
+          "wood.hardwood",
+          "wood.softwood",
+          "wood.birch",
+          "botanical.foliage",
+          "organic.fiber"
+        ],
+        "oxidizer": "gas.oxygen",
+        "ignition_energy_j": 500.0
+      },
+      "transformations": [
+        {
+          "condition": "combustion_complete == True",
+          "outcome": "mineral.ash",
+          "byproduct": "gas.smoke",
+          "energy_released_j": 18000.0
+        }
+      ],
+      "conservations": [
+        "total_energy_conservation"
+      ]
+    },
+    {
+      "id": "reaction.granular_gravity_collapse",
+      "name": "Granular Mohr-Coulomb Collapse",
+      "category": "kinematic_transition",
+      "description": "Downwards vertical transposition of granular media when adjacent supportive voxels are absent.",
+      "preconditions": {
+        "primary": [
+          "soil.sand",
+          "soil.gravel"
+        ],
+        "downward_adjacency": "air_or_fluid_void"
+      },
+      "transformations": [
+        {
+          "condition": "voxel(x, y-1, z).occupancy == False",
+          "outcome": "kinematic_entity_fall(velocity=-9.81 m/s^2)",
+          "byproduct": null,
+          "energy_conserved": "potential_to_kinetic_energy"
+        }
+      ],
+      "conservations": [
+        "momentum_conservation",
+        "voxel_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.water_freezing",
+      "name": "Water Freezing Phase Change",
+      "category": "thermal_phase_change",
+      "description": "Isobaric crystallization of liquid water into solid ice below 273.15 K with 9% volumetric expansion.",
+      "preconditions": {
+        "primary": "fluid.water",
+        "thermal_threshold_k": 273.15,
+        "latent_heat_release_j_kg": 334000.0
+      },
+      "transformations": [
+        {
+          "condition": "temperature <= 273.15 K",
+          "outcome": "cryo.ice",
+          "byproduct": "None",
+          "energy_released_j": 334.0
+        }
+      ],
+      "conservations": [
+        "mass_conservation",
+        "enthalpy_dissipation"
+      ]
+    },
+    {
+      "id": "reaction.ice_melting",
+      "name": "Ice Thermal Fusion (Melting)",
+      "category": "thermal_phase_change",
+      "description": "Endothermic phase transition of solid ice into liquid water above 273.15 K.",
+      "preconditions": {
+        "primary": "cryo.ice",
+        "thermal_threshold_k": 273.15
+      },
+      "transformations": [
+        {
+          "condition": "temperature > 273.15 K",
+          "outcome": "fluid.water",
+          "byproduct": "None",
+          "energy_absorbed_j": 334.0
+        }
+      ],
+      "conservations": [
+        "mass_conservation",
+        "enthalpy_absorption"
+      ]
+    },
+    {
+      "id": "reaction.snow_compaction",
+      "name": "Snow Overburden Compaction / Sintering",
+      "category": "mechanical_compaction",
+      "description": "Pore space collapse and grain sintering of snow crystals under compressive overburden pressure.",
+      "preconditions": {
+        "primary": "cryo.snow",
+        "overburden_pressure_kpa": 10.0
+      },
+      "transformations": [
+        {
+          "condition": "pressure >= 10.0 kPa",
+          "outcome": "cryo.packed_ice",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.ice_salt_depression",
+      "name": "Colligative Freezing Point Depression (Salt Brine)",
+      "category": "chemical_colligative",
+      "description": "Thermodynamic depression of the freezing point of ice via contact with soluble halite salt.",
+      "preconditions": {
+        "primary": "cryo.ice",
+        "adjacent": "mineral.salt",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "temperature >= 252.0 K",
+          "outcome": "fluid.water",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "total_solute_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.acid_carbonate_dissolution",
+      "name": "Acid Carbonate Dissolution (Effervescence)",
+      "category": "chemical_solvation",
+      "description": "Chemical dissolution of limestone by acid releasing carbon dioxide gas and voiding solid cavity.",
+      "preconditions": {
+        "primary": "rock.limestone",
+        "adjacent": "fluid.acid",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "acid_contact == True",
+          "outcome": "fluid.water",
+          "byproduct": "gas.co2"
+        }
+      ],
+      "conservations": [
+        "stoichiometric_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.salt_hydration_dissolution",
+      "name": "Halite Aqueous Dissolution",
+      "category": "chemical_dissolution",
+      "description": "Dissolution of halite into liquid water creating dissolved ionic brine.",
+      "preconditions": {
+        "primary": "mineral.salt",
+        "adjacent": "fluid.water",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "water_contact == True",
+          "outcome": "fluid.water",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "solute_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.pozzolanic_cementation",
+      "name": "Pozzolanic Hydraulic Reaction",
+      "category": "hydration_reaction",
+      "description": "Reaction between siliceous volcanic ash and calcium hydroxide forming hydraulic concrete.",
+      "preconditions": {
+        "primary": "mineral.ash",
+        "adjacent": "rock.calcite",
+        "hydration_agent": "fluid.water"
+      },
+      "transformations": [
+        {
+          "condition": "curing_time_elapsed == True",
+          "outcome": "synthetic.concrete",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.bronze_alloying",
+      "name": "Pyrometallurgical Bronze Alloying",
+      "category": "metallurgical_alloying",
+      "description": "Fusion of molten copper and molten tin in 88:12 mass proportion to synthesize structural bronze.",
+      "preconditions": {
+        "primary": "metal.copper",
+        "secondary": "metal.tin",
+        "thermal_threshold_k": 1356.0
+      },
+      "transformations": [
+        {
+          "condition": "temperature >= 1356.0 K",
+          "outcome": "metal.bronze",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "alloy_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.copper_patination",
+      "name": "Copper Atmospheric Patination",
+      "category": "chemical_passivation",
+      "description": "Gradual oxidation and carbonation of metallic copper forming green verdigris surface protective layer.",
+      "preconditions": {
+        "primary": "metal.copper",
+        "adjacent_atmosphere": "gas.air",
+        "humidity_present": true
+      },
+      "transformations": [
+        {
+          "condition": "exposure_ticks >= 10000",
+          "outcome": "metal.copper",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "surface_boundary_conservation"
+      ]
+    },
+    {
+      "id": "reaction.ferrous_oxidation",
+      "name": "Ferrous Hydrated Rusting",
+      "category": "chemical_corrosion",
+      "description": "Corrosion of elemental iron by oxygen and water forming porous, structurally weak iron oxide.",
+      "preconditions": {
+        "primary": "metal.iron",
+        "adjacent_oxidizer": "gas.air",
+        "adjacent_electrolyte": "fluid.water"
+      },
+      "transformations": [
+        {
+          "condition": "corrosion_complete == True",
+          "outcome": "soil.dirt",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "iron_stoichiometric_conservation"
+      ]
+    },
+    {
+      "id": "reaction.piezoelectric_excitation",
+      "name": "Piezoelectric Electromechanical Transduction",
+      "category": "electromechanical_coupling",
+      "description": "Conversion of high transient mechanical stress into electrical potential difference.",
+      "preconditions": {
+        "primary": "gem.quartz",
+        "mechanical_stress_threshold_kpa": 500.0
+      },
+      "transformations": [
+        {
+          "condition": "stress >= 500.0 kPa",
+          "outcome": "gem.quartz",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "mechanical_to_electrical_energy"
+      ]
+    },
+    {
+      "id": "reaction.phosphorescent_decay",
+      "name": "Phosphorescent Radiance Temporal Decay",
+      "category": "optical_radiative_transfer",
+      "description": "Exponential temporal decay of stored optical photon energy in phosphors in the absence of excitation.",
+      "preconditions": {
+        "primary": "mineral.phosphor",
+        "pump_light_present": false
+      },
+      "transformations": [
+        {
+          "condition": "elapsed_time > 0",
+          "outcome": "mineral.phosphor",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "radiative_energy_conservation"
+      ]
+    },
+    {
+      "id": "reaction.biomass_slow_pyrolysis",
+      "name": "Anoxic Biomass Charcoal Pyrolysis",
+      "category": "chemical_pyrolysis",
+      "description": "Thermal decomposition of dense hardwood in anoxic environment producing charcoal.",
+      "preconditions": {
+        "primary": "wood.hardwood",
+        "thermal_threshold_k": 673.0,
+        "anoxic_atmosphere": true
+      },
+      "transformations": [
+        {
+          "condition": "temperature >= 673.0 K",
+          "outcome": "wood.charcoal",
+          "byproduct": "gas.smoke"
+        }
+      ],
+      "conservations": [
+        "carbon_elemental_conservation",
+        "energy_conservation"
+      ]
+    },
+    {
+      "id": "reaction.mycelial_decomposition",
+      "name": "Mycelial Colonization & Detritus Decomposition",
+      "category": "biological_spread",
+      "description": "Colonization of adjacent loam soil by fungal mycelial network.",
+      "preconditions": {
+        "primary": "botanical.mycelium",
+        "adjacent": "soil.dirt",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "moisture_present == True",
+          "outcome": "botanical.mycelium",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "mineral_substrate_conservation"
+      ]
+    },
+    {
+      "id": "reaction.fluid_density_stratification",
+      "name": "Gravitational Multiphase Oil-Water Stratification",
+      "category": "fluid_stratification",
+      "description": "Gravitational phase separation of immiscible oil and water where oil floats above water.",
+      "preconditions": {
+        "primary": "fluid.oil",
+        "adjacent": "fluid.water",
+        "adjacency_type": "vertical_column_contact"
+      },
+      "transformations": [
+        {
+          "condition": "gravity_vector == [0, -1, 0]",
+          "outcome": "fluid.oil",
+          "byproduct": "fluid.water"
+        }
+      ],
+      "conservations": [
+        "immiscible_volume_conservation"
+      ]
+    },
+    {
+      "id": "reaction.hydrocarbon_combustion",
+      "name": "Liquid Petroleum Hydrocarbon Combustion",
+      "category": "chemical_oxidation",
+      "description": "Rapid exothermic oxidation of liquid petroleum with radiant thermal flame and soot byproduct.",
+      "preconditions": {
+        "primary": "fluid.oil",
+        "ignition_energy_j": 200.0,
+        "adjacent_oxidizer": "gas.air"
+      },
+      "transformations": [
+        {
+          "condition": "ignition == True",
+          "outcome": "gas.smoke",
+          "byproduct": "gas.co2"
+        }
+      ],
+      "conservations": [
+        "total_energy_conservation",
+        "species_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.steam_condensation",
+      "name": "Steam Thermal Condensation",
+      "category": "thermal_phase_change",
+      "description": "Phase transition of gaseous steam into liquid water upon cooling below 373.15 K.",
+      "preconditions": {
+        "primary": "gas.steam",
+        "thermal_threshold_k": 373.15
+      },
+      "transformations": [
+        {
+          "condition": "temperature < 373.15 K",
+          "outcome": "fluid.water",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "water_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.concrete_powder_hydration",
+      "name": "Concrete Powder Hydraulic Setting",
+      "category": "hydration_reaction",
+      "description": "Hydraulic setting of dry concrete powder upon water contact into monolithic structural concrete.",
+      "preconditions": {
+        "primary": "granular.concrete_powder",
+        "adjacent": "fluid.water",
+        "adjacency_type": "face_sharing_6_neighborhood"
+      },
+      "transformations": [
+        {
+          "condition": "water_contact == True",
+          "outcome": "synthetic.concrete",
+          "byproduct": "None"
+        }
+      ],
+      "conservations": [
+        "mineral_mass_conservation"
+      ]
+    },
+    {
+      "id": "reaction.detonation_shockwave",
+      "name": "High Explosive Chapman-Jouguet Detonation",
+      "category": "explosive_detonation",
+      "description": "Supersonic detonation shockwave generation fracturing all adjacent voxels exceeding blast resistance.",
+      "preconditions": {
+        "primary": "synthetic.explosive",
+        "detonation_energy_threshold_j": 50.0
+      },
+      "transformations": [
+        {
+          "condition": "detonation_triggered == True",
+          "outcome": "gas.smoke",
+          "byproduct": "thermal.shockwave"
+        }
+      ],
+      "conservations": [
+        "detonation_energy_conservation"
+      ]
+    }
+  ],
+  "tool_affinities": [
+    {
+      "tool_class": "shovel",
+      "name": "Excavation Spades & Shovels",
+      "primary_targets": [
+        "soil.dirt",
+        "soil.mud",
+        "soil.clay",
+        "soil.sand",
+        "soil.gravel"
+      ],
+      "efficiency_multiplier": 4.0,
+      "energy_expended_per_m3_j": 150.0
+    },
+    {
+      "tool_class": "pickaxe",
+      "name": "Mining Pickaxes & Drills",
+      "primary_targets": [
+        "rock.stone",
+        "rock.cobblestone",
+        "rock.granite",
+        "rock.diorite",
+        "rock.andesite",
+        "rock.basalt",
+        "rock.obsidian",
+        "rock.sandstone",
+        "rock.marble",
+        "rock.slate",
+        "ore.coal",
+        "metal.iron",
+        "metal.copper",
+        "metal.gold",
+        "metal.silver",
+        "metal.tin",
+        "metal.lead",
+        "metal.platinum",
+        "metal.steel",
+        "gem.quartz",
+        "gem.diamond",
+        "gem.emerald",
+        "gem.ruby",
+        "gem.sapphire",
+        "gem.amethyst",
+        "synthetic.brick",
+        "synthetic.concrete",
+        "synthetic.terracotta",
+        "synthetic.asphalt"
+      ],
+      "efficiency_multiplier": 5.0,
+      "energy_expended_per_m3_j": 850.0
+    },
+    {
+      "tool_class": "axe",
+      "name": "Felling Axes & Saws",
+      "primary_targets": [
+        "wood.hardwood",
+        "wood.softwood",
+        "wood.birch",
+        "botanical.bamboo"
+      ],
+      "efficiency_multiplier": 4.5,
+      "energy_expended_per_m3_j": 320.0
+    },
+    {
+      "tool_class": "shears_blade",
+      "name": "Shears & Cutting Blades",
+      "primary_targets": [
+        "botanical.foliage",
+        "organic.fiber"
+      ],
+      "efficiency_multiplier": 6.0,
+      "energy_expended_per_m3_j": 50.0
+    },
+    {
+      "tool_class": "fluid_vessel",
+      "name": "Hydraulic Containment Vessels (Buckets)",
+      "primary_targets": [
+        "fluid.water",
+        "fluid.lava",
+        "fluid.honey"
+      ],
+      "efficiency_multiplier": 1.0,
+      "energy_expended_per_m3_j": 20.0
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-GEOMETRY
+  path: lib/302_Geometry
+  name: Geometry
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Geometry
+  description: >
+    Normative semantic computational domain concerned with spatial form, position,
+    extent, measurement, geometric relationships, and transformations of spatial structures.
+  purpose: >
+    Provide representation-independent geometric semantics (points, vectors, primitives,
+    curves, surfaces, meshes, solids, CSG, ray intersections, and affine transformations)
+    with canonical hypergraph projection and technological independence.
+
+capabilities:
+  - id: CAP-GEOM-AFFINE
+    name: Affine Point & Vector Separation
+    status: operational
+  - id: CAP-GEOM-PRIMITIVES
+    name: Standard Geometric Primitives & Boundaries
+    status: operational
+  - id: CAP-GEOM-TRANSFORM
+    name: Rigid, Affine & Projective Transformations
+    status: operational
+  - id: CAP-GEOM-PREDICATES
+    name: Containment, Distance & Proximity Predicates
+    status: operational
+  - id: CAP-GEOM-INTERSECTION
+    name: Ray & Shape Intersections (Möller–Trumbore, Spheres, AABBs)
+    status: operational
+  - id: CAP-GEOM-MESH
+    name: Discrete Surface Meshes & Topological Invariants
+    status: operational
+  - id: CAP-GEOM-CSG
+    name: Constructive Solid Geometry & Signed Distance Fields
+    status: operational
+  - id: CAP-GEOM-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+dependencies:
+  - id: SCR-LIB-MATHEMATICS
+    path: lib/202_Math
+    status: operational
+    relationship: provides_algebra_vectors_and_quaternions
+  - id: SCR-LIB-IDENTITY
+    path: lib/101_Core/Identity
+    status: operational
+    relationship: provides_semantic_identity
+  - id: SCR-LIB-HYPERGRAPH
+    path: lib/203_Graph/Hypergraph
+    status: operational
+    relationship: provides_hypergraph_representation
+
+subdomains:
+  - Collision
+  - Computational
+  - Containment
+  - CoordinateSystems
+  - Curve
+  - Delaunay
+  - Distance
+  - Implicit
+  - Intersection
+  - IR
+  - Line
+  - Mesh
+  - Parametric
+  - Plane
+  - Point
+  - Polygon
+  - Polyhedron
+  - Primitive
+  - Projection
+  - Proximity
+  - Ray
+  - Rotation
+  - Scale
+  - Segment
+  - SignedDistance
+  - Solid
+  - Surface
+  - Tessellation
+  - Transform
+  - Translation
+  - Triangulation
+  - Vector
+  - Voronoi
+
+invariants:
+  - GEOMETRY-INV-001
+  - GEOMETRY-INV-002
+  - GEOMETRY-INV-003
+  - GEOMETRY-INV-004
+  - GEOMETRY-INV-005
+  - GEOMETRY-INV-006
+  - GEOMETRY-INV-007
+  - GEOMETRY-INV-008
+  - GEOMETRY-INV-009
+  - GEOMETRY-INV-010
+  - GEOMETRY-INV-011
+  - GEOMETRY-INV-012
+  - GEOMETRY-INV-013
+  - GEOMETRY-INV-014
+  - GEOMETRY-INV-015
+  - GEOMETRY-INV-016
+  - GEOMETRY-INV-017
+  - GEOMETRY-INV-018
+
+providers:
+  - id: cgal
+    role: computational_geometry_and_triangulation
+    status: operational
+  - id: ogre
+    role: surface_mesh_and_rendering
+    status: operational
+  - id: openvdb
+    role: implicit_and_signed_distance_geometry
+    status: operational
+

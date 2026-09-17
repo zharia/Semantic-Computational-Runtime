@@ -1,0 +1,16 @@
+[package]
+name = "scr-physics"
+version = "0.1.0"
+edition = "2021"
+authors = ["SCR Architectural Group"]
+description = "Authoritative Normative Physics Semantic Foundation for SCR (SCR-LIB-PHYSICS)"
+license = "Apache-2.0"
+
+[dependencies]
+scr-identity = { path = "../../../101_Core/Identity/301_Implementation/rust" }
+scr-hypergraph = { path = "../../../203_Graph/Hypergraph/301_Implementation/rust" }
+scr-math = { path = "../../../202_Math/301_Implementation/rust" }
+scr-geometry = { path = "../../../302_Geometry/301_Implementation/rust" }
+scr-topology = { path = "../../../303_Topology/301_Implementation/rust" }
+
+[dev-dependencies]

@@ -2,17 +2,30 @@ provider: h3
 domain: topology
 subdomain: spatial_indexing
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "topology.spatial_indexing.geo_to_h3"
+  - "topology.spatial_indexing.h3_to_geo"
+  - "topology.spatial_indexing.k_ring"
+  - "topology.spatial_indexing.resolution_hierarchy"
+
+supported_versions:
+  - "Uber H3 4.x / Reference Hexagonal Lattice Fallback"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

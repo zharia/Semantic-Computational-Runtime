@@ -1,0 +1,15 @@
+provider:
+  id: "SCR-PRV-PHYSICS-FLUID"
+  name: "Fluid Dynamics & Rheology Provider"
+  domain: "physics"
+  subdomain: "fluid"
+  version: "0.1.0"
+  status: "ACTIVE"
+  capabilities:
+    - "physics.fluid.navier_stokes"
+    - "physics.fluid.bingham_rheology"
+    - "physics.fluid.thermal_advection"
+    - "physics.fluid.crust_solidification"
+    - "physics.fluid.shallow_water"
+  maturity: "VERIFIED"
+  test_coverage: "100%"

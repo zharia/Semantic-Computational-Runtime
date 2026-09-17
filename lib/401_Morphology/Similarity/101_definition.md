@@ -1,35 +1,57 @@
-# Similarity
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/401_Morphology/Similarity`
+id: SCR-LIB-MORPHOLOGY-SIMILARITY
+name: Morphology Similarity
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Similarity.
+parent: SCR-LIB-MORPHOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Morphology: Similarity
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Semantic distance metrics and morphological similarity measures between structural entities.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Similarity** is a first-class subdomain of SCR Morphology (`SCR-LIB-MORPHOLOGY`). It addresses semantic distance metrics and morphological similarity measures between structural entities.
 
-## Relationship to Parent
+Morphology defines the structural organisation and form of entities independently of transient rendering engines, physical memory formats, or vendor graphics APIs.
 
-`Similarity` is a child of `401_Morphology` within the SCR library hierarchy.
+## 2. Invariant Conformance
 
-## Scope Boundary
+All operations within `Similarity` MUST adhere to the normative invariants of `SCR-LIB-MORPHOLOGY`:
 
-No additional semantic contract is inferred from the directory's existence alone.
+- **MORPHOLOGY-INV-001 (Identity)**: Morphological entities and parts possess stable semantic identity across transitions.
+- **MORPHOLOGY-INV-002 (Structural Integrity)**: Declared structural relationships remain valid throughout lifecycle transformations.
+- **MORPHOLOGY-INV-003 (Part-Whole Integrity)**: Component composition graphs MUST maintain acyclic and well-founded containment relationships.
+- **MORPHOLOGY-INV-016 (Representation Independence)**: The semantics of Similarity are authoritative and independent of carrier representations.
+- **MORPHOLOGY-INV-017 (Provider Independence)**: Algorithm or provider substitution preserves the morphological contract.
+- **MORPHOLOGY-INV-018 (Rendering Independence)**: Visual rendering appearances do not define or redefine morphological meaning.
 
-## Notes
+## 3. Relationships to Other Domains
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+- **lib/101_Core/Identity**: Supplies canonical `SemanticId` coordinates for morphological parts and features.
+- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for component hierarchies and relations.
+- **lib/302_Geometry**: Supplies spatial embeddings, coordinates, and metric boundaries for morphological forms.
+- **lib/303_Topology**: Supplies topological connectivity, homology invariants, and continuity contracts.
+
+---
+
+# Definition Authority
+
+This document establishes the normative semantic meaning of `Similarity` in SCR Morphology. Implementations, data structures, and compiler transforms are subordinate to the contracts specified herein.

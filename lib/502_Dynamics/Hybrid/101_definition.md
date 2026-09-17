@@ -1,35 +1,58 @@
-# Hybrid
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/502_Dynamics/Hybrid`
+id: SCR-LIB-DYNAMICS-HYBRID
+name: Dynamics Hybrid
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for hybrid.
+parent: SCR-LIB-DYNAMICS
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Dynamics: Hybrid
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Systems exhibiting interleaved continuous flow and discrete instantaneous state jumps.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Hybrid** is a first-class subdomain of SCR Dynamics (`SCR-LIB-DYNAMICS`). It defines systems exhibiting interleaved continuous flow and discrete instantaneous state jumps.
 
-## Relationship to Parent
+Dynamics defines state evolution independently of transient numerical solvers, graphics engines, or hardware acceleration substrates.
 
-`Hybrid` is a child of `502_Dynamics` within the SCR library hierarchy.
+## 2. Invariant Conformance
 
-## Scope Boundary
+All operations within `Hybrid` MUST adhere to the normative invariants of `SCR-LIB-DYNAMICS`:
 
-No additional semantic contract is inferred from the directory's existence alone.
+- **DYNAMICS-INV-001 (Semantic Primacy)**: Dynamical meaning is authoritative and independent of solver implementations.
+- **DYNAMICS-INV-002 (State Integrity)**: Semantic state remains distinct from implementation-level memory representations.
+- **DYNAMICS-INV-003 (Transition Integrity)**: State transitions preserve declared semantic evolution laws.
+- **DYNAMICS-INV-004 (Temporal Integrity)**: Temporal ordering and relationships remain explicit.
+- **DYNAMICS-INV-010 (Delta Integrity)**: State transitions produce valid semantic state deltas.
+- **DYNAMICS-INV-011 (History Integrity)**: Trajectory history and provenance remain recoverable.
+- **DYNAMICS-INV-018 (Runtime Independence)**: Dynamical semantics remain independent of host runtime and hardware substrates.
 
-## Notes
+## 3. Relationships to Other Domains
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+- **lib/101_Core/Identity**: Supplies canonical `SemanticId` identifiers for dynamical systems, states, and trajectories.
+- **lib/202_Math**: Provides calculus, linear algebra, vector fields, and numerical analysis infrastructure.
+- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for transition graphs and causal dependencies.
+- **lib/501_Physics**: Supplies physical equations of motion, forces, and conservation laws.
+
+---
+
+# Definition Authority
+
+This document establishes the normative semantic meaning of `Hybrid` in SCR Dynamics. Numerical engines, solvers, and simulation runtimes are subordinate to the contracts specified herein.

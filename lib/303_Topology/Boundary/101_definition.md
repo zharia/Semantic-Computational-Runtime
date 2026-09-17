@@ -1,35 +1,81 @@
-# Boundary
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Boundary`
+id: SCR-LIB-TOPOLOGY-BOUNDARY
+name: Topology Boundary
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Boundary.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Boundary
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Topological boundary structure identifying the structural transition between interior and exterior of a topological region.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Boundary** is the topological operator mapping a topological region to the elements that separate its interior from its exterior. Boundary is a semantic concept, not a geometric one.
 
-## Relationship to Parent
+```
+∂(Region) = Boundary
+```
 
-`Boundary` is a child of `303_Topology` within the SCR library hierarchy.
+The boundary of a boundary is empty: `∂(∂(X)) = ∅`.
 
-## Scope Boundary
+## 2. Boundary Structure
 
-No additional semantic contract is inferred from the directory's existence alone.
+Boundary MUST preserve topological integrity:
 
-## Notes
+- **∂(Volume)** → Surfaces
+- **∂(Surface)** → Curves
+- **∂(Curve)** → Points
+- **∂(Point)** → ∅
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+This hierarchy is semantic and does not prescribe a particular mesh encoding.
+
+## 3. Boundary Semantics
+
+A boundary:
+
+- is itself a topological structure of lower dimension;
+- MAY possess its own boundary;
+- MUST be closed under the boundary operator.
+
+## 4. Invariants
+
+- **TOPOLOGY-INV-004**: Boundary semantics MUST remain consistent with the declared topology.
+- **TOPOLOGY-INV-002**: Boundary derivation MUST preserve connectivity integrity.
+
+## 5. Non-Boundary
+
+A closed structure without boundary satisfies `∂(X) = ∅`. This is a semantic property not simply a mesh property.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Boundary** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Boundary is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

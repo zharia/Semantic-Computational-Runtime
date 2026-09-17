@@ -1,0 +1,32 @@
+provider: materialx
+domain: render
+subdomain: material
+
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
+
+canonical: true
+reference: false
+
+capabilities:
+  - "render.material.materialx.document_lifecycle"
+  - "render.material.materialx.nodegraph_traversal"
+  - "render.material.materialx.standard_surface_bsdf"
+  - "render.material.materialx.closure_composition"
+  - "render.material.materialx.fresnel_layering"
+
+supported_versions:
+  - "MaterialX 1.38 / 1.39 / Reference C++ Graph & Closure Fallback"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
+dependencies: []
+limitations: []

@@ -5,57 +5,54 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-PHYSICS-IR
-name: Physics MLIR Dialect
+name: Physics IR
 
 version: 0.1.0
-status: draft
+status: operational
 
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-16
 
 parent: SCR-LIB-PHYSICS
-
 authority: SCR
 domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Physics MLIR Dialect
+# SCR Physics: IR
 
-> Directory documentation for the current SCR library tree.
+## Summary
 
-**Path:** `lib/501_Physics/IR`
+Compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines for physics.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 1. Semantic Definition
 
-This directory is MLIR dialect material for the Physics domain.
+**IR** is a first-class subdomain of SCR Physics (`SCR-LIB-PHYSICS`). It defines compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines for physics.
 
-## Current Contents
+Physics defines physical meaning independently of transient numerical solvers, graphics engines, or hardware acceleration substrates.
 
-The directory currently contains:
+## 2. Invariant Conformance
 
-- `101_definition.md`
+All operations within `IR` MUST adhere to the normative invariants of `SCR-LIB-PHYSICS`:
 
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
+- **PHYSICS-INV-001 (Semantic Primacy)**: Physical meaning is authoritative and independent of solver implementations.
+- **PHYSICS-INV-002 (Quantity Integrity)**: Physical quantities retain dimensional consistency, magnitude, and unit semantics.
+- **PHYSICS-INV-003 (Law Integrity)**: Physical laws remain distinct from their numerical discretization or engine approximations.
+- **PHYSICS-INV-006 (Conservation Integrity)**: Declared conservation relationships must be representable and verifiable independently of integration error.
+- **PHYSICS-INV-014 (Dimensional Integrity)**: Equations and relations MUST preserve strict dimensional consistency.
+- **PHYSICS-INV-018 (Runtime Independence)**: Physical semantics remain independent of host runtime and hardware substrates.
 
-## Current Role
+## 3. Relationships to Other Domains
 
-The directory establishes the MLIR dialect location for Physics.
+- **lib/101_Core/Identity**: Supplies canonical `SemanticId` identifiers for physical entities, bodies, and interactions.
+- **lib/202_Math**: Provides algebra, calculus, tensors, and numerical analysis infrastructure.
+- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for multi-body interactions and constraint graphs.
+- **lib/302_Geometry**: Supplies spatial frames, collision shapes, and coordinate spaces.
+- **lib/303_Topology**: Supplies boundary connectivity and continuity invariants.
 
-## Relationship to Parent
+---
 
-`IR` is a child of `501_Physics` and represents the MLIR dialect scope for the Physics semantic domain.
+# Definition Authority
 
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Physics MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+This document establishes the normative semantic meaning of `IR` in SCR Physics. Numerical engines, solvers, and simulation runtimes are subordinate to the contracts specified herein.

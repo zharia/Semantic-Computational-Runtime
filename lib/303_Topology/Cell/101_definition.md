@@ -1,35 +1,80 @@
-# Cell
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Cell`
+id: SCR-LIB-TOPOLOGY-CELL
+name: Topology Cell
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Cell.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Cell
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Atomic building block of a cell complex — a topological region homeomorphic to an open ball of a given dimension.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+A **cell** is a topological element homeomorphic to an open n-ball for some dimension n. Cells are the atomic building blocks of cell complexes.
 
-## Relationship to Parent
+```
+0-cell → point
+1-cell → open arc
+2-cell → open disk
+3-cell → open ball
+```
 
-`Cell` is a child of `303_Topology` within the SCR library hierarchy.
+## 2. Cell Attachment
 
-## Scope Boundary
+Cells are attached to lower-dimensional cells via attaching maps. Attaching maps define the boundary of a cell in terms of lower-dimensional cells.
 
-No additional semantic contract is inferred from the directory's existence alone.
+## 3. Cell Semantics
 
-## Notes
+A cell:
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+- has a well-defined dimension;
+- has a boundary consisting of lower-dimensional cells;
+- belongs to exactly one cell complex when indexed;
+- MUST NOT redefine its dimension through representation choices.
+
+## 4. CW Structure
+
+A CW complex organises cells such that:
+
+- each cell has an explicit attaching map;
+- the closure of each cell intersects only finitely many other cells;
+- the topology is the weak topology determined by cells.
+
+## 5. Invariants
+
+- **TOPOLOGY-INV-003**: Incidence integrity applies across cells.
+- **TOPOLOGY-INV-004**: Boundary of each cell MUST be a union of lower-dimensional cells.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Cell** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Cell is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

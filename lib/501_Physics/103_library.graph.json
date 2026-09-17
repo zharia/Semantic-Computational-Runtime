@@ -1,0 +1,93 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-PHYSICS",
+  "name": "Physics",
+  "layer": "501_Physics",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/501_Physics",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "REFINES",
+      "semantics": "Physics specializes foundational semantic abstractions and state"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "SPECIALIZES",
+      "semantics": "Physical information is structured semantic data"
+    },
+    {
+      "source": "SCR-LIB-MATHEMATICS",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "DEPENDS_ON",
+      "semantics": "Physical laws and equations use mathematical structures"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic IDs for physical entities, bodies, and quantities"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "COMPOSES",
+      "semantics": "Physical systems and higher-order interactions form canonical relational structures"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "CONSTRAINS",
+      "semantics": "Physical systems operate over geometric spatial structures and boundaries"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Physical continuum behaviour and conservation laws depend on connectivity and topology"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "SPECIALIZES",
+      "semantics": "Physical fields assign physical meaning to continuous and discrete distributions"
+    },
+    {
+      "source": "SCR-LIB-MORPHOLOGY",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Physical processes generate and respond to structural form and morphology"
+    },
+    {
+      "source": "SCR-LIB-PHYSICS",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "CONSTRAINS",
+      "semantics": "Physical laws constrain state evolution in dynamical models"
+    },
+    {
+      "source": "SCR-LIB-PHYSICS",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "REPRESENTS",
+      "semantics": "Rendering pipelines consume physical states to produce visual manifestations"
+    },
+    {
+      "source": "SCR-LIB-PHYSICS",
+      "target": "chrono",
+      "relationship": "REALIZED_BY",
+      "semantics": "Rigid body mechanics, mass inertia, collisions, and external forces realized by Chrono"
+    }
+  ],
+  "subdomains": [
+    "Actuation", "Body", "Charge", "Collision", "Conservation",
+    "Constants", "Constraints", "Contact", "Dimensions", "Electromagnetic",
+    "Energy", "Entropy", "Equations", "Field", "Fluid",
+    "Force", "Friction", "Gravity", "IR", "Integrators",
+    "Kinematics", "Laws", "Mass", "Material", "Mechanics",
+    "Momentum", "Particle", "Pressure", "Quantity", "RigidBody",
+    "Sensors", "SoftBody", "Solvers", "Temperature", "Thermodynamic",
+    "Torque", "Units"
+  ]
+}

@@ -5,57 +5,54 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-DYNAMICS-IR
-name: Dynamics MLIR Dialect
+name: Dynamics IR
 
 version: 0.1.0
-status: draft
+status: operational
 
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-16
 
 parent: SCR-LIB-DYNAMICS
-
 authority: SCR
 domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Dynamics MLIR Dialect
+# SCR Dynamics: IR
 
-> Directory documentation for the current SCR library tree.
+## Summary
 
-**Path:** `lib/502_Dynamics/IR`
+Compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines for dynamics.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 1. Semantic Definition
 
-This directory is MLIR dialect material for the Dynamics domain.
+**IR** is a first-class subdomain of SCR Dynamics (`SCR-LIB-DYNAMICS`). It defines compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines for dynamics.
 
-## Current Contents
+Dynamics defines state evolution independently of transient numerical solvers, graphics engines, or hardware acceleration substrates.
 
-The directory currently contains:
+## 2. Invariant Conformance
 
-- `101_definition.md`
+All operations within `IR` MUST adhere to the normative invariants of `SCR-LIB-DYNAMICS`:
 
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
+- **DYNAMICS-INV-001 (Semantic Primacy)**: Dynamical meaning is authoritative and independent of solver implementations.
+- **DYNAMICS-INV-002 (State Integrity)**: Semantic state remains distinct from implementation-level memory representations.
+- **DYNAMICS-INV-003 (Transition Integrity)**: State transitions preserve declared semantic evolution laws.
+- **DYNAMICS-INV-004 (Temporal Integrity)**: Temporal ordering and relationships remain explicit.
+- **DYNAMICS-INV-010 (Delta Integrity)**: State transitions produce valid semantic state deltas.
+- **DYNAMICS-INV-011 (History Integrity)**: Trajectory history and provenance remain recoverable.
+- **DYNAMICS-INV-018 (Runtime Independence)**: Dynamical semantics remain independent of host runtime and hardware substrates.
 
-## Current Role
+## 3. Relationships to Other Domains
 
-The directory establishes the MLIR dialect location for Dynamics.
+- **lib/101_Core/Identity**: Supplies canonical `SemanticId` identifiers for dynamical systems, states, and trajectories.
+- **lib/202_Math**: Provides calculus, linear algebra, vector fields, and numerical analysis infrastructure.
+- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for transition graphs and causal dependencies.
+- **lib/501_Physics**: Supplies physical equations of motion, forces, and conservation laws.
 
-## Relationship to Parent
+---
 
-`IR` is a child of `502_Dynamics` and represents the MLIR dialect scope for the Dynamics semantic domain.
+# Definition Authority
 
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Dynamics MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+This document establishes the normative semantic meaning of `IR` in SCR Dynamics. Numerical engines, solvers, and simulation runtimes are subordinate to the contracts specified herein.

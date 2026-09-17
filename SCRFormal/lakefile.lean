@@ -22,4 +22,6 @@ lean_lib «SCRFormal» where
     `SCR.REConformance,
     `SCR.Hypergraph,
     `SCR.Algebra,
-    `SCR.AlgebraCounterexamples]
+    `SCR.AlgebraCounterexamples,
+    `SCR.MaterialConservation,
+    `SCR.Thermodynamics]

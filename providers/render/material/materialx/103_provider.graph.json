@@ -1,0 +1,49 @@
+{
+  "provider": "materialx",
+  "domain": "render",
+  "subdomain": "material",
+  "status": "operational",
+  "capabilities": [
+    "render.material.materialx.document_lifecycle",
+    "render.material.materialx.nodegraph_traversal",
+    "render.material.materialx.standard_surface_bsdf",
+    "render.material.materialx.closure_composition",
+    "render.material.materialx.fresnel_layering"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/materialx_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/materialx_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_materialx_contract.cpp"
+  ],
+  "dependencies": [],
+  "resources": [
+    "host_memory"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "materialx",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "REALIZES",
+      "semantics": "Realizes MaterialX document parsing, shading network evaluation, and BSDF closure composition"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "Academy Software Foundation (ASWF) MaterialX / Reference",
+    "integration_date": "2026-09-16"
+  }
+}

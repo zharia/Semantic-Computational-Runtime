@@ -2,15 +2,59 @@
   "provider": "cgal",
   "domain": "geometry",
   "subdomain": "computational_geometry",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "geometry.triangulation.delaunay2d",
+    "geometry.convexhull.2d",
+    "geometry.polygon.point_in_polygon",
+    "geometry.polygon.area"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/cgal_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/cgal_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_cgal_contract.cpp"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "host_cpu"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "cgal",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "REALIZES",
+      "semantics": "Provides computational geometry triangulation, convex hulls, and polygon operations"
+    },
+    {
+      "source": "cgal",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "SUPPORTS",
+      "semantics": "Constructs simplicial complexes and mesh topology"
+    },
+    {
+      "source": "cgal",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "SUPPORTS",
+      "semantics": "Supports medial axis and morphological decomposition"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "CGAL Open Source Project / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

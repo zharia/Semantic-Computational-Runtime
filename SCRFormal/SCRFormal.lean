@@ -24,3 +24,5 @@ import SCR.REConformance
 import SCR.Hypergraph
 import SCR.Algebra
 import SCR.AlgebraCounterexamples
+import SCR.MaterialConservation
+import SCR.Thermodynamics

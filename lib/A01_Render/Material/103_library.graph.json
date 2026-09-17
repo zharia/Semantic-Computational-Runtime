@@ -1,0 +1,61 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-RENDER-MATERIAL",
+  "name": "Material",
+  "layer": "A01_Render",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/A01_Render/Material",
+  "edges": [
+    {
+      "source": "SCR-LIB-RENDER",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "CONTAINS",
+      "semantics": "Rendering pipelines consume material semantics for visual manifestation"
+    },
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "SPECIALIZES",
+      "semantics": "Materials specialize foundational entities, properties, and state"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "MODULATES",
+      "semantics": "Fields modulate procedural textures, surface parameters, and density"
+    },
+    {
+      "source": "SCR-LIB-GEOMETRY",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "BOUND_TO",
+      "semantics": "Materials bind to geometric surfaces, boundaries, and meshes"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-RENDER-MATERIAL",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Material shading networks and look assignments project into the canonical hypergraph"
+    },
+    {
+      "source": "SCR-LIB-RENDER-MATERIAL",
+      "target": "materialx",
+      "relationship": "REALIZED_BY",
+      "semantics": "MaterialX standard format, node evaluation, and shader generation realized by MaterialX provider"
+    }
+  ],
+  "subdomains": [
+    "BSDF",
+    "EDF",
+    "VDF",
+    "Closure",
+    "ShadingNetwork",
+    "Surface",
+    "Volume",
+    "Displacement",
+    "Look",
+    "Pattern",
+    "Layering",
+    "Property"
+  ]
+}

@@ -1,0 +1,144 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-PHYSICS
+  path: lib/501_Physics
+  name: Physics
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Physics
+  description: >
+    Normative semantic computational domain concerned with the meaning, relationships,
+    laws, constraints, interactions, quantities, states, and transformations that describe
+    physical systems and phenomena.
+  purpose: >
+    Provide representation-independent physical semantics (dimensional analysis, physical units,
+    conservation laws of energy, momentum, and charge, physical bodies, multi-body higher-order
+    interactions, constraints, and equations of motion) with canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-PHYS-QUANTITIES
+    name: Dimensional Quantities, Units & Dimensional Consistency
+    status: operational
+  - id: CAP-PHYS-LAWS
+    name: Physical Laws, Symmetries & Equations of Motion
+    status: operational
+  - id: CAP-PHYS-CONSERVATION
+    name: Conservation Tracking (Energy, Linear & Angular Momentum, Charge)
+    status: operational
+  - id: CAP-PHYS-BODIES
+    name: Physical Bodies (Mass, Inertia Tensors & Kinematic States)
+    status: operational
+  - id: CAP-PHYS-INTERACTIONS
+    name: Higher-Order Multi-Body Physical Interactions
+    status: operational
+  - id: CAP-PHYS-CONSTRAINTS
+    name: Physical Constraints (Holonomic, Non-Holonomic, Joint & Contact)
+    status: operational
+  - id: CAP-PHYS-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+dependencies:
+  - id: SCR-LIB-IDENTITY
+    path: lib/101_Core/Identity
+    status: operational
+    relationship: provides_semantic_identity
+  - id: SCR-LIB-HYPERGRAPH
+    path: lib/203_Graph/Hypergraph
+    status: operational
+    relationship: provides_hypergraph_representation
+  - id: SCR-LIB-MATHEMATICS
+    path: lib/202_Math
+    status: operational
+    relationship: provides_mathematical_structures
+  - id: SCR-LIB-GEOMETRY
+    path: lib/302_Geometry
+    status: operational
+    relationship: provides_spatial_embeddings
+  - id: SCR-LIB-TOPOLOGY
+    path: lib/303_Topology
+    status: operational
+    relationship: provides_structural_invariants
+
+subdomains:
+  - Actuation
+  - Body
+  - Charge
+  - Collision
+  - Conservation
+  - Constants
+  - Constraints
+  - Contact
+  - Dimensions
+  - Electromagnetic
+  - Energy
+  - Entropy
+  - Equations
+  - Field
+  - Fluid
+  - Force
+  - Friction
+  - Gravity
+  - IR
+  - Integrators
+  - Kinematics
+  - Laws
+  - Mass
+  - Material
+  - Mechanics
+  - Momentum
+  - Particle
+  - Pressure
+  - Quantity
+  - RigidBody
+  - Sensors
+  - SoftBody
+  - Solvers
+  - Temperature
+  - Thermodynamic
+  - Torque
+  - Units
+
+invariants:
+  - PHYSICS-INV-001
+  - PHYSICS-INV-002
+  - PHYSICS-INV-003
+  - PHYSICS-INV-004
+  - PHYSICS-INV-005
+  - PHYSICS-INV-006
+  - PHYSICS-INV-007
+  - PHYSICS-INV-008
+  - PHYSICS-INV-009
+  - PHYSICS-INV-010
+  - PHYSICS-INV-011
+  - PHYSICS-INV-012
+  - PHYSICS-INV-013
+  - PHYSICS-INV-014
+  - PHYSICS-INV-015
+  - PHYSICS-INV-016
+  - PHYSICS-INV-017
+  - PHYSICS-INV-018
+
+providers:
+  - id: chrono
+    role: multibody_physics_and_rigid_dynamics
+    status: operational
+

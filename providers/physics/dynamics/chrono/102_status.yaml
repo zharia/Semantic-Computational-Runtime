@@ -2,17 +2,30 @@ provider: chrono
 domain: physics
 subdomain: dynamics
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "physics.multibody.system_lifecycle"
+  - "physics.body.rigid_body_create"
+  - "physics.dynamics.apply_force"
+  - "physics.dynamics.step_forward"
+
+supported_versions:
+  - "Project Chrono 8.x / 9.x / Reference Symplectic Integrator"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

@@ -1,0 +1,9 @@
+{
+  "status": "PASSED",
+  "total_materials_tested": 96,
+  "total_reactions_tested": 27,
+  "physical_invariant_failures": [],
+  "optical_invariant_failures": [],
+  "reaction_invariant_failures": [],
+  "cross_reference_failures": []
+}

@@ -1,35 +1,74 @@
-# Continuity
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Continuity`
+id: SCR-LIB-TOPOLOGY-CONTINUITY
+name: Topology Continuity
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Continuity.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Continuity
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Topological continuity of maps between topological spaces — preservation of neighbourhood structure under function application.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+A map f: X → Y between topological spaces is **continuous** if the preimage of every open set in Y is open in X.
 
-## Relationship to Parent
+Continuity is:
 
-`Continuity` is a child of `303_Topology` within the SCR library hierarchy.
+- a property of maps, not merely of individual values;
+- independent of metric: no distance function is required;
+- fundamental to homeomorphism, homotopy, and manifold theory.
 
-## Scope Boundary
+## 2. Continuity Conditions
 
-No additional semantic contract is inferred from the directory's existence alone.
+```
+Continuous Map     → preimage of open sets are open
+Homeomorphism      → continuous bijection with continuous inverse
+Homotopy           → continuous family of maps parameterised by [0,1]
+```
 
-## Notes
+## 3. Continuity and Computation
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+Computational continuity contracts must declare:
+
+- which topology is used on the domain;
+- which topology is used on the codomain;
+- what it means for a numerical approximation to satisfy continuity.
+
+## 4. Invariants
+
+- **TOPOLOGY-INV-005**: Operations claiming continuity MUST satisfy their declared continuity contract.
+- **TOPOLOGY-INV-008**: Transformation integrity requires declaring whether the transformation is continuous.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Continuity** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Continuity is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

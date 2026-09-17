@@ -1,35 +1,77 @@
-# Cubical
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Cubical`
+id: SCR-LIB-TOPOLOGY-CUBICAL
+name: Topology Cubical
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Cubical.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Cubical
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Cubical topology and cubical complexes built from cubes and their faces, dual to simplicial topology.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Cubical topology** is the study and computational representation of topological spaces via cubical complexes — structures built from cubes (products of unit intervals) and their faces.
 
-## Relationship to Parent
+A cubical complex K consists of:
 
-`Cubical` is a child of `303_Topology` within the SCR library hierarchy.
+- elementary cubes of varying dimensions;
+- faces that are lower-dimensional cubes;
+- closure: if a cube is in K then all its faces are in K.
 
-## Scope Boundary
+## 2. Cubical Homology
 
-No additional semantic contract is inferred from the directory's existence alone.
+Cubical complexes support efficient homology computation on regular grids. The cubical chain complex:
 
-## Notes
+```
+... → Cₙ(K) → Cₙ₋₁(K) → ... → C₀(K) → 0
+```
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+provides the basis for cubical homology groups Hₙ(K).
+
+## 3. Applications
+
+Cubical complexes arise in:
+
+- digital topology (pixel/voxel structures);
+- persistent homology on image data;
+- computational fluid dynamics;
+- numerical simulation on structured grids.
+
+## 4. Invariants
+
+- **TOPOLOGY-INV-003**: Incidence integrity across cube faces.
+- **TOPOLOGY-INV-014**: Topological meaning MUST NOT depend on the cubical encoding.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Cubical** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Cubical is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

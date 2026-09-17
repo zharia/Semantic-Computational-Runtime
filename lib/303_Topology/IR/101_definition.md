@@ -5,57 +5,83 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-TOPOLOGY-IR
-name: Topology MLIR Dialect
+name: Topology IR
 
 version: 0.1.0
-status: draft
+status: operational
 
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-16
 
 parent: SCR-LIB-TOPOLOGY
-
 authority: SCR
 domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Topology MLIR Dialect
+# SCR Topology: IR
 
-> Directory documentation for the current SCR library tree.
+## Summary
 
-**Path:** `lib/303_Topology/IR`
+MLIR dialect interfaces and IR representations for topological semantics and compiler lowering pipelines.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 1. Semantic Definition
 
-This directory is MLIR dialect material for the Topology domain.
+The **Topology IR** subdomain defines the MLIR dialect interfaces, operations, and types through which topological semantics are represented in the SCR compiler infrastructure.
 
-## Current Contents
+```
+Topological Semantics
+       ↓
+  SCR Topology MLIR Dialect
+       ↓
+  Lowering Passes
+       ↓
+  Target Execution
+```
 
-The directory currently contains:
+## 2. MLIR-First Policy
 
-- `101_definition.md`
+Per the SCR MLIR-First Policy:
 
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
+- MLIR is the sole canonical compiler IR;
+- SCR does not maintain a parallel IR;
+- topology-specific operations SHOULD be expressed as MLIR operations.
 
-## Current Role
+MLIR does not define topological semantics. It carries them.
 
-The directory establishes the MLIR dialect location for Topology.
+## 3. Topological Operations in MLIR
 
-## Relationship to Parent
+Topology IR MAY provide:
 
-`IR` is a child of `303_Topology` and represents the MLIR dialect scope for the Topology semantic domain.
+- type representations for topological structures (complexes, spaces, manifolds);
+- operations for connectivity queries;
+- operations for boundary computation;
+- operations for topological predicates;
+- transformations expressed as MLIR passes;
+- lowering to accelerated backends.
 
-## Relationship to Core MLIR Dialect
+## 4. Invariants
 
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
+- **TOPOLOGY-INV-014**: Representation Independence — MLIR representation MUST NOT redefine topological meaning.
+- **TOPOLOGY-INV-016**: Provider Independence — MLIR backend substitution MUST preserve the semantic contract.
 
-## Scope Boundary
+## 5. Notes
 
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
+The SCR MLIR-First Policy forbids parallel IRs. Topology IR MUST be implemented as MLIR dialect infrastructure, not as a standalone data format.
 
-## Notes
+---
 
-The Topology MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+# Definition Authority
+
+This document defines the normative semantic meaning of the **IR** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **IR is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

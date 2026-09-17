@@ -2,17 +2,30 @@ provider: rabbitmq
 domain: system
 subdomain: messaging
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "system.messaging.rabbitmq.connection_lifecycle"
+  - "system.messaging.rabbitmq.queue_declare"
+  - "system.messaging.rabbitmq.publish"
+  - "system.messaging.rabbitmq.consume"
+
+supported_versions:
+  - "RabbitMQ 3.x / Reference In-Memory Queue Fallback"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

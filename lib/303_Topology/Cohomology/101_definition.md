@@ -1,35 +1,80 @@
-# Cohomology
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Cohomology`
+id: SCR-LIB-TOPOLOGY-COHOMOLOGY
+name: Topology Cohomology
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Cohomology.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Cohomology
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Cohomological structures dual to homology, providing algebraic tools for topological obstruction theory and characteristic classes.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Cohomology** is the dual algebraic structure to homology. Where homology measures topological cycles, cohomology measures the extent to which cycles bound cochains.
 
-## Relationship to Parent
+Cohomology groups Hⁿ(X; G) are computed from the cochain complex:
 
-`Cohomology` is a child of `303_Topology` within the SCR library hierarchy.
+```
+0 → C⁰(X; G) → C¹(X; G) → C²(X; G) → ...
+```
 
-## Scope Boundary
+where the coboundary operator δ: Cⁿ → Cⁿ⁺¹ satisfies δ∘δ = 0.
 
-No additional semantic contract is inferred from the directory's existence alone.
+## 2. Cohomology Products
 
-## Notes
+Cohomology possesses a ring structure via the cup product:
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+```
+⌣: Hᵖ(X; R) ⊗ Hq(X; R) → Hᵖ⁺q(X; R)
+```
+
+This ring structure contains information not present in homology.
+
+## 3. Applications
+
+Cohomology supports:
+
+- de Rham cohomology for differential forms;
+- Čech cohomology for sheaves;
+- obstruction theory;
+- characteristic classes;
+- Poincaré duality.
+
+## 4. Invariants
+
+- **TOPOLOGY-INV-006**: Equivalence claims MUST identify whether homeomorphism, homotopy equivalence, or another relation is used.
+- **TOPOLOGY-INV-007**: Cohomological invariants MUST be preserved under declared transformations.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Cohomology** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Cohomology is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

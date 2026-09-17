@@ -1,0 +1,33 @@
+{
+  "provider_id": "SCR-PRV-PHYSICS-FLUID",
+  "name": "fluid_dynamics_provider",
+  "domain": "physics",
+  "subdomain": "fluid",
+  "dependencies": [
+    "SCR-LIB-PHYSICS",
+    "SCR-LIB-SPATIAL"
+  ],
+  "capabilities": [
+    {
+      "tag": "physics.fluid.navier_stokes",
+      "description": "Incompressible and shallow water Navier-Stokes mass and momentum advection"
+    },
+    {
+      "tag": "physics.fluid.bingham_rheology",
+      "description": "Non-Newtonian yield stress and apparent viscosity modeling for magma/lava"
+    },
+    {
+      "tag": "physics.fluid.thermal_advection",
+      "description": "Thermal energy advection, Stefan-Boltzmann radiative cooling, and convective dissipation"
+    },
+    {
+      "tag": "physics.fluid.crust_solidification",
+      "description": "Phase transition, crust tearing, and solidus boundary formation"
+    }
+  ],
+  "artifacts": {
+    "c_api": "adapter/fluid_c_api.h",
+    "adapter": "adapter/fluid_adapter.cpp",
+    "test_suite": "tests/test_fluid_contract.cpp"
+  }
+}

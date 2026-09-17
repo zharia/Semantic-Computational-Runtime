@@ -2,17 +2,30 @@ provider: vulkan
 domain: render
 subdomain: graphics
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "render.graphics.vulkan.instance_lifecycle"
+  - "render.graphics.vulkan.device_query"
+  - "render.graphics.vulkan.buffer_create"
+  - "render.graphics.vulkan.queue_sync"
+
+supported_versions:
+  - "Vulkan 1.2 / 1.3 / Headless Reference Driver"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

@@ -118,3 +118,21 @@ invariants:
   - id: INTERFACE-INV-018
     name: Contract Traceability
     status: enforced
+
+providers:
+  - id: louvre
+    role: wayland_compositor_and_control_interface
+    status: operational
+  - id: dmabuf
+    role: linux_gpu_buffer_and_spatial_transfer
+    status: operational
+  - id: vulkan
+    role: renderable_and_compute_pipeline
+    status: operational
+  - id: rabbitmq
+    role: distributable_and_streamable_messaging
+    status: operational
+  - id: cuda
+    role: parallelizable_and_vectorizable_acceleration
+    status: operational
+

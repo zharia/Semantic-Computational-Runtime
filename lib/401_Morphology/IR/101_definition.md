@@ -5,57 +5,53 @@ document_type: normative_semantic_definition
 schema_version: 1.0.0
 
 id: SCR-LIB-MORPHOLOGY-IR
-name: Morphology MLIR Dialect
+name: Morphology IR
 
 version: 0.1.0
-status: draft
+status: operational
 
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-16
 
 parent: SCR-LIB-MORPHOLOGY
-
 authority: SCR
 domain: semantic-library
-classification: intermediate-representation
 ---
 
-# Morphology MLIR Dialect
+# SCR Morphology: IR
 
-> Directory documentation for the current SCR library tree.
+## Summary
 
-**Path:** `lib/401_Morphology/IR`
+Compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines.
 
-**Documentation role:** Repository inventory
+---
 
-## Purpose
+## 1. Semantic Definition
 
-This directory is MLIR dialect material for the Morphology domain.
+**IR** is a first-class subdomain of SCR Morphology (`SCR-LIB-MORPHOLOGY`). It addresses compiler intermediate representation, MLIR dialect bindings, and operational lowering pipelines.
 
-## Current Contents
+Morphology defines the structural organisation and form of entities independently of transient rendering engines, physical memory formats, or vendor graphics APIs.
 
-The directory currently contains:
+## 2. Invariant Conformance
 
-- `101_definition.md`
+All operations within `IR` MUST adhere to the normative invariants of `SCR-LIB-MORPHOLOGY`:
 
-No substantive MLIR dialect implementation was present when this documentation pass was performed.
+- **MORPHOLOGY-INV-001 (Identity)**: Morphological entities and parts possess stable semantic identity across transitions.
+- **MORPHOLOGY-INV-002 (Structural Integrity)**: Declared structural relationships remain valid throughout lifecycle transformations.
+- **MORPHOLOGY-INV-003 (Part-Whole Integrity)**: Component composition graphs MUST maintain acyclic and well-founded containment relationships.
+- **MORPHOLOGY-INV-016 (Representation Independence)**: The semantics of IR are authoritative and independent of carrier representations.
+- **MORPHOLOGY-INV-017 (Provider Independence)**: Algorithm or provider substitution preserves the morphological contract.
+- **MORPHOLOGY-INV-018 (Rendering Independence)**: Visual rendering appearances do not define or redefine morphological meaning.
 
-## Current Role
+## 3. Relationships to Other Domains
 
-The directory establishes the MLIR dialect location for Morphology.
+- **lib/101_Core/Identity**: Supplies canonical `SemanticId` coordinates for morphological parts and features.
+- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for component hierarchies and relations.
+- **lib/302_Geometry**: Supplies spatial embeddings, coordinates, and metric boundaries for morphological forms.
+- **lib/303_Topology**: Supplies topological connectivity, homology invariants, and continuity contracts.
 
-## Relationship to Parent
+---
 
-`IR` is a child of `401_Morphology` and represents the MLIR dialect scope for the Morphology semantic domain.
+# Definition Authority
 
-## Relationship to Core MLIR Dialect
-
-This directory defines the MLIR dialect representation for the corresponding semantic domain. SCR represents domain semantics through MLIR dialects, types, operations, attributes, and interfaces. This directory does not redefine or duplicate the Core semantic contract.
-
-## Scope Boundary
-
-This document records the current repository organization. It does not introduce additional domain MLIR semantics beyond those established elsewhere in SCR.
-
-## Notes
-
-The Morphology MLIR dialect has not yet been independently specified. This directory serves as a structural placeholder for future MLIR dialect development.
+This document establishes the normative semantic meaning of `IR` in SCR Morphology. Implementations, data structures, and compiler transforms are subordinate to the contracts specified herein.

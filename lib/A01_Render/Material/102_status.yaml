@@ -1,0 +1,108 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-RENDER-MATERIAL
+  path: lib/A01_Render/Material
+  name: Material
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Material
+  description: >
+    Normative semantic computational domain defining materials, appearance, optical response
+    functions (BSDF, EDF, VDF), shading closures, dataflow networks, physical layering, and look development.
+  purpose: >
+    Provide target-independent, physically plausible material definitions, closure algebra,
+    and look development bindings for perceptual rendering manifestations.
+
+capabilities:
+  - id: CAP-MAT-BSDF
+    name: Bidirectional Scattering Distribution Functions
+    status: operational
+  - id: CAP-MAT-EDF
+    name: Emission Distribution Functions
+    status: operational
+  - id: CAP-MAT-VDF
+    name: Volume Distribution Functions & Participating Media
+    status: operational
+  - id: CAP-MAT-CLOSURE
+    name: Shading Closure Algebra & Combinators
+    status: operational
+  - id: CAP-MAT-SHADINGNET
+    name: Typed Dataflow Shading Networks
+    status: operational
+  - id: CAP-MAT-LAYERING
+    name: Vertical Dielectric Layering & Energy Conservation
+    status: operational
+  - id: CAP-MAT-LOOK
+    name: Decoupled Look Development & Material Assignment
+    status: operational
+  - id: CAP-MAT-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+subdomains:
+  - BSDF
+  - EDF
+  - VDF
+  - Closure
+  - ShadingNetwork
+  - Surface
+  - Volume
+  - Displacement
+  - Look
+  - Pattern
+  - Layering
+  - Property
+
+invariants:
+  - MATERIAL-INV-001
+  - MATERIAL-INV-002
+  - MATERIAL-INV-003
+  - MATERIAL-INV-004
+  - MATERIAL-INV-005
+  - MATERIAL-INV-006
+  - MATERIAL-INV-007
+  - MATERIAL-INV-008
+  - MATERIAL-INV-009
+  - MATERIAL-INV-010
+  - MATERIAL-INV-011
+  - MATERIAL-INV-012
+  - MATERIAL-INV-013
+  - MATERIAL-INV-014
+  - MATERIAL-INV-015
+  - MATERIAL-INV-016
+  - MATERIAL-INV-017
+  - MATERIAL-INV-018
+
+providers:
+  - id: materialx
+    role: materialx_interchange_and_shadergen_provider
+    status: operational
+
+catalogs:
+  - file: 105_unified_materials_catalog.md
+    data: materials_catalog.json
+    total_materials: 96
+    status: operational
+
+reactions:
+  - file: 106_material_transformations_and_reactions.md
+    data: material_reactions.json
+    status: operational

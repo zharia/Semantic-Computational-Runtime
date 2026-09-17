@@ -6,3 +6,20 @@ __pycache__/
 build/
 target/
 
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# Build and runtime artifacts
+*.log
+*.so
+*.a
+*.o
+*.egg-info/
+imgui.ini
+
+# Cave applications and test binaries
+applications/cave/volcanic_island_app
+applications/cave/voxel_cave_app
+applications/cave/scr_simulation_hub
+providers/render/graphics/ogre/tests/test_ogre_contract

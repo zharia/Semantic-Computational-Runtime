@@ -111,3 +111,15 @@ invariants:
   - FIELD-INV-016
   - FIELD-INV-017
   - FIELD-INV-018
+
+providers:
+  - id: openvdb
+    role: volumetric_sparse_field_realization
+    status: operational
+  - id: blas
+    role: dense_tensor_and_linear_algebra
+    status: operational
+  - id: cuda
+    role: parallel_field_acceleration
+    status: operational
+

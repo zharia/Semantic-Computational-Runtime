@@ -2,15 +2,53 @@
   "provider": "vulkan",
   "domain": "render",
   "subdomain": "graphics",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "render.graphics.vulkan.instance_lifecycle",
+    "render.graphics.vulkan.device_query",
+    "render.graphics.vulkan.buffer_create",
+    "render.graphics.vulkan.queue_sync"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/vulkan_adapter.c"
+  ],
+  "adapters": [
+    "adapter/vulkan_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_vulkan_contract.c"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "gpu_memory"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "vulkan",
+      "target": "SCR-LIB-INTERFACES",
+      "relationship": "REALIZES",
+      "semantics": "Realizes the Renderable semantic interface substrate"
+    },
+    {
+      "source": "vulkan",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "SUPPORTS",
+      "semantics": "Executes low-level GPU rasterization and compute pipelines"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "Khronos Group Vulkan / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

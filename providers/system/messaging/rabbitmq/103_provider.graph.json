@@ -2,15 +2,54 @@
   "provider": "rabbitmq",
   "domain": "system",
   "subdomain": "messaging",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "system.messaging.rabbitmq.connection_lifecycle",
+    "system.messaging.rabbitmq.queue_declare",
+    "system.messaging.rabbitmq.publish",
+    "system.messaging.rabbitmq.consume"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/rabbitmq_adapter.c"
+  ],
+  "adapters": [
+    "adapter/rabbitmq_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_rabbitmq_contract.c"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "network_socket",
+    "host_memory"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "rabbitmq",
+      "target": "SCR-LIB-INTERFACES",
+      "relationship": "REALIZES",
+      "semantics": "Realizes Distributable and Streamable semantic interfaces"
+    },
+    {
+      "source": "rabbitmq",
+      "target": "SCR-LIB-STREAM",
+      "relationship": "SUPPORTS",
+      "semantics": "Provides message queue transport for data streams"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "RabbitMQ / VMware Tanzu / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

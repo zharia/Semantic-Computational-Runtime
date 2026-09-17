@@ -54,6 +54,24 @@
       "target": "SCR-LIB-RENDER",
       "relationship": "INFORMS",
       "semantics": "Radiance fields, density fields, and level sets inform visual synthesis"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "openvdb",
+      "relationship": "REALIZED_BY",
+      "semantics": "Volumetric sparse grid representation and field advection realized by OpenVDB"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "blas",
+      "relationship": "REALIZED_BY",
+      "semantics": "Dense tensor algebra and linear field evaluations realized by BLAS"
+    },
+    {
+      "source": "SCR-LIB-FIELDS",
+      "target": "cuda",
+      "relationship": "ACCELERATED_BY",
+      "semantics": "Parallelized field transformations and PDE evaluations accelerated by CUDA"
     }
   ],
   "subdomains": [

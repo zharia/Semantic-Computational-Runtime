@@ -2,15 +2,53 @@
   "provider": "chrono",
   "domain": "physics",
   "subdomain": "dynamics",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "physics.multibody.system_lifecycle",
+    "physics.body.rigid_body_create",
+    "physics.dynamics.apply_force",
+    "physics.dynamics.step_forward"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/chrono_adapter.cpp"
+  ],
+  "adapters": [
+    "adapter/chrono_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_chrono_contract.cpp"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "host_cpu"
+  ],
+  "platforms": [
+    "linux",
+    "darwin"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "chrono",
+      "target": "SCR-LIB-PHYSICS",
+      "relationship": "REALIZES",
+      "semantics": "Implements classical rigid body mechanics, forces, and collisions"
+    },
+    {
+      "source": "chrono",
+      "target": "SCR-LIB-DYNAMICS",
+      "relationship": "REALIZES",
+      "semantics": "Implements multibody state evolution and numerical integration"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "Project Chrono Open Source / Reference",
+    "integration_date": "2026-09-16"
+  }
 }

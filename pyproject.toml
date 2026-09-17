@@ -3,9 +3,33 @@ name = "scr"
 version = "0.0.1"
 description = "Semantic Computational Runtime — project-level toolchain"
 requires-python = ">=3.11"
-dependencies = [
-    "mojo==1.0.0",
-]
+# Mojo is installed via the Modular conda channel (see [tool.pixi.dependencies])
+# Do NOT add mojo here as a PyPI dependency — the PyPI wheels use manylinux_2_34
+# which pixi incorrectly resolves on NixOS despite glibc 2.42 being present.
+dependencies = []
 
 [tool.uv]
 package = false
+
+[tool.setuptools]
+# SCR is a Rust/Mojo project, not a Python package.
+# Disable auto-discovery to prevent setuptools failing on multiple top-level dirs.
+packages = []
+
+[tool.pixi.workspace]
+# Modular stable channel must come before conda-forge so that pixi resolves
+# mojo/max from the authoritative Modular channel, not from PyPI or conda-forge.
+channels = [
+    "https://conda.modular.com/max/",
+    "conda-forge",
+]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+# Mojo via conda channel — resolves correctly on NixOS regardless of manylinux tag.
+mojo = "*"
+
+[tool.pixi.pypi-dependencies]
+scr = { path = ".", editable = true }
+
+[tool.pixi.tasks]

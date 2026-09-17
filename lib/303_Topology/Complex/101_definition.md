@@ -1,35 +1,78 @@
-# Complex
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Complex`
+id: SCR-LIB-TOPOLOGY-COMPLEX
+name: Topology Complex
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Complex.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Complex
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Topological complexes — simplicial, cell, cubical — as discrete computational representations of topological spaces.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+A **topological complex** is a discrete combinatorial structure composed of building blocks (simplices, cells, cubes) that collectively represent a topological space.
 
-## Relationship to Parent
+Complexes provide computational handles for:
 
-`Complex` is a child of `303_Topology` within the SCR library hierarchy.
+- topological computation;
+- homology and cohomology;
+- discrete geometry;
+- computational topology.
 
-## Scope Boundary
+## 2. Types of Complexes
 
-No additional semantic contract is inferred from the directory's existence alone.
+```
+Simplicial Complex  → built from simplices (vertices, edges, triangles, tetrahedra)
+Cell Complex        → built from cells via attaching maps
+Cubical Complex     → built from cubes and their faces
+Delta Complex       → simplicial complex with relaxed glueing rules
+```
 
-## Notes
+## 3. Complex Semantics
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+A complex:
+
+- is a representation of topological structure, not the definition;
+- MUST maintain closure under face maps;
+- MUST be combinatorially consistent;
+- MUST NOT redefine topological semantics through its data structure.
+
+## 4. Invariants
+
+- **TOPOLOGY-INV-003**: Incidence integrity across complex elements.
+- **TOPOLOGY-INV-007**: Operations claiming invariant preservation MUST preserve the specified invariants.
+- **TOPOLOGY-INV-014**: Topological meaning MUST NOT depend on the choice of complex representation.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Complex** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Complex is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

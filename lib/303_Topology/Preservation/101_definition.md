@@ -1,35 +1,87 @@
-# Preservation
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Preservation`
+id: SCR-LIB-TOPOLOGY-PRESERVATION
+name: Topology Preservation
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Preservation.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Preservation
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Topology-preserving operations and transformations that maintain declared topological invariants across state transitions.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+A **topology-preserving** operation is one that does not change the relevant topological invariants of a structure.
 
-## Relationship to Parent
+A transformation T is topology-preserving with respect to invariant set I if:
 
-`Preservation` is a child of `303_Topology` within the SCR library hierarchy.
+```
+∀ inv ∈ I: inv(T(X)) = inv(X)
+```
 
-## Scope Boundary
+## 2. Declaring Preservation
 
-No additional semantic contract is inferred from the directory's existence alone.
+Operations MUST declare:
 
-## Notes
+- which topology they are preserving;
+- which invariants are guaranteed to be preserved;
+- the class of transformations used.
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+Undeclared preservation is not asserted.
+
+## 3. Examples of Topology-Preserving Operations
+
+- continuous deformation (homeomorphism);
+- rigid transformation (isometry);
+- topology-preserving mesh simplification;
+- re-parameterisation of a surface;
+- orientation-preserving homeomorphism.
+
+## 4. Contrast: Topology-Changing Operations
+
+Operations that intentionally change topology MUST be explicitly labelled:
+
+```
+Merge components     → topology change (reduces β₀)
+Create hole          → topology change (increases β₁)
+Split component      → topology change (increases β₀)
+```
+
+## 5. Invariants
+
+- **TOPOLOGY-INV-007**: Invariant Integrity — claimed preserved invariants MUST be preserved.
+- **TOPOLOGY-INV-008**: Transformation Integrity — transformations MUST satisfy their declared semantic effects.
+- **TOPOLOGY-INV-011**: State Integrity MUST hold after preservation operations.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Preservation** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Preservation is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

@@ -2,17 +2,31 @@ provider: blas
 domain: math
 subdomain: linear_algebra
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "math.linear_algebra.blas.gemm"
+  - "math.linear_algebra.blas.gemv"
+  - "math.linear_algebra.blas.dot"
+  - "math.linear_algebra.blas.nrm2"
+  - "math.linear_algebra.blas.axpy"
+
+supported_versions:
+  - "Standard CBLAS ABI / Reference Fallback"
+
+platforms:
+  - "linux"
+  - "darwin"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

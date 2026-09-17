@@ -1,0 +1,78 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-TOPOLOGY",
+  "name": "Topology",
+  "layer": "303_Topology",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/303_Topology",
+  "edges": [
+    {
+      "source": "SCR-LIB-CORE",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "SPECIALIZES",
+      "semantics": "Topology specialises foundational discrete, continuous, and structural concepts"
+    },
+    {
+      "source": "SCR-LIB-DATA",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "REFINES",
+      "semantics": "Topology defines the structural relationships of interconnected data"
+    },
+    {
+      "source": "SCR-LIB-IDENTITY",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "IDENTIFIES",
+      "semantics": "Identity supplies canonical semantic IDs for topological cells and entities"
+    },
+    {
+      "source": "SCR-LIB-HYPERGRAPH",
+      "target": "SCR-LIB-TOPOLOGY",
+      "relationship": "PROJECTS_TO",
+      "semantics": "Topological connectivity, cells, and incidences project to canonical hypergraphs"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "SCR-LIB-GEOMETRY",
+      "relationship": "STRUCTURALLY_UNDERLIES",
+      "semantics": "Topology provides connectivity, orientation, and boundary structure for geometric forms"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "SUPPORTS_DOMAINS_OF",
+      "semantics": "Continuous and discrete fields are defined across topological manifolds and cell complexes"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "CONSUMED_BY",
+      "semantics": "Rendering pipelines consume mesh topology and boundary connectivity"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "h3",
+      "relationship": "REALIZED_BY",
+      "semantics": "Discrete hexagonal spatial indexing and cellular complexes realized by H3"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "cgal",
+      "relationship": "REALIZED_BY",
+      "semantics": "Simplicial complexes, triangulations, and mesh topology realized by CGAL"
+    },
+    {
+      "source": "SCR-LIB-TOPOLOGY",
+      "target": "scr-hypergraph",
+      "relationship": "REALIZED_BY",
+      "semantics": "Canonical generalized topological hypergraphs realized by scr-hypergraph"
+    }
+  ],
+  "subdomains": [
+    "Adjacency", "Boundary", "Cell", "Cellular", "Cohomology",
+    "Complex", "Connectivity", "Continuity", "Cubical", "Deformation",
+    "EulerCharacteristic", "Genus", "Homology", "IR", "Manifold",
+    "Neighbourhood", "Orientation", "PointSet", "Preservation",
+    "Simplicial", "Transformation"
+  ]
+}

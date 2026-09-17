@@ -2,17 +2,29 @@ provider: cuda
 domain: system
 subdomain: accelerator
 
-status: seeded
-implementation_status: not_started
-contract_status: not_defined
-conformance_status: not_tested
+status: operational
+implementation_status: implemented
+contract_status: defined
+conformance_status: verified
 
-canonical: false
+canonical: true
 reference: false
 
-capabilities: []
-supported_versions: []
-platforms: []
-architectures: []
+capabilities:
+  - "system.accelerator.cuda.device_query"
+  - "system.accelerator.cuda.mem_alloc"
+  - "system.accelerator.cuda.mem_copy"
+  - "system.accelerator.cuda.stream_sync"
+
+supported_versions:
+  - "CUDA Toolkit 11.x / 12.x / Host Buffer Staging Fallback"
+
+platforms:
+  - "linux"
+
+architectures:
+  - "x86_64"
+  - "aarch64"
+
 dependencies: []
 limitations: []

@@ -1,0 +1,132 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-TOPOLOGY
+  path: lib/303_Topology
+  name: Topology
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Topology
+  description: >
+    Normative semantic computational domain concerned with connectivity, continuity,
+    adjacency, neighbourhood, incidence, boundaries, structural relationships, and
+    properties preserved under continuous transformations, independently of metric geometry.
+  purpose: >
+    Provide representation-independent topological semantics (spaces, open sets, simplicial
+    and cell complexes, boundary operators ∂∘∂=0, Euler characteristic, genus, homology invariants,
+    and topology-preserving vs changing transformations) with canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-TOPO-CELL-COMPLEX
+    name: Abstract Cell & Simplicial Complex Structures
+    status: operational
+  - id: CAP-TOPO-CONNECTIVITY
+    name: Connectivity, Path-Connectedness & Component Decomposition
+    status: operational
+  - id: CAP-TOPO-ADJACENCY-INCIDENCE
+    name: Adjacency Relations & Incidence Signatures
+    status: operational
+  - id: CAP-TOPO-BOUNDARY
+    name: Boundary Operators, Closures & Nilpotence (∂∘∂ = 0)
+    status: operational
+  - id: CAP-TOPO-CONTINUITY
+    name: Continuity Contracts, Neighbourhoods & Open Sets
+    status: operational
+  - id: CAP-TOPO-MANIFOLD
+    name: Manifold Classification, Orientability & Boundary Topology
+    status: operational
+  - id: CAP-TOPO-INVARIANTS
+    name: Topological Invariants (Euler Characteristic, Genus, Betti Numbers)
+    status: operational
+  - id: CAP-TOPO-TRANSFORMATION
+    name: Continuous Deformations, Homeomorphisms & Delta Invariants
+    status: operational
+  - id: CAP-TOPO-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+dependencies:
+  - id: SCR-LIB-IDENTITY
+    path: lib/101_Core/Identity
+    status: operational
+    relationship: provides_semantic_identity
+  - id: SCR-LIB-HYPERGRAPH
+    path: lib/203_Graph/Hypergraph
+    status: operational
+    relationship: provides_hypergraph_representation
+  - id: SCR-LIB-GEOMETRY
+    path: lib/302_Geometry
+    status: operational
+    relationship: interacts_with_geometric_embeddings
+
+subdomains:
+  - Adjacency
+  - Boundary
+  - Cell
+  - Cellular
+  - Cohomology
+  - Complex
+  - Connectivity
+  - Continuity
+  - Cubical
+  - Deformation
+  - EulerCharacteristic
+  - Genus
+  - Homology
+  - IR
+  - Manifold
+  - Neighbourhood
+  - Orientation
+  - PointSet
+  - Preservation
+  - Simplicial
+  - Transformation
+
+invariants:
+  - TOPOLOGY-INV-001
+  - TOPOLOGY-INV-002
+  - TOPOLOGY-INV-003
+  - TOPOLOGY-INV-004
+  - TOPOLOGY-INV-005
+  - TOPOLOGY-INV-006
+  - TOPOLOGY-INV-007
+  - TOPOLOGY-INV-008
+  - TOPOLOGY-INV-009
+  - TOPOLOGY-INV-010
+  - TOPOLOGY-INV-011
+  - TOPOLOGY-INV-012
+  - TOPOLOGY-INV-013
+  - TOPOLOGY-INV-014
+  - TOPOLOGY-INV-015
+  - TOPOLOGY-INV-016
+  - TOPOLOGY-INV-017
+  - TOPOLOGY-INV-018
+
+providers:
+  - id: h3
+    role: discrete_spatial_indexing_and_hexagonal_cells
+    status: operational
+  - id: cgal
+    role: simplicial_complexes_and_mesh_topology
+    status: operational
+  - id: scr-hypergraph
+    role: canonical_generalized_hypergraph_topology
+    status: operational
+

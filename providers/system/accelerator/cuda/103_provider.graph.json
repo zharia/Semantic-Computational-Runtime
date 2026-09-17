@@ -2,15 +2,53 @@
   "provider": "cuda",
   "domain": "system",
   "subdomain": "accelerator",
-  "status": "seeded",
-  "capabilities": [],
-  "contracts": [],
-  "implementations": [],
-  "adapters": [],
-  "artifacts": [],
+  "status": "operational",
+  "capabilities": [
+    "system.accelerator.cuda.device_query",
+    "system.accelerator.cuda.mem_alloc",
+    "system.accelerator.cuda.mem_copy",
+    "system.accelerator.cuda.stream_sync"
+  ],
+  "contracts": [
+    "104_contract.md"
+  ],
+  "implementations": [
+    "adapter/cuda_adapter.c"
+  ],
+  "adapters": [
+    "adapter/cuda_c_api.h"
+  ],
+  "artifacts": [
+    "tests/test_cuda_contract.c"
+  ],
   "dependencies": [],
-  "resources": [],
-  "platforms": [],
-  "architectures": [],
-  "provenance": {}
+  "resources": [
+    "gpu_memory",
+    "host_memory"
+  ],
+  "platforms": [
+    "linux"
+  ],
+  "architectures": [
+    "x86_64",
+    "aarch64"
+  ],
+  "edges": [
+    {
+      "source": "cuda",
+      "target": "SCR-LIB-INTERFACES",
+      "relationship": "REALIZES",
+      "semantics": "Implements Parallelizable and Vectorizable accelerator substrates"
+    },
+    {
+      "source": "cuda",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "SUPPORTS",
+      "semantics": "Accelerates dense volumetric and tensor field transformations"
+    }
+  ],
+  "provenance": {
+    "authoritative_source": "NVIDIA CUDA / Host Reference",
+    "integration_date": "2026-09-16"
+  }
 }

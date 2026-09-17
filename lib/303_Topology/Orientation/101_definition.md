@@ -1,35 +1,90 @@
-# Orientation
+---
 
-> Directory documentation for the current SCR library tree.
+document: 101_definition
+document_type: normative_semantic_definition
+schema_version: 1.0.0
 
-**Path:** `lib/303_Topology/Orientation`
+id: SCR-LIB-TOPOLOGY-ORIENTATION
+name: Topology Orientation
 
-**Documentation role:** Repository inventory
+version: 0.1.0
+status: operational
 
-## Purpose
+created: 2026-09-05
+updated: 2026-09-16
 
-This directory currently exists as a structural location within the SCR library hierarchy for Orientation.
+parent: SCR-LIB-TOPOLOGY
+authority: SCR
+domain: semantic-library
+---
 
-## Current Contents
+# SCR Topology: Orientation
 
-The directory currently contains:
+## Summary
 
-- `101_definition.md`
+Topological orientation of manifolds and complexes — consistent choice of direction across the structure.
 
-No substantive implementation was present when this documentation pass was performed.
+---
 
-## Current Role
+## 1. Semantic Definition
 
-The directory establishes a documented location for this area of the SCR library.
+**Orientation** is a consistent choice of local ordering of the elements of a topological structure — determining "which way is up" in a well-defined global sense.
 
-## Relationship to Parent
+A topological space is **orientable** if such a consistent global choice exists.
 
-`Orientation` is a child of `303_Topology` within the SCR library hierarchy.
+## 2. Orientability Examples
 
-## Scope Boundary
+```
+Sphere S²           → orientable
+Torus T²            → orientable
+Klein Bottle        → non-orientable
+Real Projective Plane → non-orientable
+Möbius Strip        → non-orientable (manifold with boundary)
+```
 
-No additional semantic contract is inferred from the directory's existence alone.
+## 3. Orientation and Manifolds
 
-## Notes
+For an orientable n-manifold:
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+- each chart is oriented;
+- transition maps have positive Jacobian determinant.
+
+## 4. Orientation in Meshes
+
+For a triangle mesh, orientation means:
+
+- vertices of each face listed in consistent winding order;
+- adjacent faces share edges with opposite orientation.
+
+A mesh may be represented as having consistent winding order in its data structure while the topological orientability depends on the underlying space.
+
+## 5. Applications
+
+Orientation matters for:
+
+- surface normals and rendering;
+- integration of differential forms;
+- Poincaré duality;
+- physical simulation (pressure, flux);
+- de Rham cohomology.
+
+## 6. Invariants
+
+- **TOPOLOGY-INV-007**: Orientability MUST be preserved by topology-preserving operations that claim to do so.
+- **TOPOLOGY-INV-015**: Orientability is a topological property, not a metric one.
+
+---
+
+# Definition Authority
+
+This document defines the normative semantic meaning of the **Orientation** subdomain of SCR Topology.
+
+Conforming implementations MUST satisfy the semantic contracts established here.
+
+Representation, storage, and provider choices MUST NOT redefine these semantics.
+
+---
+
+# Definition Principle
+
+> **Orientation is a topological concept whose meaning is authoritative. Implementation, representation, and computational substrate are subordinate to this semantic definition.**

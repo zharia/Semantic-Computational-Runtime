@@ -1,0 +1,137 @@
+---
+document: 102_status
+schema_version: 1.0.0
+---
+
+module:
+  id: SCR-LIB-DYNAMICS
+  path: lib/502_Dynamics
+  name: Dynamics
+  version: 0.1.0
+  status: operational
+  created: 2026-09-05
+  updated: 2026-09-16
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+    agent: antigravity
+
+domain:
+  name: Dynamics
+  description: >
+    Normative semantic computational domain concerned with change, evolution, transition,
+    interaction, feedback, stability, adaptation, and temporal development of systems and their states.
+  purpose: >
+    Provide representation-independent dynamical semantics (state spaces, continuous and discrete
+    vector fields, state transitions, state deltas, trajectory histories, stability analysis,
+    and equilibrium points) with canonical hypergraph projection.
+
+capabilities:
+  - id: CAP-DYN-STATE-SPACE
+    name: Multi-Dimensional State & Phase Space Formulations
+    status: operational
+  - id: CAP-DYN-TRANSITIONS
+    name: State Transitions & Semantic State Deltas
+    status: operational
+  - id: CAP-DYN-EVOLUTION
+    name: Continuous & Discrete Dynamical Evolution Laws
+    status: operational
+  - id: CAP-DYN-STABILITY
+    name: Qualitative Stability Analysis & Equilibrium Points
+    status: operational
+  - id: CAP-DYN-TRAJECTORIES
+    name: Temporal Trajectory Histories & Provenance Recovery
+    status: operational
+  - id: CAP-DYN-CONSTRAINTS
+    name: Explicit Dynamical Constraints & Manifold Bounds
+    status: operational
+  - id: CAP-DYN-HYPERGRAPH
+    name: Canonical Hypergraph Projection
+    status: operational
+
+dependencies:
+  - id: SCR-LIB-IDENTITY
+    path: lib/101_Core/Identity
+    status: operational
+    relationship: provides_semantic_identity
+  - id: SCR-LIB-HYPERGRAPH
+    path: lib/203_Graph/Hypergraph
+    status: operational
+    relationship: provides_hypergraph_representation
+  - id: SCR-LIB-MATHEMATICS
+    path: lib/202_Math
+    status: operational
+    relationship: provides_mathematical_structures
+  - id: SCR-LIB-PHYSICS
+    path: lib/501_Physics
+    status: operational
+    relationship: specializes_physical_evolution
+
+subdomains:
+  - Attractor
+  - Bifurcation
+  - Chaos
+  - Continuous
+  - Coupling
+  - Deterministic
+  - Difference
+  - Differential
+  - Discrete
+  - DynamicalSystem
+  - DynamicsSystem
+  - Equilibrium
+  - Evolution
+  - Feedback
+  - Hybrid
+  - IR
+  - Integration
+  - Integrators
+  - Linear
+  - Nonlinear
+  - Operators
+  - OrdinaryDifferential
+  - Oscillation
+  - PartialDifferential
+  - PhaseSpace
+  - Resonance
+  - Solvers
+  - Stability
+  - State
+  - StateSpace
+  - StateTransition
+  - Stochastic
+  - Synchronization
+  - Time
+  - Timescale
+
+invariants:
+  - DYNAMICS-INV-001
+  - DYNAMICS-INV-002
+  - DYNAMICS-INV-003
+  - DYNAMICS-INV-004
+  - DYNAMICS-INV-005
+  - DYNAMICS-INV-006
+  - DYNAMICS-INV-007
+  - DYNAMICS-INV-008
+  - DYNAMICS-INV-009
+  - DYNAMICS-INV-010
+  - DYNAMICS-INV-011
+  - DYNAMICS-INV-012
+  - DYNAMICS-INV-013
+  - DYNAMICS-INV-014
+  - DYNAMICS-INV-015
+  - DYNAMICS-INV-016
+  - DYNAMICS-INV-017
+  - DYNAMICS-INV-018
+
+providers:
+  - id: chrono
+    role: dynamical_simulation_and_step_integration
+    status: operational
+
