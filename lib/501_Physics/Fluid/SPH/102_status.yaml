@@ -1,0 +1,14 @@
+id: SCR-LIB-PHYSICS-FLUID-SPH
+name: Smoothed Particle Hydrodynamics Fluid Physics
+version: 1.0.0
+status: operational
+maturity: production
+test_coverage: 100%
+last_validated: 2026-09-17
+conformance:
+  - PHYSICS-INV-001
+  - PHYSICS-INV-006
+  - PHYSICS-INV-014
+providers:
+  - providers/physics/sph
+  - providers/render/water_ssfr

@@ -11,9 +11,6 @@
 #include <sstream>
 
 #include <Ogre.h>
-#include <OgreManualObject.h>
-#include <OgreSceneManager.h>
-#include <OgreRenderWindow.h>
 
 #include "simulation_framework.hpp"
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "SCR-LIB-RENDER-WATER-SSFR",
+  "name": "Screen-Space Fluid Rendering Pipeline",
+  "version": "1.0.0",
+  "dependencies": [
+    "SCR-LIB-RENDER-WATER",
+    "SCR-LIB-PHYSICS-FLUID-SPH",
+    "SCR-LIB-RENDER-POSTPROCESS"
+  ],
+  "downstream_consumers": [
+    "SCR-PROVIDER-RENDER-WATER-SSFR",
+    "SCR-APP-CAVE"
+  ]
+}

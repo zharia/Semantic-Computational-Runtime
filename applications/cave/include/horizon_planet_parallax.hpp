@@ -78,62 +78,7 @@ public:
         simulation_time += dt;
 
         parallaxObj->clear();
-        parallaxObj->begin("SCR/HorizonParallaxMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
-        std::vector<ParallaxVertex> verts;
-        std::vector<uint32_t> indices;
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 1. Distant Planetary Crater Rim / Mountains (Far Layer: 1400m - 1800m)
-        // ─────────────────────────────────────────────────────────────────────
-        buildHorizonMountainRing(
-            center_x, center_z,
-            1600.0f,          // Ring radius
-            180.0f,           // Base mountain height
-            56,               // Angular segments
-            0.65f,            // Mountain roughness
-            sky,
-            0.82f,            // Heavy atmospheric aerial fog blending
-            verts, indices
-        );
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 2. Mid Horizon Island & Caldera Ridges (Mid Layer: 750m - 950m)
-        // ─────────────────────────────────────────────────────────────────────
-        buildHorizonMountainRing(
-            center_x, center_z,
-            850.0f,           // Ring radius
-            110.0f,           // Base mountain height
-            48,               // Angular segments
-            0.85f,            // Mountain roughness
-            sky,
-            0.45f,            // Moderate aerial fog blending
-            verts, indices
-        );
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 3. Low-Lying Horizon Sea-Mist Ribbon (Blends ocean edge into sky)
-        // ─────────────────────────────────────────────────────────────────────
-        buildSeaMistRibbon(
-            center_x, center_z,
-            620.0f,           // Radius
-            22.0f,            // Height
-            64,               // Segments
-            sky,
-            verts, indices
-        );
-
-        // Commit all geometry to OGRE ManualObject
-        for (const auto& v : verts) {
-            parallaxObj->position(v.position);
-            parallaxObj->normal(v.normal);
-            parallaxObj->colour(v.color);
-        }
-        for (uint32_t idx : indices) {
-            parallaxObj->index(idx);
-        }
-
-        parallaxObj->end();
+        // Horizon is handled cleanly by the VolumetricAtmosphere and SeaOfThieves ocean without artificial billboard curtains.
     }
 
 private:

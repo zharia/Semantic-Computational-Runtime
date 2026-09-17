@@ -230,15 +230,7 @@ public:
                 bool jump, bool sprint, const Cave::VoxelCave& cave) {
         dt = std::min(dt, 0.05f); // Prevent tunneling
 
-        const auto& reg = Material::MaterialRegistry::instance();
-
         // 1. Footing Material & Water Immersion Check
-        int foot_x = (int)std::floor(position.x);
-        int foot_y = (int)std::floor(position.y - 0.1f);
-        int foot_z = (int)std::floor(position.z);
-        uint16_t foot_mat_code = cave.getVoxel(foot_x, foot_y, foot_z);
-        const auto& foot_mat = reg.get(foot_mat_code);
-
         int eye_x = (int)std::floor(position.x);
         int eye_y = (int)std::floor(position.y + 0.4f);
         int eye_z = (int)std::floor(position.z);

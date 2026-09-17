@@ -5,11 +5,12 @@
 #include <openvdb/tools/VolumeToMesh.h>
 
 #include <Ogre.h>
-#include <OgreManualObject.h>
 
 #include "spatial_semantics.hpp"
 #include "semantic_materials.hpp"
 #include "procedural_island.hpp"
+#include "spatial_partitions.hpp"
+#include "island_biome_types.hpp"
 
 #include <vector>
 #include <cmath>
@@ -73,25 +74,17 @@ public:
                   << triangles.size() << " triangles, " << quads.size() << " quads (adaptivity: " << adaptivity << ").\n";
 
         // 3. Stream Polygons into OGRE ManualObject
-        manualObj->clear();
-        manualObj->begin("SCR/VolcanicIslandMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
         const auto& reg = Material::MaterialRegistry::instance();
 
-        auto get_density = [&](float sx, float sy, float sz) -> float {
-            openvdb::Coord c((int)std::floor(sx), (int)std::floor(sy), (int)std::floor(sz));
-            return accessor.getValue(c);
-        };
-
-        // Compute Vertex Normals via Central Differences on the Density Field
+        // Compute Vertex Normals via Central Differences on the Continuous Density Field
         std::vector<Ogre::Vector3> ogre_normals;
         ogre_normals.reserve(points.size());
 
         for (const auto& p : points) {
-            float eps = 0.5f;
-            float dx_val = get_density(p.x() + eps, p.y(), p.z()) - get_density(p.x() - eps, p.y(), p.z());
-            float dy_val = get_density(p.x(), p.y() + eps, p.z()) - get_density(p.x(), p.y() - eps, p.z());
-            float dz_val = get_density(p.x(), p.y(), p.z() + eps) - get_density(p.x(), p.y(), p.z() - eps);
+            float eps = 0.25f;
+            float dx_val = island.sampleContinuousDensity(p.x() + eps, p.y(), p.z()) - island.sampleContinuousDensity(p.x() - eps, p.y(), p.z());
+            float dy_val = island.sampleContinuousDensity(p.x(), p.y() + eps, p.z()) - island.sampleContinuousDensity(p.x(), p.y() - eps, p.z());
+            float dz_val = island.sampleContinuousDensity(p.x(), p.y(), p.z() + eps) - island.sampleContinuousDensity(p.x(), p.y(), p.z() - eps);
 
             // Terrain normal points outward towards decreasing density (-gradient)
             Ogre::Vector3 n(-dx_val, -dy_val, -dz_val);
@@ -99,6 +92,9 @@ public:
             else n = Ogre::Vector3::UNIT_Y;
             ogre_normals.push_back(n);
         }
+
+        manualObj->clear();
+        manualObj->begin("SCR/VolcanicIslandMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
         // Emit Vertices with Material-Aware Albedo and Slope Blending
         for (size_t i = 0; i < points.size(); ++i) {
@@ -110,22 +106,85 @@ public:
             int vz = std::max(0, std::min(dz - 1, (int)std::floor(p.z())));
 
             uint16_t mat_code = island.getVoxel(vx, vy, vz);
-            if (mat_code == Material::MAT_AIR || mat_code == Material::MAT_WATER) {
-                // If isosurface falls in air/water boundary, determine biome by altitude and slope
-                float slope = 1.0f - std::max(0.0f, n.y); // 0 = flat, 1 = vertical cliff
+            float slope = 1.0f - std::max(0.0f, n.y); // 0 = flat horizontal, 1 = vertical cliff
 
-                if (p.y() <= island.sea_level + 1.8f) {
-                    mat_code = Material::MAT_SAND;
-                } else if (p.y() >= 24.0f) {
-                    float dist_c = std::sqrt(std::pow(p.x() - island.center_x, 2) + std::pow(p.z() - island.center_z, 2));
-                    if (dist_c < island.caldera_radius) mat_code = Material::MAT_OBSIDIAN;
-                    else mat_code = Material::MAT_BASALT;
-                } else if (slope > 0.45f) {
-                    mat_code = Material::MAT_BASALT; // Steep rock cliffs
-                } else if (p.y() >= 10.0f && p.y() <= 20.0f) {
-                    mat_code = Material::MAT_FOLIAGE; // Tropical vegetation
+            // Always apply surface biome & partition rules for natural isosurfaces
+            if (mat_code == Material::MAT_AIR || mat_code == Material::MAT_WATER ||
+                mat_code == Material::MAT_DIRT || mat_code == Material::MAT_BASALT ||
+                mat_code == Material::MAT_BEDROCK || mat_code == Material::MAT_SANDSTONE) {
+
+                if (island.biome_type == Island::IslandBiomeType::DESERT) {
+                    if (slope > 0.50f || p.y() > island.sea_level + 24.0f) mat_code = Material::MAT_SANDSTONE;
+                    else mat_code = Material::MAT_SAND;
+                } else if (island.biome_type == Island::IslandBiomeType::GLACIAL_ICE) {
+                    if (p.y() > island.sea_level + 16.0f || slope < 0.40f) mat_code = Material::MAT_ICE;
+                    else mat_code = Material::MAT_GRANITE;
+                } else if (island.biome_type == Island::IslandBiomeType::JUNGLE) {
+                    if (slope > 0.52f) mat_code = Material::MAT_DIRT;
+                    else if (p.y() >= island.sea_level + 1.2f) mat_code = Material::MAT_MOSS;
+                    else mat_code = Material::MAT_SAND;
+                } else if (island.biome_type == Island::IslandBiomeType::CORAL_ARCHIPELAGO) {
+                    if (p.y() <= island.sea_level + 2.5f) mat_code = Material::MAT_SAND;
+                    else if (slope < 0.45f) mat_code = Material::MAT_MOSS;
+                    else mat_code = Material::MAT_SANDSTONE;
                 } else {
-                    mat_code = Material::MAT_DIRT;
+                    // VOLCANO BIOME
+                    float d_cx = p.x() - island.center_x;
+                    float d_cz = p.z() - island.center_z;
+                    float r = std::sqrt(d_cx * d_cx + d_cz * d_cz);
+                    float theta = std::atan2(d_cz, d_cx);
+
+                    float ad = std::abs(theta - Island::VoxelIsland::RIVER_ANGLE);
+                    if (ad > 3.14159f) ad = 6.28318f - ad;
+                    float river_dist = r * ad;
+
+                    // 1. Bingham Plastic Molten Lava River
+                    if (r > island.caldera_radius * 0.55f && r < island.island_radius * 0.96f && river_dist < 4.2f) {
+                        if (river_dist < 1.8f) mat_code = Material::MAT_LAVA;
+                        else mat_code = Material::MAT_OBSIDIAN;
+                    }
+                    // 2. Caldera Summit Bowl & Magma Lake
+                    else if (r < island.caldera_radius * 1.35f) {
+                        float crater_floor_y = island.peak_height - island.caldera_depth;
+                        if (r < island.caldera_radius * 0.65f && p.y() <= crater_floor_y + 4.5f) {
+                            mat_code = (r < island.caldera_radius * 0.42f) ? Material::MAT_LAVA : Material::MAT_OBSIDIAN;
+                        } else if (p.y() >= island.peak_height - 4.5f) {
+                            float vent_noise = std::sin(p.x() * 0.4f) * std::cos(p.z() * 0.4f);
+                            if (vent_noise > 0.25f) mat_code = Material::MAT_SULFUR;
+                            else if (vent_noise < -0.30f) mat_code = Material::MAT_ASH;
+                            else mat_code = Material::MAT_PUMICE;
+                        } else if (slope > 0.45f) {
+                            mat_code = Material::MAT_OBSIDIAN;
+                        } else {
+                            mat_code = Material::MAT_BASALT;
+                        }
+                    }
+                    // 3. Flanks, Rainforest Canopy & High Slopes
+                    else if (p.y() < island.sea_level + 28.0f && r > island.caldera_radius * 1.3f) {
+                        if (p.y() <= island.sea_level + 1.8f) {
+                            mat_code = Material::MAT_SAND;
+                        } else if (slope < 0.48f) {
+                            float veg_noise = std::sin(p.x() * 0.12f) + std::cos(p.z() * 0.12f);
+                            if (veg_noise > 0.2f && p.y() < island.sea_level + 20.0f) mat_code = Material::MAT_FOLIAGE;
+                            else if (p.y() < island.sea_level + 14.0f) mat_code = Material::MAT_MOSS;
+                            else mat_code = Material::MAT_DIRT;
+                        } else {
+                            mat_code = (slope > 0.65f) ? Material::MAT_BASALT : Material::MAT_DIRT;
+                        }
+                    }
+                    // 4. Upper Cone & Stratified Volcanic Slopes
+                    else {
+                        float strata = std::sin(p.y() * 0.65f + std::sin(p.x() * 0.1f) * 1.5f);
+                        if (slope > 0.55f) {
+                            mat_code = (strata > 0.35f) ? Material::MAT_BASALT : Material::MAT_OBSIDIAN;
+                        } else if (strata > 0.50f) {
+                            mat_code = Material::MAT_PUMICE;
+                        } else if (strata < -0.40f) {
+                            mat_code = Material::MAT_ASH;
+                        } else {
+                            mat_code = Material::MAT_BASALT;
+                        }
+                    }
                 }
             }
 
@@ -133,11 +192,16 @@ public:
 
             manualObj->position(p.x(), p.y(), p.z());
             manualObj->normal(n.x, n.y, n.z);
-            manualObj->textureCoord(p.x() * 0.15f, p.z() * 0.15f);
 
-            // Shading Color with slight natural ambient variation
-            float ao = std::max(0.65f, std::min(1.0f, 0.7f + n.y * 0.3f));
-            manualObj->colour(mat.albedo.r * ao, mat.albedo.g * ao, mat.albedo.b * ao, 1.0f);
+            // Shading Color with ambient occlusion and natural geological grain
+            float ao = std::max(0.70f, std::min(1.0f, 0.75f + n.y * 0.25f));
+            float grain = 0.92f + 0.16f * std::sin(p.x() * 0.8f + p.y() * 1.4f + p.z() * 0.8f);
+            float r_col = std::min(1.0f, mat.albedo.r * ao * grain);
+            float g_col = std::min(1.0f, mat.albedo.g * ao * grain);
+            float b_col = std::min(1.0f, mat.albedo.b * ao * grain);
+
+            manualObj->colour(r_col, g_col, b_col, 1.0f);
+            manualObj->textureCoord(p.x() * 0.15f, p.z() * 0.15f);
         }
 
         // Triangles

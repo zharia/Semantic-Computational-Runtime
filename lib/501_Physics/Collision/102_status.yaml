@@ -1,0 +1,19 @@
+id: SCR-LIB-PHYSICS-COLLISION
+version: 0.1.0
+lifecycle: operational
+maturity: 3
+compliance:
+  PHYSICS-INV-001: verified
+  PHYSICS-INV-002: verified
+  PHYSICS-INV-003: verified
+  PHYSICS-INV-006: verified
+  PHYSICS-INV-014: verified
+  PHYSICS-INV-018: verified
+subdomains:
+  Broadphase: operational
+  Narrowphase: operational
+  Shapes: operational
+  Raycast: operational
+  Impact: operational
+providers:
+  bullet3: operational

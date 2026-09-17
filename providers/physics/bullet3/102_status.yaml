@@ -1,0 +1,22 @@
+id: SCR-PRV-PHYSICS-BULLET3
+name: Bullet3 Physics Provider
+version: 0.1.0
+lifecycle: operational
+maturity: 3
+compliance:
+  PHYSICS-INV-001: verified
+  PHYSICS-INV-002: verified
+  PHYSICS-INV-003: verified
+  PHYSICS-INV-006: verified
+  PHYSICS-INV-014: verified
+  PHYSICS-INV-018: verified
+capabilities:
+  broadphase: verified
+  narrowphase: verified
+  rigid_body: verified
+  static_mesh: verified
+  raycast: verified
+  impact_restitution: verified
+tests:
+  unit_contract: passed
+  system_integration: passed

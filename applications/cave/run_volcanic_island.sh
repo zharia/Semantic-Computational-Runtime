@@ -44,7 +44,7 @@ EOF
 
 compile_island() {
     echo "[Build] Compiling volcanic island explorer..."
-    nix-shell -p ogre openvdb tbb c-blosc SDL2 nlohmann_json pkg-config --run "
+    nix-shell -p ogre openvdb tbb c-blosc SDL2 nlohmann_json wayland wayland-protocols libxkbcommon foot weston alacritty pkg-config --run "
         g++ -std=c++17 -O2 \
             -I\"$APP_DIR/include\" \
             \$(pkg-config --cflags OGRE OGRE-Bites OGRE-RTShaderSystem OGRE-Overlay tbb blosc) \
@@ -54,6 +54,8 @@ compile_island() {
             \"$PROJECT_ROOT/providers/physics/fluid/adapter/fluid_adapter.cpp\" \
             \$(pkg-config --libs OGRE OGRE-Bites OGRE-RTShaderSystem OGRE-Overlay tbb blosc) \
             -L\"$VDB_STORE/lib\" -lopenvdb \
+            -lwayland-server -lxkbcommon \
+            -Wl,-rpath,\"$VDB_STORE/lib\" \
             -o \"$BIN\" 2>&1
     "
     echo "[Build] OK — $BIN"
@@ -81,5 +83,5 @@ export DISPLAY="${DISPLAY:-:0}"
 export OGRE_PLUGIN_DIR="$OGRE_STORE/lib/OGRE"
 export OGRE_RESOURCE_DIR="$OGRE_STORE/share/OGRE-14.5/Media"
 
-exec nix-shell -p ogre openvdb tbb c-blosc SDL2 nlohmann_json --run \
+exec nix-shell -p ogre openvdb tbb c-blosc SDL2 nlohmann_json wayland libxkbcommon foot weston alacritty --run \
     "LD_LIBRARY_PATH=\"$VDB_STORE/lib:\$LD_LIBRARY_PATH\" \"$BIN\""

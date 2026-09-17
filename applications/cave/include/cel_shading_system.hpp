@@ -2,9 +2,6 @@
 #define CAVE_CEL_SHADING_SYSTEM_HPP
 
 #include <Ogre.h>
-#include <OgreMaterialManager.h>
-#include <OgreHighLevelGpuProgramManager.h>
-#include <OgreGpuProgramParams.h>
 #include <iostream>
 #include <string>
 
@@ -80,7 +77,7 @@ void main() {
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // 2. GLSL Fragment Shader: Vibrant Cel / Toon Surface
+        // 2. GLSL Fragment Shader: Vibrant Cel / Toon Surface with Underwater Caustics & Optical Extinction
         // ─────────────────────────────────────────────────────────────────────
         Ogre::HighLevelGpuProgramPtr fp;
         if (!gpuMgr.resourceExists("SCR/CelSurfaceFP", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME)) {
@@ -94,6 +91,8 @@ void main() {
 uniform vec4 lightDiffuseColour;
 uniform vec4 lightSpecularColour;
 uniform vec4 ambientLightColour;
+uniform vec3 cameraPosition;
+uniform float timeVal;
 
 varying vec3 vWorldNormal;
 varying vec3 vWorldPos;
@@ -110,41 +109,67 @@ void main() {
 
     float NdotL = dot(N, L);
 
-    // ── 4-Tier Quantized Cel Light Steps (Vibrant Stylized Anime / Ghibli Aesthetic)
-    float band0 = smoothstep(-0.25, -0.15, NdotL);
-    float band1 = smoothstep( 0.05,  0.15, NdotL);
-    float band2 = smoothstep( 0.40,  0.50, NdotL);
-    float band3 = smoothstep( 0.72,  0.82, NdotL);
-    float celStep = 0.42 + 0.22 * band0 + 0.20 * band1 + 0.16 * band2 + 0.10 * band3;
+    // ── Smooth Stylized Cel Light Steps with Clean Shadow Termination
+    float diffuseFactor = max(0.0, NdotL);
+    float step1 = smoothstep(0.01, 0.08, diffuseFactor);
+    float step2 = smoothstep(0.32, 0.42, diffuseFactor);
+    float step3 = smoothstep(0.68, 0.78, diffuseFactor);
+    float celStep = 0.40 * step1 + 0.35 * step2 + 0.25 * step3;
 
-    // ── High-Contrast Cel Specular Hot-Spot ──────────────────────────────────
+    // ── Subtle Cel Specular Highlight ───────────────────────────────────────
     float NdotH = max(0.0, dot(N, H));
-    float spec = smoothstep(0.88, 0.94, NdotH) * 0.45;
+    float spec = smoothstep(0.92, 0.97, NdotH) * 0.22 * step1;
 
-    // ── Stylized Fresnel Rim Contour (Anime Edge Glow) ──────────────────────
+    // ── Subtle Stylized Fresnel Rim Contour (tinted by baseColor) ───────────
     float NdotV = max(0.0, dot(N, V));
-    float rim = pow(1.0 - NdotV, 2.5);
-    float rimGlow = smoothstep(0.50, 0.85, rim) * 0.35;
+    float rim = pow(1.0 - NdotV, 3.5);
+    float rimGlow = smoothstep(0.70, 0.95, rim) * 0.15;
 
-    // ── Hemispherical Sky Ambient ───────────────────────────────────────────
-    float hemiLight = clamp(0.75 + 0.25 * N.y, 0.65, 1.0);
-
-    // ── Composite Color with Rich Saturation ────────────────────────────────
+    // ── Composite Base Shading ───────────────────────────────────────────────
     vec3 baseColor = vColor.rgb;
-    vec3 ambient = ambientLightColour.rgb;
+    vec3 ambient = ambientLightColour.rgb * 0.55;
     vec3 lightCol = lightDiffuseColour.rgb;
 
-    vec3 diffuse = baseColor * (ambient * 0.75 + lightCol * celStep * 0.90) * hemiLight;
-    vec3 highlight = (lightSpecularColour.rgb * spec) + (lightDiffuseColour.rgb * rimGlow * 0.4);
+    vec3 diffuse = baseColor * (ambient + lightCol * celStep);
+    vec3 rimLight = baseColor * (ambient + lightCol * 0.5) * rimGlow;
+    vec3 specLight = lightSpecularColour.rgb * spec;
+    vec3 finalRgb = max(baseColor * 0.05, diffuse + rimLight + specLight);
 
-    vec3 finalRgb = diffuse + highlight;
-    gl_FragColor = vec4(finalRgb, vColor.a);
+    // ── Underwater Optical Extinction & Animated Caustics ────────────────────
+    const float SEA_LEVEL = 9.0;
+    bool isUnderwater = (cameraPosition.y < SEA_LEVEL);
+
+    if (isUnderwater) {
+        float distToCam = length(cameraPosition - vWorldPos);
+        float depthBelowSurface = max(0.0, SEA_LEVEL - vWorldPos.y);
+
+        // Dynamic Animated Solar Caustic Ripple Web
+        float c1 = sin(vWorldPos.x * 0.85 + vWorldPos.z * 0.75 + timeVal * 2.2) *
+                   cos(vWorldPos.x * 0.65 - vWorldPos.z * 0.95 + timeVal * 1.8);
+        float c2 = cos(vWorldPos.x * 1.35 - vWorldPos.z * 0.55 - timeVal * 2.6) *
+                   sin(vWorldPos.x * 0.75 + vWorldPos.z * 1.45 + timeVal * 1.6);
+        float caustic = max(0.0, (c1 + c2) * 0.5 + 0.15) * exp(-0.12 * depthBelowSurface) * 0.45;
+        vec3 causticColor = vec3(0.25, 0.85, 0.95) * caustic;
+
+        finalRgb += causticColor;
+
+        // Multi-Spectral Optical Attenuation (Beer-Lambert in Water)
+        vec3 absorption = vec3(0.035, 0.015, 0.008); // Red extinguishes first
+        vec3 extinction = exp(-absorption * distToCam);
+        vec3 abyssColor = vec3(0.02, 0.18, 0.32);
+
+        finalRgb = finalRgb * extinction + abyssColor * (vec3(1.0) - extinction);
+    }
+
+    gl_FragColor = vec4(finalRgb, 1.0);
 }
 )");
             auto params = fp->getDefaultParameters();
             params->setNamedAutoConstant("lightDiffuseColour", Ogre::GpuProgramParameters::ACT_LIGHT_DIFFUSE_COLOUR, 0);
             params->setNamedAutoConstant("lightSpecularColour", Ogre::GpuProgramParameters::ACT_LIGHT_SPECULAR_COLOUR, 0);
             params->setNamedAutoConstant("ambientLightColour", Ogre::GpuProgramParameters::ACT_AMBIENT_LIGHT_COLOUR);
+            params->setNamedAutoConstant("cameraPosition", Ogre::GpuProgramParameters::ACT_CAMERA_POSITION);
+            params->setNamedAutoConstant("timeVal", Ogre::GpuProgramParameters::ACT_TIME_0_X, 1.0f);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -170,8 +195,11 @@ void main() {
 
         applyCelShadingToMaterial("SCR/VolcanicIslandMaterial");
         applyCelShadingToMaterial("SCR/DiscreteBlockMaterial");
+        applyCelShadingToMaterial("SCR/VegetationMaterial");
+        applyCelShadingToMaterial("SCR/BasaltRockMaterial");
+        applyCelShadingToMaterial("SCR/VolcanicBoulderMaterial");
 
-        std::cout << "[CelShading] Initialized 4-tier Quantized Cel Shading + Specular + Fresnel Rim.\n";
+        std::cout << "[CelShading] Initialized 4-tier Quantized Cel Shading with Underwater Caustics & Optical Extinction.\n";
     }
 };
 

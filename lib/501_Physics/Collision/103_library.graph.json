@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "SCR-LIB-PHYSICS-COLLISION",
+  "name": "Physics Collision",
+  "type": "domain",
+  "nodes": [
+    { "id": "SCR-LIB-PHYSICS-COLLISION-BROADPHASE", "name": "Broadphase", "type": "subdomain" },
+    { "id": "SCR-LIB-PHYSICS-COLLISION-NARROWPHASE", "name": "Narrowphase", "type": "subdomain" },
+    { "id": "SCR-LIB-PHYSICS-COLLISION-SHAPES", "name": "Shapes", "type": "subdomain" },
+    { "id": "SCR-LIB-PHYSICS-COLLISION-RAYCAST", "name": "Raycast", "type": "subdomain" },
+    { "id": "SCR-LIB-PHYSICS-COLLISION-IMPACT", "name": "Impact", "type": "subdomain" }
+  ],
+  "edges": [
+    { "from": "SCR-LIB-PHYSICS-COLLISION", "to": "SCR-LIB-PHYSICS-COLLISION-BROADPHASE", "type": "contains" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION", "to": "SCR-LIB-PHYSICS-COLLISION-NARROWPHASE", "type": "contains" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION", "to": "SCR-LIB-PHYSICS-COLLISION-SHAPES", "type": "contains" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION", "to": "SCR-LIB-PHYSICS-COLLISION-RAYCAST", "type": "contains" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION", "to": "SCR-LIB-PHYSICS-COLLISION-IMPACT", "type": "contains" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION-BROADPHASE", "to": "SCR-LIB-PHYSICS-COLLISION-NARROWPHASE", "type": "feeds" },
+    { "from": "SCR-LIB-PHYSICS-COLLISION-NARROWPHASE", "to": "SCR-LIB-PHYSICS-COLLISION-IMPACT", "type": "triggers" }
+  ]
+}

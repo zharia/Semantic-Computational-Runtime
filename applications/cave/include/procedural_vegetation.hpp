@@ -182,9 +182,9 @@ public:
         p.foliage_clusters = 3;
         p.bark_dark   = Ogre::ColourValue(0.38f, 0.26f, 0.16f);
         p.bark_light  = Ogre::ColourValue(0.55f, 0.40f, 0.26f);
-        p.leaf_top    = Ogre::ColourValue(0.24f, 0.88f, 0.22f);
-        p.leaf_mid    = Ogre::ColourValue(0.14f, 0.65f, 0.16f);
-        p.leaf_shadow = Ogre::ColourValue(0.06f, 0.38f, 0.10f);
+        p.leaf_top    = Ogre::ColourValue(0.20f, 0.46f, 0.18f);
+        p.leaf_mid    = Ogre::ColourValue(0.14f, 0.36f, 0.12f);
+        p.leaf_shadow = Ogre::ColourValue(0.06f, 0.24f, 0.08f);
         p.has_blossoms = false;
         return p;
     }
@@ -210,9 +210,9 @@ public:
         p.foliage_clusters = 2;
         p.bark_dark   = Ogre::ColourValue(0.32f, 0.20f, 0.15f);
         p.bark_light  = Ogre::ColourValue(0.48f, 0.32f, 0.22f);
-        p.leaf_top    = Ogre::ColourValue(0.16f, 0.58f, 0.28f);
-        p.leaf_mid    = Ogre::ColourValue(0.08f, 0.44f, 0.20f);
-        p.leaf_shadow = Ogre::ColourValue(0.04f, 0.28f, 0.14f);
+        p.leaf_top    = Ogre::ColourValue(0.14f, 0.40f, 0.22f);
+        p.leaf_mid    = Ogre::ColourValue(0.08f, 0.30f, 0.16f);
+        p.leaf_shadow = Ogre::ColourValue(0.04f, 0.20f, 0.10f);
         p.has_blossoms = false;
         return p;
     }
@@ -238,9 +238,9 @@ public:
         p.foliage_clusters = 3;
         p.bark_dark   = Ogre::ColourValue(0.28f, 0.26f, 0.22f);
         p.bark_light  = Ogre::ColourValue(0.44f, 0.40f, 0.34f);
-        p.leaf_top    = Ogre::ColourValue(0.42f, 0.88f, 0.28f);
-        p.leaf_mid    = Ogre::ColourValue(0.28f, 0.70f, 0.20f);
-        p.leaf_shadow = Ogre::ColourValue(0.12f, 0.45f, 0.14f);
+        p.leaf_top    = Ogre::ColourValue(0.28f, 0.50f, 0.20f);
+        p.leaf_mid    = Ogre::ColourValue(0.20f, 0.40f, 0.15f);
+        p.leaf_shadow = Ogre::ColourValue(0.10f, 0.28f, 0.10f);
         p.has_blossoms = false;
         return p;
     }
@@ -266,9 +266,9 @@ public:
         p.foliage_clusters = 4;
         p.bark_dark   = Ogre::ColourValue(0.35f, 0.28f, 0.20f);
         p.bark_light  = Ogre::ColourValue(0.52f, 0.42f, 0.32f);
-        p.leaf_top    = Ogre::ColourValue(0.35f, 0.85f, 0.28f);
-        p.leaf_mid    = Ogre::ColourValue(0.22f, 0.65f, 0.20f);
-        p.leaf_shadow = Ogre::ColourValue(0.10f, 0.40f, 0.12f);
+        p.leaf_top    = Ogre::ColourValue(0.26f, 0.48f, 0.20f);
+        p.leaf_mid    = Ogre::ColourValue(0.18f, 0.38f, 0.14f);
+        p.leaf_shadow = Ogre::ColourValue(0.08f, 0.25f, 0.08f);
         p.has_blossoms = true;
         p.blossom_color = Ogre::ColourValue(0.96f, 0.32f, 0.64f);
         return p;
@@ -295,9 +295,9 @@ public:
         p.foliage_clusters = 2;
         p.bark_dark   = Ogre::ColourValue(0.30f, 0.30f, 0.32f);
         p.bark_light  = Ogre::ColourValue(0.88f, 0.88f, 0.84f);
-        p.leaf_top    = Ogre::ColourValue(0.55f, 0.92f, 0.25f);
-        p.leaf_mid    = Ogre::ColourValue(0.35f, 0.78f, 0.20f);
-        p.leaf_shadow = Ogre::ColourValue(0.18f, 0.52f, 0.14f);
+        p.leaf_top    = Ogre::ColourValue(0.32f, 0.52f, 0.20f);
+        p.leaf_mid    = Ogre::ColourValue(0.22f, 0.42f, 0.15f);
+        p.leaf_shadow = Ogre::ColourValue(0.12f, 0.30f, 0.10f);
         p.has_blossoms = false;
         return p;
     }
@@ -323,9 +323,9 @@ public:
         p.foliage_clusters = 4;
         p.bark_dark   = Ogre::ColourValue(0.40f, 0.30f, 0.25f);
         p.bark_light  = Ogre::ColourValue(0.62f, 0.48f, 0.38f);
-        p.leaf_top    = Ogre::ColourValue(0.28f, 0.72f, 0.35f);
-        p.leaf_mid    = Ogre::ColourValue(0.18f, 0.55f, 0.25f);
-        p.leaf_shadow = Ogre::ColourValue(0.10f, 0.35f, 0.18f);
+        p.leaf_top    = Ogre::ColourValue(0.22f, 0.45f, 0.26f);
+        p.leaf_mid    = Ogre::ColourValue(0.14f, 0.35f, 0.18f);
+        p.leaf_shadow = Ogre::ColourValue(0.08f, 0.24f, 0.12f);
         p.has_blossoms = true;
         p.blossom_color = Ogre::ColourValue(0.85f, 0.22f, 0.18f); // Cinnabar red tips
         return p;
@@ -352,9 +352,9 @@ public:
         p.foliage_clusters = 3;
         p.bark_dark   = Ogre::ColourValue(0.32f, 0.22f, 0.18f);
         p.bark_light  = Ogre::ColourValue(0.55f, 0.42f, 0.32f);
-        p.leaf_top    = Ogre::ColourValue(0.22f, 0.68f, 0.32f);
-        p.leaf_mid    = Ogre::ColourValue(0.14f, 0.50f, 0.22f);
-        p.leaf_shadow = Ogre::ColourValue(0.06f, 0.30f, 0.12f);
+        p.leaf_top    = Ogre::ColourValue(0.18f, 0.44f, 0.24f);
+        p.leaf_mid    = Ogre::ColourValue(0.12f, 0.34f, 0.16f);
+        p.leaf_shadow = Ogre::ColourValue(0.06f, 0.22f, 0.09f);
         p.has_blossoms = false;
         return p;
     }
@@ -377,9 +377,9 @@ public:
         p.foliage_clusters = 1;
         p.bark_dark   = Ogre::ColourValue(0.24f, 0.18f, 0.12f);
         p.bark_light  = Ogre::ColourValue(0.40f, 0.30f, 0.20f);
-        p.leaf_top    = Ogre::ColourValue(0.22f, 0.88f, 0.26f);
-        p.leaf_mid    = Ogre::ColourValue(0.12f, 0.66f, 0.18f);
-        p.leaf_shadow = Ogre::ColourValue(0.05f, 0.40f, 0.10f);
+        p.leaf_top    = Ogre::ColourValue(0.18f, 0.48f, 0.20f);
+        p.leaf_mid    = Ogre::ColourValue(0.10f, 0.38f, 0.14f);
+        p.leaf_shadow = Ogre::ColourValue(0.05f, 0.25f, 0.08f);
         p.has_blossoms = false;
         return p;
     }
@@ -405,9 +405,9 @@ public:
         p.foliage_clusters = 2;
         p.bark_dark   = Ogre::ColourValue(0.45f, 0.38f, 0.28f);
         p.bark_light  = Ogre::ColourValue(0.68f, 0.58f, 0.44f);
-        p.leaf_top    = Ogre::ColourValue(0.38f, 0.78f, 0.32f);
-        p.leaf_mid    = Ogre::ColourValue(0.24f, 0.58f, 0.22f);
-        p.leaf_shadow = Ogre::ColourValue(0.12f, 0.35f, 0.14f);
+        p.leaf_top    = Ogre::ColourValue(0.26f, 0.46f, 0.24f);
+        p.leaf_mid    = Ogre::ColourValue(0.18f, 0.36f, 0.16f);
+        p.leaf_shadow = Ogre::ColourValue(0.10f, 0.24f, 0.10f);
         p.has_blossoms = true;
         p.blossom_color = Ogre::ColourValue(0.92f, 0.90f, 0.75f);
         return p;
@@ -419,17 +419,17 @@ class FloraMeshBuilder {
 public:
     inline static const Ogre::ColourValue COL_PALM_TRUNK     = Ogre::ColourValue(0.65f, 0.48f, 0.32f, 1.0f);
     inline static const Ogre::ColourValue COL_PALM_RING      = Ogre::ColourValue(0.45f, 0.32f, 0.22f, 1.0f);
-    inline static const Ogre::ColourValue COL_PALM_FROND_TOP = Ogre::ColourValue(0.24f, 0.88f, 0.22f, 1.0f);
-    inline static const Ogre::ColourValue COL_PALM_FROND_BOT = Ogre::ColourValue(0.12f, 0.62f, 0.16f, 1.0f);
+    inline static const Ogre::ColourValue COL_PALM_FROND_TOP = Ogre::ColourValue(0.20f, 0.48f, 0.18f, 1.0f);
+    inline static const Ogre::ColourValue COL_PALM_FROND_BOT = Ogre::ColourValue(0.12f, 0.38f, 0.14f, 1.0f);
 
-    inline static const Ogre::ColourValue COL_BUSH_LUSH      = Ogre::ColourValue(0.20f, 0.78f, 0.24f, 1.0f);
+    inline static const Ogre::ColourValue COL_BUSH_LUSH      = Ogre::ColourValue(0.18f, 0.45f, 0.16f, 1.0f);
     inline static const Ogre::ColourValue COL_BUSH_FLOWER    = Ogre::ColourValue(0.98f, 0.38f, 0.50f, 1.0f);
-    inline static const Ogre::ColourValue COL_FERN_GREEN     = Ogre::ColourValue(0.26f, 0.82f, 0.28f, 1.0f);
+    inline static const Ogre::ColourValue COL_FERN_GREEN     = Ogre::ColourValue(0.20f, 0.48f, 0.20f, 1.0f);
 
     inline static const Ogre::ColourValue COL_ROCK_DARK      = Ogre::ColourValue(0.20f, 0.21f, 0.24f, 1.0f);
     inline static const Ogre::ColourValue COL_ROCK_LIGHT     = Ogre::ColourValue(0.42f, 0.44f, 0.48f, 1.0f);
-    inline static const Ogre::ColourValue COL_MOSS_DARK      = Ogre::ColourValue(0.15f, 0.44f, 0.12f, 1.0f);
-    inline static const Ogre::ColourValue COL_MOSS_LIGHT     = Ogre::ColourValue(0.34f, 0.78f, 0.22f, 1.0f);
+    inline static const Ogre::ColourValue COL_MOSS_DARK      = Ogre::ColourValue(0.15f, 0.36f, 0.12f, 1.0f);
+    inline static const Ogre::ColourValue COL_MOSS_LIGHT     = Ogre::ColourValue(0.26f, 0.48f, 0.18f, 1.0f);
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. EZ-Tree Parametric Tree Builder
@@ -1136,6 +1136,7 @@ public:
 
     std::vector<VegetationVertex> base_vertices;
     std::vector<uint32_t>         mesh_indices;
+    std::vector<Ogre::Vector3>    swayed_positions_;
 
     IslandVegetationSystem() {
         wind_dir = wind_dir.normalized();
@@ -1159,135 +1160,48 @@ public:
         // ─────────────────────────────────────────────────────────────────────
         std::vector<GroveDefinition> groves;
 
-        // Grove A: South-West Palm Beach Strand (Near southern coastline)
-        groves.push_back({
-            "South-West Palm Beach Strand",
-            island.center_x - island.island_radius * 0.45f,
-            island.center_z - island.island_radius * 0.48f,
-            24.0f,
-            FloraType::COASTAL_PALM_TREE,
-            16, 10, 8
-        });
-
-        // Grove B: South-East Palm Cove (Coastal dune cluster)
-        groves.push_back({
-            "South-East Palm Cove",
-            island.center_x + island.island_radius * 0.42f,
-            island.center_z - island.island_radius * 0.45f,
-            22.0f,
-            FloraType::COASTAL_PALM_TREE,
-            14, 8, 6
-        });
-
-        // Grove C: West Lowland Banyan & Hardwood Forest (Lush lowland soil)
-        groves.push_back({
-            "West Lowland Banyan & Hardwood Forest",
-            island.center_x - island.island_radius * 0.50f,
-            island.center_z + island.island_radius * 0.05f,
-            28.0f,
-            FloraType::BANYAN_OAK_TREE,
-            15, 14, 10
-        });
-
-        // Grove D: East Savanna Flowering Acacia Stand (Open sunny plateau)
-        groves.push_back({
-            "East Savanna Flowering Acacia Stand",
-            island.center_x + island.island_radius * 0.48f,
-            island.center_z + island.island_radius * 0.08f,
-            26.0f,
-            FloraType::PARASOL_ACACIA_TREE,
-            14, 12, 6
-        });
-
-        // Grove E: North-West Weeping Mangrove & Willow Cove (Sheltered waters)
-        groves.push_back({
-            "North-West Weeping Willow Cove",
-            island.center_x - island.island_radius * 0.35f,
-            island.center_z + island.island_radius * 0.48f,
-            24.0f,
-            FloraType::WEEPING_WILLOW_TREE,
-            12, 10, 8
-        });
-
-        // Grove F: North-East Slender Birch & Aspen Glade (Sunny glade)
-        groves.push_back({
-            "North-East Slender Birch & Aspen Glade",
-            island.center_x + island.island_radius * 0.32f,
-            island.center_z + island.island_radius * 0.45f,
-            25.0f,
-            FloraType::SLENDER_BIRCH_TREE,
-            15, 11, 7
-        });
-
-        // Grove G: South-East Highland Conifer Ridge (High evergreen ridge)
-        groves.push_back({
-            "South-East Highland Conifer Ridge",
-            island.center_x + island.island_radius * 0.28f,
-            island.center_z - island.island_radius * 0.20f,
-            22.0f,
-            FloraType::HIGHLAND_CONIFER_TREE,
-            12, 8, 8
-        });
-
-        // Grove H: North Highland Conifer Stand (Upper mountain ridge)
-        groves.push_back({
-            "North Highland Conifer Stand",
-            island.center_x - island.island_radius * 0.15f,
-            island.center_z + island.island_radius * 0.32f,
-            20.0f,
-            FloraType::HIGHLAND_CONIFER_TREE,
-            11, 7, 7
-        });
-
-        // Grove I: South-Central Floral Savanna (Warm sunny slopes)
-        groves.push_back({
-            "South-Central Floral Savanna",
-            island.center_x - island.island_radius * 0.12f,
-            island.center_z - island.island_radius * 0.35f,
-            22.0f,
-            FloraType::PARASOL_ACACIA_TREE,
-            13, 10, 6
-        });
-
-        // Grove J: Dragon Blood Volcanic Scree Plateau (West basalt slopes)
-        groves.push_back({
-            "Dragon Blood Volcanic Scree Plateau",
-            island.center_x - island.island_radius * 0.38f,
-            island.center_z - island.island_radius * 0.22f,
-            20.0f,
-            FloraType::DRAGON_BLOOD_TREE,
-            10, 6, 8
-        });
-
-        // Grove K: Prehistoric Tree Fern Caldera Moisture Pocket (North-West high caldera)
-        groves.push_back({
-            "Prehistoric Tree Fern Moisture Pocket",
-            island.center_x - island.island_radius * 0.22f,
-            island.center_z + island.island_radius * 0.18f,
-            18.0f,
-            FloraType::VOLCANIC_TREE_FERN,
-            12, 10, 5
-        });
-
-        // Grove L: Arid Joshua Tree Ridge (South rocky knoll)
-        groves.push_back({
-            "Arid Joshua Tree Knoll",
-            island.center_x + island.island_radius * 0.18f,
-            island.center_z - island.island_radius * 0.40f,
-            19.0f,
-            FloraType::JOSHUA_TREE_YUCCA,
-            10, 8, 7
-        });
-
-        // Grove M: Basalt Cliff Juniper Outcrop (North-East crag)
-        groves.push_back({
-            "Basalt Cliff Juniper Outcrop",
-            island.center_x + island.island_radius * 0.44f,
-            island.center_z + island.island_radius * 0.28f,
-            18.0f,
-            FloraType::CLIFF_JUNIPER_BONSAI,
-            8, 6, 10
-        });
+        if (island.biome_type == Island::IslandBiomeType::DESERT) {
+            // Oasis palms & Joshua trees / Yuccas
+            groves.push_back({"Central Oasis Date Palm Stand", island.center_x, island.center_z, 18.0f, FloraType::COASTAL_PALM_TREE, 18, 12, 6});
+            groves.push_back({"South-West Dune Joshua Stand", island.center_x - island.island_radius * 0.35f, island.center_z - island.island_radius * 0.35f, 22.0f, FloraType::JOSHUA_TREE_YUCCA, 14, 8, 8});
+            groves.push_back({"North-East Arch Joshua Stand", island.center_x + island.island_radius * 0.35f, island.center_z + island.island_radius * 0.35f, 20.0f, FloraType::JOSHUA_TREE_YUCCA, 12, 6, 10});
+            groves.push_back({"East Dragon Blood Knoll", island.center_x + island.island_radius * 0.40f, island.center_z - island.island_radius * 0.15f, 20.0f, FloraType::DRAGON_BLOOD_TREE, 10, 8, 8});
+        } else if (island.biome_type == Island::IslandBiomeType::GLACIAL_ICE) {
+            // Alpine Pines & Birches & Glacial Rocks
+            groves.push_back({"Glacial Foothill Pine Forest", island.center_x - island.island_radius * 0.30f, island.center_z - island.island_radius * 0.30f, 26.0f, FloraType::HIGHLAND_CONIFER_TREE, 20, 10, 12});
+            groves.push_back({"North-East Conifer Stand", island.center_x + island.island_radius * 0.32f, island.center_z + island.island_radius * 0.28f, 24.0f, FloraType::HIGHLAND_CONIFER_TREE, 18, 8, 10});
+            groves.push_back({"Arctic Aspen Glade", island.center_x + island.island_radius * 0.15f, island.center_z - island.island_radius * 0.35f, 20.0f, FloraType::SLENDER_BIRCH_TREE, 16, 12, 8});
+        } else if (island.biome_type == Island::IslandBiomeType::CORAL_ARCHIPELAGO) {
+            // Palm strands on all 5 islets
+            for (int k = 0; k < 5; ++k) {
+                float a = k * (6.2831853f / 5.0f);
+                float ix = island.center_x + std::cos(a) * (island.island_radius * 0.60f);
+                float iz = island.center_z + std::sin(a) * (island.island_radius * 0.60f);
+                groves.push_back({"Atoll Islet Palm Grove", ix, iz, 18.0f, FloraType::COASTAL_PALM_TREE, 12, 10, 6});
+            }
+        } else if (island.biome_type == Island::IslandBiomeType::JUNGLE) {
+            // Dense multi-canopy jungle
+            groves.push_back({"Highland Banyan Canopy", island.center_x - 20.0f, island.center_z + 15.0f, 32.0f, FloraType::BANYAN_OAK_TREE, 22, 18, 12});
+            groves.push_back({"East Rainforest Ridge", island.center_x + 35.0f, island.center_z - 20.0f, 28.0f, FloraType::BANYAN_OAK_TREE, 20, 16, 10});
+            groves.push_back({"Valley Fern Grotto", island.center_x, island.center_z, 24.0f, FloraType::VOLCANIC_TREE_FERN, 16, 14, 8});
+            groves.push_back({"Coastal Palm Fringe", island.center_x - island.island_radius * 0.45f, island.center_z - island.island_radius * 0.45f, 25.0f, FloraType::COASTAL_PALM_TREE, 16, 12, 6});
+            groves.push_back({"Weeping Mangrove Basin", island.center_x + island.island_radius * 0.35f, island.center_z + island.island_radius * 0.35f, 24.0f, FloraType::WEEPING_WILLOW_TREE, 14, 10, 8});
+        } else {
+            // VOLCANO
+            groves.push_back({"South-West Palm Beach Strand", island.center_x - island.island_radius * 0.45f, island.center_z - island.island_radius * 0.48f, 24.0f, FloraType::COASTAL_PALM_TREE, 16, 10, 8});
+            groves.push_back({"South-East Palm Cove", island.center_x + island.island_radius * 0.42f, island.center_z - island.island_radius * 0.45f, 22.0f, FloraType::COASTAL_PALM_TREE, 14, 8, 6});
+            groves.push_back({"West Lowland Banyan & Hardwood Forest", island.center_x - island.island_radius * 0.50f, island.center_z + island.island_radius * 0.05f, 28.0f, FloraType::BANYAN_OAK_TREE, 15, 14, 10});
+            groves.push_back({"East Savanna Flowering Acacia Stand", island.center_x + island.island_radius * 0.48f, island.center_z + island.island_radius * 0.08f, 26.0f, FloraType::PARASOL_ACACIA_TREE, 14, 12, 6});
+            groves.push_back({"North-West Weeping Willow Cove", island.center_x - island.island_radius * 0.35f, island.center_z + island.island_radius * 0.48f, 24.0f, FloraType::WEEPING_WILLOW_TREE, 12, 10, 8});
+            groves.push_back({"North-East Slender Birch & Aspen Glade", island.center_x + island.island_radius * 0.32f, island.center_z + island.island_radius * 0.45f, 25.0f, FloraType::SLENDER_BIRCH_TREE, 15, 11, 7});
+            groves.push_back({"South-East Highland Conifer Ridge", island.center_x + island.island_radius * 0.28f, island.center_z - island.island_radius * 0.20f, 22.0f, FloraType::HIGHLAND_CONIFER_TREE, 12, 8, 8});
+            groves.push_back({"North Highland Conifer Stand", island.center_x - island.island_radius * 0.15f, island.center_z + island.island_radius * 0.32f, 20.0f, FloraType::HIGHLAND_CONIFER_TREE, 11, 7, 7});
+            groves.push_back({"South-Central Floral Savanna", island.center_x - island.island_radius * 0.12f, island.center_z - island.island_radius * 0.35f, 22.0f, FloraType::PARASOL_ACACIA_TREE, 13, 10, 6});
+            groves.push_back({"Dragon Blood Volcanic Scree Plateau", island.center_x - island.island_radius * 0.38f, island.center_z - island.island_radius * 0.22f, 20.0f, FloraType::DRAGON_BLOOD_TREE, 10, 6, 8});
+            groves.push_back({"Prehistoric Tree Fern Moisture Pocket", island.center_x - island.island_radius * 0.22f, island.center_z + island.island_radius * 0.18f, 18.0f, FloraType::VOLCANIC_TREE_FERN, 12, 10, 5});
+            groves.push_back({"Arid Joshua Tree Knoll", island.center_x + island.island_radius * 0.18f, island.center_z - island.island_radius * 0.40f, 19.0f, FloraType::JOSHUA_TREE_YUCCA, 10, 8, 7});
+            groves.push_back({"Basalt Cliff Juniper Outcrop", island.center_x + island.island_radius * 0.44f, island.center_z + island.island_radius * 0.28f, 18.0f, FloraType::CLIFF_JUNIPER_BONSAI, 8, 6, 10});
+        }
 
         // ─────────────────────────────────────────────────────────────────────
         // 2. Synthesize Clustered Entities within each Grove
@@ -1306,7 +1220,7 @@ public:
                 FloraInstance inst;
                 inst.type = grove.primary_tree;
                 inst.pos = Spatial::Point3D(fx, h - 0.05f, fz);
-                inst.scale = (0.85f + rand_01(rng) * 0.35f) * 0.50f; // Scaled by 1/2
+                inst.scale = (1.0f + rand_01(rng) * 0.45f);
                 inst.rotation_yaw = rand_01(rng) * 6.2831853f;
                 inst.lean_angle = (grove.primary_tree == FloraType::COASTAL_PALM_TREE || grove.primary_tree == FloraType::CLIFF_JUNIPER_BONSAI)
                                   ? (0.18f + rand_01(rng) * 0.28f)
@@ -1329,7 +1243,7 @@ public:
                 FloraInstance inst;
                 inst.type = (rand_01(rng) > 0.4f) ? FloraType::TROPICAL_BUSH : FloraType::SLOPE_FERN;
                 inst.pos = Spatial::Point3D(fx, h - 0.03f, fz);
-                inst.scale = (0.70f + rand_01(rng) * 0.45f) * 0.50f; // Scaled by 1/2
+                inst.scale = (0.85f + rand_01(rng) * 0.45f);
                 inst.rotation_yaw = rand_01(rng) * 6.2831853f;
                 inst.lean_angle = 0.0f;
                 inst.lean_yaw = 0.0f;
@@ -1350,7 +1264,7 @@ public:
                 FloraInstance inst;
                 inst.type = (grove.primary_tree == FloraType::COASTAL_PALM_TREE) ? FloraType::COASTAL_BOULDER : FloraType::MOSSY_ROCK_CLUMP;
                 inst.pos = Spatial::Point3D(fx, h - 0.05f, fz);
-                inst.scale = (0.75f + rand_01(rng) * 0.50f) * 0.50f; // Scaled by 1/2
+                inst.scale = (0.90f + rand_01(rng) * 0.50f);
                 inst.rotation_yaw = rand_01(rng) * 6.2831853f;
                 inst.lean_angle = 0.0f;
                 inst.lean_yaw = 0.0f;
@@ -1374,7 +1288,7 @@ public:
             FloraInstance inst;
             inst.type = (h > 18.0f) ? FloraType::VOLCANIC_CRAG : ((h < 11.0f) ? FloraType::COASTAL_BOULDER : FloraType::MOSSY_ROCK_CLUMP);
             inst.pos = Spatial::Point3D(fx, h - 0.05f, fz);
-            inst.scale = (0.70f + rand_01(rng) * 0.60f) * 0.50f; // Scaled by 1/2
+            inst.scale = (1.00f + rand_01(rng) * 0.60f);
             inst.rotation_yaw = rand_01(rng) * 6.2831853f;
             inst.lean_angle = 0.0f;
             inst.lean_yaw = 0.0f;
@@ -1455,31 +1369,47 @@ public:
         vegObj->begin("SCR/VegetationMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
         float wind_time = simulation_time * wind_speed;
+        const size_t N = base_vertices.size();
+        if (swayed_positions_.size() != N) {
+            swayed_positions_.resize(N);
+        }
 
-        for (const auto& v : base_vertices) {
+        const float wt08 = wind_time * 0.8f;
+        const float wt24 = wind_time * 2.4f;
+        const float wt68 = wind_time * 6.8f;
+        const float wx = wind_dir.x;
+        const float wz = wind_dir.z;
+        const float ws = wind_strength;
+
+        #pragma GCC ivdep
+        for (size_t i = 0; i < N; ++i) {
+            const auto& v = base_vertices[i];
             if (v.wind_weight <= 0.01f) {
-                vegObj->position(v.position);
+                swayed_positions_[i] = v.position;
             } else {
                 // Tier 1: Trunk sway
-                float trunk_sway = std::sin(v.position.x * 0.12f + v.position.z * 0.12f + wind_time * 0.8f) * (v.wind_weight * v.wind_weight);
+                float trunk_sway = std::sin(v.position.x * 0.12f + v.position.z * 0.12f + wt08) * (v.wind_weight * v.wind_weight);
                 // Tier 2: Branch wave
-                float branch_wave = std::sin(v.position.x * 0.32f - v.position.z * 0.28f + wind_time * 2.4f) * v.wind_weight * 0.45f;
+                float branch_wave = std::sin(v.position.x * 0.32f - v.position.z * 0.28f + wt24) * (v.wind_weight * 0.45f);
                 // Tier 3: High-frequency leaf flutter
                 float leaf_flutter = (v.wind_weight > 0.45f)
-                    ? std::sin(v.position.x * 1.8f + v.position.y * 2.2f + v.position.z * 1.6f + wind_time * 6.8f) * 0.18f * v.wind_weight
+                    ? std::sin(v.position.x * 1.8f + v.position.y * 2.2f + v.position.z * 1.6f + wt68) * (0.18f * v.wind_weight)
                     : 0.0f;
 
-                float total_sway = (trunk_sway * 0.65f + branch_wave + leaf_flutter) * wind_strength;
+                float total_sway = (trunk_sway * 0.65f + branch_wave + leaf_flutter) * ws;
 
-                Ogre::Vector3 swayed_pos = v.position + Ogre::Vector3(
-                    wind_dir.x * total_sway,
-                    -std::abs(total_sway) * 0.15f,
-                    wind_dir.z * total_sway
+                swayed_positions_[i] = Ogre::Vector3(
+                    v.position.x + wx * total_sway,
+                    v.position.y - std::abs(total_sway) * 0.15f,
+                    v.position.z + wz * total_sway
                 );
-                vegObj->position(swayed_pos);
             }
-            vegObj->normal(v.normal);
-            vegObj->colour(v.color);
+        }
+
+        for (size_t i = 0; i < N; ++i) {
+            vegObj->position(swayed_positions_[i]);
+            vegObj->normal(base_vertices[i].normal);
+            vegObj->colour(base_vertices[i].color);
         }
 
         for (uint32_t idx : mesh_indices) {

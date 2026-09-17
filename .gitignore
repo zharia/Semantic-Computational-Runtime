@@ -22,4 +22,6 @@ imgui.ini
 applications/cave/volcanic_island_app
 applications/cave/voxel_cave_app
 applications/cave/scr_simulation_hub
+applications/cave/tests/test_simulation_pipeline
+applications/cave/tests/artifacts/
 providers/render/graphics/ogre/tests/test_ogre_contract

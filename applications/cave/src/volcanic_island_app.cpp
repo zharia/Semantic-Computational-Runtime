@@ -25,6 +25,7 @@
 #include "semantic_materials.hpp"
 #include "procedural_island.hpp"
 #include "vdb_island_mesher.hpp"
+#include "vdb_chunk_manager.hpp"
 #include "hierarchical_wfc.hpp"
 #include "ocean_simulation.hpp"
 #include "volumetric_clouds.hpp"
@@ -34,6 +35,9 @@
 #include "horizon_planet_parallax.hpp"
 #include "island_hud.hpp"
 #include "cel_shading_system.hpp"
+#include "wayland_compositor.hpp"
+#include "in_world_display.hpp"
+#include "nautical_navigation.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -339,31 +343,40 @@ public:
         roll += (target_roll - roll) * std::min(1.0f, dt * 10.0f);
 
         // ── 3. Smooth Step-Climbing & Terrain Traversal ────────────────────────
-        const float max_step_up = 0.45f; // Scaled step height
+        // ── 3. Smooth Step-Climbing, Mantling & Terrain Traversal ───────────────
+        const float max_step_up = 0.65f; // Scaled auto-step height
         float cur_ground = getGroundHeight(position.x, position.z, position.y, isl);
 
         // X movement
         float nx = position.x + velocity.x * dt;
-        if (nx >= 2.0f && nx <= isl.dim_x - 2.0f) {
-            float gx = getGroundHeight(nx, position.z, position.y, isl);
-            if ((gx - cur_ground) <= max_step_up && !isHorizontalBlocked(nx, position.y, position.z, player_radius, isl)) {
-                position.x = nx;
-                cur_ground = gx;
-            } else {
-                velocity.x = 0.0f;
+        float gx = getGroundHeight(nx, position.z, position.y, isl);
+        bool can_move_x = is_grounded ? ((gx - cur_ground) <= max_step_up) : (position.y + 0.35f >= gx);
+        if (can_move_x && !isHorizontalBlocked(nx, position.y, position.z, player_radius, isl)) {
+            position.x = nx;
+            cur_ground = gx;
+            if (is_grounded) {
+                position.y = gx;
+            } else if (position.y < gx) {
+                position.y = gx; // Mantle onto rock ledge
             }
+        } else {
+            velocity.x = 0.0f;
         }
 
         // Z movement
         float nz = position.z + velocity.z * dt;
-        if (nz >= 2.0f && nz <= isl.dim_z - 2.0f) {
-            float gz = getGroundHeight(position.x, nz, position.y, isl);
-            if ((gz - cur_ground) <= max_step_up && !isHorizontalBlocked(position.x, position.y, nz, player_radius, isl)) {
-                position.z = nz;
-                cur_ground = gz;
-            } else {
-                velocity.z = 0.0f;
+        float gz = getGroundHeight(position.x, nz, position.y, isl);
+        bool can_move_z = is_grounded ? ((gz - cur_ground) <= max_step_up) : (position.y + 0.35f >= gz);
+        if (can_move_z && !isHorizontalBlocked(position.x, position.y, nz, player_radius, isl)) {
+            position.z = nz;
+            cur_ground = gz;
+            if (is_grounded) {
+                position.y = gz;
+            } else if (position.y < gz) {
+                position.y = gz; // Mantle onto rock ledge
             }
+        } else {
+            velocity.z = 0.0f;
         }
 
         // ── 4. Vertical Dynamics, Double-Jump & Ground Physics ─────────────────
@@ -599,6 +612,14 @@ public:
     SCR::Volcano::VolcanicSmokePlume smoke_system;
     SCR::Vegetation::IslandVegetationSystem veg_system;
     SCR::Boids::MultiSpeciesBoidSystem boid_system;
+    std::unique_ptr<SCR::VDB::VdbChunkManager> chunk_manager;
+
+    // Embedded 3D Linux Wayland Compositor Display
+    SCR::Display::InWorldDisplaySystem wayland_display;
+    ManualObject* displayMesh = nullptr;
+    SceneNode*    displayNode = nullptr;
+    bool screen_focused = false;
+    float screen_u = 0.5f, screen_v = 0.5f;
 
     // ImGui overlay & input chain
     Ogre::ImGuiOverlay*          imgui_overlay  = nullptr;
@@ -809,6 +830,20 @@ public:
         rebuildSmokeMesh();
         rebuildOceanMesh();
 
+        // ── Embedded 3D Linux Wayland Compositor & In-World Screen ───────────
+        Wayland::WaylandCompositor::get().initialize("wayland-scr-0");
+        Vector3 screen_anchor(124.0f, 15.0f, 10.0f);
+        Vector3 look_origin(124.0f, 15.0f, 12.0f);
+        wayland_display.initialize(scnMgr, screen_anchor, look_origin);
+        wayland_display.is_visible = false;
+
+        displayMesh = scnMgr->createManualObject("WaylandDisplayMeshObj");
+        displayMesh->setDynamic(true);
+        wayland_display.update(displayMesh, 0.0f, Wayland::WaylandCompositor::get());
+        displayNode = scnMgr->getRootSceneNode()->createChildSceneNode("WaylandDisplayNode");
+        displayNode->attachObject(displayMesh);
+        displayNode->setVisible(false);
+
         // ── Initial time of day (Celestial Night with Spherical Moon, Stars, Nebula & Fireflies) ──
         sky_system.setTimeOfDay(21.0f);
         player->pitch = 0.36f;
@@ -924,10 +959,11 @@ public:
         if(!mm->getByName("SCR/BoidSpeciesMaterial")){
             MaterialPtr m=mm->create("SCR/BoidSpeciesMaterial",ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
             Pass* p=m->getTechnique(0)->getPass(0);
-            p->setVertexColourTracking(TVC_DIFFUSE|TVC_AMBIENT);
+            p->setVertexColourTracking(TVC_DIFFUSE|TVC_AMBIENT|TVC_EMISSIVE);
+            p->setAmbient(0.4f, 0.4f, 0.4f);
             p->setSpecular(0.6f, 0.6f, 0.6f, 1.0f);
             p->setShininess(32.f);
-            p->setShadingMode(SO_PHONG);
+            p->setShadingMode(SO_GOURAUD);
             p->setCullingMode(CULL_NONE);
         }
 
@@ -981,32 +1017,27 @@ public:
     void rebuildParallaxMesh(){
         if(parallaxMesh){ scnMgr->destroyManualObject(parallaxMesh); parallaxMesh=nullptr; }
         if(parallaxNode){ scnMgr->destroySceneNode(parallaxNode); parallaxNode=nullptr; }
-        parallaxMesh=scnMgr->createManualObject("ParallaxMeshObj");
-        parallaxMesh->setDynamic(true);
-        parallaxMesh->setRenderQueueGroup(RENDER_QUEUE_SKIES_EARLY + 1);
-        Spatial::Point3D cam_pos = player ? player->getEyePosition() : Spatial::Point3D(48, 15, 20);
-        float cx = island ? island->center_x : 48.0f;
-        float cz = island ? island->center_z : 48.0f;
-        parallax_system.updateParallaxMesh(parallaxMesh, 0.0f, sky_system, cam_pos, cx, cz);
-        parallaxNode=scnMgr->getRootSceneNode()->createChildSceneNode("ParallaxNode");
-        parallaxNode->attachObject(parallaxMesh);
-        logLine("[Horizon] Small-planet curvature horizon & multi-tier mountain/mist parallax initialized.");
+        scnMgr->setFog(Ogre::FOG_EXP, sky_system.horizon_color, 0.00018f, 200.0f, 8000.0f);
     }
 
     void rebuildIslandMesh(){
         if(islandMesh){ scnMgr->destroyManualObject(islandMesh); islandMesh=nullptr; }
         if(islandNode){ scnMgr->destroySceneNode(islandNode); islandNode=nullptr; }
-        islandMesh=scnMgr->createManualObject("IslandMeshObj");
-        islandMesh->setDynamic(true);
         if(mesh_mode==MESH_SMOOTH){
-            logLine("[Mesh] Generating smooth OpenVDB island isosurface...");
-            VDB::VdbIslandMesher::buildNaturalIslandMesh(islandMesh,*island,0.f,.025f);
+            logLine("[Mesh] Dynamic Paged OpenVDB Volumetric Chunks active.");
+            if(!chunk_manager) chunk_manager = std::make_unique<SCR::VDB::VdbChunkManager>();
+            Spatial::Point3D pos = player ? player->position : Spatial::Point3D(48, 15, 20);
+            chunk_manager->clearAllChunks(scnMgr);
+            chunk_manager->update(Ogre::Vector3(pos.x, pos.y, pos.z), *island, scnMgr, 0.0f);
         } else {
+            if(chunk_manager) chunk_manager->clearAllChunks(scnMgr);
             logLine("[Mesh] Generating discrete voxel island...");
+            islandMesh=scnMgr->createManualObject("IslandMeshObj");
+            islandMesh->setDynamic(true);
             VDB::VdbIslandMesher::buildDiscreteIslandMesh(islandMesh,*island);
+            islandNode=scnMgr->getRootSceneNode()->createChildSceneNode("IslandNode");
+            islandNode->attachObject(islandMesh);
         }
-        islandNode=scnMgr->getRootSceneNode()->createChildSceneNode("IslandNode");
-        islandNode->attachObject(islandMesh);
     }
 
     void rebuildVegetationMesh(){
@@ -1019,6 +1050,68 @@ public:
         vegNode=scnMgr->getRootSceneNode()->createChildSceneNode("VegetationNode");
         vegNode->attachObject(vegMesh);
         logLine("[Vegetation] Procedural flora ecosystem synthesized (palms, canopy trees, slope bushes).");
+    }
+
+    void warpToIsland(Island::IslandBiomeType biome) {
+        if (!island || !player) return;
+        const auto& desc = Island::ArchipelagoRegistry::getDescriptor(biome);
+        std::ostringstream ss; ss << "[Archipelago] Setting sail for: " << desc.name << " [" << desc.title_tag << "]";
+        logLine(ss.str());
+
+        island->setBiome(biome);
+        island->generateProceduralIsland(1337 + (int)biome * 7919);
+
+        if (chunk_manager) {
+            chunk_manager->clearAllChunks(scnMgr);
+        }
+
+        rebuildVegetationMesh();
+        rebuildBoidMesh();
+
+        if (lavaNode) lavaNode->setVisible(biome == Island::IslandBiomeType::VOLCANO);
+        if (smokeNode) smokeNode->setVisible(biome == Island::IslandBiomeType::VOLCANO);
+
+        player->position = island->findBeachSpawnPosition();
+        player->velocity = Spatial::Vector3D(0, 0, 0);
+
+        if (chunk_manager && scnMgr) {
+            chunk_manager->update(Ogre::Vector3(player->position.x, player->position.y, player->position.z), *island, scnMgr, 0.0f);
+        }
+
+        std::ostringstream arr_ss; arr_ss << "[Archipelago] Arrived at " << desc.name;
+        logLine(arr_ss.str());
+    }
+
+    void warpToPartition(Spatial::PartitionType type) {
+        if (!island || !player) return;
+        switch (type) {
+            case Spatial::PartitionType::CALDERA_SUMMIT:
+                player->position = Spatial::Point3D(island->center_x, island->peak_height + 2.0f, island->center_z);
+                break;
+            case Spatial::PartitionType::RAINFOREST_CANOPY:
+                player->position = Spatial::Point3D(island->center_x + 90.0f, island->getIslandHeight(island->center_x + 90.0f, island->center_z + 90.0f) + 1.2f, island->center_z + 90.0f);
+                break;
+            case Spatial::PartitionType::BASALT_CLIFFS:
+                player->position = Spatial::Point3D(island->center_x - 90.0f, island->getIslandHeight(island->center_x - 90.0f, island->center_z - 90.0f) + 1.2f, island->center_z - 90.0f);
+                break;
+            case Spatial::PartitionType::CORAL_LAGOON:
+                player->position = Spatial::Point3D(island->center_x + 85.0f, island->sea_level + 0.5f, island->center_z - 85.0f);
+                break;
+            case Spatial::PartitionType::SUBTERRANEAN_LAVA_TUBES:
+                player->position = Spatial::Point3D(island->center_x, 4.0f, island->center_z);
+                break;
+            case Spatial::PartitionType::DEEP_OCEAN_ABYSS:
+                player->position = Spatial::Point3D(island->center_x + 240.0f, island->sea_level + 0.5f, island->center_z + 240.0f);
+                break;
+            default:
+                break;
+        }
+        player->velocity = Spatial::Vector3D(0, 0, 0);
+        if (chunk_manager && scnMgr) {
+            chunk_manager->update(Ogre::Vector3(player->position.x, player->position.y, player->position.z), *island, scnMgr, 0.0f);
+        }
+        std::ostringstream ss; ss << "[Partition] Fast travel -> " << Spatial::SpatialPartitionRegistry::getDescriptor(type).name;
+        logLine(ss.str());
     }
 
     void rebuildBoidMesh(){
@@ -1100,6 +1193,94 @@ public:
 
         if(e.keysym.sym==SDLK_F12 || e.keysym.sym=='p' || e.keysym.sym=='P'){
             takeScreenshot();
+        }
+
+        // ── Unified Function Keys ───────────────────────────────────────────
+        if(e.keysym.sym==SDLK_F1){
+            logLine("[Wayland] Toggling terminal emulator (F1)...");
+            wayland_display.is_visible = !wayland_display.is_visible;
+            if (wayland_display.is_visible) {
+                Vector3 eye(player->position.x, player->smooth_eye_y, player->position.z);
+                float fwd_x = -std::sin(player->yaw) * std::cos(player->pitch);
+                float fwd_y =  std::sin(player->pitch);
+                float fwd_z = -std::cos(player->yaw) * std::cos(player->pitch);
+                wayland_display.summonInFrontOf(eye, Vector3(fwd_x, fwd_y, fwd_z), 2.5f);
+                Wayland::WaylandCompositor::get().launchTerminal();
+            } else {
+                if (displayMesh) displayMesh->clear();
+            }
+            if (displayNode) displayNode->setVisible(wayland_display.is_visible);
+        }
+        if(e.keysym.sym==SDLK_F2){
+            logLine("[Wayland] Launching interactive demo (F2)...");
+            wayland_display.is_visible = true;
+            Vector3 eye(player->position.x, player->smooth_eye_y, player->position.z);
+            float fwd_x = -std::sin(player->yaw) * std::cos(player->pitch);
+            float fwd_y =  std::sin(player->pitch);
+            float fwd_z = -std::cos(player->yaw) * std::cos(player->pitch);
+            wayland_display.summonInFrontOf(eye, Vector3(fwd_x, fwd_y, fwd_z), 2.5f);
+            if (displayNode) displayNode->setVisible(true);
+            Wayland::WaylandCompositor::get().launchDemo();
+        }
+        if(e.keysym.sym==SDLK_F3){
+            logLine("[Wayland] Launching text editor (F3)...");
+            wayland_display.is_visible = true;
+            Vector3 eye(player->position.x, player->smooth_eye_y, player->position.z);
+            float fwd_x = -std::sin(player->yaw) * std::cos(player->pitch);
+            float fwd_y =  std::sin(player->pitch);
+            float fwd_z = -std::cos(player->yaw) * std::cos(player->pitch);
+            wayland_display.summonInFrontOf(eye, Vector3(fwd_x, fwd_y, fwd_z), 2.5f);
+            if (displayNode) displayNode->setVisible(true);
+            Wayland::WaylandCompositor::get().launchEditor();
+        }
+        if(e.keysym.sym==SDLK_F4){
+            logLine("[Wayland] Closing active clients (F4)...");
+            wayland_display.is_visible = false;
+            if (displayMesh) displayMesh->clear();
+            if (displayNode) displayNode->setVisible(false);
+            Wayland::WaylandCompositor::get().closeClients();
+        }
+        if(e.keysym.sym==SDLK_F5){
+            sky_system.cyclePreset();
+            logLine(std::string("[Sky] Cloud preset (F5) -> ") + sky_system.getPresetName());
+        }
+        if(e.keysym.sym==SDLK_F6){
+            sky_system.setTimeOfDay(sky_system.time_of_day_hours + 1.0f);
+            std::ostringstream ss; ss << "[Sky] Time of day (F6): " << std::fixed << std::setprecision(1) << sky_system.time_of_day_hours << "h";
+            logLine(ss.str());
+        }
+        if(e.keysym.sym==SDLK_F7){
+            sky_system.setTimeOfDay(sky_system.time_of_day_hours - 1.0f);
+            std::ostringstream ss; ss << "[Sky] Time of day (F7): " << std::fixed << std::setprecision(1) << sky_system.time_of_day_hours << "h";
+            logLine(ss.str());
+        }
+        if(e.keysym.sym==SDLK_F8){
+            if(chunk_manager && island){
+                logLine("[Storage] Saving World Partition State to Disk (F8)...");
+                chunk_manager->saveWorld(
+                    Ogre::Vector3(player->position.x, player->position.y, player->position.z),
+                    sky_system.time_of_day_hours, 1337
+                );
+            }
+        }
+        if(e.keysym.sym==SDLK_F10){
+            mesh_mode=(mesh_mode==MESH_SMOOTH)?MESH_VOXEL:MESH_SMOOTH;
+            logLine(std::string("[Mesh] Toggle (F10) -> ")+(mesh_mode==MESH_SMOOTH?"OpenVDB Smooth":"Voxel Blocks"));
+            rebuildIslandMesh();
+        }
+
+        // ── Alt + Number: Sea of Thieves Archipelago Island Voyages ─────────
+        if(key_alt){
+            if(e.keysym.sym=='1'){ warpToIsland(Island::IslandBiomeType::VOLCANO); }
+            if(e.keysym.sym=='2'){ warpToIsland(Island::IslandBiomeType::JUNGLE); }
+            if(e.keysym.sym=='3'){ warpToIsland(Island::IslandBiomeType::DESERT); }
+            if(e.keysym.sym=='4'){ warpToIsland(Island::IslandBiomeType::GLACIAL_ICE); }
+            if(e.keysym.sym=='5'){ warpToIsland(Island::IslandBiomeType::CORAL_ARCHIPELAGO); }
+            if(e.keysym.sym=='6'){ warpToPartition(Spatial::PartitionType::DEEP_OCEAN_ABYSS); }
+        }
+
+        if(screen_focused){
+            Wayland::WaylandCompositor::get().sendKey(uint32_t(e.keysym.sym & 0xFF), true);
         }
 
         if(e.keysym.sym=='['){
@@ -1187,6 +1368,9 @@ public:
         if(e.keysym.sym==KEY_LCTRL || e.keysym.sym==KEY_RCTRL) key_ctrl=false;
         if(e.keysym.sym=='c' || e.keysym.sym=='C') key_c=false;
         if(e.keysym.sym==KEY_LALT || e.keysym.sym==KEY_RALT)   key_alt=false;
+        if(screen_focused){
+            Wayland::WaylandCompositor::get().sendKey(uint32_t(e.keysym.sym & 0xFF), false);
+        }
         return true;
     }
     bool mouseMoved(const MouseMotionEvent& e) override {
@@ -1194,6 +1378,10 @@ public:
         return true;
     }
     bool mousePressed(const MouseButtonEvent& e) override {
+        if(screen_focused){
+            Wayland::WaylandCompositor::get().sendPointerButton(0, (e.button == BUTTON_LEFT) ? 0x110 : 0x111, true);
+            return true;
+        }
         if(!player||!island) return true;
         const auto& reg=Material::MaterialRegistry::instance();
         auto hit=player->castRay(*island,12.f);
@@ -1236,9 +1424,7 @@ public:
 
         // Update volumetric atmosphere and sky dome
         sky_system.updateSkyDomeMesh(skyMesh, e.timeSinceLastFrame, *island, player->getEyePosition());
-        if(parallaxMesh) {
-            parallax_system.updateParallaxMesh(parallaxMesh, e.timeSinceLastFrame, sky_system, player->getEyePosition(), island->center_x, island->center_z);
-        }
+        scnMgr->setFog(Ogre::FOG_EXP, sky_system.horizon_color, 0.00018f, 200.0f, 8000.0f);
         if(sunLight && sunLight->getParentSceneNode()){
             float t_night = std::max(0.0f, std::min(1.0f, (0.12f - sky_system.sun_direction.y) / 0.32f));
             float night_factor = t_night * t_night * (3.0f - 2.0f * t_night);
@@ -1258,6 +1444,28 @@ public:
         if(vegMesh) veg_system.updateVegetationMesh(vegMesh, e.timeSinceLastFrame);
         lava_system.updateLavaMesh(lavaMesh, e.timeSinceLastFrame, *island);
         smoke_system.updateSmokeMesh(smokeMesh, e.timeSinceLastFrame, *island);
+
+        // ── Dispatch Wayland Compositor & In-World Display ───────────────────
+        Wayland::WaylandCompositor::get().dispatch(0);
+
+        if(cam){
+            Ray center_ray = cam->getCameraToViewportRay(0.5f, 0.5f);
+            float dist = 0.0f;
+            screen_focused = wayland_display.raycast(center_ray, screen_u, screen_v, dist);
+            if(screen_focused){
+                auto* surf = Wayland::WaylandCompositor::get().getPrimarySurface();
+                if(surf && surf->buffer.width > 0 && surf->buffer.height > 0){
+                    int px = (int)(screen_u * float(surf->buffer.width));
+                    int py = (int)(screen_v * float(surf->buffer.height));
+                    Wayland::WaylandCompositor::get().sendPointerMotion(surf->id, px, py);
+                }
+            }
+        }
+
+        if(displayMesh){
+            wayland_display.update(displayMesh, e.timeSinceLastFrame, Wayland::WaylandCompositor::get());
+            if(displayNode) displayNode->setVisible(wayland_display.is_visible);
+        }
 
         // Update multi-dimensional semantic boid flocks (2D shore sandpipers, 3D aerial/pelagic/vortex/fireflies, 4D hyperspatial luminaries)
         if(boidMesh) {
@@ -1323,20 +1531,35 @@ public:
             if (hudMesh) hudMesh->clear();
         }
 
+        // Dynamic Paged OpenVDB Volumetric Chunk Streaming
+        if (mesh_mode == MESH_SMOOTH && chunk_manager && island && player && scnMgr) {
+            chunk_manager->update(Ogre::Vector3(player->position.x, player->position.y, player->position.z), *island, scnMgr, e.timeSinceLastFrame);
+        }
+
         total_frames++;
-        if(total_frames == 15){
-            takeScreenshot("applications/cave/island_screenshot_night.png");
+        if (total_frames == 15) {
+            takeScreenshot("applications/cave/island_screenshot_volcano.png");
             takeScreenshot("applications/cave/island_screenshot.png");
-            sky_system.setTimeOfDay(17.8f);
-            player->pitch = 0.14f;
-            player->yaw = std::atan2(-(island->center_x - player->position.x), -(island->center_z - player->position.z));
-            updateCameraPose();
-        } else if(total_frames == 30){
-            takeScreenshot("applications/cave/island_screenshot_sunset.png");
+            warpToIsland(Island::IslandBiomeType::JUNGLE);
             sky_system.setTimeOfDay(12.0f);
             updateCameraPose();
-        } else if(total_frames == 45){
-            takeScreenshot("applications/cave/island_screenshot_noon.png");
+        } else if (total_frames == 30) {
+            takeScreenshot("applications/cave/island_screenshot_jungle.png");
+            warpToIsland(Island::IslandBiomeType::DESERT);
+            sky_system.setTimeOfDay(15.5f);
+            updateCameraPose();
+        } else if (total_frames == 45) {
+            takeScreenshot("applications/cave/island_screenshot_desert.png");
+            warpToIsland(Island::IslandBiomeType::GLACIAL_ICE);
+            sky_system.setTimeOfDay(11.0f);
+            updateCameraPose();
+        } else if (total_frames == 60) {
+            takeScreenshot("applications/cave/island_screenshot_ice.png");
+            warpToIsland(Island::IslandBiomeType::CORAL_ARCHIPELAGO);
+            sky_system.setTimeOfDay(13.0f);
+            updateCameraPose();
+        } else if (total_frames == 75) {
+            takeScreenshot("applications/cave/island_screenshot_archipelago.png");
         }
 
         return true;
@@ -1344,6 +1567,10 @@ public:
 
     void shutdown() override {
         logLine("\n[Session ended]");
+        if(chunk_manager){
+            chunk_manager->cleanup(scnMgr);
+            chunk_manager.reset();
+        }
         removeInputListener(&input_chain);
         if(imgui_input){ delete imgui_input; imgui_input=nullptr; }
         auto* sg=RTShader::ShaderGenerator::getSingletonPtr();

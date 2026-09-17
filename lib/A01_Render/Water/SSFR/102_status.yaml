@@ -1,0 +1,12 @@
+id: SCR-LIB-RENDER-WATER-SSFR
+name: Screen-Space Fluid Rendering Pipeline
+version: 1.0.0
+status: operational
+maturity: production
+test_coverage: 100%
+last_validated: 2026-09-17
+conformance:
+  - RENDER-INV-001
+  - RENDER-INV-004
+providers:
+  - providers/render/water_ssfr

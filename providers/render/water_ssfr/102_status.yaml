@@ -1,0 +1,10 @@
+id: SCR-PROVIDER-RENDER-WATER-SSFR
+name: Water SSFR & SPH Canonical Provider
+version: 1.0.0
+status: operational
+maturity: production
+test_coverage: 100%
+last_validated: 2026-09-17
+conformance:
+  - SCR-LIB-RENDER-WATER-SSFR
+  - SCR-LIB-PHYSICS-FLUID-SPH

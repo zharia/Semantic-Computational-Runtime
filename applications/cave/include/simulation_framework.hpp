@@ -86,6 +86,7 @@ struct UserInputState {
     bool move_up       = false;
     bool move_down     = false;
     bool sprint        = false;
+    bool crouch        = false;
     bool jump          = false;
     bool action_primary   = false;
     bool action_secondary = false;
@@ -135,9 +136,11 @@ public:
     ) = 0;
 
     /**
-     * Handles keypress events specific to this simulation.
+     * Handles keypress events specific to this simulation with modifier awareness.
      */
-    virtual bool handleKeyPress(int key, bool down) { (void)key; (void)down; return false; }
+    virtual bool handleKeyPress(int key, bool down, bool is_alt_down = false, bool is_ctrl_down = false) {
+        (void)key; (void)down; (void)is_alt_down; (void)is_ctrl_down; return false;
+    }
 
     /**
      * Releases all scene graph objects, nodes, lights, and materials.

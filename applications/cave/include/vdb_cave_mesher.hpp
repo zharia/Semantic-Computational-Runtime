@@ -6,7 +6,6 @@
 #include <openvdb/tools/LevelSetSphere.h>
 
 #include <Ogre.h>
-#include <OgreManualObject.h>
 
 #include "spatial_semantics.hpp"
 #include "semantic_materials.hpp"

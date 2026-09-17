@@ -423,12 +423,44 @@ public:
     }
 };
 
+// ─── 4b. 32-Byte Aligned Structure-of-Arrays (SoA) SIMD Buffer ────────────────
+template<size_t N>
+struct alignas(32) BoidSoABuffer {
+    static constexpr size_t MAX_BOIDS = 512;
+    alignas(32) float pos[N][MAX_BOIDS];
+    alignas(32) float vel[N][MAX_BOIDS];
+    alignas(32) float flap_phase[MAX_BOIDS];
+    size_t count = 0;
+
+    void syncFromAgents(const std::vector<BoidAgent<N>>& agents) {
+        count = std::min(agents.size(), MAX_BOIDS);
+        for (size_t i = 0; i < count; ++i) {
+            for (size_t d = 0; d < N; ++d) {
+                pos[d][i] = agents[i].position[d];
+                vel[d][i] = agents[i].velocity[d];
+            }
+            flap_phase[i] = agents[i].flap_phase;
+        }
+    }
+
+    void syncToAgents(std::vector<BoidAgent<N>>& agents) {
+        for (size_t i = 0; i < count; ++i) {
+            for (size_t d = 0; d < N; ++d) {
+                agents[i].position[d] = pos[d][i];
+                agents[i].velocity[d] = vel[d][i];
+            }
+            agents[i].flap_phase = flap_phase[i];
+        }
+    }
+};
+
 // ─── 5. Dimension-Agnostic Flocking Solver ────────────────────────────────────
 template<size_t N>
 class BoidFlock {
 public:
     BoidSpeciesConfig<N> config;
     std::vector<BoidAgent<N>> agents;
+    BoidSoABuffer<N> soa_buffer;
     float global_time = 0.0f;
     float w_slice_phase = 0.0f;
     VectorND<float, N> dynamic_waypoint;
@@ -461,6 +493,7 @@ public:
             agents[i].mode = BehaviorMode::CRUISING;
             agents[i].mode_timer = 3.0f + rand_01(flock_rng) * 5.0f;
         }
+        soa_buffer.syncFromAgents(agents);
     }
 
     void update(float dt, const Island::VoxelIsland& island) {
@@ -469,6 +502,9 @@ public:
 
         size_t count = agents.size();
         if (count == 0) return;
+
+        // Sync contiguous SoA buffers before vectorized computation
+        soa_buffer.syncFromAgents(agents);
 
         // ── 1. Dynamic Roaming Waypoint Progression (Emergent Biome Exploration) ──
         waypoint_timer -= dt;
@@ -498,17 +534,28 @@ public:
             dynamic_waypoint = new_target;
         }
 
-        // ── 2. Kuramoto Phase Coupling for Bioluminescent Fireflies ─────────────
+        // ── 2. Kuramoto Phase Coupling for Bioluminescent Fireflies (Vectorized) ──
         if (config.is_luminescent && config.boid_class == BoidClass::VOLCANIC_ENTOMOLOGY) {
             const float kuramoto_k = 1.8f;
+            float coh_r_sq = config.coh_radius * config.coh_radius;
+
             for (size_t i = 0; i < count; ++i) {
                 float phase_diff_sum = 0.0f;
                 int k_neighbors = 0;
+                float px = soa_buffer.pos[0][i];
+                float py = soa_buffer.pos[1][i];
+                float pz = (N > 2) ? soa_buffer.pos[2][i] : 0.0f;
+                float phi_i = soa_buffer.flap_phase[i];
+
+                #pragma GCC ivdep
                 for (size_t j = 0; j < count && k_neighbors < 8; ++j) {
                     if (i == j) continue;
-                    float d_sq = agents[i].position.distanceSq(agents[j].position);
-                    if (d_sq < config.coh_radius * config.coh_radius) {
-                        phase_diff_sum += std::sin(agents[j].flap_phase - agents[i].flap_phase);
+                    float dx = px - soa_buffer.pos[0][j];
+                    float dy = py - soa_buffer.pos[1][j];
+                    float dz = (N > 2) ? (pz - soa_buffer.pos[2][j]) : 0.0f;
+                    float d_sq = dx * dx + dy * dy + dz * dz;
+                    if (d_sq < coh_r_sq) {
+                        phase_diff_sum += std::sin(soa_buffer.flap_phase[j] - phi_i);
                         k_neighbors++;
                     }
                 }
@@ -518,7 +565,11 @@ public:
             }
         }
 
-        // ── 3. Reynolds Flocking & Multi-Scale Force Accumulation ──────────────
+        // ── 3. Reynolds Flocking & Multi-Scale Force Accumulation (SoA Accelerated) ─
+        float sep_r_sq = config.sep_radius * config.sep_radius;
+        float ali_r_sq = config.ali_radius * config.ali_radius;
+        float coh_r_sq = config.coh_radius * config.coh_radius;
+
         for (size_t i = 0; i < count; ++i) {
             auto& b = agents[i];
             b.mode_timer -= dt;
@@ -538,32 +589,45 @@ public:
                 }
             }
 
-            // ── A. Standard Reynolds Force Accumulation ────────────────────────
+            // ── A. Standard Reynolds Force Accumulation via Contiguous Arrays ──
             VectorND<float, N> f_sep;
             VectorND<float, N> f_ali;
             VectorND<float, N> f_coh;
             int n_sep = 0, n_ali = 0, n_coh = 0;
 
+            float b_pos[N];
+            for (size_t d = 0; d < N; ++d) b_pos[d] = soa_buffer.pos[d][i];
+
+            #pragma GCC ivdep
             for (size_t j = 0; j < count; ++j) {
                 if (i == j) continue;
-                const auto& other = agents[j];
-                float d_sq = b.position.distanceSq(other.position);
+                float d_sq = 0.0f;
+                float diff[N];
+                for (size_t d = 0; d < N; ++d) {
+                    diff[d] = b_pos[d] - soa_buffer.pos[d][j];
+                    d_sq += diff[d] * diff[d];
+                }
 
-                // Separation
-                if (d_sq < config.sep_radius * config.sep_radius && d_sq > 1e-4f) {
-                    float d = std::sqrt(d_sq);
-                    VectorND<float, N> diff = (b.position - other.position) / (d * d);
-                    f_sep += diff;
+                // Separation (inverse square push)
+                if (d_sq < sep_r_sq && d_sq > 1e-4f) {
+                    float inv_d_sq = 1.0f / d_sq;
+                    for (size_t d = 0; d < N; ++d) {
+                        f_sep[d] += diff[d] * inv_d_sq;
+                    }
                     n_sep++;
                 }
-                // Alignment
-                if (d_sq < config.ali_radius * config.ali_radius) {
-                    f_ali += other.velocity;
+                // Alignment (heading match)
+                if (d_sq < ali_r_sq) {
+                    for (size_t d = 0; d < N; ++d) {
+                        f_ali[d] += soa_buffer.vel[d][j];
+                    }
                     n_ali++;
                 }
-                // Cohesion
-                if (d_sq < config.coh_radius * config.coh_radius) {
-                    f_coh += other.position;
+                // Cohesion (center of mass)
+                if (d_sq < coh_r_sq) {
+                    for (size_t d = 0; d < N; ++d) {
+                        f_coh[d] += soa_buffer.pos[d][j];
+                    }
                     n_coh++;
                 }
             }
@@ -710,6 +774,11 @@ public:
     BoidFlock<3> flock_fireflies;  // Nocturnal Bioluminescent Fireflies (3D Canopy & Dunes)
 
     bool initialized = false;
+    float weather_storm_intensity = 0.0f;
+
+    void setWeatherStormIntensity(float intensity) {
+        weather_storm_intensity = std::max(0.0f, std::min(1.0f, intensity));
+    }
 
     void initialize(const Island::VoxelIsland& island) {
         flock_terns.initialize(SpeciesCatalog::getCoastalTropicTern(island), 32, 101);
@@ -745,6 +814,7 @@ public:
     /**
      * Synthesizes real-time 3D GPU mesh geometry for all active boid species
      * with wing flapping, undulating caudal fins, glowing firefly halos, and ember highlights.
+     * Generates explicit outward surface normals for crisp illumination and cel-shading.
      */
     void updateBoidMesh(Ogre::ManualObject* boidMesh, float dt, const Island::VoxelIsland& island) {
         if (!boidMesh) return;
@@ -755,7 +825,7 @@ public:
 
         uint32_t vert_idx = 0;
 
-        // 1. Render Coastal Tropic Terns (Avian Wings)
+        // 1. Render Coastal Tropic Terns (Avian Wings & Fuselage)
         for (const auto& b : flock_terns.agents) {
             Ogre::Vector3 p = b.position.to3D();
             Ogre::Vector3 fwd(b.velocity.x(), b.velocity.y(), b.velocity.z());
@@ -767,59 +837,135 @@ public:
             float wing_flap = std::sin(b.flap_phase) * 0.75f;
             float scale = flock_terns.config.scale;
 
-            // Fuselage & Wing vertices
-            Ogre::Vector3 beak  = p + fwd * (scale * 1.8f);
-            Ogre::Vector3 tail  = p - fwd * (scale * 1.2f);
-            Ogre::Vector3 wingL = p - fwd * (scale * 0.2f) - right * (scale * 2.2f) + up * (wing_flap * scale * 1.4f);
-            Ogre::Vector3 wingR = p - fwd * (scale * 0.2f) + right * (scale * 2.2f) + up * (wing_flap * scale * 1.4f);
-            Ogre::Vector3 belly = p - up * (scale * 0.35f);
-            Ogre::Vector3 back  = p + up * (scale * 0.35f);
+            Ogre::ColourValue c_white(0.96f, 0.98f, 1.00f);
+            Ogre::ColourValue c_black(0.12f, 0.15f, 0.18f);
+            Ogre::ColourValue c_beak(1.00f, 0.55f, 0.08f);
 
-            emitTetrahedron(beak, back, wingL, belly, flock_terns.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(beak, wingR, back, belly, flock_terns.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(back, tail, wingL, belly, flock_terns.config.color_secondary, boidMesh, vert_idx);
-            emitTetrahedron(back, wingR, tail, belly, flock_terns.config.color_secondary, boidMesh, vert_idx);
+            // Fuselage keypoints
+            Ogre::Vector3 beak    = p + fwd * (scale * 2.0f);
+            Ogre::Vector3 head    = p + fwd * (scale * 1.3f) + up * (scale * 0.35f);
+            Ogre::Vector3 breast  = p + fwd * (scale * 0.5f) - up * (scale * 0.35f);
+            Ogre::Vector3 back    = p + up * (scale * 0.35f);
+            Ogre::Vector3 belly   = p - up * (scale * 0.35f);
+            Ogre::Vector3 tail_base = p - fwd * (scale * 1.2f);
+            Ogre::Vector3 streamer_l = p - fwd * (scale * 2.4f) - right * (scale * 0.15f);
+            Ogre::Vector3 streamer_r = p - fwd * (scale * 2.4f) + right * (scale * 0.15f);
+
+            // Wing joints (articulated swept wings with flapping angle)
+            Ogre::Vector3 wing_l_mid = p - fwd * (scale * 0.1f) - right * (scale * 1.4f) + up * (wing_flap * scale * 0.7f);
+            Ogre::Vector3 wing_r_mid = p - fwd * (scale * 0.1f) + right * (scale * 1.4f) + up * (wing_flap * scale * 0.7f);
+            Ogre::Vector3 wing_l_tip = p - fwd * (scale * 0.6f) - right * (scale * 2.8f) + up * (wing_flap * scale * 1.4f);
+            Ogre::Vector3 wing_r_tip = p - fwd * (scale * 0.6f) + right * (scale * 2.8f) + up * (wing_flap * scale * 1.4f);
+
+            // Head & Beak
+            emitTriangle(beak, head, breast, c_beak, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(beak, breast, head, c_beak, c_white, c_white, boidMesh, vert_idx);
+
+            // Fuselage body facets
+            emitTriangle(head, back, wing_l_mid, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(head, wing_r_mid, back, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(breast, wing_l_mid, belly, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(breast, belly, wing_r_mid, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(back, tail_base, wing_l_mid, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(back, wing_r_mid, tail_base, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(belly, wing_l_mid, tail_base, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(belly, tail_base, wing_r_mid, c_white, c_white, c_white, boidMesh, vert_idx);
+
+            // Swept wings (inner + outer primary feathers with black tips)
+            emitTriangle(back, wing_l_tip, wing_l_mid, c_white, c_black, c_white, boidMesh, vert_idx);
+            emitTriangle(back, wing_l_mid, wing_l_tip, c_white, c_white, c_black, boidMesh, vert_idx);
+            emitTriangle(back, wing_r_mid, wing_r_tip, c_white, c_white, c_black, boidMesh, vert_idx);
+            emitTriangle(back, wing_r_tip, wing_r_mid, c_white, c_black, c_white, boidMesh, vert_idx);
+
+            // Long tail streamers
+            emitTriangle(tail_base, streamer_l, back, c_white, c_white, c_white, boidMesh, vert_idx);
+            emitTriangle(tail_base, back, streamer_r, c_white, c_white, c_white, boidMesh, vert_idx);
         }
 
-        // 2. Render Coral Reef Tangs (Streamlined Fish & Caudal Fin)
+        // 2. Render Coral Reef Tangs (Streamlined Laterally Compressed Fish & Caudal Fin)
         for (const auto& b : flock_tangs.agents) {
             Ogre::Vector3 p = b.position.to3D();
             Ogre::Vector3 fwd(b.velocity.x(), b.velocity.y(), b.velocity.z());
             fwd.normalise();
             Ogre::Vector3 up(0, 1, 0);
             Ogre::Vector3 right = fwd.crossProduct(up).normalisedCopy();
+            up = right.crossProduct(fwd).normalisedCopy();
 
-            float tail_wag = std::sin(b.flap_phase) * 0.65f;
+            float tail_wag = std::sin(b.flap_phase) * 0.75f;
             float scale = flock_tangs.config.scale;
 
-            Ogre::Vector3 snout = p + fwd * (scale * 1.5f);
-            Ogre::Vector3 mid_t = p + up * (scale * 0.75f);
-            Ogre::Vector3 mid_b = p - up * (scale * 0.75f);
-            Ogre::Vector3 fin_t = p - fwd * (scale * 1.4f) + right * (tail_wag * scale * 0.8f) + up * (scale * 0.6f);
-            Ogre::Vector3 fin_b = p - fwd * (scale * 1.4f) + right * (tail_wag * scale * 0.8f) - up * (scale * 0.6f);
+            Ogre::ColourValue c_blue(0.08f, 0.45f, 0.98f);
+            Ogre::ColourValue c_yellow(0.98f, 0.88f, 0.10f);
+            Ogre::ColourValue c_dark(0.06f, 0.12f, 0.22f);
 
-            emitTetrahedron(snout, mid_t, p - right * (scale * 0.25f), mid_b, flock_tangs.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(snout, p + right * (scale * 0.25f), mid_t, mid_b, flock_tangs.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(mid_t, fin_t, fin_b, mid_b, flock_tangs.config.color_secondary, boidMesh, vert_idx);
+            // Lateral compression: taller than wide
+            Ogre::Vector3 snout = p + fwd * (scale * 1.6f);
+            Ogre::Vector3 crest = p + fwd * (scale * 0.2f) + up * (scale * 0.9f);
+            Ogre::Vector3 belly = p + fwd * (scale * 0.2f) - up * (scale * 0.8f);
+            Ogre::Vector3 side_l = p - right * (scale * 0.32f);
+            Ogre::Vector3 side_r = p + right * (scale * 0.32f);
+            Ogre::Vector3 peduncle = p - fwd * (scale * 1.2f) + right * (tail_wag * scale * 0.35f);
+
+            // Caudal fin (bright yellow undulating tail)
+            Ogre::Vector3 fin_t = peduncle - fwd * (scale * 0.9f) + right * (tail_wag * scale * 0.9f) + up * (scale * 0.75f);
+            Ogre::Vector3 fin_b = peduncle - fwd * (scale * 0.9f) + right * (tail_wag * scale * 0.9f) - up * (scale * 0.75f);
+            Ogre::Vector3 fin_m = peduncle - fwd * (scale * 0.6f) + right * (tail_wag * scale * 0.6f);
+
+            // Head to torso
+            emitTriangle(snout, crest, side_l, c_blue, c_dark, c_blue, boidMesh, vert_idx);
+            emitTriangle(snout, side_r, crest, c_blue, c_blue, c_dark, boidMesh, vert_idx);
+            emitTriangle(snout, side_l, belly, c_blue, c_blue, c_blue, boidMesh, vert_idx);
+            emitTriangle(snout, belly, side_r, c_blue, c_blue, c_blue, boidMesh, vert_idx);
+
+            // Torso to tail peduncle
+            emitTriangle(crest, peduncle, side_l, c_dark, c_blue, c_blue, boidMesh, vert_idx);
+            emitTriangle(crest, side_r, peduncle, c_dark, c_blue, c_blue, boidMesh, vert_idx);
+            emitTriangle(belly, side_l, peduncle, c_blue, c_blue, c_blue, boidMesh, vert_idx);
+            emitTriangle(belly, peduncle, side_r, c_blue, c_blue, c_blue, boidMesh, vert_idx);
+
+            // Caudal fin fan
+            emitTriangle(peduncle, fin_t, fin_m, c_yellow, c_yellow, c_yellow, boidMesh, vert_idx);
+            emitTriangle(peduncle, fin_m, fin_t, c_yellow, c_yellow, c_yellow, boidMesh, vert_idx);
+            emitTriangle(peduncle, fin_m, fin_b, c_yellow, c_yellow, c_yellow, boidMesh, vert_idx);
+            emitTriangle(peduncle, fin_b, fin_m, c_yellow, c_yellow, c_yellow, boidMesh, vert_idx);
         }
 
-        // 3. Render Volcanic Ember Moths (Luminescent Wing Flutter)
+        // 3. Render Volcanic Ember Moths (Luminescent Fluttering Wings)
         for (const auto& b : flock_moths.agents) {
             Ogre::Vector3 p = b.position.to3D();
             float flutter = std::sin(b.flap_phase) * 0.85f;
             float scale = flock_moths.config.scale;
 
-            Ogre::Vector3 core_t = p + Ogre::Vector3(0, scale * 0.5f, 0);
-            Ogre::Vector3 core_b = p - Ogre::Vector3(0, scale * 0.5f, 0);
-            Ogre::Vector3 wing_l = p + Ogre::Vector3(-scale * 1.4f, flutter * scale * 0.8f, 0);
-            Ogre::Vector3 wing_r = p + Ogre::Vector3( scale * 1.4f, flutter * scale * 0.8f, 0);
-            Ogre::Vector3 wing_f = p + Ogre::Vector3(0, flutter * scale * 0.4f,  scale * 1.1f);
-            Ogre::Vector3 wing_k = p + Ogre::Vector3(0, flutter * scale * 0.4f, -scale * 1.1f);
+            Ogre::ColourValue c_amber(1.00f, 0.55f, 0.08f);
+            Ogre::ColourValue c_gold(1.00f, 0.85f, 0.25f);
+            Ogre::ColourValue c_charcoal(0.22f, 0.16f, 0.12f);
 
-            emitTetrahedron(core_t, wing_l, wing_f, core_b, flock_moths.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(core_t, wing_f, wing_r, core_b, flock_moths.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(core_t, wing_l, wing_k, core_b, flock_moths.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(core_t, wing_k, wing_r, core_b, flock_moths.config.color_primary, boidMesh, vert_idx);
+            Ogre::Vector3 head   = p + Ogre::Vector3(0, 0,  scale * 0.7f);
+            Ogre::Vector3 tail   = p + Ogre::Vector3(0, 0, -scale * 0.7f);
+            Ogre::Vector3 body_t = p + Ogre::Vector3(0,  scale * 0.35f, 0);
+            Ogre::Vector3 body_b = p - Ogre::Vector3(0,  scale * 0.35f, 0);
+
+            // Large gossamer forewings & hindwings
+            Ogre::Vector3 wing_fl = p + Ogre::Vector3(-scale * 2.2f, flutter * scale * 1.2f,  scale * 0.6f);
+            Ogre::Vector3 wing_fr = p + Ogre::Vector3( scale * 2.2f, flutter * scale * 1.2f,  scale * 0.6f);
+            Ogre::Vector3 wing_kl = p + Ogre::Vector3(-scale * 1.6f, flutter * scale * 0.7f, -scale * 0.8f);
+            Ogre::Vector3 wing_kr = p + Ogre::Vector3( scale * 1.6f, flutter * scale * 0.7f, -scale * 0.8f);
+
+            // Abdomen / Thorax
+            emitTriangle(head, body_t, tail, c_charcoal, c_gold, c_charcoal, boidMesh, vert_idx);
+            emitTriangle(head, tail, body_b, c_charcoal, c_charcoal, c_amber, boidMesh, vert_idx);
+
+            // Forewings (double-sided)
+            emitTriangle(body_t, wing_fl, head, c_gold, c_amber, c_charcoal, boidMesh, vert_idx);
+            emitTriangle(body_t, head, wing_fl, c_gold, c_charcoal, c_amber, boidMesh, vert_idx);
+            emitTriangle(body_t, head, wing_fr, c_gold, c_charcoal, c_amber, boidMesh, vert_idx);
+            emitTriangle(body_t, wing_fr, head, c_gold, c_amber, c_charcoal, boidMesh, vert_idx);
+
+            // Hindwings (double-sided)
+            emitTriangle(body_t, tail, wing_kl, c_gold, c_charcoal, c_amber, boidMesh, vert_idx);
+            emitTriangle(body_t, wing_kl, tail, c_gold, c_amber, c_charcoal, boidMesh, vert_idx);
+            emitTriangle(body_t, wing_kr, tail, c_gold, c_amber, c_charcoal, boidMesh, vert_idx);
+            emitTriangle(body_t, tail, wing_kr, c_gold, c_charcoal, c_amber, boidMesh, vert_idx);
         }
 
         // 4. Render Shoreline Sandpipers (2D Beach Surface Foragers)
@@ -831,95 +977,120 @@ public:
             Ogre::Vector3 right(-fwd.z, 0.0f, fwd.x);
             float scale = flock_sandpipers.config.scale;
 
-            Ogre::Vector3 head = p + fwd * (scale * 1.1f) + Ogre::Vector3(0, scale * 0.6f, 0);
-            Ogre::Vector3 tail = p - fwd * (scale * 0.9f) + Ogre::Vector3(0, scale * 0.3f, 0);
-            Ogre::Vector3 top  = p + Ogre::Vector3(0, scale * 0.8f, 0);
-            Ogre::Vector3 l_w  = p - right * (scale * 0.4f) + Ogre::Vector3(0, scale * 0.4f, 0);
-            Ogre::Vector3 r_w  = p + right * (scale * 0.4f) + Ogre::Vector3(0, scale * 0.4f, 0);
+            Ogre::ColourValue c_dune(0.85f, 0.78f, 0.65f);
+            Ogre::ColourValue c_brown(0.42f, 0.32f, 0.22f);
+            Ogre::ColourValue c_bill(0.20f, 0.18f, 0.15f);
 
-            emitTetrahedron(head, top, l_w, p, flock_sandpipers.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(head, r_w, top, p, flock_sandpipers.config.color_primary, boidMesh, vert_idx);
-            emitTetrahedron(top, tail, l_w, p, flock_sandpipers.config.color_secondary, boidMesh, vert_idx);
-            emitTetrahedron(top, r_w, tail, p, flock_sandpipers.config.color_secondary, boidMesh, vert_idx);
+            Ogre::Vector3 bill = p + fwd * (scale * 1.5f) + Ogre::Vector3(0, scale * 0.45f, 0);
+            Ogre::Vector3 head = p + fwd * (scale * 0.9f) + Ogre::Vector3(0, scale * 0.75f, 0);
+            Ogre::Vector3 back = p + Ogre::Vector3(0, scale * 0.85f, 0);
+            Ogre::Vector3 breast = p + fwd * (scale * 0.5f) + Ogre::Vector3(0, scale * 0.25f, 0);
+            Ogre::Vector3 belly  = p - Ogre::Vector3(0, scale * 0.05f, 0);
+            Ogre::Vector3 tail   = p - fwd * (scale * 1.1f) + Ogre::Vector3(0, scale * 0.45f, 0);
+            Ogre::Vector3 w_l    = p - right * (scale * 0.45f) + Ogre::Vector3(0, scale * 0.45f, 0);
+            Ogre::Vector3 w_r    = p + right * (scale * 0.45f) + Ogre::Vector3(0, scale * 0.45f, 0);
+
+            // Beak
+            emitTriangle(bill, head, breast, c_bill, c_dune, c_dune, boidMesh, vert_idx);
+            emitTriangle(bill, breast, head, c_bill, c_dune, c_dune, boidMesh, vert_idx);
+
+            // Plump body facets
+            emitTriangle(head, back, w_l, c_dune, c_brown, c_brown, boidMesh, vert_idx);
+            emitTriangle(head, w_r, back, c_dune, c_brown, c_brown, boidMesh, vert_idx);
+            emitTriangle(breast, w_l, belly, c_dune, c_brown, c_dune, boidMesh, vert_idx);
+            emitTriangle(breast, belly, w_r, c_dune, c_dune, c_brown, boidMesh, vert_idx);
+            emitTriangle(back, tail, w_l, c_brown, c_brown, c_brown, boidMesh, vert_idx);
+            emitTriangle(back, w_r, tail, c_brown, c_brown, c_brown, boidMesh, vert_idx);
+            emitTriangle(belly, w_l, tail, c_dune, c_brown, c_brown, boidMesh, vert_idx);
+            emitTriangle(belly, tail, w_r, c_dune, c_brown, c_brown, boidMesh, vert_idx);
         }
 
-        // 5. Render Hyperspatial Luminaries (4D Projective Octahedron)
+        // 5. Render Hyperspatial Luminaries (4D Projective Octahedral Crystals)
         for (const auto& b : flock_luminaries.agents) {
             Ogre::Vector3 p = b.position.to3D(flock_luminaries.w_slice_phase);
             float pw = b.position.w() - flock_luminaries.w_slice_phase;
             float vis_alpha = std::exp(-0.18f * pw * pw);
-            if (vis_alpha < 0.15f) continue; // Culled beyond 4D hyper-slice
+            if (vis_alpha < 0.15f) continue;
 
             float scale = flock_luminaries.config.scale * (0.6f + 0.4f * vis_alpha);
-            Ogre::ColourValue col = flock_luminaries.config.color_primary;
-            col.a = vis_alpha;
 
-            Ogre::Vector3 top = p + Ogre::Vector3(0, scale * 1.4f, 0);
-            Ogre::Vector3 bot = p - Ogre::Vector3(0, scale * 1.4f, 0);
-            Ogre::Vector3 pX1 = p + Ogre::Vector3( scale * 0.9f, 0, 0);
-            Ogre::Vector3 pX2 = p - Ogre::Vector3( scale * 0.9f, 0, 0);
-            Ogre::Vector3 pZ1 = p + Ogre::Vector3(0, 0,  scale * 0.9f);
-            Ogre::Vector3 pZ2 = p - Ogre::Vector3(0, 0,  scale * 0.9f);
+            // Chromatic dispersion shimmer
+            Ogre::ColourValue col_top(0.2f, 0.9f, 1.0f, vis_alpha);
+            Ogre::ColourValue col_bot(1.0f, 0.3f, 0.9f, vis_alpha);
+            Ogre::ColourValue col_mid(0.6f, 0.7f, 1.0f, vis_alpha);
 
-            emitTetrahedron(top, pX1, pZ1, p, col, boidMesh, vert_idx);
-            emitTetrahedron(top, pZ1, pX2, p, col, boidMesh, vert_idx);
-            emitTetrahedron(top, pX2, pZ2, p, col, boidMesh, vert_idx);
-            emitTetrahedron(top, pZ2, pX1, p, col, boidMesh, vert_idx);
-            emitTetrahedron(bot, pZ1, pX1, p, col, boidMesh, vert_idx);
-            emitTetrahedron(bot, pX2, pZ1, p, col, boidMesh, vert_idx);
-            emitTetrahedron(bot, pZ2, pX2, p, col, boidMesh, vert_idx);
-            emitTetrahedron(bot, pX1, pZ2, p, col, boidMesh, vert_idx);
+            Ogre::Vector3 top = p + Ogre::Vector3(0, scale * 1.6f, 0);
+            Ogre::Vector3 bot = p - Ogre::Vector3(0, scale * 1.6f, 0);
+            Ogre::Vector3 pX1 = p + Ogre::Vector3( scale * 1.0f, 0, 0);
+            Ogre::Vector3 pX2 = p - Ogre::Vector3( scale * 1.0f, 0, 0);
+            Ogre::Vector3 pZ1 = p + Ogre::Vector3(0, 0,  scale * 1.0f);
+            Ogre::Vector3 pZ2 = p - Ogre::Vector3(0, 0, -scale * 1.0f);
+
+            // Upper 4 faces
+            emitTriangle(top, pX1, pZ1, col_top, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(top, pZ1, pX2, col_top, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(top, pX2, pZ2, col_top, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(top, pZ2, pX1, col_top, col_mid, col_mid, boidMesh, vert_idx);
+
+            // Lower 4 faces
+            emitTriangle(bot, pZ1, pX1, col_bot, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(bot, pX2, pZ1, col_bot, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(bot, pZ2, pX2, col_bot, col_mid, col_mid, boidMesh, vert_idx);
+            emitTriangle(bot, pX1, pZ2, col_bot, col_mid, col_mid, boidMesh, vert_idx);
         }
 
         // 6. Render Nocturnal Bioluminescent Fireflies (Glowing Emerald & Gold Lanterns)
         for (const auto& b : flock_fireflies.agents) {
             Ogre::Vector3 p = b.position.to3D();
-            float pulse = 0.65f + 0.35f * std::sin(b.flap_phase * 1.2f + float(b.id));
+            float pulse = 0.70f + 0.30f * std::sin(b.flap_phase * 1.2f + float(b.id));
             float scale = flock_fireflies.config.scale * pulse;
 
-            Ogre::ColourValue col_emerald = flock_fireflies.config.color_primary * pulse;
-            Ogre::ColourValue col_gold    = flock_fireflies.config.color_secondary * pulse;
+            Ogre::ColourValue col_emerald = Ogre::ColourValue(0.40f, 1.00f, 0.35f) * pulse;
+            Ogre::ColourValue col_gold    = Ogre::ColourValue(1.00f, 0.88f, 0.20f) * pulse;
 
-            Ogre::Vector3 top = p + Ogre::Vector3(0, scale * 0.6f, 0);
-            Ogre::Vector3 bot = p - Ogre::Vector3(0, scale * 0.6f, 0);
-            Ogre::Vector3 p1  = p + Ogre::Vector3(-scale * 0.5f, 0,  scale * 0.5f);
-            Ogre::Vector3 p2  = p + Ogre::Vector3( scale * 0.5f, 0,  scale * 0.5f);
-            Ogre::Vector3 p3  = p + Ogre::Vector3(0, 0, -scale * 0.7f);
+            Ogre::Vector3 top = p + Ogre::Vector3(0, scale * 0.7f, 0);
+            Ogre::Vector3 bot = p - Ogre::Vector3(0, scale * 0.7f, 0);
+            Ogre::Vector3 p1  = p + Ogre::Vector3(-scale * 0.6f, 0,  scale * 0.6f);
+            Ogre::Vector3 p2  = p + Ogre::Vector3( scale * 0.6f, 0,  scale * 0.6f);
+            Ogre::Vector3 p3  = p + Ogre::Vector3(0, 0, -scale * 0.8f);
 
-            emitTetrahedron(top, p1, p2, p3, col_emerald, boidMesh, vert_idx);
-            emitTetrahedron(bot, p2, p1, p3, col_gold, boidMesh, vert_idx);
+            // Dual tetrahedral lantern core with bright self-luminous vertex colors
+            emitTriangle(top, p1, p2, col_emerald, col_gold, col_gold, boidMesh, vert_idx);
+            emitTriangle(top, p2, p3, col_emerald, col_gold, col_emerald, boidMesh, vert_idx);
+            emitTriangle(top, p3, p1, col_emerald, col_emerald, col_gold, boidMesh, vert_idx);
+            emitTriangle(bot, p2, p1, col_gold, col_gold, col_gold, boidMesh, vert_idx);
+            emitTriangle(bot, p3, p2, col_gold, col_emerald, col_gold, boidMesh, vert_idx);
+            emitTriangle(bot, p1, p3, col_gold, col_gold, col_emerald, boidMesh, vert_idx);
         }
 
         boidMesh->end();
     }
 
 private:
-    static void emitTetrahedron(
-        const Ogre::Vector3& a,
-        const Ogre::Vector3& b,
-        const Ogre::Vector3& c,
-        const Ogre::Vector3& d,
-        const Ogre::ColourValue& col,
+    static void emitTriangle(
+        const Ogre::Vector3& v0,
+        const Ogre::Vector3& v1,
+        const Ogre::Vector3& v2,
+        const Ogre::ColourValue& c0,
+        const Ogre::ColourValue& c1,
+        const Ogre::ColourValue& c2,
         Ogre::ManualObject* mesh,
         uint32_t& vert_idx
     ) {
+        Ogre::Vector3 e1 = v1 - v0;
+        Ogre::Vector3 e2 = v2 - v0;
+        Ogre::Vector3 n = e1.crossProduct(e2).normalisedCopy();
+        if (n.isNaN() || n.squaredLength() < 1e-4f) {
+            n = Ogre::Vector3::UNIT_Y;
+        }
+
         uint32_t base = vert_idx;
+        mesh->position(v0); mesh->normal(n); mesh->colour(c0);
+        mesh->position(v1); mesh->normal(n); mesh->colour(c1);
+        mesh->position(v2); mesh->normal(n); mesh->colour(c2);
 
-        mesh->position(a); mesh->colour(col);
-        mesh->position(b); mesh->colour(col);
-        mesh->position(c); mesh->colour(col);
-        mesh->position(d); mesh->colour(col);
-
-        // Face 1: ABC
         mesh->triangle(base, base + 1, base + 2);
-        // Face 2: BDC
-        mesh->triangle(base + 1, base + 3, base + 2);
-        // Face 3: ADC
-        mesh->triangle(base, base + 2, base + 3);
-        // Face 4: ABD
-        mesh->triangle(base, base + 3, base + 1);
-
-        vert_idx += 4;
+        vert_idx += 3;
     }
 };
 

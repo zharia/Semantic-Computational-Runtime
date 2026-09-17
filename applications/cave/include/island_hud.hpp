@@ -19,10 +19,6 @@
 #define CAVE_ISLAND_HUD_HPP
 
 #include <Ogre.h>
-#include <OgreManualObject.h>
-#include <OgreSceneManager.h>
-#include <OgreRenderWindow.h>
-#include <OgreViewport.h>
 
 #include <OGRE/Overlay/OgreImGuiOverlay.h>
 #include <OGRE/Overlay/OgreOverlayManager.h>
@@ -120,6 +116,30 @@ public:
     float    player_yaw = 0, player_pitch = 0;
     bool     in_water = false;
     uint16_t active_hotbar_mat = Material::MAT_BASALT;
+
+    // Live Atmospheric & Weather Telemetry
+    std::string weather_condition = "Clear Tropical";
+    float barometric_pressure_hpa = 1018.0f;
+    float ambient_temperature_c = 28.5f;
+    float relative_humidity_pct = 65.0f;
+    float precipitation_rate_mm = 0.0f;
+    float wind_speed_ms = 3.5f;
+
+    void setWeatherState(
+        const std::string& cond,
+        float pressure,
+        float temp,
+        float humidity,
+        float rain,
+        float wind
+    ) {
+        weather_condition = cond;
+        barometric_pressure_hpa = pressure;
+        ambient_temperature_c = temp;
+        relative_humidity_pct = humidity * 100.0f;
+        precipitation_rate_mm = rain;
+        wind_speed_ms = wind;
+    }
 
     IslandHUD() {
         std::memset(biome_grid, 0, sizeof(biome_grid));
@@ -240,83 +260,177 @@ public:
             v_idx += 4;
         };
 
-        // Futuristic Vector Stroke Font (7-segment & vector alphanumeric renderer)
+        // ── High-Legibility Proportional Typography Engine ───────────────────
+        static const uint8_t hud_font8x8[96][8] = {
+            {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // ' '
+            {0x18,0x3C,0x3C,0x18,0x18,0x00,0x18,0x00}, // '!'
+            {0x66,0x66,0x24,0x00,0x00,0x00,0x00,0x00}, // '"'
+            {0x6C,0x6C,0xFE,0x6C,0xFE,0x6C,0x6C,0x00}, // '#'
+            {0x18,0x3E,0x60,0x3C,0x06,0x7C,0x18,0x00}, // '$'
+            {0x00,0x66,0xA6,0xD8,0x1B,0x65,0x66,0x00}, // '%'
+            {0x38,0x6C,0x38,0x76,0xDC,0xCC,0x76,0x00}, // '&'
+            {0x18,0x18,0x30,0x00,0x00,0x00,0x00,0x00}, // '''
+            {0x0C,0x18,0x30,0x30,0x30,0x18,0x0C,0x00}, // '('
+            {0x30,0x18,0x0C,0x0C,0x0C,0x18,0x30,0x00}, // ')'
+            {0x00,0x66,0x3C,0xFF,0x3C,0x66,0x00,0x00}, // '*'
+            {0x00,0x18,0x18,0x7E,0x18,0x18,0x00,0x00}, // '+'
+            {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x30}, // ','
+            {0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00}, // '-'
+            {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00}, // '.'
+            {0x00,0x06,0x0C,0x18,0x30,0x60,0x40,0x00}, // '/'
+            {0x3C,0x66,0x6E,0x76,0x66,0x66,0x3C,0x00}, // '0'
+            {0x18,0x38,0x18,0x18,0x18,0x18,0x7E,0x00}, // '1'
+            {0x3C,0x66,0x06,0x1C,0x30,0x60,0x7E,0x00}, // '2'
+            {0x3C,0x66,0x06,0x1C,0x06,0x66,0x3C,0x00}, // '3'
+            {0x0C,0x1C,0x3C,0x6C,0xFE,0x0C,0x0C,0x00}, // '4'
+            {0x7E,0x60,0x7C,0x06,0x06,0x66,0x3C,0x00}, // '5'
+            {0x3C,0x66,0x60,0x7C,0x66,0x66,0x3C,0x00}, // '6'
+            {0x7E,0x06,0x0C,0x18,0x30,0x30,0x30,0x00}, // '7'
+            {0x3C,0x66,0x66,0x3C,0x66,0x66,0x3C,0x00}, // '8'
+            {0x3C,0x66,0x66,0x3E,0x06,0x66,0x3C,0x00}, // '9'
+            {0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00}, // ':'
+            {0x00,0x18,0x18,0x00,0x18,0x18,0x30,0x00}, // ';'
+            {0x0C,0x18,0x30,0x60,0x30,0x18,0x0C,0x00}, // '<'
+            {0x00,0x00,0x7E,0x00,0x7E,0x00,0x00,0x00}, // '='
+            {0x30,0x18,0x0C,0x06,0x0C,0x18,0x30,0x00}, // '>'
+            {0x3C,0x66,0x06,0x1C,0x18,0x00,0x18,0x00}, // '?'
+            {0x3C,0x66,0x6E,0x6E,0x60,0x62,0x3C,0x00}, // '@'
+            {0x18,0x3C,0x66,0x66,0x7E,0x66,0x66,0x00}, // 'A'
+            {0x7C,0x66,0x66,0x7C,0x66,0x66,0x7C,0x00}, // 'B'
+            {0x3C,0x66,0x60,0x60,0x60,0x66,0x3C,0x00}, // 'C'
+            {0x78,0x6C,0x66,0x66,0x66,0x6C,0x78,0x00}, // 'D'
+            {0x7E,0x60,0x60,0x7C,0x60,0x60,0x7E,0x00}, // 'E'
+            {0x7E,0x60,0x60,0x7C,0x60,0x60,0x60,0x00}, // 'F'
+            {0x3C,0x66,0x60,0x6E,0x66,0x66,0x3C,0x00}, // 'G'
+            {0x66,0x66,0x66,0x7E,0x66,0x66,0x66,0x00}, // 'H'
+            {0x3C,0x18,0x18,0x18,0x18,0x18,0x3C,0x00}, // 'I'
+            {0x0E,0x06,0x06,0x06,0x06,0x66,0x3C,0x00}, // 'J'
+            {0x66,0x6C,0x78,0x70,0x78,0x6C,0x66,0x00}, // 'K'
+            {0x60,0x60,0x60,0x60,0x60,0x60,0x7E,0x00}, // 'L'
+            {0x63,0x77,0x7F,0x6B,0x63,0x63,0x63,0x00}, // 'M'
+            {0x66,0x76,0x7E,0x7E,0x6E,0x66,0x66,0x00}, // 'N'
+            {0x3C,0x66,0x66,0x66,0x66,0x66,0x3C,0x00}, // 'O'
+            {0x7C,0x66,0x66,0x7C,0x60,0x60,0x60,0x00}, // 'P'
+            {0x3C,0x66,0x66,0x66,0x6E,0x3C,0x0E,0x00}, // 'Q'
+            {0x7C,0x66,0x66,0x7C,0x78,0x6C,0x66,0x00}, // 'R'
+            {0x3C,0x66,0x60,0x3C,0x06,0x66,0x3C,0x00}, // 'S'
+            {0x7E,0x18,0x18,0x18,0x18,0x18,0x18,0x00}, // 'T'
+            {0x66,0x66,0x66,0x66,0x66,0x66,0x3C,0x00}, // 'U'
+            {0x66,0x66,0x66,0x66,0x66,0x3C,0x18,0x00}, // 'V'
+            {0x63,0x63,0x63,0x6B,0x7F,0x77,0x63,0x00}, // 'W'
+            {0x66,0x66,0x3C,0x18,0x3C,0x66,0x66,0x00}, // 'X'
+            {0x66,0x66,0x66,0x3C,0x18,0x18,0x18,0x00}, // 'Y'
+            {0x7E,0x06,0x0C,0x18,0x30,0x60,0x7E,0x00}, // 'Z'
+            {0x3C,0x30,0x30,0x30,0x30,0x30,0x3C,0x00}, // '['
+            {0x00,0x60,0x30,0x18,0x0C,0x06,0x02,0x00}, // '\'
+            {0x3C,0x0C,0x0C,0x0C,0x0C,0x0C,0x3C,0x00}, // ']'
+            {0x18,0x3C,0x66,0x00,0x00,0x00,0x00,0x00}, // '^'
+            {0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0x00}, // '_'
+            {0x30,0x18,0x0C,0x00,0x00,0x00,0x00,0x00}, // '`'
+            {0x00,0x00,0x3C,0x06,0x3E,0x66,0x3B,0x00}, // 'a'
+            {0x60,0x60,0x7C,0x66,0x66,0x66,0x7C,0x00}, // 'b'
+            {0x00,0x00,0x3C,0x66,0x60,0x66,0x3C,0x00}, // 'c'
+            {0x06,0x06,0x3E,0x66,0x66,0x66,0x3E,0x00}, // 'd'
+            {0x00,0x00,0x3C,0x66,0x7E,0x60,0x3C,0x00}, // 'e'
+            {0x0E,0x18,0x7E,0x18,0x18,0x18,0x18,0x00}, // 'f'
+            {0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x7C}, // 'g'
+            {0x60,0x60,0x7C,0x66,0x66,0x66,0x66,0x00}, // 'h'
+            {0x18,0x00,0x38,0x18,0x18,0x18,0x3C,0x00}, // 'i'
+            {0x06,0x00,0x0E,0x06,0x06,0x66,0x3C,0x00}, // 'j'
+            {0x60,0x60,0x66,0x6C,0x78,0x6C,0x66,0x00}, // 'k'
+            {0x38,0x18,0x18,0x18,0x18,0x18,0x3C,0x00}, // 'l'
+            {0x00,0x00,0x66,0x7F,0x7B,0x63,0x63,0x00}, // 'm'
+            {0x00,0x00,0x7C,0x66,0x66,0x66,0x66,0x00}, // 'n'
+            {0x00,0x00,0x3C,0x66,0x66,0x66,0x3C,0x00}, // 'o'
+            {0x00,0x00,0x7C,0x66,0x66,0x7C,0x60,0x60}, // 'p'
+            {0x00,0x00,0x3E,0x66,0x66,0x3E,0x06,0x06}, // 'q'
+            {0x00,0x00,0x7C,0x66,0x60,0x60,0x60,0x00}, // 'r'
+            {0x00,0x00,0x3E,0x60,0x3C,0x06,0x7C,0x00}, // 's'
+            {0x18,0x18,0x7E,0x18,0x18,0x18,0x0E,0x00}, // 't'
+            {0x00,0x00,0x66,0x66,0x66,0x66,0x3B,0x00}, // 'u'
+            {0x00,0x00,0x66,0x66,0x66,0x3C,0x18,0x00}, // 'v'
+            {0x00,0x00,0x63,0x6B,0x7F,0x3E,0x36,0x00}, // 'w'
+            {0x00,0x00,0x66,0x3C,0x18,0x3C,0x66,0x00}, // 'x'
+            {0x00,0x00,0x66,0x66,0x66,0x3E,0x06,0x7C}, // 'y'
+            {0x00,0x00,0x7E,0x0C,0x18,0x30,0x7E,0x00}, // 'z'
+            {0x0E,0x18,0x18,0x70,0x18,0x18,0x0E,0x00}, // '{'
+            {0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x00}, // '|'
+            {0x70,0x18,0x18,0x0E,0x18,0x18,0x70,0x00}, // '}'
+            {0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00}, // '~'
+            {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}   // DEL
+        };
+
         auto drawChar = [&](char c, float cx, float cy, float sx, float sy, const Ogre::ColourValue& col) {
-            float th = sx * 0.22f;
-            c = (char)std::toupper((unsigned char)c);
+            uint8_t u = (uint8_t)c;
+            if (u < 32 || u > 126) u = 32;
+            const uint8_t* glyph = hud_font8x8[u - 32];
 
-            // Segment coordinates:
-            // (cx, cy) is top-left, (cx + sx, cy - sy) is bottom-right
-            float xL = cx, xR = cx + sx, xM = cx + sx * 0.5f;
-            float yT = cy, yB = cy - sy, yM = cy - sy * 0.5f;
+            float pw = sx / 8.0f;
+            float ph = sy / 8.0f;
+            Ogre::ColourValue shadow_col(0.0f, 0.0f, 0.0f, col.a * 0.85f);
 
-            auto segT  = [&]() { addLine2D(xL, yT, xR, yT, th, col); };
-            auto segM  = [&]() { addLine2D(xL, yM, xR, yM, th, col); };
-            auto segB  = [&]() { addLine2D(xL, yB, xR, yB, th, col); };
-            auto segTL = [&]() { addLine2D(xL, yT, xL, yM, th, col); };
-            auto segTR = [&]() { addLine2D(xR, yT, xR, yM, th, col); };
-            auto segBL = [&]() { addLine2D(xL, yM, xL, yB, th, col); };
-            auto segBR = [&]() { addLine2D(xR, yM, xR, yB, th, col); };
-            auto segV  = [&]() { addLine2D(xM, yT, xM, yB, th, col); };
-
-            switch(c) {
-                case '0': segT(); segB(); segTL(); segTR(); segBL(); segBR(); addLine2D(xL, yB, xR, yT, th*0.8f, col); break;
-                case '1': segTR(); segBR(); addLine2D(xM, yT, xR, yT, th, col); break;
-                case '2': segT(); segTR(); segM(); segBL(); segB(); break;
-                case '3': segT(); segTR(); segM(); segBR(); segB(); break;
-                case '4': segTL(); segM(); segTR(); segBR(); break;
-                case '5': segT(); segTL(); segM(); segBR(); segB(); break;
-                case '6': segT(); segTL(); segBL(); segM(); segBR(); segB(); break;
-                case '7': segT(); segTR(); segBR(); break;
-                case '8': segT(); segTL(); segTR(); segM(); segBL(); segBR(); segB(); break;
-                case '9': segT(); segTL(); segTR(); segM(); segBR(); segB(); break;
-                case 'A': segT(); segTL(); segTR(); segM(); segBL(); segBR(); break;
-                case 'B': segT(); segTL(); segBL(); segM(); segB(); addLine2D(xM, yT, xR, yM, th, col); addLine2D(xM, yM, xR, yB, th, col); break;
-                case 'C': segT(); segTL(); segBL(); segB(); break;
-                case 'D': segT(); segB(); segTL(); segBL(); addLine2D(xL, yT, xR, yM, th, col); addLine2D(xR, yM, xL, yB, th, col); break;
-                case 'E': segT(); segTL(); segM(); segBL(); segB(); break;
-                case 'F': segT(); segTL(); segM(); segBL(); break;
-                case 'G': segT(); segTL(); segBL(); segB(); segBR(); addLine2D(xM, yM, xR, yM, th, col); break;
-                case 'H': segTL(); segTR(); segM(); segBL(); segBR(); break;
-                case 'I': segT(); segB(); segV(); break;
-                case 'J': segTR(); segBR(); segB(); segBL(); break;
-                case 'K': segTL(); segBL(); addLine2D(xL, yM, xR, yT, th, col); addLine2D(xL, yM, xR, yB, th, col); break;
-                case 'L': segTL(); segBL(); segB(); break;
-                case 'M': segTL(); segBL(); segTR(); segBR(); addLine2D(xL, yT, xM, yM, th, col); addLine2D(xR, yT, xM, yM, th, col); break;
-                case 'N': segTL(); segBL(); segTR(); segBR(); addLine2D(xL, yT, xR, yB, th, col); break;
-                case 'O': segT(); segB(); segTL(); segTR(); segBL(); segBR(); break;
-                case 'P': segT(); segTL(); segTR(); segM(); segBL(); break;
-                case 'Q': segT(); segB(); segTL(); segTR(); segBL(); segBR(); addLine2D(xM, yM, xR, yB, th, col); break;
-                case 'R': segT(); segTL(); segTR(); segM(); segBL(); addLine2D(xL, yM, xR, yB, th, col); break;
-                case 'S': segT(); segTL(); segM(); segBR(); segB(); break;
-                case 'T': segT(); segV(); break;
-                case 'U': segTL(); segBL(); segB(); segTR(); segBR(); break;
-                case 'V': addLine2D(xL, yT, xM, yB, th, col); addLine2D(xR, yT, xM, yB, th, col); break;
-                case 'W': segTL(); segBL(); segTR(); segBR(); addLine2D(xL, yB, xM, yM, th, col); addLine2D(xR, yB, xM, yM, th, col); break;
-                case 'X': addLine2D(xL, yT, xR, yB, th, col); addLine2D(xR, yT, xL, yB, th, col); break;
-                case 'Y': addLine2D(xL, yT, xM, yM, th, col); addLine2D(xR, yT, xM, yM, th, col); addLine2D(xM, yM, xM, yB, th, col); break;
-                case 'Z': segT(); segB(); addLine2D(xR, yT, xL, yB, th, col); break;
-                case ':': addQuad2D(xM - th, yT - sy*0.25f, xM + th, yT - sy*0.35f, col, col);
-                          addQuad2D(xM - th, yB + sy*0.35f, xM + th, yB + sy*0.25f, col, col); break;
-                case '.': addQuad2D(xM - th, yB + sy*0.15f, xM + th, yB, col, col); break;
-                case '-': segM(); break;
-                case '+': segM(); segV(); break;
-                case '/': addLine2D(xL, yB, xR, yT, th, col); break;
-                case '[': segT(); segTL(); segBL(); segB(); break;
-                case '<': addLine2D(xR, yT, xL, yM, th, col); addLine2D(xL, yM, xR, yB, th, col); break;
-                case '>': addLine2D(xL, yT, xR, yM, th, col); addLine2D(xR, yM, xL, yB, th, col); break;
-                default: break;
+            // 1. High-contrast dark shadow backing
+            for (int r = 0; r < 8; ++r) {
+                uint8_t bits = glyph[r];
+                if (!bits) continue;
+                for (int col_idx = 0; col_idx < 8; ++col_idx) {
+                    if (bits & (0x80 >> col_idx)) {
+                        int end_col = col_idx;
+                        while (end_col + 1 < 8 && (bits & (0x80 >> (end_col + 1)))) {
+                            end_col++;
+                        }
+                        float x1 = cx + col_idx * pw + pw * 0.40f;
+                        float x2 = cx + (end_col + 1) * pw + pw * 0.40f;
+                        float y1 = cy - r * ph - ph * 0.40f;
+                        float y2 = cy - (r + 1) * ph - ph * 0.40f;
+                        addQuad2D(x1, y1, x2, y2, shadow_col, shadow_col);
+                        col_idx = end_col;
+                    }
+                }
             }
+
+            // 2. Sharp foreground glyph
+            for (int r = 0; r < 8; ++r) {
+                uint8_t bits = glyph[r];
+                if (!bits) continue;
+                for (int col_idx = 0; col_idx < 8; ++col_idx) {
+                    if (bits & (0x80 >> col_idx)) {
+                        int end_col = col_idx;
+                        while (end_col + 1 < 8 && (bits & (0x80 >> (end_col + 1)))) {
+                            end_col++;
+                        }
+                        float x1 = cx + col_idx * pw;
+                        float x2 = cx + (end_col + 1) * pw;
+                        float y1 = cy - r * ph;
+                        float y2 = cy - (r + 1) * ph;
+                        addQuad2D(x1, y1, x2, y2, col, col);
+                        col_idx = end_col;
+                    }
+                }
+            }
+        };
+
+        auto getCharAdvance = [](char c, float sx) -> float {
+            if (c == ' ') return sx * 0.45f;
+            if (c == 'i' || c == 'l' || c == '1' || c == '.' || c == ':' || c == ';' || c == '!' || c == '|' || c == '\'' || c == '`' || c == ',')
+                return sx * 0.55f;
+            if (c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '<' || c == '>')
+                return sx * 0.65f;
+            if (c == 'r' || c == 't' || c == 'f' || c == 'j' || c == '-')
+                return sx * 0.72f;
+            if (c == 'M' || c == 'W' || c == 'm' || c == 'w' || c == '@' || c == '%' || c == '#')
+                return sx * 1.05f;
+            return sx * 0.85f;
         };
 
         auto drawString = [&](const std::string& text, float start_x, float start_y, float char_w, float char_h, const Ogre::ColourValue& col) {
             float cur_x = start_x;
             for (char c : text) {
                 if (c == ' ') {
-                    cur_x += char_w * 0.75f;
+                    cur_x += getCharAdvance(' ', char_w);
                 } else {
                     drawChar(c, cur_x, start_y, char_w, char_h, col);
-                    cur_x += char_w * 1.35f;
+                    cur_x += getCharAdvance(c, char_w) + char_w * 0.12f;
                 }
             }
         };
@@ -689,6 +803,39 @@ public:
             std::string state_str = in_water ? "SWIMMING" : (py > 18.0f ? "SUMMIT" : "BEACH DUNE");
             std::string status_ss = "BIOME:" + current_biome + " [" + state_str + "]";
             drawString(status_ss, dx1 + 0.018f, dy1 - 0.055f, 0.0065f, 0.011f, Ogre::ColourValue(Brand::White.r, Brand::White.g, Brand::White.b, 0.90f * alpha));
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 7. WEATHER & CLIMATE TELEMETRY PILL (Top-Left)
+        // ─────────────────────────────────────────────────────────────────────
+        {
+            float wx1 = -0.95f, wx2 = -0.58f;
+            float wy1 =  0.82f, wy2 =  0.69f;
+
+            // Ink Black glass background
+            Ogre::ColourValue bg_col(Brand::InkBlack.r, Brand::InkBlack.g, Brand::InkBlack.b, 0.85f * alpha);
+            addQuad2D(wx1, wy1, wx2, wy2, bg_col, bg_col);
+
+            // Steel Azure border frame
+            Ogre::ColourValue bdr_c(Brand::SteelAzure.r, Brand::SteelAzure.g, Brand::SteelAzure.b, 0.85f * alpha);
+            addLine2D(wx1, wy1, wx2, wy1, 0.003f, bdr_c);
+            addLine2D(wx2, wy1, wx2, wy2, 0.003f, bdr_c);
+            addLine2D(wx2, wy2, wx1, wy2, 0.003f, bdr_c);
+            addLine2D(wx1, wy2, wx1, wy1, 0.003f, bdr_c);
+
+            // Weather Condition Header (Cool Horizon)
+            std::string w_hdr = "WX: " + weather_condition;
+            drawString(w_hdr, wx1 + 0.018f, wy1 - 0.012f, 0.0075f, 0.013f, Ogre::ColourValue(Brand::CoolHorizon.r, Brand::CoolHorizon.g, Brand::CoolHorizon.b, alpha));
+
+            // Barometric Pressure, Temp, Humidity (White)
+            std::ostringstream w_ss;
+            w_ss << int(barometric_pressure_hpa) << "hPa | "
+                 << std::fixed << std::setprecision(1) << ambient_temperature_c << "C | "
+                 << int(relative_humidity_pct) << "%";
+            if (precipitation_rate_mm > 0.5f) {
+                w_ss << " | R:" << int(precipitation_rate_mm) << "mm";
+            }
+            drawString(w_ss.str(), wx1 + 0.018f, wy1 - 0.055f, 0.0065f, 0.011f, Ogre::ColourValue(Brand::White.r, Brand::White.g, Brand::White.b, 0.90f * alpha));
         }
 
         obj->end();

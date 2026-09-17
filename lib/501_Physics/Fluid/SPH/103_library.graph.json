@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "SCR-LIB-PHYSICS-FLUID-SPH",
+  "name": "Smoothed Particle Hydrodynamics Fluid Physics",
+  "version": "1.0.0",
+  "dependencies": [
+    "SCR-LIB-PHYSICS-FLUID",
+    "SCR-LIB-MATH-NUMERICAL",
+    "SCR-LIB-GEOMETRY-SPATIAL"
+  ],
+  "downstream_consumers": [
+    "SCR-PROVIDER-PHYSICS-SPH",
+    "SCR-PROVIDER-RENDER-WATER-SSFR",
+    "SCR-APP-CAVE"
+  ]
+}
