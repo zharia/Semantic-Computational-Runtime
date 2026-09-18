@@ -1356,10 +1356,14 @@ public:
     }
 
     /**
-     * Updates and commits the vegetation mesh with 3-tier dynamic real-time wind sway:
-     *   Tier 1: Low-frequency trunk sway (0.8 Hz)
-     *   Tier 2: Mid-frequency branch wave (2.4 Hz)
-     *   Tier 3: High-frequency leaf flutter (6.8 Hz)
+     * Updates and commits the vegetation mesh with a natural 3-tier tropical wind model:
+     *   Tier 1: Trunk sway      — 0.8 Hz, grove-scale coherent lean
+     *   Tier 2: Branch undulation — 1.6 Hz, gentle arc propagation
+     *   Tier 3: Leaf gust        — 1.2 Hz, spatially coherent canopy shimmer
+     *
+     * All phase offsets are seeded by low-frequency spatial coefficients
+     * (0.05–0.08 per-unit) so neighbouring vertices share the same wind pulse
+     * rather than shivering independently.
      */
     void updateVegetationMesh(Ogre::ManualObject* vegObj, float dt) {
         if (!vegObj || base_vertices.empty()) return;
@@ -1368,18 +1372,24 @@ public:
         vegObj->clear();
         vegObj->begin("SCR/VegetationMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-        float wind_time = simulation_time * wind_speed;
+        // Base time scaled by wind speed
+        const float wind_time = simulation_time * wind_speed;
         const size_t N = base_vertices.size();
         if (swayed_positions_.size() != N) {
             swayed_positions_.resize(N);
         }
 
-        const float wt08 = wind_time * 0.8f;
-        const float wt24 = wind_time * 2.4f;
-        const float wt68 = wind_time * 6.8f;
+        // Pre-compute per-tier time bases (frequencies chosen for tropical calm)
+        const float wt_trunk  = wind_time * 0.8f;   // Tier 1 — trunk sway
+        const float wt_branch = wind_time * 1.6f;   // Tier 2 — branch undulation
+        const float wt_leaf   = wind_time * 1.2f;   // Tier 3 — leaf gust (was 6.8 Hz)
+
+        // Slow-moving gust envelope: modulates overall strength every ~4 s
+        const float gust_envelope = 0.80f + 0.20f * std::sin(wind_time * 0.25f);
+
         const float wx = wind_dir.x;
         const float wz = wind_dir.z;
-        const float ws = wind_strength;
+        const float ws = wind_strength * gust_envelope;
 
         #pragma GCC ivdep
         for (size_t i = 0; i < N; ++i) {
@@ -1387,20 +1397,35 @@ public:
             if (v.wind_weight <= 0.01f) {
                 swayed_positions_[i] = v.position;
             } else {
-                // Tier 1: Trunk sway
-                float trunk_sway = std::sin(v.position.x * 0.12f + v.position.z * 0.12f + wt08) * (v.wind_weight * v.wind_weight);
-                // Tier 2: Branch wave
-                float branch_wave = std::sin(v.position.x * 0.32f - v.position.z * 0.28f + wt24) * (v.wind_weight * 0.45f);
-                // Tier 3: High-frequency leaf flutter
-                float leaf_flutter = (v.wind_weight > 0.45f)
-                    ? std::sin(v.position.x * 1.8f + v.position.y * 2.2f + v.position.z * 1.6f + wt68) * (0.18f * v.wind_weight)
-                    : 0.0f;
+                // --- Tier 1: Trunk sway ---
+                // Low spatial frequency (0.07) keeps entire trunk coherent.
+                float trunk_phase  = v.position.x * 0.07f + v.position.z * 0.07f;
+                float trunk_sway   = std::sin(trunk_phase + wt_trunk)
+                                   * (v.wind_weight * v.wind_weight);
+
+                // --- Tier 2: Branch undulation ---
+                // Slightly higher spatial freq (0.13) for gentle arc variation
+                // without vertex-level incoherence.
+                float branch_phase = v.position.x * 0.13f - v.position.z * 0.11f;
+                float branch_wave  = std::sin(branch_phase + wt_branch)
+                                   * (v.wind_weight * 0.40f);
+
+                // --- Tier 3: Canopy gust shimmer ---
+                // Spatial seed at grove scale (0.05–0.08); neighbouring vertices
+                // share the same phase so they sway as a unit, not individually.
+                float leaf_flutter = 0.0f;
+                if (v.wind_weight > 0.45f) {
+                    float leaf_phase = v.position.x * 0.05f
+                                     + v.position.z * 0.08f;
+                    leaf_flutter = std::sin(leaf_phase + wt_leaf)
+                                 * (0.12f * v.wind_weight);
+                }
 
                 float total_sway = (trunk_sway * 0.65f + branch_wave + leaf_flutter) * ws;
 
                 swayed_positions_[i] = Ogre::Vector3(
                     v.position.x + wx * total_sway,
-                    v.position.y - std::abs(total_sway) * 0.15f,
+                    v.position.y - std::abs(total_sway) * 0.12f,
                     v.position.z + wz * total_sway
                 );
             }
