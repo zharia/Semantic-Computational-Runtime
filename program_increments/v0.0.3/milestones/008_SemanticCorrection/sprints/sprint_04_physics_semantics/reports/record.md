@@ -13,3 +13,9 @@
 
 - `lib/501_Physics/Conservation/101_definition.md` — Full rewrite with model-specific conservation
 - `lib/501_Physics/Body/101_definition.md` — Full rewrite with behavioral profiles
+
+## Test Evidence
+
+Tests 12-13 validate physics-relevant claims:
+- Test 12: Scale = 0 produces degenerate transform (degenerate physics)
+- Test 13: Negative scale violates similarity constraint (non-physical)

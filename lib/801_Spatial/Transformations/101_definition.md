@@ -70,7 +70,7 @@ T₂ ∘ T₁ = (s₂, R₂, t₂) ∘ (s₁, R₁, t₁)
 - **Closure:** Result is always a similarity transform
 - **Associativity:** (T₃ ∘ T₂) ∘ T₁ = T₃ ∘ (T₂ ∘ T₁) (inherited from matrix multiplication)
 - **Identity:** T_id = (1, I, 0)
-- **Inverse:** T⁻¹ = (1/s, Rᵀ, -Rᵀ·t/s)
+- **Inverse:** T⁻¹ = (1/s, Rᵀ, -(1/s)·Rᵀ·t)
 
 ### Non-Uniform Scale Handling
 

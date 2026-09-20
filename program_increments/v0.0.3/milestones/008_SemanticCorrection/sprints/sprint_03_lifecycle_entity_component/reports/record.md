@@ -12,3 +12,9 @@
 ## Files Changed
 
 - `lib/804_Application/Lifecycle/101_definition.md` — Full rewrite with profile model and O3DE mapping
+
+## Test Evidence
+
+Tests 10-11 validate lifecycle-relevant claims:
+- Test 10: Position/orientation/pose/scale are distinct (AC-03)
+- Test 11: Point vs vector transformation (semantic distinction)

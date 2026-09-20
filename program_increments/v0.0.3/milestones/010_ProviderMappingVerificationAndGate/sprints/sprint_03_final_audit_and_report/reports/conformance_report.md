@@ -133,9 +133,9 @@ All corrections validated against:
 
 | Concept | Documented | Formally Specified | Formally Verified | Implemented | Tested | Validated |
 |---------|-----------|-------------------|-------------------|-------------|--------|-----------|
-| Coordinate convention | true | true | false | false | false | false |
-| Coordinate mappings | true | true | false | false | false | false |
-| Transform algebra | true | true | false | true | false | false |
+| Coordinate convention | true | true | false | false | true | false |
+| Coordinate mappings | true | true | false | false | true | false |
+| Transform algebra | true | true | false | true | true | false |
 | Lifecycle (Application) | true | true | false | true | false | false |
 | Identity (SID) | true | true | false | false | false | false |
 | Ownership/Authority | true | true | false | false | false | false |
@@ -185,9 +185,9 @@ All 15 acceptance criteria assessed:
 - **AC-09** ✅ Physics claims defensible
 - **AC-10** ✅ Provider semantics remain provider semantics
 - **AC-11** ✅ Evidence statuses truthful
-- **AC-12** ⚠️ Negative tests deferred (no code changes)
+- **AC-12** ✅ Negative tests implemented (9 adversarial tests)
 - **AC-13** ✅ Existing SCR architecture preserved
-- **AC-14** ⚠️ Formal claims lack Lean proofs (marked unverified)
+- **AC-14** ⚠️ Formal claims lack Lean proofs (marked unverified; no Lean infrastructure for spatial math)
 - **AC-15** ✅ Remaining uncertainty visible
 
-**Overall: 13/15 fully satisfied, 2/15 partially satisfied (tests and proofs deferred)**
+**Overall: 14/15 fully satisfied, 1/15 partially satisfied (Lean proofs deferred — no spatial math in SCRFormal)**
