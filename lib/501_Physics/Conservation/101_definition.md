@@ -1,58 +1,101 @@
----
+# Conservation (`SCR-PHYS-CONSERVATION`)
 
-document: 101_definition
-document_type: normative_semantic_definition
-schema_version: 1.0.0
-
-id: SCR-LIB-PHYSICS-CONSERVATION
-name: Physics Conservation
-
-version: 0.1.0
-status: operational
-
-created: 2026-09-05
-updated: 2026-09-16
-
-parent: SCR-LIB-PHYSICS
-authority: SCR
-domain: semantic-library
----
-
-# SCR Physics: Conservation
-
-## Summary
-
-Exact conservation principles: energy, linear momentum, angular momentum, charge, and mass.
+**Path:** `lib/501_Physics/Conservation/101_definition.md`  
+**Parent Domain:** [`lib/501_Physics/101_definition.md`](../101_definition.md)  
+**Version:** `0.1.0`  
+**Status:** Normative Draft (corrected v0.0.3)  
+**Authority:** SCR Architectural Group
 
 ---
 
-## 1. Semantic Definition
+## 1. Definition
 
-**Conservation** is a first-class subdomain of SCR Physics (`SCR-LIB-PHYSICS`). It defines exact conservation principles: energy, linear momentum, angular momentum, charge, and mass.
+Conservation semantics describe when and how physical quantities remain invariant under transformation or evolution.
 
-Physics defines physical meaning independently of transient numerical solvers, graphics engines, or hardware acceleration substrates.
+### v0.0.3 Correction: Scope
 
-## 2. Invariant Conformance
+**Conservation is model-specific, not universal.** SCR does not assert universal energy conservation for all physical systems.
 
-All operations within `Conservation` MUST adhere to the normative invariants of `SCR-LIB-PHYSICS`:
+A conservation law applies when:
 
-- **PHYSICS-INV-001 (Semantic Primacy)**: Physical meaning is authoritative and independent of solver implementations.
-- **PHYSICS-INV-002 (Quantity Integrity)**: Physical quantities retain dimensional consistency, magnitude, and unit semantics.
-- **PHYSICS-INV-003 (Law Integrity)**: Physical laws remain distinct from their numerical discretization or engine approximations.
-- **PHYSICS-INV-006 (Conservation Integrity)**: Declared conservation relationships must be representable and verifiable independently of integration error.
-- **PHYSICS-INV-014 (Dimensional Integrity)**: Equations and relations MUST preserve strict dimensional consistency.
-- **PHYSICS-INV-018 (Runtime Independence)**: Physical semantics remain independent of host runtime and hardware substrates.
+1. The system is closed (no external work)
+2. The symmetry exists (Noether's theorem)
+3. The numerical method preserves the invariant (e.g., symplectic integration)
 
-## 3. Relationships to Other Domains
+### What SCR Defines
 
-- **lib/101_Core/Identity**: Supplies canonical `SemanticId` identifiers for physical entities, bodies, and interactions.
-- **lib/202_Math**: Provides algebra, calculus, tensors, and numerical analysis infrastructure.
-- **lib/203_Graph/Hypergraph**: Provides the canonical hypergraph representation for multi-body interactions and constraint graphs.
-- **lib/302_Geometry**: Supplies spatial frames, collision shapes, and coordinate spaces.
-- **lib/303_Topology**: Supplies boundary connectivity and continuity invariants.
+SCR defines conservation as a **semantic property that models may declare**:
+
+```
+ConservationDeclaration = {
+  quantity: ConservationQuantity,
+  conditions: List[Condition],
+  model: PhysicsModel,
+  evidence: EvidenceLevel
+}
+```
+
+A model declaring conservation must specify:
+- Which quantity (energy, momentum, angular momentum, etc.)
+- Under what conditions (closed system, no friction, etc.)
+- Which physics model applies
+- Evidence level (documented, specified, tested, validated)
+
+### What SCR Does NOT Define
+
+- Universal energy conservation for all systems
+- Bitwise conservation across floating-point computation
+- Conservation in dissipative systems (friction, drag, inelastic collisions)
+- Conservation in systems with external forces (motors, gravity sources)
 
 ---
 
-# Definition Authority
+## 2. Conservation Quantities
 
-This document establishes the normative semantic meaning of `Conservation` in SCR Physics. Numerical engines, solvers, and simulation runtimes are subordinate to the contracts specified herein.
+| Quantity | Symbol | When Conserved |
+|----------|--------|---------------|
+| Energy | E | Closed system, no dissipation |
+| Linear momentum | p | No external forces |
+| Angular momentum | L | No external torques |
+| Mass | m | Non-relativistic systems |
+| Charge | q | Always (in classical physics) |
+
+---
+
+## 3. Integration and Conservation
+
+Numerical integration methods affect conservation:
+
+| Method | Energy | Momentum | Notes |
+|--------|--------|----------|-------|
+| Symplectic Euler | Bounded | Conserved | Energy oscillates around true value |
+| Verlet | Bounded | Conserved | Better long-term stability |
+| RK4 | Not bounded | Not bounded | Higher accuracy but no conservation guarantee |
+| Implicit Euler | Dissipated | Conserved | Artificial damping |
+
+### Bullet3 Provider
+
+Bullet3 uses **symplectic Euler integration**, which guarantees:
+- Energy is **bounded** (oscillates, doesn't diverge)
+- Momentum is **conserved** (to machine precision)
+
+This is NOT the same as exact energy conservation.
+
+---
+
+## 4. Invariants
+
+- **`CON-INV-001` (Declaration Required)**: A model claiming conservation must explicitly declare it.
+- **`CON-INV-002` (Conditions Required)**: Conservation declarations must specify conditions under which the invariant holds.
+- **`CON-INV-003` (Integration Aware)**: Conservation claims must account for numerical integration method.
+
+---
+
+## Evidence Status
+
+Documented: true
+Formally Specified: true
+Formally Verified: false
+Implemented: false
+Tested: false
+Validated: false

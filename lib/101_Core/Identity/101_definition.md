@@ -119,3 +119,33 @@ The concrete `SID-001` coordinate geometry defines:
 2. **Sequence / Local Coordinate**: Ordinal coordinate index within the domain's declared interval $[low, high)$.
 3. **Generation Counter**: Fencing generation preventing replay across authority rotations.
 4. **Canonical Form**: Representable as a 128-bit integer (`u128`), a pair of 64-bit words (`(u64, u64)`), or a standardized URI string (`sid://<root>/<domain>/<index>#gen=<generation>`).
+
+---
+
+## v0.0.3 Correction: SID Scope
+
+### Canonical Rule
+
+**SID uniqueness is global by construction.** A SID is a coordinate in a globally unique address space, not a scope-local identifier.
+
+### Clarification
+
+| Concept | Scope | Authority | Persistence |
+|---------|-------|-----------|-------------|
+| SID | Global | Allocation authority | Permanent (within address space) |
+| EntityId | Scope-bounded | Runtime/provider | Ephemeral (per runtime session) |
+| USD prim path | File-scoped | USD stage | Duration of stage |
+| Memory address | Process-scoped | OS allocator | Duration of allocation |
+
+These are **different concepts**. SID ≠ EntityId ≠ prim path ≠ memory address.
+
+A SID may be **mapped** to an EntityId within a specific runtime context, but the mapping is directional: SID is authoritative, EntityId is a manifestation.
+
+### Evidence Status
+
+Documented: true
+Formally Specified: true
+Formally Verified: false
+Implemented: false
+Tested: false
+Validated: false

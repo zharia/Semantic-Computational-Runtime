@@ -1,35 +1,60 @@
-# Coordinates
+# SCR Coordinates
 
-> Directory documentation for the current SCR library tree.
+> Canonical coordinate semantics for SCR.
 
-**Path:** `lib/801_Spatial/Coordinates`
+**Path:** `lib/801_Spatial/Coordinates/101_definition.md`
 
-**Documentation role:** Repository inventory
+**Document type:** Normative semantic definition
+
+**Status:** Formally Specified (corrected v0.0.3)
+
+---
 
 ## Purpose
 
-This directory currently exists as a structural location within the SCR library hierarchy for coordinate representations and coordinate value types.
+Defines what a coordinate is in SCR: a position within a reference frame, with explicit units and dimensional meaning.
 
-## Current Contents
+## Definition
 
-The directory currently contains:
+A **coordinate** is a tuple of real numbers specifying a position within a defined reference frame:
 
-- `101_definition.md`
+```
+c = (c₁, c₂, ..., cₙ) ∈ ℝⁿ
+```
 
-No substantive implementation was present when this documentation pass was performed.
+where n is the dimensionality of the space.
 
-## Current Role
+### Properties
 
-The directory establishes a documented location for this area of the SCR library.
+- Coordinates are always defined relative to a **reference frame**.
+- Coordinates have **units** (meters, radians, etc.) that must be explicit.
+- Coordinates are **not** identifiers. A coordinate describes where; an identity describes what.
 
-## Relationship to Parent
+### Coordinate vs Identity
 
-`Coordinates` is a child of `801_Spatial` within the SCR library hierarchy.
+| Concept | Question Answered | Example |
+|---------|------------------|---------|
+| Coordinate | Where is it? | (1.0, 2.0, 3.0) meters in world frame |
+| Identity | What is it? | SID = root:domain:entity:42 |
 
-## Scope Boundary
+Do not conflate coordinates with identity. A position may change; an identity does not.
 
-No additional semantic contract is inferred from the directory's existence alone.
+---
 
-## Notes
+## Preconditions
 
-Further semantic or implementation definition is outside the scope of this documentation pass.
+- A reference frame must be defined.
+- Units must be specified.
+
+## Postconditions
+
+- The coordinate uniquely identifies a position within its reference frame.
+
+## Implementation Status
+
+Documented: true
+Formally Specified: true
+Formally Verified: false
+Implemented: false
+Tested: false
+Validated: false
