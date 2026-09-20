@@ -4,31 +4,95 @@
 #include <memory>
 #include <sstream>
 
-#include "simulation_framework.hpp"
+#include "simulation/simulation_framework.hpp"
+#include "simulation_subjects.hpp"
+#include "simulation/simulation_events.hpp"
+#include "simulation/simulation_systems.hpp"
+#include "simulation/player_controller.hpp"
+#include "simulation/voxel_editing.hpp"
+#include "render/ogre/material_setup.hpp"
+#include "render/ogre/fog_subsystem.hpp"
+#include "simulation/dynamic_chunk.hpp"
 #include "procedural_cave.hpp"
 #include "vdb_cave_mesher.hpp"
-#include "fps_controller.hpp"
 
 namespace SCR::Simulation {
 
+// ── Cave-specific composite systems wrapping subsystems ─────────────────────
+
+class PlayerControllerSystem : public ISimulationSystem {
+public:
+    std::string getName() const override { return "PlayerControllerSystem"; }
+
+    PlayerControllerSystem() {
+        addSubSystem(std::make_shared<PlayerControllerSubSystem>());
+    }
+};
+
+class VoxelEditSystem : public ISimulationSystem {
+public:
+    std::string getName() const override { return "VoxelEditSystem"; }
+
+    VoxelEditSystem() {
+        addSubSystem(std::make_shared<VoxelEditingSubSystem>());
+    }
+};
+
+class MaterialSystem : public ISimulationSystem {
+public:
+    std::string getName() const override { return "MaterialSystem"; }
+
+    MaterialSystem() {
+        addSubSystem(std::make_shared<MaterialSetupSubSystem>());
+    }
+};
+
+class FogSystem : public ISimulationSystem {
+public:
+    std::string getName() const override { return "FogSystem"; }
+
+    FogSystem() {
+        addSubSystem(std::make_shared<FogSubSystem>());
+    }
+};
+
+// ── Karst Cave Scene ────────────────────────────────────────────────────────
+
 class KarstCaveScene : public ISimulationScene {
 public:
+    // Core Infrastructure
+    SubjectRegistry subjects;
+    EventBus events;
+    ConcurrentSystemCoordinator coordinator;
+
+    // Subjects
+    std::shared_ptr<PlayerSubject> player_subject;
+
+    // Cave Domain
     std::unique_ptr<Cave::VoxelCave> cave;
 
-    Spatial::Point3D player_pos{32.0f, 16.0f, 32.0f};
-    Spatial::Vector3D player_vel{0,0,0};
-    float player_yaw = 0.0f;
-    float player_pitch = 0.0f;
-    float walk_speed = 4.5f;
-    float sprint_speed = 8.5f;
-
+    // Ogre Handles (cave mesh + headlamp managed manually)
     Ogre::SceneNode* caveNode = nullptr;
     Ogre::ManualObject* caveMesh = nullptr;
     Ogre::Light* headlamp = nullptr;
     Ogre::Light* ambientLight = nullptr;
     Ogre::Camera* camera = nullptr;
 
-    KarstCaveScene() = default;
+    KarstCaveScene()
+        : coordinator(subjects, events) {
+        // Instantiate Subject Objects
+        player_subject = std::make_shared<PlayerSubject>();
+
+        // Register Subjects
+        subjects.registerSubject(player_subject);
+
+        // Register Systems
+        coordinator.registerSystem(std::make_shared<PlayerControllerSystem>());
+        coordinator.registerSystem(std::make_shared<VoxelEditSystem>());
+        coordinator.registerSystem(std::make_shared<MaterialSystem>());
+        coordinator.registerSystem(std::make_shared<FogSystem>());
+        coordinator.registerSystem(std::make_shared<DynamicChunkSystem>());
+    }
 
     SceneMetadata getMetadata() const override {
         return {
@@ -40,7 +104,7 @@ public:
             "SCR-DOM-003 (Topology/Cavity) & SCR-DOM-008 (Render/Lighting)",
             "SCR Core Architecture Team",
             "3.1.0",
-            {"Marching-Cubes", "Speleothems", "Subterranean", "Bioluminescence", "Volumetric-Light"}
+            {"Concurrent-Systems", "Subject-Objects", "Event-Bus", "Marching-Cubes", "Speleothems", "Subterranean", "Bioluminescence", "Volumetric-Light"}
         };
     }
 
@@ -57,7 +121,8 @@ public:
         // Locate viable player spawn within an open chamber
         for (int y = 14; y < 24; ++y) {
             if (!cave->isSolid(32, y, 32) && !cave->isSolid(32, y + 1, 32)) {
-                player_pos = Spatial::Point3D(32.5f, (float)y, 32.5f);
+                player_subject->position = Spatial::Point3D(32.5f, (float)y, 32.5f);
+                player_subject->smooth_eye_y = (float)y + player_subject->eye_height;
                 break;
             }
         }
@@ -65,13 +130,24 @@ public:
         ctx.update(1.0f, "Subterranean Network Ready", "Committing isosurface geometry", "GPU_STREAM");
     }
 
-    void initScene(Ogre::SceneManager* scnMgr, Ogre::Camera* cam, Ogre::RenderWindow* win) override {
-        (void)win;
+    void attachRenderer(RenderContext& ctx) override {
+        auto* scnMgr = ctx.getSceneManager<Ogre::SceneManager>();
+        auto* cam = ctx.getCamera<Ogre::Camera>();
+        auto* win = ctx.getWindow<Ogre::RenderWindow>();
+
         camera = cam;
-        cam->setNearClipDistance(0.05f);
-        cam->setFarClipDistance(300.0f);
+        cam->setNearClipDistance(Config::NEAR_CLIP);
+        cam->setFarClipDistance(Config::FAR_CLIP_CAVE);
 
         scnMgr->setAmbientLight(Ogre::ColourValue(0.02f, 0.03f, 0.05f));
+
+        // Initialize coordinator with Ogre context and systems
+        RenderContext renderCtx;
+        renderCtx.native_scene_manager = scnMgr;
+        renderCtx.native_camera = cam;
+        renderCtx.native_window = win;
+        coordinator.setRenderContext(renderCtx);
+        coordinator.initialize();
 
         // Player Headlamp (Spotlight)
         headlamp = scnMgr->createLight("CaveHeadlamp");
@@ -94,44 +170,21 @@ public:
     }
 
     void update(float dt, const UserInputState& input) override {
-        player_yaw   += input.mouse_dx;
-        player_pitch += input.mouse_dy;
-        player_pitch  = std::max(-1.45f, std::min(1.45f, player_pitch));
-
-        Spatial::Vector3D fwd(-std::sin(player_yaw), 0, -std::cos(player_yaw));
-        Spatial::Vector3D right(std::cos(player_yaw), 0, -std::sin(player_yaw));
-        Spatial::Vector3D mv(0, 0, 0);
-
-        if (input.move_forward)  mv += fwd;
-        if (input.move_backward) mv -= fwd;
-        if (input.move_right)    mv += right;
-        if (input.move_left)     mv -= right;
-        if (input.move_up)       mv += Spatial::Vector3D(0, 1, 0);
-        if (input.move_down)     mv -= Spatial::Vector3D(0, 1, 0);
-
-        float spd = input.sprint ? sprint_speed : walk_speed;
-        if (mv.lengthSq() > 1e-4f) {
-            mv = mv.normalized() * spd;
-            player_pos.x += mv.x * dt;
-            player_pos.y += mv.y * dt;
-            player_pos.z += mv.z * dt;
-        }
-
-        if (camera && camera->getParentSceneNode()) {
-            camera->getParentSceneNode()->setPosition(player_pos.x, player_pos.y + 1.5f, player_pos.z);
-            Ogre::Quaternion qYaw(Ogre::Radian(player_yaw), Ogre::Vector3::UNIT_Y);
-            Ogre::Quaternion qPitch(Ogre::Radian(player_pitch), Ogre::Vector3::UNIT_X);
-            camera->getParentSceneNode()->setOrientation(qYaw * qPitch);
-        }
+        coordinator.stepSimulation(dt, input);
+        coordinator.renderPipeline(dt);
     }
 
-    void renderHUD(Ogre::ManualObject* hudObj, Ogre::Viewport* vp, float screen_alpha = 1.0f) override {
-        (void)hudObj;
-        (void)vp;
+    void renderPresentation(RenderContext& ctx, float screen_alpha = 1.0f) override {
+        (void)ctx;
         (void)screen_alpha;
     }
 
-    void cleanup(Ogre::SceneManager* scnMgr) override {
+    void detachRenderer(RenderContext& ctx) override {
+        auto* scnMgr = ctx.getSceneManager<Ogre::SceneManager>();
+        coordinator.cleanup(ctx);
+        subjects.clear();
+        events.clear();
+
         if (caveMesh) { scnMgr->destroyManualObject(caveMesh); caveMesh = nullptr; }
         if (caveNode) { scnMgr->destroySceneNode(caveNode); caveNode = nullptr; }
         if (headlamp) { scnMgr->destroyLight(headlamp); headlamp = nullptr; }

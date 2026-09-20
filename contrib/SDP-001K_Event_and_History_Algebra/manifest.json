@@ -1,0 +1,17 @@
+{
+  "protocol": "Semantic Development Protocol",
+  "document": "SDP-001K",
+  "title": "Event and History Algebra",
+  "status": "Conceptual Formalisation",
+  "predecessor": "SDP-001J",
+  "next_stage": "SDP-001L",
+  "files": [
+    "SDP-001K_event_and_history_algebra.md"
+  ],
+  "notes": [
+    "State is provisionally treated as a semantic projection domain rather than a canonical source of truth.",
+    "Event and History remain provisionally irreducible.",
+    "K5 = Identity + Context + Assertion + Transition + Event + History.",
+    "SDP-001L must test whether Context and other structures can also be projections of semantic history."
+  ]
+}

@@ -9,9 +9,9 @@
 
 #include <Ogre.h>
 
-#include "simulation_framework.hpp"
+#include "simulation/simulation_framework.hpp"
 #include "simulation_subjects.hpp"
-#include "simulation_events.hpp"
+#include "simulation/simulation_events.hpp"
 #include "procedural_island.hpp"
 #include "../../../providers/physics/bullet3/adapter/bullet_adapter.hpp"
 
@@ -57,12 +57,12 @@ public:
     Ogre::SceneManager* sceneMgr = nullptr;
 
     void initialize(SystemContext& ctx) override {
-        sceneMgr = ctx.sceneMgr;
-        if (ctx.sceneMgr) {
-            if (ctx.sceneMgr->hasSceneNode("BulletPhysicsRootNode")) {
-                ctx.sceneMgr->destroySceneNode("BulletPhysicsRootNode");
+        sceneMgr = ctx.renderCtx.getSceneManager<Ogre::SceneManager>();
+        if (sceneMgr) {
+            if (sceneMgr->hasSceneNode("BulletPhysicsRootNode")) {
+                sceneMgr->destroySceneNode("BulletPhysicsRootNode");
             }
-            physicsRootNode = ctx.sceneMgr->getRootSceneNode()->createChildSceneNode("BulletPhysicsRootNode");
+            physicsRootNode = sceneMgr->getRootSceneNode()->createChildSceneNode("BulletPhysicsRootNode");
         }
     }
 
@@ -175,7 +175,7 @@ public:
     }
 
     uint32_t spawnDynamicSphere(SystemContext& ctx, float radius, float mass, SCRVec3 pos, SCRVec3 initial_vel, float restitution = 0.6f, float friction = 0.5f) {
-        if (ctx.sceneMgr) sceneMgr = ctx.sceneMgr;
+        if (ctx.renderCtx.getSceneManager<Ogre::SceneManager>()) sceneMgr = ctx.renderCtx.getSceneManager<Ogre::SceneManager>();
         return spawnDynamicSphere(radius, mass, pos, initial_vel, restitution, friction);
     }
 
@@ -214,7 +214,7 @@ public:
     }
 
     uint32_t spawnDynamicBox(SystemContext& ctx, SCRVec3 half_extents, float mass, SCRVec3 pos, SCRVec3 initial_vel, float restitution = 0.4f, float friction = 0.6f) {
-        if (ctx.sceneMgr) sceneMgr = ctx.sceneMgr;
+        if (ctx.renderCtx.getSceneManager<Ogre::SceneManager>()) sceneMgr = ctx.renderCtx.getSceneManager<Ogre::SceneManager>();
         return spawnDynamicBox(half_extents, mass, pos, initial_vel, restitution, friction);
     }
 
@@ -247,7 +247,7 @@ public:
         return dynamic_bodies.size();
     }
 
-    void updateAsync(float dt, const UserInputState& input, SystemContext& ctx) override {
+    void updateSim(float dt, const UserInputState& input, SimContext& ctx) override {
         (void)input;
         if (!bullet_world || dt <= 0.0f) return;
 
@@ -287,8 +287,8 @@ public:
         scr_bullet_world_step(bullet_world, dt, 10, 1.0f / 120.0f);
     }
 
-    void renderSync(SystemContext& ctx, float dt) override {
-        (void)ctx; (void)dt;
+    void renderSync(RenderContext& renderCtx, const SimContext& simCtx, float dt) override {
+        (void)renderCtx; (void)simCtx; (void)dt;
         if (!bullet_world) return;
 
         // Synchronize dynamic rigid body transforms to Ogre Scene Nodes
@@ -305,7 +305,7 @@ public:
         }
     }
 
-    void handleEvent(const ISimulationEvent& event, SystemContext& ctx) override {
+    void handleEvent(const ISimulationEvent& event, SimContext& ctx) override {
         if (event.getEventType() == EventType::ISLAND_VOYAGE) {
             auto island_sub = ctx.subjects.getFirstSubjectOfType<IslandSubject>(SubjectType::ISLAND);
             if (island_sub && island_sub->voxel_island) {
@@ -314,7 +314,8 @@ public:
         }
     }
 
-    void cleanup(Ogre::SceneManager* scnMgr) override {
+    void cleanup(RenderContext& renderCtx) override {
+        auto* scnMgr = renderCtx.getSceneManager<Ogre::SceneManager>();
         if (scnMgr) {
             for (auto& pair : dynamic_bodies) {
                 auto& info = pair.second;

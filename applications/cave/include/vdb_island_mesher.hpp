@@ -6,11 +6,11 @@
 
 #include <Ogre.h>
 
-#include "spatial_semantics.hpp"
-#include "semantic_materials.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
 #include "procedural_island.hpp"
-#include "spatial_partitions.hpp"
-#include "island_biome_types.hpp"
+#include "simulation/spatial_partitions.hpp"
+#include "simulation/island_biome_types.hpp"
 
 #include <vector>
 #include <cmath>

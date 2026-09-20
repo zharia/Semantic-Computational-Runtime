@@ -6,7 +6,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
-#include "island_biome_types.hpp"
+#include "simulation/island_biome_types.hpp"
 
 namespace SCR::Navigation {
 

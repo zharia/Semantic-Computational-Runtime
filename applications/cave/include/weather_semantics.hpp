@@ -15,7 +15,7 @@
 #define CAVE_WEATHER_SEMANTICS_HPP
 
 #include <Ogre.h>
-#include "spatial_semantics.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>

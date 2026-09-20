@@ -7,8 +7,8 @@
 
 #include <Ogre.h>
 
-#include "spatial_semantics.hpp"
-#include "semantic_materials.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
 #include "procedural_cave.hpp"
 
 #include <vector>

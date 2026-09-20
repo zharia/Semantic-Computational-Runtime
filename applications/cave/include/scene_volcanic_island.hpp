@@ -5,11 +5,13 @@
 #include <sstream>
 #include <iostream>
 
-#include "simulation_framework.hpp"
+#include <OgreInput.h>
+#include "simulation/simulation_framework.hpp"
 #include "simulation_subjects.hpp"
-#include "simulation_events.hpp"
-#include "simulation_systems.hpp"
+#include "simulation/simulation_events.hpp"
+#include "simulation/simulation_systems.hpp"
 #include "bullet_physics_subsystem.hpp"
+#include "simulation/dynamic_chunk.hpp"
 #include "island_hud.hpp"
 
 namespace SCR::Simulation {
@@ -84,6 +86,7 @@ public:
         coordinator.registerSystem(std::make_shared<EcologySystem>());
         coordinator.registerSystem(std::make_shared<InteractionSystem>());
         coordinator.registerSystem(std::make_shared<PhysicsDynamicsSystem>());
+        coordinator.registerSystem(std::make_shared<DynamicChunkSystem>());
 
         // Subscribe to IslandVoyageEvent to update partition tracking
         events.subscribe<IslandVoyageEvent>([this](const IslandVoyageEvent& evt) {
@@ -135,11 +138,29 @@ public:
         ctx.update(1.0f, "Simulation Scene Ready", "Committing GPU vertex buffers", "GPU_STREAM");
     }
 
-    void initScene(Ogre::SceneManager* scnMgr, Ogre::Camera* cam, Ogre::RenderWindow* win) override {
+    void attachRenderer(RenderContext& ctx) override {
+        auto* scnMgr = ctx.getSceneManager<Ogre::SceneManager>();
+        auto* cam = ctx.getCamera<Ogre::Camera>();
+        auto* win = ctx.getWindow<Ogre::RenderWindow>();
+
         cam->setNearClipDistance(0.05f);
         cam->setFarClipDistance(12000.0f);
 
-        coordinator.setOgreContext(scnMgr, cam, win);
+        // Create scene-owned HUD overlay
+        hudObj = scnMgr->createManualObject("VolcanicIslandHUDMeshObj");
+        hudObj->setDynamic(true);
+        hudObj->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+        hudObj->setUseIdentityProjection(true);
+        hudObj->setUseIdentityView(true);
+        hudObj->setBoundingBox(Ogre::AxisAlignedBox::BOX_INFINITE);
+        auto* hudNode = scnMgr->getRootSceneNode()->createChildSceneNode("VolcanicIslandHUDNode");
+        hudNode->attachObject(hudObj);
+
+        RenderContext renderCtx;
+        renderCtx.native_scene_manager = scnMgr;
+        renderCtx.native_camera = cam;
+        renderCtx.native_window = win;
+        coordinator.setRenderContext(renderCtx);
         coordinator.initialize();
     }
 
@@ -212,7 +233,8 @@ public:
         if (interact_sys) {
             for (auto& sub : interact_sys->getSubSystems()) {
                 if (auto voyage_sub = std::dynamic_pointer_cast<NauticalVoyageSubSystem>(sub)) {
-                    voyage_sub->setSailForBiome(biome, coordinator.getContext());
+                    SimContext simCtx = coordinator.getContext().toSimContext();
+                    voyage_sub->setSailForBiome(biome, simCtx);
                     return;
                 }
             }
@@ -472,8 +494,10 @@ public:
         return true;
     }
 
-    void renderHUD(Ogre::ManualObject* hudObj, Ogre::Viewport* vp, float screen_alpha = 1.0f) override {
-        (void)vp;
+    // Scene-owned HUD overlay created during attachRenderer
+    Ogre::ManualObject* hudObj = nullptr;
+
+    void renderPresentation(RenderContext& ctx, float screen_alpha = 1.0f) override {
         if (hudObj && screen_alpha > 0.01f && player_subject && island_subject && island_subject->voxel_island) {
             bool in_water = player_subject->position.y <= island_subject->voxel_island->sea_level + 0.3f;
             const auto& part_desc = Spatial::SpatialPartitionRegistry::getDescriptor(active_partition);
@@ -522,8 +546,10 @@ public:
         return nullptr;
     }
 
-    void cleanup(Ogre::SceneManager* scnMgr) override {
-        coordinator.cleanup(scnMgr);
+    void detachRenderer(RenderContext& ctx) override {
+        auto* scnMgr = ctx.getSceneManager<Ogre::SceneManager>();
+        coordinator.cleanup(ctx);
+        if (hudObj) { scnMgr->destroyManualObject(hudObj); hudObj = nullptr; }
         subjects.clear();
         events.clear();
     }

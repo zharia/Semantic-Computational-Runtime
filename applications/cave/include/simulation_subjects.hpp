@@ -11,8 +11,8 @@
 #include <cmath>
 #include <algorithm>
 
-#include "spatial_semantics.hpp"
-#include "island_biome_types.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/island_biome_types.hpp"
 #include "procedural_island.hpp"
 
 namespace SCR::Simulation {

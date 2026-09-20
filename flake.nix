@@ -3,9 +3,13 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixgl = {
+      url = "github:nix-community/nixGL";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs }:
+      outputs = { self, nixpkgs, nixgl }:
     let
       systems = [
         "x86_64-linux"
@@ -100,6 +104,9 @@
             libdrm
             mesa
             libGL
+
+            # NVIDIA GL/EGL wrapper (fixes Nix OGRE EGL driver discovery)
+            nixgl.packages.x86_64-linux.nixGLNvidia-615.71.09
 
             # Volumetric spatial fields
             openvdb
@@ -302,6 +309,10 @@
           '';
         }
       );
+
+      packages = forAllSystems (system: {
+        nixGLNvidia = nixgl.packages.${system}.nixGLNvidia { version = "615.71.09"; };
+      });
     };
 }
 

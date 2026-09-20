@@ -1,0 +1,87 @@
+{
+  "$id": "SDP-STATUS-SCHEMA-001",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SDP Status Record",
+  "type": "object",
+  "required": ["domain", "entity_id", "entity_type", "name", "status", "definition_status", "last_updated"],
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "SDP domain identifier (e.g. sdp.project.hyrxmq)"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "SDP entity identifier (e.g. SDP-PROJ-HYRXMQ)"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": ["project", "application"],
+      "description": "Type of SDP entity"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable entity name"
+    },
+    "status": {
+      "type": "string",
+      "description": "Entity status (e.g. implemented, adopted, specified, validated, deprecated)"
+    },
+    "definition_status": {
+      "type": "string",
+      "description": "Definition adoption status"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date of last update"
+    },
+    "milestones": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional milestones reached"
+    },
+    "source_topology": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entity_id": { "type": "string" },
+          "path": { "type": "string" },
+          "role": { "type": "string" }
+        },
+        "description": "Optional source topology entries"
+      },
+      "description": "Optional source topology mapping"
+    },
+    "baseline": {
+      "type": "object",
+      "properties": {
+        "adoption_event": { "type": "string" },
+        "baseline_commit": { "type": "string" }
+      },
+      "description": "Optional baseline adoption information"
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "statement": { "type": "string" }
+        },
+        "description": "Optional list of unknowns"
+      },
+      "description": "Optional list of unresolved questions"
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "headline_ratio": { "type": "number" },
+        "source": { "type": "string" },
+        "production_ready": { "type": "string" }
+      },
+      "description": "Optional performance evidence"
+    }
+  },
+  "additionalProperties": false
+}

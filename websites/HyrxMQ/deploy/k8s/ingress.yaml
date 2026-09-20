@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hyrxmq-website
+  namespace: hyrxmq-website
+  labels:
+    app.kubernetes.io/name: hyrxmq-website
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: hyrx
+  annotations:
+    # Public address: http://hyrxmq.bytemoney.co.za
+    # Set to "true" only once a TLS certificate is provisioned for the host.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    # Static site: serve pre-compressed-friendly responses, keep request caps sane.
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: hyrxmq.bytemoney.co.za
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hyrxmq-website
+                port:
+                  name: http
+  # ── TLS (enable when a certificate Secret exists) ───────────────────────────
+  # tls:
+  #   - hosts:
+  #       - hyrxmq.bytemoney.co.za
+  #     secretName: hyrxmq-bytemoney-tls

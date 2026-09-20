@@ -24,7 +24,7 @@
 #define CAVE_PROCEDURAL_VEGETATION_HPP
 
 #include <Ogre.h>
-#include "spatial_semantics.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include "procedural_island.hpp"
 #include "hierarchical_wfc.hpp"
 

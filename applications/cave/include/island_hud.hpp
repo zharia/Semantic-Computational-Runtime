@@ -20,12 +20,12 @@
 
 #include <Ogre.h>
 
-#include <OGRE/Overlay/OgreImGuiOverlay.h>
-#include <OGRE/Overlay/OgreOverlayManager.h>
-#include <OGRE/Overlay/imgui.h>
+#include <Overlay/OgreImGuiOverlay.h>
+#include <Overlay/OgreOverlayManager.h>
+#include <Overlay/imgui.h>
 
-#include "semantic_materials.hpp"
-#include "spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include "procedural_island.hpp"
 #include "hierarchical_wfc.hpp"
 

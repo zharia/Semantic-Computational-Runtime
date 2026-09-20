@@ -10,7 +10,7 @@
 #define CAVE_BOID_SEMANTICS_HPP
 
 #include <Ogre.h>
-#include "spatial_semantics.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include "procedural_island.hpp"
 
 #include <vector>

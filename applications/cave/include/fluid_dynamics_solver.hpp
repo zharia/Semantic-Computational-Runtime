@@ -9,7 +9,7 @@
 #define CAVE_FLUID_DYNAMICS_SOLVER_HPP
 
 #include "../../../providers/physics/fluid/adapter/fluid_c_api.h"
-#include "spatial_semantics.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include "procedural_island.hpp"
 
 #include <vector>

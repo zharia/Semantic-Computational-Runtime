@@ -14,7 +14,7 @@
 #define CAVE_VOLCANIC_EFFECTS_HPP
 
 #include <Ogre.h>
-#include "spatial_semantics.hpp"
+#include "simulation/spatial_semantics.hpp"
 #include "multi_scale_noise.hpp"
 #include "procedural_island.hpp"
 #include "fluid_dynamics_solver.hpp"

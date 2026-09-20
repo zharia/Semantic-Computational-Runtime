@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hyrxmq-website
+  namespace: public-websites
+  labels:
+    app: hyrxmq-website
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+    - host: hyrxmq.bytemoney.co.za
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hyrxmq-website
+                port:
+                  name: http

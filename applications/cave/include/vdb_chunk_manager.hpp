@@ -6,10 +6,11 @@
 
 #include <Ogre.h>
 
-#include "spatial_semantics.hpp"
-#include "semantic_materials.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
+#include "simulation/simulation_systems_core.hpp"
 #include "procedural_island.hpp"
-#include "spatial_partitions.hpp"
+#include "simulation/spatial_partitions.hpp"
 #include "persistent_chunk_storage.hpp"
 
 #include <vector>
@@ -329,7 +330,8 @@ public:
         std::cout << "[Storage] World state & spatial partitions successfully saved to persistent storage." << std::endl;
     }
 
-    void cleanup(Ogre::SceneManager* scnMgr) {
+    void cleanup(SCR::Simulation::RenderContext& renderCtx) {
+        auto* scnMgr = renderCtx.getSceneManager<Ogre::SceneManager>();
         stopWorkerThreads();
         clearAllChunks(scnMgr);
     }

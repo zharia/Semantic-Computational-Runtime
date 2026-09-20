@@ -1,9 +1,9 @@
 #ifndef CAVE_SIMULATION_ENGINE_HPP
 #define CAVE_SIMULATION_ENGINE_HPP
 
-#include "spatial_semantics.hpp"
-#include "simulation_framework.hpp"
-#include "simulation_events.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/simulation_framework.hpp"
+#include "simulation/simulation_events.hpp"
 #include "simulation_subjects.hpp"
 
 #include <vector>

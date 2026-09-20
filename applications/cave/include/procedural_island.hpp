@@ -8,9 +8,9 @@
 #include <iostream>
 #include <functional>
 
-#include "spatial_semantics.hpp"
-#include "semantic_materials.hpp"
-#include "island_biome_types.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
+#include "simulation/island_biome_types.hpp"
 
 namespace SCR::Island {
 

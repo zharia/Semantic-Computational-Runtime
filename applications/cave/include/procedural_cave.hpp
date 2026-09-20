@@ -1,8 +1,8 @@
 #ifndef CAVE_PROCEDURAL_CAVE_HPP
 #define CAVE_PROCEDURAL_CAVE_HPP
 
-#include "spatial_semantics.hpp"
-#include "semantic_materials.hpp"
+#include "simulation/spatial_semantics.hpp"
+#include "simulation/semantic_materials.hpp"
 #include <vector>
 #include <cmath>
 #include <random>
