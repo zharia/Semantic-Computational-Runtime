@@ -13,12 +13,16 @@
 #include <OgreRenderWindow.h>
 #include <OgreManualObject.h>
 
-#include "simulation_framework.hpp"
-#include "loading_screen_effects.hpp"
+#include <Overlay/OgreImGuiOverlay.h>
+#include <Overlay/OgreOverlayManager.h>
+
+#include "simulation/simulation_framework.hpp"
+#include "simulation/simulation_systems.hpp"
+#include "render/ogre/loading_screen_effects.hpp"
 #include "cel_shading_system.hpp"
-#include "island_biome_types.hpp"
-#include "spatial_partitions.hpp"
-#include "sim_ipc_server.hpp"
+#include "simulation/island_biome_types.hpp"
+#include "simulation/spatial_partitions.hpp"
+#include "simulation/sim_ipc_server_legacy.hpp"
 #include "scene_volcanic_island.hpp"
 #include "scene_karst_cave.hpp"
 #include "scene_ocean_lab.hpp"
@@ -30,7 +34,7 @@ using namespace SCR;
 using namespace SCR::Island;
 using namespace SCR::Spatial;
 using namespace SCR::Simulation;
-using namespace SCR::IPC;
+// using namespace SCR::IPC; — SimIPCServer is at global scope
 
 class SCRSimulationHubApp : public ApplicationContext, public InputListener {
 public:
@@ -49,6 +53,8 @@ public:
 
     UserInputState input_state;
     bool scene_selector_open = false;
+    bool imgui_initialized = false;
+    Ogre::ImGuiOverlay* imgui_overlay = nullptr;
     float global_time = 0.0f;
     float hud_fade_alpha = 0.0f;
     std::chrono::high_resolution_clock::time_point last_frame_time;
@@ -131,6 +137,17 @@ public:
         std::cout << "================================================================================\n" << std::endl;
 
         last_frame_time = std::chrono::high_resolution_clock::now();
+
+        // Initialize ImGui Overlay
+        auto* ovl_mgr = Ogre::OverlayManager::getSingletonPtr();
+        if (ovl_mgr) {
+            imgui_overlay = new Ogre::ImGuiOverlay();
+            imgui_overlay->setZOrder(300);
+            imgui_overlay->show();
+            ovl_mgr->addOverlay(imgui_overlay);
+            imgui_initialized = true;
+            ImGui::GetIO().MouseDrawCursor = true;
+        }
 
         // Start Remote IPC Command Server
         const char* custom_sock = std::getenv("SCR_SIM_SOCK");
@@ -292,7 +309,9 @@ public:
 
         // Clean up previous scene if active
         if (current_scene) {
-            current_scene->cleanup(scnMgr);
+            RenderContext detachCtx;
+            detachCtx.native_scene_manager = scnMgr;
+            current_scene->detachRenderer(detachCtx);
             current_scene.reset();
         }
 
@@ -317,7 +336,11 @@ public:
         current_scene->prepare(ctx);
 
         // Initialize GPU resources in SceneGraph
-        current_scene->initScene(scnMgr, cam, getRenderWindow());
+        RenderContext renderCtx;
+        renderCtx.native_scene_manager = scnMgr;
+        renderCtx.native_camera = cam;
+        renderCtx.native_window = getRenderWindow();
+        current_scene->attachRenderer(renderCtx);
 
         loading_screen.finishLoading();
     }
@@ -744,7 +767,40 @@ public:
             float target_hud_alpha = (input_state.show_hud ? 1.0f : 0.0f) * loading_screen.alpha_in_game_hud;
             hud_fade_alpha += (target_hud_alpha - hud_fade_alpha) * std::min(1.0f, dt * 14.0f);
             if (hud_fade_alpha < 0.005f && !input_state.show_hud) hud_fade_alpha = 0.0f;
-            current_scene->renderHUD(hudMeshObj, getRenderWindow()->getViewport(0), hud_fade_alpha);
+            RenderContext presCtx;
+            presCtx.native_scene_manager = scnMgr;
+            presCtx.native_camera = cam;
+            presCtx.native_window = getRenderWindow();
+            presCtx.native_viewport = getRenderWindow()->getViewport(0);
+            current_scene->renderPresentation(presCtx, hud_fade_alpha);
+        }
+
+        // ImGui Scene Selection Menu
+        if (imgui_initialized && imgui_overlay) {
+            imgui_overlay->NewFrame();
+            if (scene_selector_open) {
+                ImGui::SetNextWindowSize(ImVec2(320, 0), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Scene Selector", &scene_selector_open);
+                ImGui::Text("SCR Simulation Hub");
+                ImGui::Separator();
+                const auto& scenes = SimulationRegistry::instance().getScenes();
+                for (size_t i = 0; i < scenes.size(); ++i) {
+                    bool is_active = ((int)i == current_scene_index);
+                    if (is_active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.6f, 0.3f, 1.0f));
+                    char label[64];
+                    snprintf(label, sizeof(label), "[%zu] %s##%zu", i + 1, scenes[i].metadata.title.c_str(), i);
+                    if (ImGui::Button(label, ImVec2(-1, 0))) {
+                        loadSimulationScene((int)i);
+                    }
+                    if (is_active) ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(%s)", scenes[i].metadata.category.c_str());
+                }
+                ImGui::Separator();
+                ImGui::Text("Ctrl+1..4: Quick Switch");
+                ImGui::Text("Tab: Toggle Menu");
+                ImGui::End();
+            }
         }
 
         // Reset per-frame mouse deltas
@@ -772,14 +828,18 @@ public:
             takeScreenshot();
             return true;
         }
+        if (key == 9) {
+            scene_selector_open = !scene_selector_open;
+            return true;
+        }
 
         static constexpr int KEY_LALT = (1 << 30) | 0xE2;
         static constexpr int KEY_RALT = (1 << 30) | 0xE6;
         static constexpr int KEY_LCTRL = (1 << 30) | 0xE0;
         static constexpr int KEY_RCTRL = (1 << 30) | 0xE4;
 
-        bool is_alt = (key == KEY_LALT || key == KEY_RALT || (evt.keysym.mod & KMOD_ALT) != 0);
-        bool is_ctrl = (key == KEY_LCTRL || key == KEY_RCTRL || (evt.keysym.mod & KMOD_CTRL) != 0);
+        bool is_alt = (key == KEY_LALT || key == KEY_RALT || (evt.keysym.mod & OgreBites::KMOD_ALT) != 0);
+        bool is_ctrl = (key == KEY_LCTRL || key == KEY_RCTRL || (evt.keysym.mod & OgreBites::KMOD_CTRL) != 0);
 
         // Tactical Vector HUD Toggle (Hold ALT or TAB)
         if (key == 9 || key == '\t' || is_alt) {
@@ -802,12 +862,12 @@ public:
         }
 
         // Locomotion Keys
-        if (key == 'w' || key == 'W' || key == SDLK_UP)    input_state.move_forward  = true;
-        if (key == 's' || key == 'S' || key == SDLK_DOWN)  input_state.move_backward = true;
-        if (key == 'a' || key == 'A' || key == SDLK_LEFT)  input_state.move_left     = true;
-        if (key == 'd' || key == 'D' || key == SDLK_RIGHT) input_state.move_right    = true;
-        if (key == SDLK_LSHIFT)                             input_state.sprint        = true;
-        if (key == SDLK_SPACE || key == ' ' || key == 32)  input_state.jump          = true;
+        if (key == 'w' || key == 'W' || key == OgreBites::SDLK_UP)    input_state.move_forward  = true;
+        if (key == 's' || key == 'S' || key == OgreBites::SDLK_DOWN)  input_state.move_backward = true;
+        if (key == 'a' || key == 'A' || key == OgreBites::SDLK_LEFT)  input_state.move_left     = true;
+        if (key == 'd' || key == 'D' || key == OgreBites::SDLK_RIGHT) input_state.move_right    = true;
+        if (key == OgreBites::SDLK_LSHIFT)                             input_state.sprint        = true;
+        if (key == OgreBites::SDLK_SPACE || key == ' ' || key == 32)  input_state.jump          = true;
 
         if (current_scene) {
             current_scene->handleKeyPress(key, true, is_alt, is_ctrl);
@@ -823,19 +883,19 @@ public:
         static constexpr int KEY_LCTRL = (1 << 30) | 0xE0;
         static constexpr int KEY_RCTRL = (1 << 30) | 0xE4;
 
-        bool is_alt = (key == KEY_LALT || key == KEY_RALT || (evt.keysym.mod & KMOD_ALT) != 0);
-        bool is_ctrl = (key == KEY_LCTRL || key == KEY_RCTRL || (evt.keysym.mod & KMOD_CTRL) != 0);
+        bool is_alt = (key == KEY_LALT || key == KEY_RALT || (evt.keysym.mod & OgreBites::KMOD_ALT) != 0);
+        bool is_ctrl = (key == KEY_LCTRL || key == KEY_RCTRL || (evt.keysym.mod & OgreBites::KMOD_CTRL) != 0);
 
         if (key == 9 || key == '\t' || key == KEY_LALT || key == KEY_RALT) {
             input_state.show_hud = false;
         }
 
-        if (key == 'w' || key == 'W' || key == SDLK_UP)                     input_state.move_forward  = false;
-        if (key == 's' || key == 'S' || key == SDLK_DOWN)                   input_state.move_backward = false;
-        if (key == 'a' || key == 'A' || key == SDLK_LEFT)                   input_state.move_left     = false;
-        if (key == 'd' || key == 'D' || key == SDLK_RIGHT)                  input_state.move_right    = false;
-        if (key == SDLK_LSHIFT)                                              input_state.sprint        = false;
-        if (key == SDLK_SPACE || key == ' ' || key == 32)                   input_state.jump          = false;
+        if (key == 'w' || key == 'W' || key == OgreBites::SDLK_UP)                     input_state.move_forward  = false;
+        if (key == 's' || key == 'S' || key == OgreBites::SDLK_DOWN)                   input_state.move_backward = false;
+        if (key == 'a' || key == 'A' || key == OgreBites::SDLK_LEFT)                   input_state.move_left     = false;
+        if (key == 'd' || key == 'D' || key == OgreBites::SDLK_RIGHT)                  input_state.move_right    = false;
+        if (key == OgreBites::SDLK_LSHIFT)                                              input_state.sprint        = false;
+        if (key == OgreBites::SDLK_SPACE || key == ' ' || key == 32)                   input_state.jump          = false;
 
         if (current_scene) {
             current_scene->handleKeyPress(key, false, is_alt, is_ctrl);
@@ -884,9 +944,12 @@ public:
         ipc_server.stop();
         removeInputListener(this);
         if (current_scene && scnMgr) {
-            current_scene->cleanup(scnMgr);
+            RenderContext detachCtx;
+            detachCtx.native_scene_manager = scnMgr;
+            current_scene->detachRenderer(detachCtx);
             current_scene.reset();
         }
+
         auto* sg = RTShader::ShaderGenerator::getSingletonPtr();
         if (sg && scnMgr) sg->removeSceneManager(scnMgr);
         ApplicationContext::shutdown();

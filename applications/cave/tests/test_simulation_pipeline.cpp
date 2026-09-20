@@ -8,7 +8,7 @@
 #include "simulation_subjects.hpp"
 #include "simulation_events.hpp"
 #include "simulation_engine.hpp"
-#include "rendering_pipeline.hpp"
+#include "render/ogre/rendering_pipeline.hpp"
 
 using namespace SCR::Simulation;
 using namespace SCR::Render;
