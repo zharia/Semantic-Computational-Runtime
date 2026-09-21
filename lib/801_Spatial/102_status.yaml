@@ -7,20 +7,35 @@ module:
   id: SCR-LIB-SPATIAL
   path: lib/801_Spatial
   name: Spatial
-  version: 0.1.0
+  version: 0.2.0
   status: operational
   created: 2026-09-05
-  updated: 2026-09-16
+  updated: 2026-09-21
 
   specification:
     file: 101_definition.md
-    version: 0.1.0
+    version: 0.2.0
     status: normative
 
   ownership:
     authority: SCR
     owner: semantic-library
     agent: antigravity
+
+  reference_implementation:
+    status: verified
+    version: 0.1.0
+    location: lib/801_Spatial/ReferenceImplementation/
+    evidence:
+      - scr_reference_implementation.h
+      - scr_reference_implementation.cpp
+      - test_reference_conformance.cpp (55 tests, all passing)
+      - test_adversarial.cpp (45 tests, all passing)
+    formal_verification:
+      status: verified
+      location: SCRFormal/SCR/SpatialMath.lean
+      theorems: 10
+      build_command: "cd SCRFormal && lake build SCR.SpatialMath"
 
 domain:
   name: Spatial
@@ -37,9 +52,11 @@ capabilities:
   - id: CAP-SPA-REFERENCE
     name: Reference Frames & Coordinate Systems
     status: operational
+    evidence: Lean proofs (10 theorems), C++ implementation, 100 tests
   - id: CAP-SPA-POSITION
     name: Position Distinction & Multi-Dimensional Representation
     status: operational
+    evidence: C++ implementation, 100 tests
   - id: CAP-SPA-METRICS
     name: Distance & Proximity Metrics (Euclidean, Manhattan, Geodesic, Graph)
     status: operational
@@ -49,6 +66,7 @@ capabilities:
   - id: CAP-SPA-TRANSFORM
     name: Frame-Preserving Spatial Transformations
     status: operational
+    evidence: Lean proofs (10 theorems), C++ implementation, 100 tests
   - id: CAP-SPA-QUERY
     name: Spatial Queries & Bounded Searches
     status: operational

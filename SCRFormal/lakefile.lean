@@ -24,4 +24,5 @@ lean_lib «SCRFormal» where
     `SCR.Algebra,
     `SCR.AlgebraCounterexamples,
     `SCR.MaterialConservation,
-    `SCR.Thermodynamics]
+    `SCR.Thermodynamics,
+    `SCR.SpatialMath]
