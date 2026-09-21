@@ -15,18 +15,20 @@ Simulation::SceneMetadata O3deVolcanicIslandScene::getMetadata() const {
     meta.title = "SCR Volcanic Island (O3DE)";
     meta.subtitle = "Semantic Computational Runtime - O3DE Atom Renderer";
     meta.category = "simulation";
-    meta.description = "Volcanic island simulation using SCR semantic fields "
-                      "with O3DE Atom RPI rendering substrate";
+    meta.description = "Active stratovolcano with Bingham plastic lava river, "
+                       "Gerstner wave ocean, volumetric smoke plume, "
+                       "procedural vegetation via O3DE Atom RPI";
     meta.semantic_contract = "SCR-LIB-SIMULATION";
     meta.author = "SCR";
-    meta.version = "0.1.0";
+    meta.version = "1.0.0";
     meta.feature_tags = {"terrain", "volcano", "ocean", "atmosphere",
                         "vegetation", "fields", "materials", "o3de"};
     return meta;
 }
 
 void O3deVolcanicIslandScene::prepare(Simulation::LoadingContext& ctx) {
-    ctx.update(0.0f, "Initializing O3DE Volcanic Island", "Loading subsystems...", "CORE");
+    ctx.update(0.05f, "Ingesting Semantic Material Registry", "101 materials registered", "MATERIAL_REGISTRY");
+    (void)Material::MaterialRegistry::instance();
 
     auto& registry = Simulation::SubjectRegistry::instance();
 
@@ -59,24 +61,65 @@ void O3deVolcanicIslandScene::prepare(Simulation::LoadingContext& ctx) {
         std::string getName() const override { return name; }
     };
 
-    auto terrain = std::make_shared<O3deTerrainSubSystem>();
+    auto terrain_sub = std::make_shared<O3deTerrainSubSystem>();
     auto volcano_sub = std::make_shared<O3deVolcanoSubSystem>();
-    auto ocean = std::make_shared<O3deOceanSubSystem>();
-    auto atmo = std::make_shared<O3deAtmosphereSubSystem>();
-    auto veg = std::make_shared<O3deVegetationSubSystem>();
+    auto ocean_sub = std::make_shared<O3deOceanSubSystem>();
+    auto atmo_sub = std::make_shared<O3deAtmosphereSubSystem>();
+    auto veg_sub = std::make_shared<O3deVegetationSubSystem>();
+
+    if (island->voxel_island) {
+        auto vi = island->voxel_island;
+        float cx = vi->center_x;
+        float cz = vi->center_z;
+
+        terrain_sub->getTerrainHeight = [vi](float x, float z) -> float {
+            return vi->getIslandHeight(x, z);
+        };
+
+        volcano_sub->center_x = cx;
+        volcano_sub->center_z = cz;
+        volcano_sub->caldera_radius = vi->caldera_radius;
+        volcano_sub->peak_height = vi->peak_height;
+        volcano_sub->sea_level = vi->sea_level;
+        volcano_sub->island_radius = vi->island_radius;
+        volcano_sub->volcano_active = volcano->is_active;
+
+        ocean_sub->center_x = cx;
+        ocean_sub->center_z = cz;
+        ocean_sub->island_radius = vi->island_radius;
+        ocean_sub->sea_level = vi->sea_level;
+
+        veg_sub->center_x = cx;
+        veg_sub->center_z = cz;
+        veg_sub->island_radius = vi->island_radius;
+        veg_sub->sea_level = vi->sea_level;
+        veg_sub->getTerrainHeight = [vi](float x, float z) -> float {
+            return vi->getIslandHeight(x, z);
+        };
+        veg_sub->getVegetationDensity = [vi](float x, float z) -> float {
+            float h = vi->getIslandHeight(x, z);
+            if (h < vi->sea_level + 1.0f || h > 55.0f) return 0.0f;
+            float dx = x - vi->center_x;
+            float dz = z - vi->center_z;
+            float r = sqrtf(dx * dx + dz * dz);
+            if (r < vi->island_radius * 0.3f || r > vi->island_radius * 0.95f) return 0.0f;
+            float edge = 1.0f - (r / vi->island_radius);
+            return std::max(0.0f, edge * 1.5f);
+        };
+    }
 
     auto geology = std::make_shared<NamedSystem>("Geology");
-    geology->addSubSystem(terrain);
+    geology->addSubSystem(terrain_sub);
     geology->addSubSystem(volcano_sub);
 
     auto hydro = std::make_shared<NamedSystem>("Hydrology");
-    hydro->addSubSystem(ocean);
+    hydro->addSubSystem(ocean_sub);
 
     auto atmo_sys = std::make_shared<NamedSystem>("Atmosphere");
-    atmo_sys->addSubSystem(atmo);
+    atmo_sys->addSubSystem(atmo_sub);
 
     auto eco_sys = std::make_shared<NamedSystem>("Ecology");
-    eco_sys->addSubSystem(veg);
+    eco_sys->addSubSystem(veg_sub);
 
     coordinator->registerSystem(geology);
     coordinator->registerSystem(hydro);
