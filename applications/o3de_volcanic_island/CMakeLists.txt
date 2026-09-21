@@ -1,38 +1,46 @@
-cmake_minimum_required(VERSION 3.20)
+# {BEGIN_LICENSE}
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+# {END_LICENSE}
 
-# O3DE project: SCR Volcanic Island
-# Demonstrates SCR semantic framework running in O3DE engine
+if(NOT PROJECT_NAME)
+    cmake_minimum_required(VERSION 3.24)
 
-# Point to O3DE cmake infrastructure
-set(O3DE_PATH "/opt/O3DE/26.05")
-list(APPEND CMAKE_MODULE_PATH "${O3DE_PATH}/cmake")
-list(APPEND CMAKE_MODULE_PATH "${O3DE_PATH}/cmake/3rdParty")
+    # Utility function to look for an optional 'engine_finder_cmake_path'setting 
+    function(get_engine_finder_cmake_path project_json_file_path path_value)
+        if(NOT ${path_value} AND EXISTS "${project_json_file_path}")
+            file(READ "${project_json_file_path}" project_json_data)
+            string(JSON engine_finder_cmake_value ERROR_VARIABLE json_error GET ${project_json_data} "engine_finder_cmake_path")
+            cmake_path(APPEND CMAKE_CURRENT_SOURCE_DIR "${engine_finder_cmake_value}" engine_finder_cmake_value)
+            if(NOT json_error AND EXISTS "${engine_finder_cmake_value}")
+                set(${path_value} "${engine_finder_cmake_value}" PARENT_SCOPE)
+            elseif(json_error AND ${engine_finder_cmake_value} STREQUAL "NOTFOUND")
+                # When the error value is just NOTFOUND that means there is a JSON
+                # parsing error, and not simply a missing key 
+                message(WARNING "Unable to read 'engine_finder_cmake_path'.\nError: ${json_error} ${engine_finder_cmake_value}")
+            endif()
+        endif()
+    endfunction()
+    
+    # Check for optional 'engine_finder_cmake_path' in order of preference
+    # We support per-project customization to make it easier to upgrade 
+    # or revert to a custom EngineFinder.cmake 
+    get_engine_finder_cmake_path("${CMAKE_CURRENT_SOURCE_DIR}/user/project.json" engine_finder_cmake_path)
+    get_engine_finder_cmake_path("${CMAKE_CURRENT_SOURCE_DIR}/project.json" engine_finder_cmake_path)
+    if(NOT engine_finder_cmake_path)
+        set(engine_finder_cmake_path cmake/EngineFinder.cmake)
+    endif()
 
-# Include O3DE platform detection
-include(Platform/${PAL_PLATFORM_NAME}/platform_detection)
-
-project(SCR_VolcanicIsland LANGUAGES C CXX)
-
-# Set project-specific settings
-set(LY_PROJECT_NAME "SCR_VolcanicIsland")
-set(LY_PROJECT_NAME_LOWER "scr_volcanic_island")
-
-# Default build type
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release")
+    include(${engine_finder_cmake_path} OPTIONAL)
+    find_package(o3de REQUIRED)
+    project(SCR_VolcanicIsland
+        LANGUAGES C CXX
+        VERSION 0.0.4.0
+    )
+    o3de_initialize()
 endif()
-
-# Compiler settings
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Include O3DE common cmake
-include(Common)
-
-# Set O3DE paths
-set(LY_3RDPARTY_PATH "${O3DE_PATH}/3rdParty" CACHE PATH "3rdParty")
-set(LY_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-
-# Add subdirectories
-add_subdirectory(Gem)
-add_subdirectory(Source)

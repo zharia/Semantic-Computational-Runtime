@@ -1,0 +1,11 @@
+{
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "include": [
+        "/opt/O3DE/26.05/CMakePresets.json"
+    ]
+}
