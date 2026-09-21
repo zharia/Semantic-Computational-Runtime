@@ -1,28 +1,29 @@
 {
-    "gem_name": "SCRIntegration",
-    "version": "0.0.4",
-    "display_name": "SCR Integration",
-    "license": "MIT",
-    "license_url": "https://opensource.org/licenses/MIT",
-    "origin": "SCR Framework",
-    "origin_url": "https://github.com/zharia/Semantic-Computational-Runtime",
-    "type": "Code",
-    "summary": "Maps SCR semantic contracts to O3DE ECS",
+    "gem_name": "SCR_VolcanicIsland",
+    "version": "${Version}",
+    "display_name": "SCR_VolcanicIsland",
+    "license": "What license SCR_VolcanicIsland uses goes here: i.e. Apache-2.0 or MIT",
+    "license_url": "Link to the license web site goes here: i.e. https://opensource.org/licenses/Apache-2.0 Or https://opensource.org/licenses/MIT",
+    "origin": "The name of the originator goes here. i.e. XYZ Inc.",
+    "origin_url": "The primary repo for SCR_VolcanicIsland goes here: i.e. http://www.mydomain.com",
+    "type": "",
+    "summary": "A short description of SCR_VolcanicIsland.",
     "canonical_tags": [
         "Gem"
     ],
     "user_tags": [
-        "SCR",
-        "Semantic",
-        "Integration"
+        "SCR_VolcanicIsland"
     ],
     "platforms": [
-        "Linux"
+        "${Platforms}"
     ],
     "icon_path": "preview.png",
     "requirements": "",
     "documentation_url": "",
-    "dependencies": [],
-    "compatible_engines": [],
-    "engine_api_dependencies": []
+    "dependencies": [
+    ],
+    "compatible_engines": [
+    ],
+    "engine_api_dependencies":[
+    ]
 }

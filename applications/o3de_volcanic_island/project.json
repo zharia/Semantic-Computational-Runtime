@@ -1,18 +1,16 @@
 {
     "project_name": "SCR_VolcanicIsland",
-    "version": "0.0.4",
-    "project_id": "{SCR-VOLCANIC-ISLAND-004}",
-    "origin": "SCR Framework - Semantic Computational Runtime",
-    "license": "MIT",
-    "display_name": "SCR Volcanic Island",
-    "summary": "Volcanic island simulation using SCR semantic framework in O3DE",
+    "version": "${Version}",
+    "project_id": "${ProjectId}",
+    "origin": "The primary repo for SCR_VolcanicIsland goes here: i.e. http://www.mydomain.com",
+    "license": "What license SCR_VolcanicIsland uses goes here: i.e. https://opensource.org/licenses/Apache-2.0 Or https://opensource.org/licenses/MIT etc.",
+    "display_name": "SCR_VolcanicIsland",
+    "summary": "A short description of SCR_VolcanicIsland.",
     "canonical_tags": [
         "Project"
     ],
     "user_tags": [
-        "SCR",
-        "VolcanicIsland",
-        "Simulation"
+        "SCR_VolcanicIsland"
     ],
     "icon_path": "preview.png",
     "engine": "o3de-sdk",
@@ -20,6 +18,7 @@
         "Gem"
     ],
     "gem_names": [
+        "SCR_VolcanicIsland",
         "Atom",
         "CameraFramework",
         "ImGui"

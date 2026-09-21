@@ -1,0 +1,18 @@
+{
+    "Amazon": {
+        "AssetProcessor": {
+            "Settings": {
+                "ScanFolder SCR_VolcanicIsland/Assets": {
+                    "watch": "@GEMROOT:SCR_VolcanicIsland@/Assets",
+                    "recursive": 1,
+                    "order": 101
+                },
+                "ScanFolder SCR_VolcanicIsland/Registry": {
+                    "watch": "@GEMROOT:SCR_VolcanicIsland@/Registry",
+                    "recursive": 1,
+                    "order": 102
+                }
+            }
+        }
+    }
+}
