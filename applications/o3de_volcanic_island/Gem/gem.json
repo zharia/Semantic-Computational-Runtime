@@ -1,0 +1,28 @@
+{
+    "gem_name": "SCRIntegration",
+    "version": "0.0.4",
+    "display_name": "SCR Integration",
+    "license": "MIT",
+    "license_url": "https://opensource.org/licenses/MIT",
+    "origin": "SCR Framework",
+    "origin_url": "https://github.com/zharia/Semantic-Computational-Runtime",
+    "type": "Code",
+    "summary": "Maps SCR semantic contracts to O3DE ECS",
+    "canonical_tags": [
+        "Gem"
+    ],
+    "user_tags": [
+        "SCR",
+        "Semantic",
+        "Integration"
+    ],
+    "platforms": [
+        "Linux"
+    ],
+    "icon_path": "preview.png",
+    "requirements": "",
+    "documentation_url": "",
+    "dependencies": [],
+    "compatible_engines": [],
+    "engine_api_dependencies": []
+}

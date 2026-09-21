@@ -1,0 +1,3 @@
+# SCR Integration Gem PAL for Linux
+
+set(PAL_TRAIT_SCRINTEGRATION_SUPPORTED TRUE)
