@@ -29,11 +29,18 @@ ly_add_target(
     INCLUDE_DIRECTORIES
         PUBLIC
             Include
+            ${CMAKE_CURRENT_LIST_DIR}/../../../providers
+            ${CMAKE_CURRENT_LIST_DIR}/../../../providers/render
+            ${CMAKE_CURRENT_LIST_DIR}/../../../lib
+            ${CMAKE_CURRENT_LIST_DIR}/../../../applications/cave/include
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzGameFramework
             Gem::Atom_AtomBridge.Static
 )
+
+# Re-enable exceptions for SCR simulation headers (O3DE disables them globally)
+target_compile_options(${gem_name}.Private.Object PRIVATE -fexceptions -Wno-unused-lambda-capture -Wno-deprecated-declarations)
 
 ly_add_target(
     NAME ${gem_name} ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE}
@@ -48,7 +55,11 @@ ly_add_target(
         PRIVATE
             Gem::${gem_name}.Private.Object
             AZ::AzCore
+            Gem::Atom_AtomBridge.Static
 )
+
+# Re-enable exceptions + suppress deprecation for shared module (same as Private.Object)
+target_compile_options(${gem_name} PRIVATE -fexceptions -Wno-unused-lambda-capture -Wno-deprecated-declarations)
 
 # Include the gem name into the Client Module source file
 # for use with the AZ_DECLARE_MODULE_CLASS macro
