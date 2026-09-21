@@ -155,5 +155,17 @@ g++ -std=c++17 -o test_ros2_provider \
 
 # 8. Dependencies
 
-- ROS2 must be installed (check with `which ros2`)
-- If ROS2 not available, defer to v0.0.5 or implement with mock ROS2 types
+- ROS2 Humble available via Docker: `osrf/ros2:humble`
+- Build and test inside container
+- Mount source code as volume
+- Extract test results to host
+
+```bash
+# Run ROS2 provider tests in container
+docker run --rm -v $(pwd):/workspace -w /workspace osrf/ros2:humble \
+    bash -c "apt-get update && apt-get install -y g++ && \
+    cd lib/801_Spatial/ReferenceImplementation && \
+    g++ -std=c++17 -o test_ros2_provider scr_ros2_provider.cpp test_ros2_provider.cpp \
+    -I/opt/ros/humble/include -L/opt/ros/humble/lib -lrclcpp -ltf2 -lgeometry_msgs && \
+    ./test_ros2_provider"
+```

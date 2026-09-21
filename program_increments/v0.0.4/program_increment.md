@@ -110,7 +110,7 @@ Extend the SCR semantic kernel from reference implementation to production-ready
 | Lean | 4.19.0 | Available |
 | Mathlib | .lake/packages/mathlib | Available |
 | O3DE | 26.05 | Available (AzCore verified) |
-| ROS2 | - | **Not installed** |
+| ROS2 | Humble | Available via Docker (osrf/ros2:humble) |
 
 ---
 
@@ -151,7 +151,7 @@ All status artifacts, reports, and specifications reflect the new work.
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| ROS2 not installed | Blocks objective 005 | Install ROS2 or defer to v0.0.5 |
 | O3DE ECS API changes | Blocks objective 004 | Pin to 26.05 API |
 | Lean proof complexity | Delays objective 006 | Focus on essential properties |
 | GCC 16 compatibility | Compilation issues | Use -fpermissive where needed |
+| ROS2 container networking | Test isolation issues | Use --net=host or volume mounts |
