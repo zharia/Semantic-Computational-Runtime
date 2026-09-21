@@ -3,7 +3,7 @@
 /// @version 0.0.4
 /// @date 2026-09-21
 
-#include "SCRIntegrationBus.h"
+#include <SCRIntegration/SCRIntegrationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/TransformBus.h>

@@ -5,7 +5,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/Module.h>
 
-#include "SCRIntegrationBus.h"
+#include <SCRIntegration/SCRIntegrationBus.h>
 
 namespace SCR::Integration {
 
@@ -13,7 +13,7 @@ namespace SCR::Integration {
         : public AZ::Module
     {
     public:
-        AZ_RTTI(SCRIntegrationModule, "{SCR-VOLCANIC-ISLAND-004-MODULE}", AZ::Module);
+        AZ_RTTI(SCRIntegrationModule, "{E5C9A000-0006-4000-8000-000000000006}", AZ::Module);
         AZ_CLASS_ALLOCATOR(SCRIntegrationModule, AZ::SystemAllocator);
 
         SCRIntegrationModule()
@@ -23,19 +23,12 @@ namespace SCR::Integration {
                 SCRIntegrationComponent::CreateDescriptor(),
             });
         }
-
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            AZ::ComponentTypeList requiredComponents;
-            requiredComponents.push_back(AZUuid(typeid(SCRIntegrationComponent).name()));
-            return requiredComponents;
-        }
     };
 
 } // namespace SCR::Integration
 
 #if defined(O3DE_GEM_NAME)
-AZ_DECLARE_MODULE_CLASS(GEM_NAME, SCR::Integration::SCRIntegrationModule)
+AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME), SCR::Integration::SCRIntegrationModule)
 #else
-AZ_DECLARE_MODULE_CLASS(SCRIntegration, SCR::Integration::SCRIntegrationModule)
+AZ_DECLARE_MODULE_CLASS(Gem_SCRIntegration, SCR::Integration::SCRIntegrationModule)
 #endif

@@ -1,0 +1,11 @@
+{
+    "Amazon": {
+        "Project": {
+            "Settings": {
+                "Build": {
+                    "project_build_path": "/home/zharia/Projects/experiments/semantic_computational_runtime/applications/o3de_volcanic_island/build"
+                }
+            }
+        }
+    }
+}

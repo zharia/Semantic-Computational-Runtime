@@ -21,6 +21,7 @@ namespace SCR::Integration {
 
 /// @brief SCR Semantic Identity (simplified for O3DE)
 struct SCR_SID {
+    AZ_TYPE_INFO(SCR_SID, "{E5C9A000-0001-4000-8000-000000000001}");
     uint64_t root_authority = 0;
     uint64_t allocation_domain = 0;
     uint64_t coordinate = 0;
@@ -39,6 +40,7 @@ struct SCR_SID {
 /// @brief SCR Position in canonical coordinates
 ///   SCR: +Z forward, +Y up, +X right
 struct SCR_Position {
+    AZ_TYPE_INFO(SCR_Position, "{E5C9A000-0002-4000-8000-000000000002}");
     double x = 0.0;  ///< +X right
     double y = 0.0;  ///< +Y up
     double z = 0.0;  ///< +Z forward
@@ -46,6 +48,7 @@ struct SCR_Position {
 
 /// @brief SCR Quaternion (Hamilton, scalar-first)
 struct SCR_Quaternion {
+    AZ_TYPE_INFO(SCR_Quaternion, "{E5C9A000-0003-4000-8000-000000000003}");
     double w = 1.0;  ///< Scalar part
     double x = 0.0;  ///< i
     double y = 0.0;  ///< j
@@ -54,6 +57,7 @@ struct SCR_Quaternion {
 
 /// @brief SCR Similarity Transform (scale + rotation + translation)
 struct SCR_SimTransform {
+    AZ_TYPE_INFO(SCR_SimTransform, "{E5C9A000-0004-4000-8000-000000000004}");
     SCR_Position position;
     SCR_Quaternion rotation;
     double scale = 1.0;
@@ -111,8 +115,6 @@ inline SCR_Quaternion o3deToSCR(const AZ::Quaternion& o3de) {
 inline AZ::Transform scrToO3DE(const SCR_SimTransform& scr) {
     AZ::Vector3 position = scrToO3DE(scr.position);
     AZ::Quaternion rotation = scrToO3DE(scr.rotation);
-    AZ::Vector3 scale = AZ::Vector3(static_cast<float>(scr.scale));
-    
     return AZ::Transform::CreateFromQuaternionAndTranslation(rotation, position);
 }
 
@@ -123,8 +125,7 @@ class SCRIntegrationComponent
     : public AZ::Component
 {
 public:
-    AZ_RTTI(SCRIntegrationComponent, "{SCR-INTEGRATION-COMPONENT-ID}", AZ::Component);
-    AZ_CLASS_ALLOCATOR(SCRIntegrationComponent, AZ::SystemAllocator);
+    AZ_COMPONENT(SCRIntegrationComponent, "{E5C9A000-0005-4000-8000-000000000005}", AZ::Component);
 
     SCRIntegrationComponent() = default;
     ~SCRIntegrationComponent() override = default;
