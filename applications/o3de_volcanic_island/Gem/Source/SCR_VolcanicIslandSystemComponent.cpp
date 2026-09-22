@@ -6,6 +6,10 @@
 
 #include <Atom/RPI.Public/Scene.h>
 #include <Atom/RPI.Public/RPISystemInterface.h>
+#include <Atom/RPI.Public/RenderPipeline.h>
+#include <Atom/RPI.Public/ViewportContext.h>
+#include <Atom/RPI.Public/RPIUtils.h>
+#include <AzCore/Math/Transform.h>
 
 namespace SCR_VolcanicIsland {
     AZ_COMPONENT_IMPL(SCR_VolcanicIslandSystemComponent, "SCR_VolcanicIslandSystemComponent",
@@ -75,6 +79,14 @@ namespace SCR_VolcanicIsland {
                 m_scene->attachRenderer(renderCtx);
                 m_rendererAttached = true;
             }
+        }
+
+        // Force camera every tick — EditorCameraComponent fights one-shot sets
+        if (auto vpCtx = AZ::RPI::GetDefaultViewportContext()) {
+            AZ::Transform camT = AZ::Transform::CreateLookAt(
+                AZ::Vector3(180.0f, -220.0f, 90.0f),
+                AZ::Vector3(0.0f, 0.0f, 30.0f));
+            vpCtx->SetCameraTransform(camT);
         }
 
         SCR::Simulation::UserInputState input;

@@ -1,0 +1,14 @@
+{
+    "materialType": "/opt/O3DE/26.05/Gems/Atom/Feature/Common/Assets/Materials/Types/StandardPBR.materialtype",
+    "materialTypeVersion": 5,
+    "propertyValues": {
+        "baseColor.color": [0.25, 0.22, 0.20, 0.5],
+        "metallic.useTexture": false,
+        "metallic.factor": 0.0,
+        "roughness.useTexture": false,
+        "roughness.factor": 0.95,
+        "normal.useTexture": false,
+        "specularF0.useTexture": false,
+        "opacity.factor": 0.5
+    }
+}

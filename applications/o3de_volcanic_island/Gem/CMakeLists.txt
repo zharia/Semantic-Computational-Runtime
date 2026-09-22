@@ -41,6 +41,9 @@ ly_add_target(
 
 # Re-enable exceptions for SCR simulation headers (O3DE disables them globally)
 target_compile_options(${gem_name}.Private.Object PRIVATE -fexceptions -Wno-unused-lambda-capture -Wno-deprecated-declarations)
+target_include_directories(${gem_name}.Private.Object PRIVATE
+    /opt/O3DE/26.05/Gems/Atom/Feature/Common/Code/Include
+    /opt/O3DE/26.05/Gems/Atom/Utils/Code/Include)
 
 ly_add_target(
     NAME ${gem_name} ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE}

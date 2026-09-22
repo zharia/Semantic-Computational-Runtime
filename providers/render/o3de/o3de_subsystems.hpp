@@ -25,6 +25,7 @@ public:
     bool mesh_dirty = true;
     bool mesh_visible_ = true;
     bool last_secondary_ = false;
+    O3deMeshHandle mesh_handle;
 
     // Injected by scene: returns terrain height at (x,z)
     std::function<float(float, float)> getTerrainHeight;
@@ -48,12 +49,27 @@ public:
         auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
         if (!scene || !mesh_visible_ || !mesh_dirty) return;
 
-        MeshData mesh;
-        buildTerrainMesh(mesh);
+        if (mesh_handle.valid) {
+            auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+            if (fp) fp->ReleaseMesh(mesh_handle.handle);
+            mesh_handle.valid = false;
+        }
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
-        mesh.draw(nullptr, scenePtr);
-        mesh_dirty = false;
+        // SCR (+Y up, island center 160,160) -> O3DE (+Z up, centered at origin)
+        AZ::Transform t = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, 25.0f));
+        mesh_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().terrain, t,
+            AZ::Vector3(128.0f, 128.0f, 50.0f), "terrain");
+        if (mesh_handle.valid) mesh_dirty = false;
+    }
+
+    void cleanup(Simulation::RenderContext& renderCtx) override {
+        auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
+        if (scene && mesh_handle.valid) {
+            auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+            if (fp) fp->ReleaseMesh(mesh_handle.handle);
+            mesh_handle.valid = false;
+        }
     }
 
     void handleEvent(const Simulation::ISimulationEvent& event, Simulation::SimContext& ctx) override {
@@ -119,6 +135,8 @@ class O3deVolcanoSubSystem : public Simulation::ISimulationSubSystem {
 public:
     float lava_flow_time = 0.0f;
     float smoke_plume_time = 0.0f;
+    O3deMeshHandle lava_handle;
+    O3deMeshHandle smoke_handle;
 
     // Injected by scene: returns lava flow position and temperature
     std::function<void(float, float&, float&, float&)> sampleLavaFlow;
@@ -143,18 +161,32 @@ public:
 
     void renderSync(Simulation::RenderContext& renderCtx, const Simulation::SimContext& simCtx, float dt) override {
         if (!volcano_active) return;
+        if (lava_handle.valid && smoke_handle.valid) return;
         auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
         if (!scene) return;
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
 
-        MeshData lava_mesh;
-        buildLavaFlowMesh(lava_mesh);
-        lava_mesh.draw(nullptr, scenePtr);
+        if (!lava_handle.valid) {
+            AZ::Transform lavaT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, peak_height - 10.0f));
+            lava_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().lava, lavaT,
+                AZ::Vector3(caldera_radius * 1.5f, caldera_radius * 1.5f, 8.0f), "lava_flow");
+        }
 
-        MeshData smoke_mesh;
-        buildSmokePlumeMesh(smoke_mesh);
-        smoke_mesh.draw(nullptr, scenePtr);
+        if (!smoke_handle.valid) {
+            AZ::Transform smokeT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, peak_height + 30.0f));
+            smoke_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().smoke, smokeT,
+                AZ::Vector3(15.0f, 15.0f, 40.0f), "smoke_plume");
+        }
+    }
+
+    void cleanup(Simulation::RenderContext& renderCtx) override {
+        auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
+        if (!scene) return;
+        auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+        if (!fp) return;
+        if (lava_handle.valid) { fp->ReleaseMesh(lava_handle.handle); lava_handle.valid = false; }
+        if (smoke_handle.valid) { fp->ReleaseMesh(smoke_handle.handle); smoke_handle.valid = false; }
     }
 
 private:
@@ -217,6 +249,7 @@ private:
 class O3deOceanSubSystem : public Simulation::ISimulationSubSystem {
 public:
     float ocean_time = 0.0f;
+    O3deMeshHandle ocean_handle;
 
     // Injected by scene: returns ocean height at (x,z,t)
     std::function<float(float, float, float)> getOceanHeight;
@@ -239,14 +272,23 @@ public:
     }
 
     void renderSync(Simulation::RenderContext& renderCtx, const Simulation::SimContext& simCtx, float dt) override {
+        if (ocean_handle.valid) return;
         auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
         if (!scene) return;
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
+        AZ::Transform oceanT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, sea_level - 2.0f));
+        ocean_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().ocean, oceanT,
+            AZ::Vector3(island_radius * 2.0f, island_radius * 2.0f, 2.0f), "ocean");
+    }
 
-        MeshData ocean_mesh;
-        buildOceanMesh(ocean_mesh);
-        ocean_mesh.draw(nullptr, scenePtr);
+    void cleanup(Simulation::RenderContext& renderCtx) override {
+        auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
+        if (scene && ocean_handle.valid) {
+            auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+            if (fp) fp->ReleaseMesh(ocean_handle.handle);
+            ocean_handle.valid = false;
+        }
     }
 
 private:
@@ -344,6 +386,8 @@ public:
     std::vector<VegetationInstance> instances;
     bool instances_generated = false;
 
+    O3deMeshHandle veg_handle;
+
     // Injected by scene: returns terrain height at (x,z)
     std::function<float(float, float)> getTerrainHeight;
     // Injected by scene: returns vegetation density at (x,z) → [0,1]
@@ -364,36 +408,28 @@ public:
             generateInstances();
             instances_generated = true;
         }
-        if (instances.empty()) return;
+        if (instances.empty() || veg_handle.valid) return;
 
         auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
         if (!scene) return;
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
 
-        for (auto& inst : instances) {
-            MeshData tree_mesh;
-            float s = inst.scale;
-            float px = inst.position.GetX();
-            float py = inst.position.GetY();
-            float pz = inst.position.GetZ();
+        float avg_x = 0, avg_y = 0, avg_z = 0;
+        for (auto& inst : instances) { avg_x += inst.position.GetX(); avg_y += inst.position.GetY(); avg_z += inst.position.GetZ(); }
+        float n = (float)instances.size();
+        avg_x /= n; avg_y /= n; avg_z /= n;
+        veg_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().vegetation,
+            AZ::Transform::CreateTranslation(AZ::Vector3(avg_x - 160.0f, avg_z - 160.0f, avg_y + 2.0f)),
+            AZ::Vector3(40.0f, 40.0f, 15.0f), "vegetation");
+    }
 
-            uint32_t base = tree_mesh.vertex_count();
-            tree_mesh.vertices.push_back(MeshData::vert(px - 0.3f * s, py, pz - 0.3f * s, 0, 0, 1, 0, 0));
-            tree_mesh.vertices.push_back(MeshData::vert(px + 0.3f * s, py, pz - 0.3f * s, 0, 0, 1, 1, 0));
-            tree_mesh.vertices.push_back(MeshData::vert(px + 0.3f * s, py, pz + 0.3f * s, 0, 0, 1, 1, 1));
-            tree_mesh.vertices.push_back(MeshData::vert(px - 0.3f * s, py, pz + 0.3f * s, 0, 0, 1, 0, 1));
-            tree_mesh.addQuad(base, base + 1, base + 2, base + 3);
-
-            float trunk_h = 2.0f * s;
-            base = tree_mesh.vertex_count();
-            tree_mesh.vertices.push_back(MeshData::vert(px - 0.1f * s, py + trunk_h, pz, 0, 1, 0, 0, 0));
-            tree_mesh.vertices.push_back(MeshData::vert(px + 0.1f * s, py + trunk_h, pz, 0, 1, 0, 1, 0));
-            tree_mesh.vertices.push_back(MeshData::vert(px + 0.1f * s, py + trunk_h + 2.0f * s, pz, 0, 1, 0, 1, 1));
-            tree_mesh.vertices.push_back(MeshData::vert(px - 0.1f * s, py + trunk_h + 2.0f * s, pz, 0, 1, 0, 0, 1));
-            tree_mesh.addQuad(base, base + 1, base + 2, base + 3);
-
-            tree_mesh.draw(nullptr, scenePtr);
+    void cleanup(Simulation::RenderContext& renderCtx) override {
+        auto* scene = renderCtx.getSceneManager<AZ::RPI::Scene>();
+        if (scene && veg_handle.valid) {
+            auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+            if (fp) fp->ReleaseMesh(veg_handle.handle);
+            veg_handle.valid = false;
         }
     }
 

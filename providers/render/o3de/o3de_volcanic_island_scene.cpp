@@ -132,6 +132,7 @@ void O3deVolcanicIslandScene::prepare(Simulation::LoadingContext& ctx) {
 }
 
 void O3deVolcanicIslandScene::attachRenderer(Simulation::RenderContext& ctx) {
+    MaterialCache::instance().load();
     coordinator->setRenderContext(ctx);
     coordinator->initialize();
 }
@@ -141,7 +142,7 @@ void O3deVolcanicIslandScene::detachRenderer(Simulation::RenderContext& ctx) {
 }
 
 void O3deVolcanicIslandScene::update(float dt, const Simulation::UserInputState& input) {
-    coordinator->stepSimulation(dt, input);
+    coordinator->update(dt, input);
 }
 
 void O3deVolcanicIslandScene::renderPresentation(Simulation::RenderContext& ctx, float alpha) {
