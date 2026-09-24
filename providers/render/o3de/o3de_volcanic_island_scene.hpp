@@ -4,12 +4,14 @@
 #include "simulation/simulation_framework.hpp"
 #include "simulation/simulation_systems_core.hpp"
 #include "o3de/o3de_subsystems.hpp"
+#include "o3de/o3de_dynamic_sky.hpp"
 
 namespace SCR::Render::O3DE {
 
 class O3deVolcanicIslandScene : public Simulation::ISimulationScene {
 public:
     std::shared_ptr<Simulation::ConcurrentSystemCoordinator> coordinator;
+    O3deDynamicSky dynamic_sky;
 
     O3deVolcanicIslandScene();
 

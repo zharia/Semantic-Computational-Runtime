@@ -135,14 +135,24 @@ void O3deVolcanicIslandScene::attachRenderer(Simulation::RenderContext& ctx) {
     MaterialCache::instance().load();
     coordinator->setRenderContext(ctx);
     coordinator->initialize();
+
+    auto* scene = ctx.getSceneManager<AZ::RPI::Scene>();
+    if (scene) {
+        dynamic_sky.initialize(scene);
+    }
 }
 
 void O3deVolcanicIslandScene::detachRenderer(Simulation::RenderContext& ctx) {
+    dynamic_sky.cleanup(ctx);
     coordinator->cleanup(ctx);
 }
 
 void O3deVolcanicIslandScene::update(float dt, const Simulation::UserInputState& input) {
     coordinator->update(dt, input);
+
+    auto atmo = Simulation::SubjectRegistry::instance()
+        .getFirstSubjectOfType<Simulation::AtmosphereSubject>(Simulation::SubjectType::ATMOSPHERE);
+    dynamic_sky.update(dt, atmo.get());
 }
 
 void O3deVolcanicIslandScene::renderPresentation(Simulation::RenderContext& ctx, float alpha) {

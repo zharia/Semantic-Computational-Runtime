@@ -27,6 +27,10 @@ public:
     bool last_secondary_ = false;
     O3deMeshHandle mesh_handle;
 
+    float sea_level = 9.0f;
+    float center_x = 160.0f, center_z = 160.0f;
+    float island_radius = 128.0f;
+
     // Injected by scene: returns terrain height at (x,z)
     std::function<float(float, float)> getTerrainHeight;
 
@@ -56,10 +60,10 @@ public:
         }
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
-        // SCR (+Y up, island center 160,160) -> O3DE (+Z up, centered at origin)
-        AZ::Transform t = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, 25.0f));
-        mesh_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().terrain, t,
-            AZ::Vector3(128.0f, 128.0f, 50.0f), "terrain");
+        MeshData mesh;
+        buildTerrainMesh(mesh);
+        mesh_handle = submitMeshData(scenePtr, mesh, MaterialCache::instance().terrain,
+            AZ::Transform::CreateIdentity(), AZ::Vector3(1.0f, 1.0f, 1.0f), "terrain");
         if (mesh_handle.valid) mesh_dirty = false;
     }
 
@@ -80,36 +84,44 @@ public:
 
 private:
     void buildTerrainMesh(MeshData& mesh) {
-        const int grid_size = 64;
-        const float cell_size = 5.0f;
-        const float sea_level = 6.0f;
+        const int grid_size = 96;
+        const float cell_size = 4.0f;
+        const float sea_level = this->sea_level;
 
-        for (int x = 0; x < grid_size; ++x) {
-            for (int z = 0; z < grid_size; ++z) {
-                float x0 = x * cell_size;
-                float z0 = z * cell_size;
-                float x1 = (x + 1) * cell_size;
-                float z1 = (z + 1) * cell_size;
+        // SCR: +Y up, island center (160,160). O3DE: +Z up, origin at island center.
+        for (int sx = 0; sx < grid_size; ++sx) {
+            for (int sz = 0; sz < grid_size; ++sz) {
+                float x0 = sx * cell_size;
+                float z0 = sz * cell_size;
+                float x1 = (sx + 1) * cell_size;
+                float z1 = (sz + 1) * cell_size;
 
                 float h00 = terrainHeight(x0, z0);
                 float h10 = terrainHeight(x1, z0);
                 float h01 = terrainHeight(x0, z1);
                 float h11 = terrainHeight(x1, z1);
 
+                // Skip fully submerged ocean floor; keep water as separate mesh
                 float avg_h = (h00 + h10 + h01 + h11) * 0.25f;
                 if (avg_h < sea_level - 0.5f) continue;
 
+                // O3DE coords: o3x = scr_x - 160, o3y = scr_z - 160, o3z = scr_y
+                float ox0 = x0 - 160.0f, oy0 = z0 - 160.0f;
+                float ox1 = x1 - 160.0f, oy1 = z1 - 160.0f;
+
+                // Normal from finite differences (SCR up = +Y → O3DE +Z)
                 float nx = (h10 - h00 + h11 - h01) * 0.5f;
-                float nz = (h01 - h00 + h11 - h10) * 0.5f;
-                float ny = cell_size;
+                float ny = (h01 - h00 + h11 - h10) * 0.5f;
+                float nz = cell_size;
                 float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
                 nx *= inv_len; ny *= inv_len; nz *= inv_len;
 
+                // Map: (SCR x, SCR y=height, SCR z) -> (o3 x, o3 y, o3 z)
                 uint32_t base = mesh.vertex_count();
-                mesh.vertices.push_back(MeshData::vert(x0, h00, z0, nx, ny, nz, 0, 0));
-                mesh.vertices.push_back(MeshData::vert(x1, h10, z0, nx, ny, nz, 1, 0));
-                mesh.vertices.push_back(MeshData::vert(x1, h11, z1, nx, ny, nz, 1, 1));
-                mesh.vertices.push_back(MeshData::vert(x0, h01, z1, nx, ny, nz, 0, 1));
+                mesh.vertices.push_back(MeshData::vert(ox0, oy0, h00, nx, ny, nz, 0, 0));
+                mesh.vertices.push_back(MeshData::vert(ox1, oy0, h10, nx, ny, nz, 1, 0));
+                mesh.vertices.push_back(MeshData::vert(ox1, oy1, h11, nx, ny, nz, 1, 1));
+                mesh.vertices.push_back(MeshData::vert(ox0, oy1, h01, nx, ny, nz, 0, 1));
                 mesh.addQuad(base, base + 1, base + 2, base + 3);
             }
         }
@@ -118,12 +130,12 @@ private:
     float terrainHeight(float x, float z) {
         if (getTerrainHeight) return getTerrainHeight(x, z);
 
-        float dx = x - 160.0f;
-        float dz = z - 160.0f;
+        float dx = x - center_x;
+        float dz = z - center_z;
         float dist = sqrtf(dx * dx + dz * dz);
-        float cone = std::max(0.0f, 50.0f - dist * 0.3f);
+        float cone = std::max(0.0f, island_radius * 0.39f - dist * 0.3f);
         float noise = sinf(x * 0.1f) * cosf(z * 0.1f) * 5.0f;
-        return cone + noise;
+        return sea_level + cone + noise;
     }
 };
 
@@ -168,15 +180,21 @@ public:
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
 
         if (!lava_handle.valid) {
-            AZ::Transform lavaT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, peak_height - 10.0f));
-            lava_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().lava, lavaT,
-                AZ::Vector3(caldera_radius * 1.5f, caldera_radius * 1.5f, 8.0f), "lava_flow");
+            MeshData mesh;
+            buildLavaFlowMesh(mesh);
+            if (!mesh.vertices.empty()) {
+                lava_handle = submitMeshData(scenePtr, mesh, MaterialCache::instance().lava,
+                    AZ::Transform::CreateIdentity(), AZ::Vector3(1.0f, 1.0f, 1.0f), "lava_flow");
+            }
         }
 
         if (!smoke_handle.valid) {
-            AZ::Transform smokeT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, peak_height + 30.0f));
-            smoke_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().smoke, smokeT,
-                AZ::Vector3(15.0f, 15.0f, 40.0f), "smoke_plume");
+            MeshData mesh;
+            buildSmokePlumeMesh(mesh);
+            if (!mesh.vertices.empty()) {
+                smoke_handle = submitMeshData(scenePtr, mesh, MaterialCache::instance().smoke,
+                    AZ::Transform::CreateIdentity(), AZ::Vector3(1.0f, 1.0f, 1.0f), "smoke_plume");
+            }
         }
     }
 
@@ -191,52 +209,58 @@ public:
 
 private:
     void buildLavaFlowMesh(MeshData& mesh) {
-        const int segments = 40;
-        const float width = 3.5f;
+        // Lava river down the flank from caldera rim toward the sea
+        const int segments = 60;
+        const float width = 4.5f;
 
         for (int i = 0; i < segments; ++i) {
             float t0 = (float)i / segments;
             float t1 = (float)(i + 1) / segments;
 
-            float r0 = caldera_radius * 0.70f + t0 * (island_radius * 0.95f - caldera_radius * 0.70f);
-            float r1 = caldera_radius * 0.70f + t1 * (island_radius * 0.95f - caldera_radius * 0.70f);
+            float r0 = caldera_radius * 0.95f + t0 * (island_radius * 0.78f - caldera_radius * 0.95f);
+            float r1 = caldera_radius * 0.95f + t1 * (island_radius * 0.78f - caldera_radius * 0.95f);
 
-            float x0 = center_x + cosf(river_angle) * r0;
-            float x1 = center_x + cosf(river_angle) * r1;
-            float z0 = center_z + sinf(river_angle) * r0;
-            float z1 = center_z + sinf(river_angle) * r1;
+            // Meander the flow centerline
+            float me0 = sinf(t0 * 9.0f) * (2.2f + t0 * 3.0f);
+            float me1 = sinf(t1 * 9.0f) * (2.2f + t1 * 3.0f);
+            float b0 = river_angle + cosf(t0 * 5.0f) * 0.06f;
+            float b1 = river_angle + cosf(t1 * 5.0f) * 0.06f;
 
-            float y0 = peak_height - 18.0f - t0 * (peak_height - 18.0f - sea_level + 2.0f);
-            float y1 = peak_height - 18.0f - t1 * (peak_height - 18.0f - sea_level + 2.0f);
+            float c0x = (center_x - 160.0f) + cosf(b0) * (r0 + me0);
+            float c0y = (center_z - 160.0f) + sinf(b0) * (r0 + me0);
+            float c1x = (center_x - 160.0f) + cosf(b1) * (r1 + me1);
+            float c1y = (center_z - 160.0f) + sinf(b1) * (r1 + me1);
 
-            float lava_temp = 1450.0f - t0 * 400.0f;
-            (void)lava_temp;
+            float px = -sinf(b0), py = cosf(b0);
+            float h0 = peak_height - 8.0f - t0 * (peak_height - 8.0f - (sea_level + 2.0f));
+            float h1 = peak_height - 8.0f - t1 * (peak_height - 8.0f - (sea_level + 2.0f));
 
             uint32_t base = mesh.vertex_count();
-            mesh.vertices.push_back(MeshData::vert(x0 - width, y0, z0, 0, 1, 0, 0, t0));
-            mesh.vertices.push_back(MeshData::vert(x0 + width, y0, z0, 0, 1, 0, 1, t0));
-            mesh.vertices.push_back(MeshData::vert(x1 + width, y1, z1, 0, 1, 0, 1, t1));
-            mesh.vertices.push_back(MeshData::vert(x1 - width, y1, z1, 0, 1, 0, 0, t1));
+            mesh.vertices.push_back(MeshData::vert(c0x - px * width, c0y - py * width, h0, 0, 0, 1, 0, t0));
+            mesh.vertices.push_back(MeshData::vert(c0x + px * width, c0y + py * width, h0, 0, 0, 1, 1, t0));
+            mesh.vertices.push_back(MeshData::vert(c1x + px * width, c1y + py * width, h1, 0, 0, 1, 1, t1));
+            mesh.vertices.push_back(MeshData::vert(c1x - px * width, c1y - py * width, h1, 0, 0, 1, 0, t1));
             mesh.addQuad(base, base + 1, base + 2, base + 3);
         }
     }
 
-    void buildSmokePlumeMesh(MeshData& mesh) {
-        const int layers = 15;
-        const float base_width = 6.0f;
+void buildSmokePlumeMesh(MeshData& mesh) {
+        const int layers = 16;
+        const float base_width = 5.0f;
+        const float max_h = peak_height + 45.0f;
 
         for (int i = 0; i < layers; ++i) {
-            float t = (float)i / layers;
-            float y = peak_height + t * 40.0f;
-            float w = base_width * (1.0f + t * 3.0f);
-            float x = center_x + sinf(smoke_plume_time * 0.3f + t * 5.0f) * (2.0f + t * 4.0f);
-            float z = center_z + cosf(smoke_plume_time * 0.2f + t * 4.0f) * (2.0f + t * 3.0f);
+            float t = (float)i / (layers - 1);
+            float h = peak_height - 2.0f + t * (max_h - (peak_height - 2.0f));
+            float w = base_width * (0.7f + t * 3.6f);
+            float x = (center_x - 160.0f) + sinf(smoke_plume_time * 0.4f + t * 6.0f) * (1.5f + t * 5.0f);
+            float y = (center_z - 160.0f) + cosf(smoke_plume_time * 0.3f + t * 5.0f) * (1.5f + t * 4.0f);
 
             uint32_t base = mesh.vertex_count();
-            mesh.vertices.push_back(MeshData::vert(x - w, y, z - w, 0, 1, 0, 0, 0));
-            mesh.vertices.push_back(MeshData::vert(x + w, y, z - w, 0, 1, 0, 1, 0));
-            mesh.vertices.push_back(MeshData::vert(x + w, y, z + w, 0, 1, 0, 1, 1));
-            mesh.vertices.push_back(MeshData::vert(x - w, y, z + w, 0, 1, 0, 0, 1));
+            mesh.vertices.push_back(MeshData::vert(x - w, y - w, h, 0, 0, 1, 0, 0));
+            mesh.vertices.push_back(MeshData::vert(x + w, y - w, h, 0, 0, 1, 1, 0));
+            mesh.vertices.push_back(MeshData::vert(x + w, y + w, h, 0, 0, 1, 1, 1));
+            mesh.vertices.push_back(MeshData::vert(x - w, y + w, h, 0, 0, 1, 0, 1));
             mesh.addQuad(base, base + 1, base + 2, base + 3);
         }
     }
@@ -277,9 +301,11 @@ public:
         if (!scene) return;
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
-        AZ::Transform oceanT = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, sea_level - 2.0f));
-        ocean_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().ocean, oceanT,
-            AZ::Vector3(island_radius * 2.0f, island_radius * 2.0f, 2.0f), "ocean");
+        MeshData mesh;
+        buildOceanMesh(mesh);
+        if (mesh.vertices.empty()) return;
+        ocean_handle = submitMeshData(scenePtr, mesh, MaterialCache::instance().ocean,
+            AZ::Transform::CreateIdentity(), AZ::Vector3(1.0f, 1.0f, 1.0f), "ocean");
     }
 
     void cleanup(Simulation::RenderContext& renderCtx) override {
@@ -293,33 +319,43 @@ public:
 
 private:
     void buildOceanMesh(MeshData& mesh) {
-        const int grid_size = 80;
+        const int grid_size = 120;
         const float cell_size = 4.0f;
 
+        // Emit in O3DE space (origin at island center, +Z up), centered on the
+        // island. Cover SCR [0,480] -> O3DE [-240,240] so the ocean ring also
+        // fills the horizon beyond the island shelf.
         for (int x = 0; x < grid_size; ++x) {
             for (int z = 0; z < grid_size; ++z) {
-                float x0 = x * cell_size;
-                float z0 = z * cell_size;
-                float x1 = (x + 1) * cell_size;
-                float z1 = (z + 1) * cell_size;
+                float scr_x0 = x * cell_size;
+                float scr_z0 = z * cell_size;
+                float scr_x1 = (x + 1) * cell_size;
+                float scr_z1 = (z + 1) * cell_size;
 
-                float cx = (x0 + x1) * 0.5f;
-                float cz = (z0 + z1) * 0.5f;
+                float cx = (scr_x0 + scr_x1) * 0.5f;
+                float cz = (scr_z0 + scr_z1) * 0.5f;
                 float dx = cx - center_x;
                 float dz = cz - center_z;
                 float dist = sqrtf(dx * dx + dz * dz);
-                if (dist < island_radius * 0.85f) continue;
+                // Skip the island interior (terrain mesh owns it) and drop the
+                // deep-sea floor beyond the coastal apron.
+                if (dist < island_radius * 0.80f) continue;
+                if (dist > island_radius * 2.2f) continue;
 
-                float y00 = oceanHeight(x0, z0);
-                float y10 = oceanHeight(x1, z0);
-                float y01 = oceanHeight(x0, z1);
-                float y11 = oceanHeight(x1, z1);
+                float h00 = oceanHeight(scr_x0, scr_z0);
+                float h10 = oceanHeight(scr_x1, scr_z0);
+                float h01 = oceanHeight(scr_x0, scr_z1);
+                float h11 = oceanHeight(scr_x1, scr_z1);
+
+                // SCR (x, y=height, z) -> O3DE (x-center, z-center, y)
+                float ox0 = scr_x0 - 160.0f, oy0 = scr_z0 - 160.0f;
+                float ox1 = scr_x1 - 160.0f, oy1 = scr_z1 - 160.0f;
 
                 uint32_t base = mesh.vertex_count();
-                mesh.vertices.push_back(MeshData::vert(x0, y00, z0, 0, 1, 0, 0, 0));
-                mesh.vertices.push_back(MeshData::vert(x1, y10, z0, 0, 1, 0, 1, 0));
-                mesh.vertices.push_back(MeshData::vert(x1, y11, z1, 0, 1, 0, 1, 1));
-                mesh.vertices.push_back(MeshData::vert(x0, y01, z1, 0, 1, 0, 0, 1));
+                mesh.vertices.push_back(MeshData::vert(ox0, oy0, h00, 0, 0, 1, 0, 0));
+                mesh.vertices.push_back(MeshData::vert(ox1, oy0, h10, 0, 0, 1, 1, 0));
+                mesh.vertices.push_back(MeshData::vert(ox1, oy1, h11, 0, 0, 1, 1, 1));
+                mesh.vertices.push_back(MeshData::vert(ox0, oy1, h01, 0, 0, 1, 0, 1));
                 mesh.addQuad(base, base + 1, base + 2, base + 3);
             }
         }
@@ -415,13 +451,10 @@ public:
 
         AZStd::shared_ptr<AZ::RPI::Scene> scenePtr(scene, [](AZ::RPI::Scene*){});
 
-        float avg_x = 0, avg_y = 0, avg_z = 0;
-        for (auto& inst : instances) { avg_x += inst.position.GetX(); avg_y += inst.position.GetY(); avg_z += inst.position.GetZ(); }
-        float n = (float)instances.size();
-        avg_x /= n; avg_y /= n; avg_z /= n;
-        veg_handle = submitMesh(scenePtr, MeshData(), MaterialCache::instance().vegetation,
-            AZ::Transform::CreateTranslation(AZ::Vector3(avg_x - 160.0f, avg_z - 160.0f, avg_y + 2.0f)),
-            AZ::Vector3(40.0f, 40.0f, 15.0f), "vegetation");
+        MeshData mesh;
+        buildVegetationMesh(mesh);
+        veg_handle = submitMeshData(scenePtr, mesh, MaterialCache::instance().vegetation,
+            AZ::Transform::CreateIdentity(), AZ::Vector3(1.0f, 1.0f, 1.0f), "vegetation");
     }
 
     void cleanup(Simulation::RenderContext& renderCtx) override {
@@ -438,26 +471,70 @@ private:
         std::mt19937 rng(1337);
         std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 600; ++i) {
             float x = dist(rng) * island_radius * 2.0f;
             float z = dist(rng) * island_radius * 2.0f;
 
             float dx = x - center_x;
             float dz = z - center_z;
             float r = sqrtf(dx * dx + dz * dz);
-            if (r < island_radius * 0.3f || r > island_radius * 0.95f) continue;
+            if (r < island_radius * 0.32f || r > island_radius * 0.98f) continue;
 
             float h = getTerrainHeight ? getTerrainHeight(x, z) : 20.0f;
-            if (h < sea_level + 1.0f || h > 55.0f) continue;
+            if (h < sea_level + 1.5f || h > 52.0f) continue;
 
             float density = getVegetationDensity ? getVegetationDensity(x, z) : 0.5f;
             if (dist(rng) > density) continue;
 
+            // O3DE coords: origin at island center, +Z up
             instances.push_back({
-                AZ::Vector3(x, h, z),
+                AZ::Vector3(x - 160.0f, z - 160.0f, h),
                 0.8f + dist(rng) * 1.2f,
                 (uint32_t)(dist(rng) * 3.0f)
             });
+        }
+    }
+
+    void buildVegetationMesh(MeshData& mesh) {
+        for (auto& inst : instances) {
+            float px = inst.position.GetX();
+            float py = inst.position.GetY();
+            float pz = inst.position.GetZ();
+            float s = inst.scale;
+
+            if (inst.species_id == 0) {
+                // Low shrub: 5 crossed quads at ~0.4 height
+                float h = 0.9f * s;
+                float w = 0.5f * s;
+                const float kFit = 0.70710678f;
+                for (int q = 0; q < 4; ++q) {
+                    float a = q * 1.5707963f;
+                    float cx = cosf(a), cy = sinf(a);
+                    float bx = cx * w, by = cy * w;
+                    uint32_t base = mesh.vertex_count();
+                    mesh.vertices.push_back(MeshData::vert(px - bx, py - by, pz, 0, 0, 1, 0, 0));
+                    mesh.vertices.push_back(MeshData::vert(px + bx * kFit, py + by * kFit, pz + h, 0, 0, 1, 0, 1));
+                    mesh.vertices.push_back(MeshData::vert(px + bx, py + by, pz, 0, 0, 1, 0, 0));
+                    mesh.vertices.push_back(MeshData::vert(px - bx * kFit, py - by * kFit, pz + h, 0, 0, 1, 1, 1));
+                    mesh.addQuad(base, base + 1, base + 2, base + 3);
+                }
+            } else {
+                // Conifer/palm: 3 stacked triangular tops over a slanted trunk lean
+                for (int seg = 0; seg < 3; ++seg) {
+                    float th = 1.2f + seg * 1.6f;
+                    for (int k = 0; k < 3; ++k) {
+                        float ang = k * 2.0943951f + seg * 0.5f;
+                        float lean = 0.18f;
+                        uint32_t base = mesh.vertex_count();
+                        float cx = cosf(ang), cy = sinf(ang);
+                        float w = (0.55f - (float)seg * 0.08f) * s;
+                        mesh.vertices.push_back(MeshData::vert(px, py, pz - (th - 0.4f), 0, 0, 1, 0, 0));
+                        mesh.vertices.push_back(MeshData::vert(px + cx * w * lean, py + cy * w * lean, pz + th, 0, 0, 1, 1, 1));
+                        mesh.vertices.push_back(MeshData::vert(px + cx * w, py + cy * w, pz - (th - 0.8f), 0, 0, 1, 0, 0));
+                        mesh.addTriangle(base, base + 1, base + 2);
+                    }
+                }
+            }
         }
     }
 };

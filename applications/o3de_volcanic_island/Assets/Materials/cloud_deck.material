@@ -1,0 +1,24 @@
+{
+    "materialType": "/opt/O3DE/26.05/Gems/Atom/Feature/Common/Assets/Materials/Types/StandardPBR.materialtype",
+    "materialTypeVersion": 5,
+    "propertyValues": {
+        "baseColor.color": [0.95, 0.95, 0.97, 1],
+        "baseColor.textureMap": "../Textures/CloudNoise_01_alpha.png",
+        "baseColor.useTexture": true,
+        "baseColor.textureBlendMode": "Multiply",
+        "metallic.useTexture": false,
+        "metallic.factor": 0.0,
+        "roughness.useTexture": false,
+        "roughness.factor": 1.0,
+        "normal.useTexture": false,
+        "specularF0.useTexture": false,
+        "opacity.mode": "Blended",
+        "opacity.alphaSource": "Packed",
+        "opacity.textureMap": "../Textures/CloudNoise_01_alpha.png",
+        "opacity.factor": 0.85,
+        "general.doubleSided": true,
+        "general.castShadows": false,
+        "uv.tileU": 40.0,
+        "uv.tileV": 40.0
+    }
+}

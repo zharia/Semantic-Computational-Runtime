@@ -245,7 +245,7 @@ class SpectralSynthesizer {
     RidgedMultifractal ridge_noise;
     CellularNoise2D  cell_noise;
     DomainWarp       warp;
-    uint32_t         seed;
+    [[maybe_unused]] uint32_t seed;
 
 public:
     explicit SpectralSynthesizer(uint32_t seed_=1337)

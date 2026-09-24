@@ -28,10 +28,12 @@ namespace SCR::Render::O3DE {
 struct MeshVertex {
     AZ::Vector3 position;
     AZ::Vector3 normal;
+    AZ::Vector3 tangent;
+    float tangent_w;
     AZ::Vector2 uv;
     MeshVertex() = default;
-    MeshVertex(AZ::Vector3 p, AZ::Vector3 n, AZ::Vector2 u)
-        : position(p), normal(n), uv(u) {}
+    MeshVertex(AZ::Vector3 p, AZ::Vector3 n, AZ::Vector3 t, float w, AZ::Vector2 u)
+        : position(p), normal(n), tangent(t), tangent_w(w), uv(u) {}
 };
 
 struct MeshData {
@@ -54,7 +56,11 @@ struct MeshData {
     }
 
     static MeshVertex vert(float px, float py, float pz, float nx, float ny, float nz, float u, float v) {
-        return MeshVertex(AZ::Vector3(px, py, pz), AZ::Vector3(nx, ny, nz), AZ::Vector2(u, v));
+        AZ::Vector3 n(nx, ny, nz);
+        AZ::Vector3 t = n.Cross(AZ::Vector3(0.0f, 0.0f, 1.0f));
+        if (t.IsZero()) t = n.Cross(AZ::Vector3(1.0f, 0.0f, 0.0f));
+        t.NormalizeSafe();
+        return MeshVertex(AZ::Vector3(px, py, pz), n, t, 1.0f, AZ::Vector2(u, v));
     }
 
     AZ::Aabb computeBounds() const {
@@ -87,6 +93,9 @@ struct MeshData {
             vDesc.m_byteCount = vertices.size() * sizeof(MeshVertex);
             vDesc.m_bindFlags = AZ::RHI::BufferBindFlags::InputAssembly;
             creator.SetBuffer(vertices.data(), vertices.size() * sizeof(MeshVertex), vDesc);
+            creator.SetUseCommonPool(AZ::RPI::CommonBufferPoolType::StaticInputAssembly);
+            creator.SetBufferViewDescriptor(AZ::RHI::BufferViewDescriptor::CreateStructured(
+                0, static_cast<uint32_t>(vertices.size()), sizeof(MeshVertex)));
             creator.End(vertexBufferAsset);
         }
 
@@ -99,6 +108,9 @@ struct MeshData {
             iDesc.m_byteCount = indices.size() * sizeof(uint32_t);
             iDesc.m_bindFlags = AZ::RHI::BufferBindFlags::InputAssembly;
             creator.SetBuffer(indices.data(), indices.size() * sizeof(uint32_t), iDesc);
+            creator.SetUseCommonPool(AZ::RPI::CommonBufferPoolType::StaticInputAssembly);
+            creator.SetBufferViewDescriptor(AZ::RHI::BufferViewDescriptor::CreateStructured(
+                0, static_cast<uint32_t>(indices.size()), sizeof(uint32_t)));
             creator.End(indexBufferAsset);
         }
 
@@ -107,7 +119,11 @@ struct MeshData {
             0, vcount, sizeof(MeshVertex));
         AZ::RPI::BufferAssetView posView(vertexBufferAsset, vertViewDesc);
         AZ::RPI::BufferAssetView normView(vertexBufferAsset, vertViewDesc);
+        AZ::RPI::BufferAssetView tangentView(vertexBufferAsset, vertViewDesc);
         AZ::RPI::BufferAssetView uvView(vertexBufferAsset, vertViewDesc);
+        AZ::RHI::BufferViewDescriptor indexViewDesc = AZ::RHI::BufferViewDescriptor::CreateStructured(
+            0, static_cast<uint32_t>(indices.size()), sizeof(uint32_t));
+        AZ::RPI::BufferAssetView indexView(indexBufferAsset, indexViewDesc);
 
         AZ::Data::Asset<AZ::RPI::ModelLodAsset> lodAsset;
         {
@@ -119,6 +135,7 @@ struct MeshData {
             creator.BeginMesh();
             creator.SetMeshAabb(computeBounds());
             creator.SetMeshMaterialSlot(0);
+            creator.SetMeshIndexBuffer(indexView);
 
             {
                 AZ::RPI::ModelLodAsset::Mesh::StreamBufferInfo info;
@@ -130,6 +147,12 @@ struct MeshData {
                 AZ::RPI::ModelLodAsset::Mesh::StreamBufferInfo info;
                 info.m_semantic = AZ::RHI::ShaderSemantic(AZ::Name("NORMAL"), 0);
                 info.m_bufferAssetView = normView;
+                creator.AddMeshStreamBuffer(info);
+            }
+            {
+                AZ::RPI::ModelLodAsset::Mesh::StreamBufferInfo info;
+                info.m_semantic = AZ::RHI::ShaderSemantic(AZ::Name("TANGENT"), 0);
+                info.m_bufferAssetView = tangentView;
                 creator.AddMeshStreamBuffer(info);
             }
             {
@@ -168,6 +191,8 @@ struct MaterialCache {
     AZ::Data::Instance<AZ::RPI::Material> ocean;
     AZ::Data::Instance<AZ::RPI::Material> smoke;
     AZ::Data::Instance<AZ::RPI::Material> vegetation;
+    AZ::Data::Instance<AZ::RPI::Material> cloud;
+    AZ::Data::Asset<AZ::RPI::MaterialAsset> cloud_asset;
     bool loaded = false;
 
     static MaterialCache& instance() {
@@ -178,7 +203,7 @@ struct MaterialCache {
     void load() {
         if (loaded) return;
 
-        auto load_one = [](const char* path) -> AZ::Data::Instance<AZ::RPI::Material> {
+        auto load_asset = [](const char* path) -> AZ::Data::Asset<AZ::RPI::MaterialAsset> {
             AZ::Data::AssetId assetId;
             AZ::Data::AssetType matType = azrtti_typeid<AZ::RPI::MaterialAsset>();
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(
@@ -186,15 +211,18 @@ struct MaterialCache {
                 &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath,
                 path, matType, true);
             if (!assetId.IsValid()) {
-                return nullptr;
+                return {};
             }
-            auto asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::RPI::MaterialAsset>(
+            return AZ::Data::AssetManager::Instance().GetAsset<AZ::RPI::MaterialAsset>(
                 assetId, AZ::Data::AssetLoadBehavior::PreLoad);
+        };
+
+        auto load_one = [&load_asset](const char* path) -> AZ::Data::Instance<AZ::RPI::Material> {
+            auto asset = load_asset(path);
             if (!asset.Get()) {
                 return nullptr;
             }
-            auto mat = AZ::RPI::Material::FindOrCreate(asset);
-            return mat;
+            return AZ::RPI::Material::FindOrCreate(asset);
         };
 
         terrain = load_one("assets/materials/terrain_basalt.azmaterial");
@@ -202,6 +230,8 @@ struct MaterialCache {
         ocean = load_one("assets/materials/ocean_water.azmaterial");
         smoke = load_one("assets/materials/smoke_ash.azmaterial");
         vegetation = load_one("assets/materials/vegetation_green.azmaterial");
+        cloud_asset = load_asset("assets/materials/cloud_deck.azmaterial");
+        cloud = cloud_asset.Get() ? AZ::RPI::Material::FindOrCreate(cloud_asset) : nullptr;
         loaded = true;
     }
 };
@@ -247,7 +277,8 @@ inline O3deMeshHandle submitMesh(
     AZ::Data::Instance<AZ::RPI::Material> material,
     const AZ::Transform& transform,
     const AZ::Vector3& scale,
-    const char* name)
+    const char* name,
+    bool use_plane = false)
 {
     O3deMeshHandle result;
     if (!scene || !material) return result;
@@ -257,9 +288,55 @@ inline O3deMeshHandle submitMesh(
 
     static ModelCache models;
     models.startLoading();
-    if (!models.isReady()) return result;
+    if (use_plane) {
+        if (!models.plane_ready) return result;
+    } else {
+        if (!models.isReady()) return result;
+    }
 
-    AZ::Data::Asset<AZ::RPI::ModelAsset> modelAsset = models.sphere;
+    AZ::Data::Asset<AZ::RPI::ModelAsset> modelAsset = use_plane ? models.plane : models.sphere;
+
+    AZ::Render::MeshHandleDescriptor desc(modelAsset, material);
+    result.handle = fp->AcquireMesh(desc);
+    if (!result.handle.IsNull()) {
+        fp->SetTransform(result.handle, transform, scale);
+        result.valid = true;
+    }
+
+    return result;
+}
+
+// Submit a flat plane (cloud decks). Prefers the occlusion-culling plane model.
+inline O3deMeshHandle submitPlane(
+    AZStd::shared_ptr<AZ::RPI::Scene> scene,
+    AZ::Data::Instance<AZ::RPI::Material> material,
+    const AZ::Transform& transform,
+    const AZ::Vector3& scale,
+    const char* name)
+{
+    return submitMesh(scene, MeshData(), material, transform, scale, name, true);
+}
+
+// Submit a runtime-built procedural mesh (heightfield terrain, lava ribbon,
+// plume column). Builds a ModelAsset from MeshData and acquires it directly.
+// Uses the same Buffer/Index/Model creation as the sphere path — the only
+// addition over createModelAsset is direct acquire without a cached asset.
+inline O3deMeshHandle submitMeshData(
+    AZStd::shared_ptr<AZ::RPI::Scene> scene,
+    const MeshData& mesh,
+    AZ::Data::Instance<AZ::RPI::Material> material,
+    const AZ::Transform& transform,
+    const AZ::Vector3& scale,
+    const char* name)
+{
+    O3deMeshHandle result;
+    if (!scene || !material) return result;
+
+    auto* fp = scene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
+    if (!fp) return result;
+
+    auto modelAsset = mesh.createModelAsset(material, name);
+    if (!modelAsset) return result;
 
     AZ::Render::MeshHandleDescriptor desc(modelAsset, material);
     result.handle = fp->AcquireMesh(desc);
