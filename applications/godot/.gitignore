@@ -1,0 +1,29 @@
+# Godot engine caches and local state
+.godot/
+*.tmp
+*.import
+export_presets.cfg
+export_credentials.cfg
+
+# Godot .NET / Mono
+.mono/
+data_*/
+mono_crash.*.json
+
+# Mojo build artifacts
+.mojo/
+*.mojo-bld
+/tmp_mojo/
+
+# Python / tooling caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor / local state
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.log

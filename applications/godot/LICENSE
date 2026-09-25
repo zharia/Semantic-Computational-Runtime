@@ -1,0 +1,21 @@
+SCR Godot Simulation Workspace — License Pointer
+================================================
+
+This application directory (applications/godot/) inherits the license of the
+Semantic Computational Runtime (SCR) repository:
+
+    Apache License, Version 2.0
+
+The SCR repository does not currently ship a root LICENSE file; the license is
+declared in the repository root README:
+
+    ../../README.md
+    (see the "License" section — "Apache License 2.0")
+
+Badge: Apache 2.0 (see root README license badge).
+
+Full license text: Apache License 2.0 as published by the Apache Software
+Foundation — https://www.apache.org/licenses/LICENSE-2.0
+
+If a root LICENSE file is added to the SCR repository in the future, this
+pointer may be replaced by it or updated to reference it.

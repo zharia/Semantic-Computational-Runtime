@@ -1,0 +1,22 @@
+; Engine configuration file.
+; SCR Godot Simulation — minimal project scaffold (milestone 0001).
+; Empty default main scene (main.tscn) for open-verification only —
+; no simulation content. Scene design: TBD — future milestone.
+
+config_version=5
+
+[application]
+
+config/name="SCR Godot Simulation"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://main.tscn"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
