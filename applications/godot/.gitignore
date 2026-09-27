@@ -14,6 +14,10 @@ mono_crash.*.json
 .mojo/
 *.mojo-bld
 /tmp_mojo/
+/build/
+*.so
+*.dylib
+*.dll
 
 # Python / tooling caches
 __pycache__/
@@ -27,3 +31,4 @@ __pycache__/
 .vscode/
 .idea/
 *.log
+.deps/

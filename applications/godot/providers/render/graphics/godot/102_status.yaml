@@ -1,0 +1,46 @@
+id: SCR-PROVIDER-RENDER-GODOT
+name: Godot Render Provider
+domain: render
+technology: godot
+version: 0.1.0
+status: operational
+spec: 101_definition.md
+contract: 104_contract.md
+schema_version: 1
+abi_version: 1
+
+purpose: >
+  Realize SCR renderable semantic state as a Godot 4.7.2 presentation via a
+  RenderSnapshot byte contract and an in-process GDExtension adapter.
+  Provider only; never semantic authority.
+
+capabilities:
+  - id: CAP-GODOT-SNAPSHOT-DECODE
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0002
+  - id: CAP-GODOT-TERRAIN-MANIFESTATION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0002
+  - id: CAP-GODOT-OCEAN-MANIFESTATION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0002
+  - id: CAP-GODOT-SKY-MANIFESTATION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0002
+  - id: CAP-GODOT-INPUT-UPLINK
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0002
+
+depends_on:
+  - SCR-LIB-RENDER
+  - SCR-LIB-MATH-GERSTNER
+
+implementation:
+  language: C++17 (godot-cpp GDExtension)
+  header: adapter/scr_godot_abi.h
+  library_loaded: applications/godot/src/mojo/libscr_sim.so
+  build: applications/godot/scripts/build_godot_provider.sh
+
+limitations:
+  - Snapshot transport is in-process dlopen only (IPC transport = future milestone)
+  - No weather, lava/plume, vegetation, fauna manifestation (successor milestones)

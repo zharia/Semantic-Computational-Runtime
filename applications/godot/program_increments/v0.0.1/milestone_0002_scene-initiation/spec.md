@@ -4,7 +4,7 @@
 **Milestone:** 0002 — Scene Initiation (Volcanic Island)
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract + in-process GDExtension (godot-cpp)
@@ -256,20 +256,20 @@ providers/render/graphics/godot/        # repo provider convention (lib/README.m
 
 ## 7. Exit Criteria
 
-- [ ] `godot --headless --path applications/godot/godot` loads the island scene with no errors.
-- [ ] Volcanic island visibly renders (terrain + ocean + sky + sun); verified by automated screenshot (non-blank/luminance check) or documented manual capture.
-- [ ] Playable: mouse-look, WASD movement, sprint, jump; player walks on terrain without falling through; verified by scripted input run or documented manual session.
-- [ ] Headless determinism test passes: N ticks, fixed seed, scripted inputs ⇒ byte-identical snapshot sequence (runs without Godot).
-- [ ] Projection purity test passes: world state hash unchanged across projection.
-- [ ] Material catalog test: all rendered material ids resolve from `materials_catalog.json`; repo-relative load; AP-4 grep gate clean.
-- [ ] AP-1 grep gate: no engine types/imports in `src/mojo/`.
-- [ ] `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` conformance test: biome→material table + bedrock/sea-level invariants for the volcanic profile.
-- [ ] Gerstner test: deterministic wave heights + Jacobian foam factor within contract ranges.
-- [ ] Provider tree exists with control docs; `104_contract.md` normative; `scripts/check_layout.sh` (updated) passes.
-- [ ] GDExtension builds via `scripts/build_godot_provider.sh`; `.so` loads in Godot (log-verified).
-- [ ] `schema_version` mismatch between adapter and sim is rejected loudly (negative test).
-- [ ] Docs updated: `04` TBDs filled, `05` §5 binding specified, `06` roadmap updated, `02` pins godot-cpp/Mojo/Godot versions.
-- [ ] Review pass: §2 anti-pattern table checked item-by-item against the implementation.
+- [x] `godot --headless --path applications/godot/godot` loads the island scene with no errors.
+- [x] Volcanic island visibly renders (terrain + ocean + sky + sun); verified by automated screenshot (non-blank/luminance check) or documented manual capture.
+- [x] Playable: mouse-look, WASD movement, sprint, jump; player walks on terrain without falling through; verified by scripted input run or documented manual session.
+- [x] Headless determinism test passes: N ticks, fixed seed, scripted inputs ⇒ byte-identical snapshot sequence (runs without Godot).
+- [x] Projection purity test passes: world state hash unchanged across projection.
+- [x] Material catalog test: all rendered material ids resolve from `materials_catalog.json`; repo-relative load; AP-4 grep gate clean.
+- [x] AP-1 grep gate: no engine types/imports in `src/mojo/`.
+- [x] `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` conformance test: biome→material table + bedrock/sea-level invariants for the volcanic profile.
+- [x] Gerstner test: deterministic wave heights + Jacobian foam factor within contract ranges.
+- [x] Provider tree exists with control docs; `104_contract.md` normative; `scripts/check_layout.sh` (updated) passes.
+- [x] GDExtension builds via `scripts/build_godot_provider.sh`; `.so` loads in Godot (log-verified).
+- [x] `schema_version` mismatch between adapter and sim is rejected loudly (negative test).
+- [x] Docs updated: `04` TBDs filled, `05` §5 binding specified, `06` roadmap updated, `02` pins godot-cpp/Mojo/Godot versions.
+- [x] Review pass: §2 anti-pattern table checked item-by-item against the implementation.
 
 ---
 

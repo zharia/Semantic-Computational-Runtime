@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # check_layout.sh — verify applications/godot workspace layout per
-# program_increments/v0.0.1/milestone_0001_project-initiation/spec.md §2.3.
+# program_increments/v0.0.1/milestone_0001_project-initiation/spec.md §2.3,
+# plus the milestone_0002 layout amendment (provider tree) and the Sprint-03
+# gates (AP-1 engine isolation, AP-4 absolute-path ban).
 #
-# Exit 0: all required directories and files present.
-# Exit 1: one or more missing (clear message per missing path).
+# Exit 0: all required paths present and all gates clean.
+# Exit 1: one or more violations (clear message per violation).
 
 set -euo pipefail
 
@@ -33,6 +35,21 @@ REQUIRED_PATHS=(
   "program_increments/v0.0.1/milestone_0001_project-initiation/spec.md"
   ".gitignore"
   "LICENSE"
+  # --- milestone_0002 layout amendment: provider tree (spec §5) -------------
+  "providers/render/graphics/godot/101_definition.md"
+  "providers/render/graphics/godot/102_status.yaml"
+  "providers/render/graphics/godot/103_provider.graph.json"
+  "providers/render/graphics/godot/104_contract.md"
+  "providers/render/graphics/godot/adapter/scr_godot_abi.h"
+  "providers/render/graphics/godot/adapter/scr_sim_loader.h"
+  "providers/render/graphics/godot/adapter/scr_godot_adapter.cpp"
+  "providers/render/graphics/godot/adapter/SConstruct"
+  # --- Sprint 03 deliverables ----------------------------------------------
+  "godot/addons/scr_godot/scr_godot.gdextension"
+  "godot/addons/scr_godot/plugin.cfg"
+  "scripts/build_godot_provider.sh"
+  "tests/test_schema_mismatch.sh"
+  "tests/schema_mismatch_test.c"
 )
 
 missing=0
@@ -60,4 +77,53 @@ if [[ "${missing}" -gt 0 ]]; then
 fi
 
 echo "PASS — all required paths present under applications/godot/."
+
+# ---------------------------------------------------------------------------
+# Gate 1 (AP-1 / spec §6 invariant 4): no engine types in the semantic layer.
+# Strip Mojo '#' comments, then grep remaining CODE for engine tokens.
+# Allowed (unavoidable CLI strings): src/mojo/main.mojo only — reported, not
+# failed. Everything else must be zero.
+# ---------------------------------------------------------------------------
+gate1_fail=0
+while IFS= read -r mojo_file; do
+  rel="${mojo_file#"${ROOT}"/}"
+  hits="$(sed 's/#.*$//' "${mojo_file}" \
+          | grep -inE 'godot|gdscript|@onready' || true)"
+  if [[ -z "${hits}" ]]; then
+    continue
+  fi
+  if [[ "${rel}" == "src/mojo/main.mojo" ]]; then
+    count="$(printf '%s\n' "${hits}" | wc -l)"
+    echo "AP-1 gate: ${count} allowed main.mojo CLI-help string match(es):"
+    printf '%s\n' "${hits}" | sed 's/^/    /'
+    continue
+  fi
+  echo "AP-1 gate VIOLATION: engine token in ${rel} code (comments stripped):" >&2
+  printf '%s\n' "${hits}" >&2
+  gate1_fail=1
+done < <(grep -rl --include='*.mojo' '' "${ROOT}/src/mojo" 2>/dev/null || true)
+
+if [[ "${gate1_fail}" -ne 0 ]]; then
+  echo "FAIL — AP-1: engine types found in src/mojo/ (semantic layer must be engine-free)." >&2
+  exit 1
+fi
+echo "PASS — AP-1 gate: zero engine-type code matches in src/mojo/ (comments stripped)."
+
+# ---------------------------------------------------------------------------
+# Gate 2 (AP-4 / spec §6 invariant 6): no absolute filesystem paths in
+# sources: src/, godot/, providers/ (build outputs and engine caches skipped).
+# ---------------------------------------------------------------------------
+abs_hits="$(grep -rnI '/home/' \
+    "${ROOT}/src" "${ROOT}/godot" "${ROOT}/providers" \
+    --exclude-dir=.deps --exclude-dir=.godot --exclude-dir=bin \
+    --exclude='*.so' --exclude='*.bin' 2>/dev/null || true)"
+if [[ -n "${abs_hits}" ]]; then
+  echo "AP-4 gate VIOLATION: absolute /home/ path(s) in sources:" >&2
+  printf '%s\n' "${abs_hits}" >&2
+  echo "FAIL — AP-4: zero absolute paths required (spec §6 invariant 6)." >&2
+  exit 1
+fi
+echo "PASS — AP-4 gate: no /home/ absolute paths under src/, godot/, providers/."
+
+echo "PASS — layout + Sprint-03 gates."
 exit 0

@@ -1,0 +1,72 @@
+# SConstruct — builds the SCR Godot render provider GDExtension adapter.
+#
+# Layer: providers/render/graphics/godot/adapter (Port -> Adapter -> Provider).
+# Links the PREBUILT godot-cpp static library at
+#   applications/godot/.deps/godot-cpp/bin/libgodot-cpp.linux.template_debug.x86_64.a
+# (target = template_debug, api_version = 4.7) — this file never rebuilds it.
+#
+# Entry point: scripts/build_godot_provider.sh (from repo root), or directly:
+#   scons -C applications/godot/providers/render/graphics/godot/adapter
+#
+# Output: applications/godot/godot/addons/scr_godot/bin/libscr_godot.so
+# (referenced by godot/addons/scr_godot/scr_godot.gdextension).
+
+import os
+
+EnsureSConsVersion(4, 0)
+
+# This SConstruct lives at:
+#   <repo>/applications/godot/providers/render/graphics/godot/adapter
+# so the repo root is exactly 7 levels up. Relative only — no absolute paths
+# baked into the build (AP-4).
+ADAPTER_DIR = Dir(".").srcnode().abspath
+REPO_ROOT = ADAPTER_DIR
+for _ in range(7):
+    REPO_ROOT = os.path.dirname(REPO_ROOT)
+
+GODOT_CPP = os.path.join(REPO_ROOT, "applications", "godot", ".deps", "godot-cpp")
+OUT_DIR = os.path.join(
+    REPO_ROOT, "applications", "godot", "godot", "addons", "scr_godot", "bin"
+)
+TARGET = os.path.join(OUT_DIR, "scr_godot")
+
+GODOT_CPP_LIB = os.path.join(
+    GODOT_CPP, "bin", "libgodot-cpp.linux.template_debug.x86_64.a"
+)
+
+# Defines must match the prebuilt godot-cpp configuration (target=template_debug,
+# threads=on, hot-reload=off, deprecated=on, dev_build=off, precision=single).
+env = Environment(ENV=os.environ)
+env.Append(
+    CXXFLAGS=[
+        "-std=c++17",
+        "-fPIC",
+        "-O2",
+        "-Wall",
+        "-Wwrite-strings",
+    ],
+    CPPPATH=[
+        os.path.join(GODOT_CPP, "include"),
+        os.path.join(GODOT_CPP, "gen", "include"),
+        ADAPTER_DIR,
+    ],
+    CPPDEFINES=[
+        "GDEXTENSION",
+        "THREADS_ENABLED",
+        "DEBUG_ENABLED",
+        "NDEBUG",
+    ],
+    LIBS=[
+        "dl",
+        "pthread",
+        File(GODOT_CPP_LIB),  # absolute path as a file node => passed through
+    ],
+    LINKFLAGS=[
+        "-Wl,--no-undefined",
+    ],
+)
+
+sources = [File("scr_godot_adapter.cpp")]
+
+lib = env.SharedLibrary(TARGET, source=sources)
+Default(lib)
