@@ -32,3 +32,5 @@ __pycache__/
 .idea/
 *.log
 .deps/
+*.os
+.sconsign.dblite
