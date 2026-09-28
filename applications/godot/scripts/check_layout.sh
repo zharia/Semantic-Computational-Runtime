@@ -2,7 +2,8 @@
 # check_layout.sh — verify applications/godot workspace layout per
 # program_increments/v0.0.1/milestone_0001_project-initiation/spec.md §2.3,
 # plus the milestone_0002 layout amendment (provider tree) and the Sprint-03
-# gates (AP-1 engine isolation, AP-4 absolute-path ban).
+# gates (AP-1 engine isolation, AP-4 absolute-path ban) plus the
+# milestone_0004 AP-15 wall-clock gate on the weather/atmosphere sim sources.
 #
 # Exit 0: all required paths present and all gates clean.
 # Exit 1: one or more violations (clear message per violation).
@@ -124,6 +125,45 @@ if [[ -n "${abs_hits}" ]]; then
   exit 1
 fi
 echo "PASS — AP-4 gate: no /home/ absolute paths under src/, godot/, providers/."
+
+# ---------------------------------------------------------------------------
+# Gate 3 (AP-15 / milestone_0004 §1.1): simulation determinism — sim sources
+# must not consume wall-clock/engine-time. Scope: the weather machine and the
+# atmosphere/world/parameters units it feeds (all sim inputs are seed + tick
+# + fixed dt). Strip '#' comments first, then grep CODE for clock tokens.
+# ---------------------------------------------------------------------------
+ap15_scope=(
+  "${ROOT}/src/mojo/weather"
+  "${ROOT}/src/mojo/sim/subjects.mojo"
+  "${ROOT}/src/mojo/sim/world.mojo"
+  "${ROOT}/src/mojo/sim/parameters.mojo"
+)
+ap15_fail=0
+for target in "${ap15_scope[@]}"; do
+  [[ -e "${target}" ]] || continue
+  if [[ -d "${target}" ]]; then
+    mapfile -t ap15_files < <(grep -rl --include='*.mojo' '' "${target}" 2>/dev/null || true)
+  else
+    ap15_files=("${target}")
+  fi
+  for mojo_file in "${ap15_files[@]}"; do
+    [[ -f "${mojo_file}" ]] || continue
+    rel="${mojo_file#"${ROOT}"/}"
+    hits="$(sed 's/#.*$//' "${mojo_file}" \
+            | grep -inE 'wall_clock|unix_time|Time\.get_|OS\.get_|get_ticks|datetime|Date\.' || true)"
+    if [[ -n "${hits}" ]]; then
+      echo "AP-15 gate VIOLATION: wall-clock token in ${rel} code (comments stripped):" >&2
+      printf '%s\n' "${hits}" >&2
+      ap15_fail=1
+    fi
+  done
+done
+
+if [[ "${ap15_fail}" -ne 0 ]]; then
+  echo "FAIL — AP-15: wall-clock/engine-time tokens found in sim sources (seed+tick+dt only)." >&2
+  exit 1
+fi
+echo "PASS — AP-15 gate: zero wall-clock tokens in weather/atmosphere/world sim sources (comments stripped)."
 
 echo "PASS — layout + Sprint-03 gates."
 exit 0

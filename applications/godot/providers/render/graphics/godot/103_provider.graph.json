@@ -1,6 +1,6 @@
 {
   "id": "SCR-PROVIDER-RENDER-GODOT",
-  "version": 2,
+  "version": 3,
   "derived": true,
   "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
   "nodes": [
@@ -31,6 +31,18 @@
     {
       "id": "SCR-LIB-RENDER-PARTICLE",
       "label": "Particle render contract"
+    },
+    {
+      "id": "SCR-LIB-MATH-ATMOSPHERE",
+      "label": "Atmosphere contract (solar arc, fog)"
+    },
+    {
+      "id": "SCR-LIB-RENDER-SKY",
+      "label": "Sky render contract (gradient, clouds)"
+    },
+    {
+      "id": "SCR-LIB-SIMULATION-WEATHER",
+      "label": "Weather simulation contract (profiles, wind, wetness)"
     }
   ],
   "edges": [
@@ -68,7 +80,25 @@
       "source": "SCR-PROVIDER-RENDER-GODOT",
       "target": "SCR-LIB-RENDER-PARTICLE",
       "relationship": "CONSUMED_BY",
-      "semantics": "plume emitted as GPUParticles3D per Particle contract (locked, 0003 \u00a71.1)"
+      "semantics": "plume emitted as GPUParticles3D per Particle contract (locked, 0003 §1.1)"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-MATH-ATMOSPHERE",
+      "relationship": "CONSUMED_BY",
+      "semantics": "adapter manifests SKY-derived dome gradient and fog; sim SKY bytes authoritative (AP-16)"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-RENDER-SKY",
+      "relationship": "CONSUMED_BY",
+      "semantics": "scr_clouds mesh/shader renders the cloud deck from cloud_cover; pattern display-only"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-SIMULATION-WEATHER",
+      "relationship": "CONSUMED_BY",
+      "semantics": "scr_rain GPUParticles3D from precipitation; wind drives cloud drift; sim state authoritative"
     }
   ]
 }

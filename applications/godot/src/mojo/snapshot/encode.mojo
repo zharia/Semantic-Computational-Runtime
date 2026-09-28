@@ -10,10 +10,6 @@ from sim.parameters import (
     GRID_N,
     CELL_SIZE,
     EYE_HEIGHT,
-    FOG_DENSITY,
-    FOG_COLOR_R,
-    FOG_COLOR_G,
-    FOG_COLOR_B,
     SNAPSHOT_MAGIC,
     SCHEMA_VERSION,
 )
@@ -117,15 +113,28 @@ def _encode_ocean(world: World) -> List[UInt8]:
 
 
 def _encode_sky(world: World) -> List[UInt8]:
+    """SKY section, schema 3 (104_contract §4.3 / 0004 §1.1): 16×f32 = 64
+    bytes. First 8 fields keep their schema-1 offsets (0..31); fields 8..15
+    append the sun-color triple, weather inputs and wetness. Fog density and
+    fog color come from the atmosphere derivation (never display literals)."""
     var b = List[UInt8]()
-    put_f32(b, Float32(world.atmosphere.time_of_day_hours))
-    put_f32(b, Float32(world.atmosphere.sun_azimuth))
-    put_f32(b, Float32(world.atmosphere.sun_elevation))
-    put_f32(b, Float32(FOG_DENSITY))
-    put_f32(b, Float32(FOG_COLOR_R))
-    put_f32(b, Float32(FOG_COLOR_G))
-    put_f32(b, Float32(FOG_COLOR_B))
-    put_f32(b, Float32(world.atmosphere.sun_intensity))
+    var a = world.atmosphere
+    put_f32(b, Float32(a.time_of_day_hours))
+    put_f32(b, Float32(a.sun_azimuth))
+    put_f32(b, Float32(a.sun_elevation))
+    put_f32(b, Float32(a.fog_density))
+    put_f32(b, Float32(a.fog_r))
+    put_f32(b, Float32(a.fog_g))
+    put_f32(b, Float32(a.fog_b))
+    put_f32(b, Float32(a.sun_intensity))
+    put_f32(b, Float32(a.sun_color_r))
+    put_f32(b, Float32(a.sun_color_g))
+    put_f32(b, Float32(a.sun_color_b))
+    put_f32(b, Float32(a.cloud_cover))
+    put_f32(b, Float32(a.precipitation))
+    put_f32(b, Float32(a.wind_x))
+    put_f32(b, Float32(a.wind_z))
+    put_f32(b, Float32(a.wetness))
     return b^
 
 

@@ -1,10 +1,11 @@
 # World — commit metadata + fixed-timestep integration (Sprint 01).
 #
 # Owns (milestone spec §3.1): world_version / state_generation /
-# simulation_tick / simulation_time and the five subjects (player, hydro,
-# atmosphere, volcano — milestone 0003, catalog). Fixed tick 60 Hz;
-# frame dt clamped to 0.05 s (104_contract §6). Determinism: same seed +
-# same input sequence + dt = 1/60 per call ⇒ identical state trajectory.
+# simulation_tick / simulation_time and the six subjects (player, hydro,
+# weather, atmosphere, volcano — milestone 0004 adds weather; 0003 volcano,
+# catalog). Fixed tick 60 Hz; frame dt clamped to 0.05 s (104_contract §6).
+# Determinism: same seed + same input sequence + dt = 1/60 per call ⇒
+# identical state trajectory.
 #
 # The world never knows about snapshots; snapshot/ projects it read-only
 # (projection purity invariant).
@@ -18,10 +19,11 @@ from sim.subjects import (
     PlayerSubject,
     HydrologySubject,
     AtmosphereSubject,
-    atmosphere_from_time,
+    atmosphere_from_weather,
     player_tick,
 )
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
+from weather.state import WeatherSubject, weather_tick
 from ocean.gerstner import make_ocean, OceanState
 from materials.catalog import MaterialCatalog, MaterialDef, load_catalog
 from synthesis.noise import splitmix64
@@ -38,6 +40,7 @@ struct World(Movable, Deinitable):
     var island: IslandSubject
     var player: PlayerSubject
     var hydro: HydrologySubject
+    var weather: WeatherSubject  # milestone_0004: seeded weather machine
     var atmosphere: AtmosphereSubject
     var volcano: VolcanoSubject
     var catalog: MaterialCatalog
@@ -53,6 +56,7 @@ struct World(Movable, Deinitable):
         self.island = IslandSubject(seed)
         self.player = PlayerSubject()
         self.hydro = HydrologySubject(make_ocean())
+        self.weather = WeatherSubject()
         self.atmosphere = AtmosphereSubject()
         self.volcano = VolcanoSubject()
         self.catalog = MaterialCatalog(List[MaterialDef](), "")
@@ -78,7 +82,14 @@ def world_init(seed: UInt32) raises -> World:
     player.on_ground = True
     player.in_water = False
     world.player = player^
-    world.atmosphere = atmosphere_from_time(0.0)
+    # Weather (milestone_0004): seeded machine committed at tick 0 (dt = 0 ⇒
+    # no wetness drift on the initial state). AP-12: seed only, no wall clock.
+    world.weather = WeatherSubject()
+    weather_tick(world.weather, world.seed, 0, 0.0)
+    # Spawn-facing arc: yaw points the player from spawn to (0, 0); the sun
+    # azimuth law is anchored on that facing direction (0004 §1.1 lock).
+    var spawn_yaw = atan2(world.island.spawn_x, world.island.spawn_z)
+    world.atmosphere = atmosphere_from_weather(0.0, world.weather, spawn_yaw)
     # Volcano: geometry from the island's CALDERA_LAKE columns, then the
     # tick-0 state draw (seeded effusion schedule) + glow at the initial sky.
     world.volcano = volcano_from_island(world.island)
@@ -97,7 +108,13 @@ def tick_world(mut world: World, input: InputBatch):
     world.simulation_tick += 1
     world.simulation_time = Float64(world.simulation_tick) * FIXED_DT
     world.state_generation += 1
-    world.atmosphere = atmosphere_from_time(world.simulation_time)
+    # Weather first (SIM time + seed only, AP-15): it feeds the atmosphere
+    # derivation (cloud cover / precipitation / wind → fog + palette inputs).
+    weather_tick(world.weather, world.seed, world.simulation_tick, FIXED_DT)
+    var spawn_yaw = atan2(world.island.spawn_x, world.island.spawn_z)
+    world.atmosphere = atmosphere_from_weather(
+        world.simulation_time, world.weather, spawn_yaw
+    )
     # Volcano state is a pure function of (seed, tick, atmosphere) — AP-12.
     volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
 
@@ -212,7 +229,7 @@ def world_fingerprint(world: World) -> UInt64:
     for i in range(len(world.island.used_materials)):
         h = _fold_u64(h, UInt64(world.island.used_materials[i]))
 
-    # Ocean + atmosphere + catalog identity.
+    # Ocean + atmosphere + weather + catalog identity.
     h = _fold_f64(h, world.hydro.ocean.sea_level)
     h = _fold_f64(h, world.hydro.ocean.wave.amplitude)
     h = _fold_f64(h, world.hydro.ocean.wave.wavenumber)
@@ -220,6 +237,37 @@ def world_fingerprint(world: World) -> UInt64:
     h = _fold_f64(h, world.hydro.ocean.wave.omega)
     h = _fold_f64(h, world.atmosphere.time_of_day_hours)
     h = _fold_f64(h, world.atmosphere.sun_elevation)
+    h = _fold_f64(h, world.atmosphere.sun_azimuth)
+    h = _fold_f64(h, world.atmosphere.sun_intensity)
+    h = _fold_f64(h, world.atmosphere.sun_color_r)
+    h = _fold_f64(h, world.atmosphere.sun_color_g)
+    h = _fold_f64(h, world.atmosphere.sun_color_b)
+    h = _fold_f64(h, world.atmosphere.sky_zenith_r)
+    h = _fold_f64(h, world.atmosphere.sky_zenith_g)
+    h = _fold_f64(h, world.atmosphere.sky_zenith_b)
+    h = _fold_f64(h, world.atmosphere.sky_horizon_r)
+    h = _fold_f64(h, world.atmosphere.sky_horizon_g)
+    h = _fold_f64(h, world.atmosphere.sky_horizon_b)
+    h = _fold_f64(h, world.atmosphere.fog_density)
+    h = _fold_f64(h, world.atmosphere.fog_r)
+    h = _fold_f64(h, world.atmosphere.fog_g)
+    h = _fold_f64(h, world.atmosphere.fog_b)
+    h = _fold_f64(h, world.atmosphere.cloud_cover)
+    h = _fold_f64(h, world.atmosphere.precipitation)
+    h = _fold_f64(h, world.atmosphere.wind_x)
+    h = _fold_f64(h, world.atmosphere.wind_z)
+    h = _fold_f64(h, world.atmosphere.wetness)
+
+    # Weather subject (milestone_0004): profile tuple, wind, wetness, profile
+    # id — every field the SKY section and the fog derivation project, so a
+    # mutating projection is caught by the projection-purity test.
+    h = _fold_f64(h, world.weather.cloud_cover)
+    h = _fold_f64(h, world.weather.precipitation)
+    h = _fold_f64(h, world.weather.wind_x)
+    h = _fold_f64(h, world.weather.wind_z)
+    h = _fold_f64(h, world.weather.fog_bias)
+    h = _fold_f64(h, world.weather.wetness)
+    h = _fold_u64(h, UInt64(world.weather.profile_index))
 
     # Volcano subject (milestone_0003): geometry, effusion/crust/emissive,
     # glow, plume emission params. Folded so a projection that mutated any

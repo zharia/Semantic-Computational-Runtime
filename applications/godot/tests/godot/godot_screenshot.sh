@@ -21,6 +21,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 PROJ="${REPO_ROOT}/applications/godot/godot"
 PNG="${REPO_ROOT}/applications/godot/build/island.png"
 PNG2="${REPO_ROOT}/applications/godot/build/island_crater.png"
+PNG3="${REPO_ROOT}/applications/godot/build/island_sun.png"
+PNG4="${REPO_ROOT}/applications/godot/build/island_rain.png"
+RAIN_TICK="${RAIN_TICK:-4200}"   # seed-1 precipitation window 1801..8100
 GODOT_BIN="${GODOT_BIN:-godot}"
 FRAMES="${FRAMES:-60}"   # settle frames after the tick-wait (see .gd header)
 TICK_MIN="${TICK_MIN:-1900}"
@@ -63,15 +66,24 @@ trap 'rm -f "${LOG}"' EXIT
 timeout 300 "${WRAP[@]}" "${GODOT_BIN}" --path "${PROJ}" \
     -s "${REPO_ROOT}/applications/godot/tests/godot/godot_screenshot.gd" \
     -- "--frames=${FRAMES}" "--tick-min=${TICK_MIN}" "--png=${PNG}" \
-    "--png2=${PNG2}" "${EXTRA_ARGS[@]}" >"${LOG}" 2>&1
+    "--png2=${PNG2}" "--png3=${PNG3}" "--png4=${PNG4}" \
+    "--rain-tick=${RAIN_TICK}" "${EXTRA_ARGS[@]}" >"${LOG}" 2>&1
 rc=$?
 
-grep -E "SCREENSHOT:|SCRIPT ERROR|ERROR: SCR" "${LOG}" | sort -u | head -40
+grep -E "SCREENSHOT:|SCRIPT ERROR|ERROR: SCR" "${LOG}" | sort -u | head -60
 
 # Independent decode + luminance check runs whenever a PNG exists (rc 0/1),
 # so the luminance evidence is recorded even when content assertions fail.
 if [[ ${rc} -eq 0 || ${rc} -eq 1 ]]; then
-    python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG}" || exit $?
+    # Night run (SCR_EXPECT_GLOW): the sky is derived from the SKY palette and
+    # is legitimately dark (docs/04 §8.4) — use the "not a black frame" floor.
+    NIGHT_ARGS=()
+    if [[ -n "${SCR_EXPECT_GLOW:-}" ]]; then NIGHT_ARGS=(--min-mean 3.0 --min-stddev 1.5); fi
+    python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG}" "${NIGHT_ARGS[@]}" || exit $?
+fi
+# Rain-window evidence (0004 §7): independently decoded whenever it exists.
+if [[ ${rc} -eq 0 || ${rc} -eq 1 && -f "${PNG4}" ]]; then
+    python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG4}" || exit $?
 fi
 
 case ${rc} in

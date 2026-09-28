@@ -45,7 +45,7 @@ SCR_SEC_MATERIALS = 6
 SCR_SEC_VOLCANO = 7  # schema 2 (milestone_0003 §3.2)
 SCR_SEC_PLUME = 8
 
-SCHEMA_VERSION = 2  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
+SCHEMA_VERSION = 3  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
 
 FIXED_DT = 1.0 / 60.0
 
@@ -182,8 +182,8 @@ def main() -> int:
     check(snapshot == fixture, "FFI snapshot byte-identical to golden fixture")
     check(snapshot[:4] == b"SCRS", "magic bytes 'SCRS'")
     check(
-        snapshot[4:8] == b"\x02\x00\x00\x00",
-        "schema_version == 2 (LE)",
+        snapshot[4:8] == b"\x03\x00\x00\x00",
+        "schema_version == 3 (LE)",
     )
 
     # Section framing walk (§4.2), schema 2: sections 1..8.
@@ -213,6 +213,41 @@ def main() -> int:
         SCR_SEC_VOLCANO in spans and SCR_SEC_PLUME in spans,
         "sections 7 VOLCANO and 8 PLUME present",
     )
+
+    print("\n[3a] SKY field sanity (schema 3, 104_contract §4.3 §5)")
+    k_off, k_len = spans[SCR_SEC_SKY]
+    check(k_len == 64, f"SKY section is 64 bytes, 16xf32 (got {k_len})")
+    (
+        hours,
+        azimuth,
+        elevation,
+        fog_density,
+        fog_r,
+        fog_g,
+        fog_b,
+        sun_intensity,
+        sun_r,
+        sun_g,
+        sun_b,
+        cloud_cover,
+        precipitation,
+        wind_x,
+        wind_z,
+        wetness,
+    ) = _st.unpack_from("<16f", snapshot, k_off)
+    check(0.0 <= hours <= 24.0, f"SKY.time_of_day_hours in [0,24] (got {hours})")
+    check(-3.1416 <= azimuth < 3.1416, f"SKY.sun_azimuth folded (got {azimuth})")
+    check(-1.3 <= elevation <= 1.3, f"SKY.sun_elevation in arc range (got {elevation})")
+    check(fog_density >= 0.0, f"SKY.fog_density >= 0 (got {fog_density})")
+    check(sun_intensity >= 0.0, f"SKY.sun_intensity >= 0 (got {sun_intensity})")
+    check(0.0 <= cloud_cover <= 1.0, f"SKY.cloud_cover in [0,1] (got {cloud_cover})")
+    check(
+        0.0 <= precipitation <= 1.0,
+        f"SKY.precipitation in [0,1] (got {precipitation})",
+    )
+    check(0.0 <= wetness <= 1.0, f"SKY.wetness in [0,1] (got {wetness})")
+    check(all(0.0 <= c <= 1.0 for c in (fog_r, fog_g, fog_b)), "fog color in [0,1]")
+    check(all(0.0 <= c <= 1.0 for c in (sun_r, sun_g, sun_b)), "sun color in [0,1]")
 
     print("\n[3b] VOLCANO + PLUME field sanity (104_contract §4.3 §7/§8)")
     v_off, v_len = spans[SCR_SEC_VOLCANO]

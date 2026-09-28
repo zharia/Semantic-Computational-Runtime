@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0003 Sprint 04)
+**Status:** Active (updated by milestone 0004 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -15,6 +15,19 @@
 | v0.0.1 | 0001 — Project Initiation (workspace baseline) | Complete — see [spec](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md) |
 | v0.0.1 | 0002 — Scene Initiation (volcanic island) | Complete — all 14 exit criteria verified; see [spec](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md) + [04 §8](04_simulation_engine.md) |
 | v0.0.1 | 0003 — Volcano (lava lake, plume, glow) | Complete — all §7 exit criteria verified (schema 2, 8/8 mojo suites 47/47, 9 gates incl. night-glow procedure); see [spec](../program_increments/v0.0.1/milestone_0003_volcano/spec.md) + [04 §8.3](04_simulation_engine.md) |
+| v0.0.1 | 0004 — Atmosphere & Weather (diurnal sky, clouds, rain, wind) | Complete — 9 gates PASS (schema 3, 10 mojo suites, sun sub-capture + rain window, night re-derivation); see [spec](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) + [04 §8.4](04_simulation_engine.md) |
+
+### Milestone 0004 status detail (verified)
+
+Sprints 01–04 delivered: `AtmosphereSubject` expansion + `WeatherSubject` (seeded profile state machine, Hermite blend, wetness), schema **3** (SKY 32 → 64 B = 16×f32, fixture 228668 B), adapter SKY decode/range validation + derived dome gradient/fog/wetness, atmosphere/weather mojo suites, `island.tscn` `scr_clouds`/`scr_rain` nodes + `clouds.gdshader`, extended gates (sun sub-capture, rain streak window, night re-derivation).
+
+Final gates: 10/10 mojo spec-test files (61 tests), abi_smoke (schema 3), schema-mismatch PASS, layout PASS (incl. AP-15 grep), build OK, load PASS, playability PASS, screenshot day PASS (`sun delta=24.19 / bright=434`, `rain ratio=1.665`, spawn mean 131.67), screenshot night PASS (`light_energy=0.663`, `dome warm10=649 max R−B=95 lum=30.9 vs flank 0.2`, spawn mean 7.10).
+
+Resolved during verification: static skybox → dome derived from SKY each frame (AP-16, single solar authority), engine fog erasing the cloud deck (`fog_disabled` + shader-local fades, recorded), wetness tint erased by the per-frame catalog rewrite (applied inside `update_materials()`), rain invisible over white overcast (colour/alpha retune), sun-disc geometry conflict (recorded deviation — sun-aimed sub-capture, [04 §8.4](04_simulation_engine.md)).
+
+Honest gaps: sun disc not in the *spawn* view (recorded deviation), cloud pattern/scale display-only, no volumetric scattering — [04 §9](04_simulation_engine.md).
+
+Anti-pattern review (spec §7 final item): **PASS** — AP-15..AP-18 checked item-by-item, evidence in [04 §8.4](04_simulation_engine.md).
 
 ### Milestone 0002 status detail (verified)
 
@@ -38,7 +51,7 @@ Final gates: 8/8 mojo spec-test files (47 tests — including three latent test-
 
 Resolved during verification: plume collapse (turbulence velocity influence — influence locked 0, §8.3), renderer Forward+/Vulkan locked (GPUParticles3D requirement), night-glow display lift (60 u measurement chain), plume region check false-pass (per-channel margin-median), rim-occluded crater camera, tick-based settle, `runtime.mojo` env NUL fix.
 
-Honest gaps: turbulence noise exposed with influence 0 (display turbulence `TBD`), glow lift is a documented display hack, night skybox static — all in [04 §9](04_simulation_engine.md).
+Honest gaps: turbulence noise exposed with influence 0 (display turbulence `TBD`), glow lift is a documented display hack, sun-in-frame deviation (sub-capture record) — all in [04 §9](04_simulation_engine.md).
 
 ## Planned Milestones (specs drafted, Status: Planned)
 
@@ -46,15 +59,14 @@ Future increments build on the stabilized snapshot contract. Each has a normativ
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| 0004 | [Atmosphere & weather](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) | Diurnal sky, sun in frame, clouds, rain, wind | `202_Math/Atmosphere`, `A01_Render/Sky`, `503_Simulation/Environment/Weather` |
 | 0005 | [Shoreline fidelity](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) | Real shoreline foam + crater material blending (kills rim teeth) | `A01_Render/Water`, `801_Spatial/Voxel/Synthesis` |
 | 0006 | [Ecology](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) | Flora scatter + seabird flocking | `705_Ecology`, `601_Agent` (flocking: parent def — child absent, noted) |
 | 0007 | [Editing, hotbar, physics](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) | Voxel dig/place, catalog hotbar, minimal rigid bodies | `501_Physics`, `A01_Render/Material` |
 | 0008 | [IPC transport](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) | Out-of-process sim over socket, byte-identical semantics | `804_Application`, `503_Simulation/Snapshot` |
 
-Sequencing note: 0003 completed 2026-09-28; 0004–0008 remain Planned.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005–0008 remain Planned.
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0004–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0005–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 

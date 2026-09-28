@@ -18,10 +18,11 @@ extern "C" {
 #endif
 
 #define SCR_SIM_ABI_VERSION  1u  /* C ABI symbol-contract version (unchanged) */
-/* Snapshot binary schema version. 1 -> 2 (milestone_0003 §3.5): additive
- * sections 7 VOLCANO + 8 PLUME; symbol set unchanged. Adapter refuses any
- * library whose scr_sim_schema_version() != this value. */
-#define SCR_SIM_SCHEMA_VER   2u
+/* Snapshot binary schema version. 2 -> 3 (milestone_0004): section 5 SKY
+ * grows to 64 bytes (16x f32); sections 1-4 and 6-8 byte-identical; symbol
+ * set unchanged. Adapter refuses any library whose
+ * scr_sim_schema_version() != this value. */
+#define SCR_SIM_SCHEMA_VER   3u
 
 /* Snapshot section identifiers (104_contract.md §4). */
 #define SCR_SEC_PLAYER       1u

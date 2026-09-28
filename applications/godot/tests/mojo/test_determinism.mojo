@@ -124,10 +124,10 @@ def test_volcano_plume_sections_in_byte_identity() raises:
     var b = run_sequence(1, scripted_input())
     var snap = a[SEQ_TICKS - 1].copy()
     # Envelope: schema 2, eight sections (1..8).
-    _check(SCHEMA_VERSION == 2, "sim parameters SCHEMA_VERSION == 2")
+    _check(SCHEMA_VERSION == 3, "sim parameters SCHEMA_VERSION == 3")
     _check(
         Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
-        "envelope schema_version == 2",
+        "envelope schema_version == 3",
     )
     var env = decode_envelope(snap)
     _check(Int(env.section_count) == 8, "section_count == 8 (schema 2)")

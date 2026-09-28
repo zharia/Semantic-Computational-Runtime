@@ -18,6 +18,7 @@ from snapshot.types import (
     SEC_PLUME,
     VOLCANO_BYTES,
     PLUME_BYTES,
+    SKY_BYTES,
     VOLCANO,
     PLUME,
     get_u8,
@@ -194,11 +195,12 @@ def read_ocean(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
 
 
 def read_sky(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
-    """32-byte SKY → 8×f32 (hours, az, el, fog_d, fog_r, fog_g, fog_b, sun_i)."""
-    if sec.length != 32:
-        raise Error("SKY section must be 32 bytes")
+    """64-byte SKY → 16×f32 (schema 3): hours, az, el, fog_d, fog_r, fog_g,
+    fog_b, sun_i, sun_r, sun_g, sun_b, cloud, precip, wind_x, wind_z, wet."""
+    if sec.length != SKY_BYTES:
+        raise Error("SKY section must be " + String(SKY_BYTES) + " bytes")
     var out = List[Float32]()
-    for i in range(8):
+    for i in range(16):
         out.append(get_f32(data, sec.offset + 4 * i))
     return out^
 

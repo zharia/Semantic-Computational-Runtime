@@ -2,12 +2,15 @@
  * provider (providers/render/graphics/godot).
  *
  * Normative sources:
- *   - providers/render/graphics/godot/104_contract.md  (byte schema 2, C ABI)
+ *   - providers/render/graphics/godot/104_contract.md  (byte schema 3, C ABI)
  *   - providers/render/graphics/godot/101_definition.md (invariants)
  *   - applications/godot/program_increments/v0.0.1/
  *       milestone_0002_scene-initiation/spec.md §2 (AP-1..AP-10)
  *   - applications/godot/program_increments/v0.0.1/
  *       milestone_0003_volcano/spec.md §2.1 (AP-11..AP-14), §3.4 (groups)
+ *   - applications/godot/program_increments/v0.0.1/
+ *       milestone_0004_atmosphere-weather/spec.md §2.1 (AP-15..AP-18),
+ *       §3.2 (SKY 64 B), §3.4 (scene binding table)
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -37,8 +40,20 @@
  *                                            sea_level, amplitude, frequency,
  *                                            steepness, dir_x, dir_z, speed,
  *                                            phase
- *   "scr_sun"      DirectionalLight3D one -> rotation/energy (see below)
- *   "scr_env"      WorldEnvironment  one  -> fog_density, fog_light_color
+ *   "scr_sun"      DirectionalLight3D one -> rotation/energy/color from
+ *                                            SKY (elevation, azimuth,
+ *                                            sun_intensity, sun_color_*)
+ *   "scr_env"      WorldEnvironment  one  -> ProceduralSkyMaterial dome
+ *                                            gradient (derived, contract
+ *                                            §4.3 note) + energy; fog
+ *                                            enabled/density/light color
+ *                                            from the derived SKY values
+ *   "scr_clouds"   MeshInstance3D    one  -> ShaderMaterial uniform
+ *                                            cloud_cover (0..1)
+ *   "scr_rain"     GPUParticles3D    one  -> emitting = precipitation > 0,
+ *                                            amount_ratio = precipitation,
+ *                                            wetness darkens the cached
+ *                                            terrain albedos
  *   "scr_camera"   Camera3D | Node3D one  -> player camera rig
  *   "scr_hud"      Label             one  -> "tick %d | gen %d | seed %d"
  *   "scr_materials" Node            one  -> meta "materials":
@@ -78,6 +93,54 @@
  *   - GLOW NODE: position comes from the VOLCANO section so the light tracks
  *     the sim's caldera geometry; +1 u above `lake_level` is a scene-side
  *     DISPLAY lift constant (documented in docs/04 §5), not a tunable.
+ *
+ * ---------------------------------------------------------------------------
+ * Milestone 0004 — schema 3 SKY (64 B, 16xf32) adapter decisions
+ * ---------------------------------------------------------------------------
+ * All of the following are REPRESENTATION ONLY: every value applied below is
+ * a pure function of the 16 SKY fields plus the named adapter-display
+ * constants (documented here and mirrored in docs/04 §6.6, same precedent as
+ * GLOW_DISPLAY_LIFT_U). The sim stays the sole semantic authority (AP-11);
+ * there is exactly one solar arc in the system and it lives in
+ * src/mojo/sim/subjects.mojo (AP-16) — the adapter never re-derives it.
+ *
+ *   - SUN ROTATION: `set_rotation(Vector3(-sun_elevation, sun_azimuth, 0))`
+ *     (unchanged 0002 mapping, verified against the scene's initial
+ *     rotation) — +Z of the light node points AT the sun, -Z emits.
+ *     `light_energy = sun_intensity`, `light_color = sun_color_*`.
+ *   - SKY GRADIENT DERIVATION (104_contract §4.3 note): zenith/horizon are
+ *     NOT wire fields. The adapter derives the ProceduralSkyMaterial dome:
+ *         horizon = lerp(fog_color, sun_color, SKY_HORIZON_SUN_MIX)
+ *         zenith  = horizon * (SKY_ZENITH_SCALE_R/G/B)
+ *         ground_horizon = horizon        (no seam at the horizon)
+ *         ground_bottom  = zenith * SKY_GROUND_DARKEN
+ *     Rationale: the horizon band is the haze the fog actually paints, so
+ *     fog_color_* is the physically consistent base; a fixed fraction of the
+ *     sim sun palette keeps the low sun warming the horizon, and the
+ *     per-channel zenith scale recovers the blue-up / warm-down gradient of
+ *     A01_Render/Sky §2 from those two wire colors alone.
+ *   - SKY ENERGY: `sky_energy_multiplier = SKY_ENERGY_MIN +
+ *     (1 - SKY_ENERGY_MIN) * clamp(sun_intensity, 0, 1)` — day tracks the
+ *     sim intensity, night keeps a dim but non-zero sky so the 0003 crater
+ *     glow still has an ambient floor (night_factor stays sim-owned, AP-11).
+ *   - FOG: `fog_enabled = true`, `fog_density`, `fog_light_color` ← SKY
+ *     fields directly (no scene-side literal, AP-17). `fog_sky_affect` is a
+ *     scene display value and is left alone.
+ *   - CLOUDS: `cloud_cover` is written verbatim into the `cloud_cover`
+ *     uniform of `scr_clouds`' ShaderMaterial (clouds.gdshader). The pattern
+ *     inside the shader is display-only spatial noise (AP-17: no sim
+ *     feedback, no TIME-driven semantics).
+ *   - RAIN AMOUNT MAPPING: `emitting = (precipitation > 0)` and
+ *     `amount_ratio = precipitation` (clamped to [0,1]). Godot scales the
+ *     live particle count AND the emission rate by `amount_ratio`, so the
+ *     scene's fixed `amount` is the full-intensity budget and precipitation
+ *     (0..1) becomes a continuous intensity dial. This avoids `set_amount`
+ *     (which restarts the GPU system) on every intensity change.
+ *   - WETNESS: deterministic representation conversion from the catalog
+ *     albedo — for every cached StandardMaterial3D,
+ *     `albedo = catalog_albedo * (1 - WETNESS_TINT * wetness)`. Applied
+ *     AFTER `update_materials()` each frame so the catalog value is the
+ *     always-recomputed base (16 dry => catalog-exact, AP-3).
  *
  * Conventions (normative for Sprint-04 scene work):
  *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
@@ -145,9 +208,12 @@
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/omni_light3d.hpp>
 #include <godot_cpp/classes/particle_process_material.hpp>
+#include <godot_cpp/classes/procedural_sky_material.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
+#include <godot_cpp/classes/sky.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/world_environment.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -181,7 +247,9 @@ constexpr uint64_t kSectionHeaderBytes = 8;
 constexpr uint32_t kPlayerBytes = 44;
 constexpr uint32_t kMetaBytes = 32;
 constexpr uint32_t kOceanBytes = 32;
-constexpr uint32_t kSkyBytes = 32;
+/* Schema 3 (milestone_0004 §3.2 / §3.5): 5 SKY grows 32 -> 64 bytes
+ * (16xf32). Sections 1-4 and 6-8 are byte-identical to schema 2. */
+constexpr uint32_t kSkyBytes = 64;
 /* Schema 2 (milestone_0003 §3.2): 7 VOLCANO = 7xf32 + u8 + 3 pad,
  * 8 PLUME = 8xf32 — both exactly 32 bytes (104_contract §4.3). */
 constexpr uint32_t kVolcanoBytes = 32;
@@ -237,7 +305,7 @@ struct SnapshotView {
     const uint8_t *player = nullptr; // 44 bytes
     const uint8_t *meta = nullptr;   // 32 bytes
     const uint8_t *ocean = nullptr;  // 32 bytes
-    const uint8_t *sky = nullptr;    // 32 bytes
+    const uint8_t *sky = nullptr;    // 64 bytes (schema 3, 104_contract §4.3)
     const uint8_t *volcano = nullptr; // 32 bytes (schema 2, 104_contract §7)
     const uint8_t *plume = nullptr;   // 32 bytes (schema 2, 104_contract §8)
     std::vector<MatRecord> materials;
@@ -259,7 +327,7 @@ inline bool fail(String &err, const String &msg) {
  * required-section absence, unknown section id, or meta/terrain disagreement. */
 bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                      String &err) {
-    /* seen[0] unused; indices 1..kMaxSectionId (schema 2 = sections 1..8). */
+    /* seen[0] unused; indices 1..kMaxSectionId (schema 3 = sections 1..8). */
     bool seen[kMaxSectionId + 1] = {};
 
     if (buf == nullptr || len < kEnvelopeBytes) {
@@ -308,7 +376,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         }
         if (sid < 1u || sid > kMaxSectionId) {
             return fail(err,
-                        "section: unknown section_id (schema v2 defines 1..8)");
+                        "section: unknown section_id (schema 3 defines 1..8)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -349,7 +417,38 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
             }
             case SCR_SEC_SKY: {
                 if (sbytes != kSkyBytes) {
-                    return fail(err, "SKY: section must be exactly 32 bytes");
+                    return fail(err, "SKY: section must be exactly 64 bytes");
+                }
+                /* Strict field validation (104_contract §4.3, schema 3).
+                 * Comparisons are written so NaN fails every range test
+                 * (never coerced, §8). */
+                const float hours = rd_f32(data + 0);
+                const float elevation = rd_f32(data + 8);
+                const float fog_density = rd_f32(data + 12);
+                const float intensity = rd_f32(data + 28);
+                if (!(hours >= 0.0f) || !(hours <= 24.0001f)) {
+                    return fail(err, "SKY: time_of_day_hours outside [0,24]");
+                }
+                if (!(elevation >= -1.7f) || !(elevation <= 1.7f)) {
+                    return fail(err, "SKY: sun_elevation not sane (±1.7 rad)");
+                }
+                if (!(fog_density >= 0.0f)) {
+                    return fail(err, "SKY: fog_density < 0");
+                }
+                if (!(intensity >= 0.0f)) {
+                    return fail(err, "SKY: sun_intensity < 0");
+                }
+                const float cover = rd_f32(data + 44);
+                const float precip = rd_f32(data + 48);
+                const float wetness = rd_f32(data + 60);
+                if (!(cover >= 0.0f) || !(cover <= 1.0f)) {
+                    return fail(err, "SKY: cloud_cover not in [0,1]");
+                }
+                if (!(precip >= 0.0f) || !(precip <= 1.0f)) {
+                    return fail(err, "SKY: precipitation not in [0,1]");
+                }
+                if (!(wetness >= 0.0f) || !(wetness <= 1.0f)) {
+                    return fail(err, "SKY: wetness not in [0,1]");
                 }
                 out.sky = data;
                 break;
@@ -426,7 +525,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 2).
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 3).
      * TERRAIN is the only optional one (first snapshot / world_version bump). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
@@ -557,6 +656,26 @@ public:
      * (AP-11). Documented docs/04 §5 with omni_range 90 (island.tscn). */
     static constexpr float GLOW_DISPLAY_LIFT_U = 60.0f;
 
+    /* --- milestone 0004 (schema 3) adapter-display constants --------------
+     * Representation-only knobs for the SKY -> Godot mapping (file header
+     * "0004 adapter decisions"; mirrored in docs/04 §6.6). Simulation
+     * tunables stay in src/mojo/sim/parameters.mojo (AP-7/AP-17) — these
+     * are NOT tunables of meaning, they pick how two wire colors become a
+     * dome gradient and how wetness reads on screen. */
+    /* horizon = lerp(fog_color, sun_color, SKY_HORIZON_SUN_MIX) */
+    static constexpr float SKY_HORIZON_SUN_MIX = 0.25f;
+    /* zenith = horizon * (SKY_ZENITH_SCALE_R/G/B) — recovers the blue-up
+     * gradient of A01_Render/Sky §2 from fog_color alone. */
+    static constexpr float SKY_ZENITH_SCALE_R = 0.40f;
+    static constexpr float SKY_ZENITH_SCALE_G = 0.55f;
+    static constexpr float SKY_ZENITH_SCALE_B = 0.90f;
+    static constexpr float SKY_GROUND_DARKEN = 0.35f;
+    /* Night sky floor: keeps a dim sky (and therefore ambient) at
+     * sun_intensity = 0 so the 0003 crater glow keeps a background. */
+    static constexpr float SKY_ENERGY_MIN = 0.50f;
+    /* Wet-surface albedo tint: albedo *= (1 - WETNESS_TINT * wetness). */
+    static constexpr float WETNESS_TINT = 0.35f;
+
     /* @export var world_seed: int = 1  (instance default; GDExtension cannot
      * register a property-default callback — see class comment). */
     void set_world_seed(int64_t p_seed) { world_seed = p_seed; }
@@ -610,6 +729,12 @@ protected:
     int plume_amount_cache_ = -1;
     int plume_emitting_cache_ = -1; // -1 unknown, 0 off, 1 on
 
+    // --- weather display caches (0004: only touch GPU/materials on change) -
+    int rain_emitting_cache_ = -1;  // -1 unknown, 0 off, 1 on
+    float rain_ratio_cache_ = -1.0f;
+    float wetness_ = -1.0f;   // latched SKY wetness; used by update_materials
+    float cloud_cover_cache_ = -1.0f;
+
     // --- helpers ------------------------------------------------------------
     Node *first_in_group(const StringName &p_group);
     void decode_and_apply(uint32_t len);
@@ -620,6 +745,7 @@ protected:
     void apply_terrain(const scr::SnapshotView &sv);
     void apply_ocean(const scr::SnapshotView &sv);
     void apply_sky(const scr::SnapshotView &sv);
+    void apply_weather(const scr::SnapshotView &sv);
     void apply_materials_node(const scr::SnapshotView &sv);
     void apply_volcano(const scr::SnapshotView &sv);
     void apply_plume(const scr::SnapshotView &sv);
@@ -828,6 +954,10 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
         ERR_PRINT(String("SCR: snapshot rejected, frame skipped — ") + err);
         return;
     }
+    /* Latch SKY wetness BEFORE the per-frame material rewrite. */
+    if (sv.sky != nullptr) {
+        wetness_ = scr::rd_f32(sv.sky + 60);
+    }
 
     /* Decode completed without error -> apply representation conversion.
      * Order: materials first (terrain surfaces derive from them). */
@@ -837,6 +967,7 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
     apply_terrain_meta(sv);
     apply_ocean(sv);
     apply_sky(sv);
+    apply_weather(sv);
     apply_volcano(sv);
     apply_plume(sv);
     apply_player(sv);
@@ -844,11 +975,23 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
 }
 
 void ScrSimDriver::update_materials(const scr::SnapshotView &sv) {
+    /* Wetness tint is applied HERE, immediately after the catalog write,
+     * because every frame rewrites albedo from the catalog (0004 AP-3:
+     * 16.0 dry => catalog-exact). wetness_ is latched from the SKY bytes
+     * in decode_and_apply() before this call. */
+    const float k = (wetness_ > 0.0f)
+        ? (1.0f - WETNESS_TINT * (wetness_ > 1.0f ? 1.0f : wetness_))
+        : 1.0f;
     for (const scr::MatRecord &r : sv.materials) {
         mat_records_[r.id] = r;
         auto it = mat_cache_.find(r.id);
         if (it != mat_cache_.end() && it->second.is_valid()) {
             scr::apply_mat_props(it->second.ptr(), r);
+            if (k != 1.0f) {
+                it->second->set_albedo(
+                    Color(r.albedo[0] * k, r.albedo[1] * k, r.albedo[2] * k,
+                          r.opacity));
+            }
         }
     }
 }
@@ -974,6 +1117,7 @@ void ScrSimDriver::apply_sky(const scr::SnapshotView &sv) {
     if (sv.sky == nullptr) {
         return;
     }
+    /* 104_contract §4.3 — schema 3 SKY, 16 x f32 (64 B). */
     const float hours = scr::rd_f32(sv.sky + 0);
     const float azimuth = scr::rd_f32(sv.sky + 4);
     const float elevation = scr::rd_f32(sv.sky + 8);
@@ -982,7 +1126,10 @@ void ScrSimDriver::apply_sky(const scr::SnapshotView &sv) {
     const float fg = scr::rd_f32(sv.sky + 20);
     const float fb = scr::rd_f32(sv.sky + 24);
     const float intensity = scr::rd_f32(sv.sky + 28);
-    (void)hours; /* informational; sun angles are authoritative */
+    const float sr = scr::rd_f32(sv.sky + 32);
+    const float sg = scr::rd_f32(sv.sky + 36);
+    const float sb = scr::rd_f32(sv.sky + 40);
+    (void)hours; /* informational; sun angles are authoritative (AP-16) */
 
     Node *sun_node = first_in_group("scr_sun");
     if (sun_node != nullptr) {
@@ -993,25 +1140,125 @@ void ScrSimDriver::apply_sky(const scr::SnapshotView &sv) {
             /* File header convention: +Z points at the sun, -Z emits. */
             sun->set_rotation(Vector3(-elevation, azimuth, 0.0f));
             sun->set_param(Light3D::PARAM_ENERGY, intensity);
+            sun->set_color(Color(sr, sg, sb));
         }
     }
+
+    /* SKY -> dome gradient derivation (contract §4.3 note, header "0004
+     * adapter decisions"): zenith/horizon are not wire fields. */
+    const float mix_h = SKY_HORIZON_SUN_MIX;
+    const float hr = fr + (sr - fr) * mix_h;
+    const float hg = fg + (sg - fg) * mix_h;
+    const float hb = fb + (sb - fb) * mix_h;
+    const float zr = hr * SKY_ZENITH_SCALE_R;
+    const float zg = hg * SKY_ZENITH_SCALE_G;
+    const float zb = hb * SKY_ZENITH_SCALE_B;
+    const float sky_energy = SKY_ENERGY_MIN +
+        (1.0f - SKY_ENERGY_MIN) * (intensity > 1.0f ? 1.0f : intensity);
 
     Node *env_node = first_in_group("scr_env");
     if (env_node != nullptr) {
         WorldEnvironment *we = Object::cast_to<WorldEnvironment>(env_node);
         if (we == nullptr) {
             ERR_PRINT("SCR: group scr_env must contain a WorldEnvironment — skipped");
-        } else {
-            Ref<Environment> env = we->get_environment();
-            if (env.is_null()) {
-                env.instantiate(); /* presentation resource, scene omitted it */
-                we->set_environment(env);
+            return;
+        }
+        Ref<Environment> env = we->get_environment();
+        if (env.is_null()) {
+            env.instantiate(); /* presentation resource, scene omitted it */
+            we->set_environment(env);
+        }
+        /* Fog directly from SKY fields — no scene-side literal (AP-17). */
+        env->set_fog_enabled(true);
+        env->set_fog_density(fog_density);
+        env->set_fog_light_color(Color(fr, fg, fb));
+
+        /* Dome gradient (display derivation, AP-17). */
+        Ref<Sky> sky_res = env->get_sky();
+        if (sky_res.is_null()) {
+            sky_res.instantiate();
+            env->set_sky(sky_res);
+        }
+        if (sky_res.is_valid()) {
+            Ref<Material> raw = sky_res->get_material();
+            Ref<ProceduralSkyMaterial> mat = raw;
+            if (mat.is_null()) {
+                if (raw.is_valid()) {
+                    ERR_PRINT("SCR: sky material is not a "
+                              "ProceduralSkyMaterial — gradient skipped");
+                } else {
+                    mat.instantiate();
+                    sky_res->set_material(mat);
+                }
             }
-            env->set_fog_enabled(true);
-            env->set_fog_density(fog_density);
-            env->set_fog_light_color(Color(fr, fg, fb));
+            if (mat.is_valid()) {
+                mat->set_sky_top_color(Color(zr, zg, zb));
+                mat->set_sky_horizon_color(Color(hr, hg, hb));
+                mat->set_ground_horizon_color(Color(hr, hg, hb));
+                mat->set_ground_bottom_color(
+                    Color(zr * SKY_GROUND_DARKEN, zg * SKY_GROUND_DARKEN,
+                          zb * SKY_GROUND_DARKEN));
+                mat->set_sky_energy_multiplier(sky_energy);
+                mat->set_energy_multiplier(sky_energy);
+            }
         }
     }
+}
+
+/* Milestone 0004 — clouds (cloud_cover), rain (precipitation), wetness.
+ * Pure representation conversion of SKY bytes; constants documented in the
+ * file header ("0004 adapter decisions") and docs/04 §6.6. */
+void ScrSimDriver::apply_weather(const scr::SnapshotView &sv) {
+    if (sv.sky == nullptr) {
+        return;
+    }
+    const float cover = scr::rd_f32(sv.sky + 44);
+    const float precip = scr::rd_f32(sv.sky + 48);
+
+    /* --- clouds: cloud_cover uniform (AP-17: uniform only, noise display) */
+    if (cover != cloud_cover_cache_) {
+        cloud_cover_cache_ = cover;
+        Node *n = first_in_group("scr_clouds");
+        if (n != nullptr) {
+            MeshInstance3D *mi = Object::cast_to<MeshInstance3D>(n);
+            if (mi == nullptr) {
+                ERR_PRINT("SCR: group scr_clouds must contain a MeshInstance3D — skipped");
+            } else {
+                Ref<Material> rm = mi->get_surface_override_material(0);
+                if (rm.is_null()) {
+                    rm = mi->get_material_override();
+                }
+                ShaderMaterial *sm = Object::cast_to<ShaderMaterial>(rm.ptr());
+                if (sm == nullptr) {
+                    ERR_PRINT("SCR: scr_clouds needs a ShaderMaterial — skipped");
+                } else {
+                    sm->set_shader_parameter("cloud_cover", cover);
+                }
+            }
+        }
+    }
+
+    /* --- rain: amount_ratio drives count AND emission rate (no system
+     * restart, unlike set_amount). precipitation = 0 => fully emitting-off. */
+    const int emitting = (precip > 0.0f) ? 1 : 0;
+    if (emitting != rain_emitting_cache_ ||
+        precip != rain_ratio_cache_) {
+        rain_emitting_cache_ = emitting;
+        rain_ratio_cache_ = precip;
+        Node *n = first_in_group("scr_rain");
+        if (n != nullptr) {
+            GPUParticles3D *p = Object::cast_to<GPUParticles3D>(n);
+            if (p == nullptr) {
+                ERR_PRINT("SCR: group scr_rain must contain a GPUParticles3D — skipped");
+            } else {
+                p->set_amount_ratio(precip);
+                p->set_emitting(emitting != 0);
+            }
+        }
+    }
+
+    /* --- wetness: applied inside update_materials() (see there) so the
+     * catalog rewrite each frame does not erase it. */
 }
 
 void ScrSimDriver::apply_materials_node(const scr::SnapshotView &sv) {

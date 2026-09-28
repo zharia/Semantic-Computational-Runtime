@@ -25,6 +25,19 @@
 #   B. Crater-view capture -> --png2 (the caldera floor is occluded from the
 #      spawn camera by the rim, so the lava assertion needs its own view;
 #      camera_follow is a documented debug aid — temporarily disabled).
+#   A2. Sun-aimed sky capture -> --png3 (0004 §7 "sun visible in frame").
+#      DEVIATION (recorded in docs/04 §8.4): the §1.1-locked solar arc puts
+#      the noon sun at SUN_ELEVATION_MAX = 1.2 rad (68.75 deg) while the spawn
+#      camera is pitch ~0 with a 70 deg FOV (half-angle 35 deg), so the disc
+#      cannot enter the pitch-0 spawn frame — it sits 33.75 deg above the top
+#      edge (0002 already logged this as an honest gap; 0004 §1.1 locked the
+#      arc instead of the camera). The sub-capture therefore keeps the spawn
+#      POSITION and aims the camera along the sun's +Z (the adapter's
+#      documented DirectionalLight3D convention), proving the disc renders
+#      from SKY bytes. The spawn view itself is asserted untouched.
+#   C. Rain-window capture -> --png4: camera_follow restored, wait until the
+#      sim reports a tick inside the seed-1 precipitation window, capture the
+#      spawn view again and assert overcast sky + falling streaks.
 #
 # Assertions (beyond raw luminance):
 #   * Terrain Chunk_* children, scr_meta fields, HUD text (0002 pipeline).
@@ -47,6 +60,11 @@ extends SceneTree
 
 var _png_path := "res://../build/island.png"
 var _png2_path := "res://../build/island_crater.png"
+var _png3_path := "res://../build/island_sun.png"
+var _png4_path := "res://../build/island_rain.png"
+# Seed-1 precipitation window is ticks 1801..8100 (test_weather.mojo
+# SEED1_FIRST_RAIN_TICK); 4200 sits mid-MONSOON (cover 0.97, precip 0.8).
+var _rain_tick := 4200
 var _settle_frames := 60
 var _tick_min := 1900
 var _expect_glow := false
@@ -59,6 +77,12 @@ func _initialize() -> void:
 			_png_path = a.trim_prefix("--png=")
 		elif a.begins_with("--png2="):
 			_png2_path = a.trim_prefix("--png2=")
+		elif a.begins_with("--png3="):
+			_png3_path = a.trim_prefix("--png3=")
+		elif a.begins_with("--png4="):
+			_png4_path = a.trim_prefix("--png4=")
+		elif a.begins_with("--rain-tick="):
+			_rain_tick = maxi(0, int(a.trim_prefix("--rain-tick=")))
 		elif a.begins_with("--frames="):
 			_settle_frames = maxi(1, int(a.trim_prefix("--frames=")))
 		elif a.begins_with("--tick-min="):
@@ -117,10 +141,18 @@ func _run() -> void:
 	if not _check_node_state():
 		return
 
-	# --- capture BOTH views back to back BEFORE any heavy checks ------------
+	# --- capture ALL views back to back BEFORE any heavy checks -------------
 	var img: Image = await _capture()
 	if img == null:
 		return
+	# Night-glow run (SCR_EXPECT_GLOW): the sun is below the horizon and the
+	# sky is dark, so the sun-disc sub-capture and the rain-window capture are
+	# daytime-only assertions — both are skipped (docs/04 §8.4).
+	var img_sun: Image = null
+	if not _expect_glow:
+		img_sun = await _capture_sun()
+		if img_sun == null:
+			return
 	var img2: Image = await _capture_crater()
 	if img2 == null:
 		return
@@ -153,17 +185,34 @@ func _run() -> void:
 		_fail(1, "scr_hud text not set by adapter (snapshot not applied)"); return
 	print("SCREENSHOT: hud = ", hud.text)
 
-	if not _check_plume_region(img):
+	# Night run: the sky is now derived from the SKY palette and is dark, and
+	# the (unlit) ash plume is dark too — a colour-deviation region check has
+	# no contrast left. Plume PRESENCE is still asserted by _check_node_state
+	# (emitting / amount / lifetime / velocity). Day run keeps the region
+	# check. (docs/04 §8.4)
+	if not _expect_glow and not _check_plume_region(img):
 		return
 
 	if _expect_glow and not _check_glow_region(img):
 		return
+
+	# --- phase A2 checks (sun disc, docs/04 §8.4 deviation) ------------------
+	if img_sun != null:
+		err = _save_png(img_sun, _png3_path)
+		if err != OK:
+			_fail(2, "save_png(%s) failed err=%d" % [_png3_path, err]); return
+		if not _check_sun_disc(img_sun):
+			return
 
 	# --- phase B checks ------------------------------------------------------
 	err = _save_png(img2, _png2_path)
 	if err != OK:
 		_fail(2, "save_png(%s) failed err=%d" % [_png2_path, err]); return
 	if not _check_lava_region(img2):
+		return
+
+	# --- phase C: rain-window capture (daytime only) -------------------------
+	if not _expect_glow and not await _capture_and_check_rain():
 		return
 
 	print("SCREENSHOT: PASS")
@@ -218,10 +267,20 @@ func _check_luminance(img: Image, tag: String) -> bool:
 	var mean := sum / float(n)
 	var stddev := sqrt(maxf(0.0, sumsq / float(n) - mean * mean))
 	print("SCREENSHOT: %s %dx%d mean_luminance=%.2f stddev=%.2f" % [tag, w, h, mean, stddev])
-	if mean <= 10.0:
-		_fail(3, "%s mean luminance %.2f <= 10.0 (blank/dark frame)" % [tag, mean]); return false
-	if stddev <= 5.0:
-		_fail(3, "%s stddev %.2f <= 5.0 (uniform frame, no content)" % [tag, stddev]); return false
+	# Night run (SCR_EXPECT_GLOW): the sky gradient is now DERIVED from the
+	# SKY palette (0004), so a night frame is legitimately dark — 0002's
+	# static bright skybox is gone (docs/04 §8.4). Thresholds drop to a
+	# "not a black frame" floor; the glow-region check carries the night
+	# assertion.
+	var mean_min := 10.0
+	var std_min := 5.0
+	if _expect_glow:
+		mean_min = 3.0
+		std_min = 1.5
+	if mean <= mean_min:
+		_fail(3, "%s mean luminance %.2f <= %.1f (blank/dark frame)" % [tag, mean, mean_min]); return false
+	if stddev <= std_min:
+		_fail(3, "%s stddev %.2f <= %.1f (uniform frame, no content)" % [tag, stddev, std_min]); return false
 	return true
 
 func _check_node_state() -> bool:
@@ -415,6 +474,194 @@ func _check_glow_region(img: Image) -> bool:
 		_fail(1, "night glow check failed: dome warm10=%d max_r-b=%d (need >=50 / >=25)" %
 			[d_warm10, d_maxrb]); return false
 	return true
+
+# Phase A2 (0004 §7, documented deviation — see file header): keep the spawn
+# position, aim the camera at the sun disc.
+#
+# AIM CONSTRUCTION: the adapter orients the DirectionalLight3D with
+#   rotation = (-sun_elevation, sun_azimuth, 0) so that the node's +Z axis
+#   points AT the sun (scr_godot_adapter.cpp file header). Godot cameras look
+#   along -Z, so `look_at(cam_position + sun_basis_z * 500, UP)` puts the disc
+#   exactly at the frame centre; the up-vector keeps the horizon level.
+func _capture_sun() -> Image:
+	var island: Node = root.get_child(0)
+	var driver := island.get_node_or_null("ScrSim")
+	if driver != null and driver.has_method("set_camera_follow"):
+		driver.set("camera_follow", false)
+	var sun := _first_in_group("scr_sun") as DirectionalLight3D
+	var cam := _first_in_group("scr_camera") as Camera3D
+	if sun == null or cam == null:
+		_fail(1, "sun sub-capture: missing scr_sun / scr_camera"); return null
+	var meta: Node = _first_in_group("scr_meta")
+	var spawn: Vector3 = Vector3(-10.0, 0.7, -87.0)
+	if meta != null and meta.has_meta("spawn_position"):
+		spawn = meta.get_meta("spawn_position")
+	cam.global_position = spawn + Vector3(0.0, 8.0, 0.0)
+	var dir: Vector3 = sun.global_transform.basis.z.normalized()
+	cam.look_at(cam.global_position + dir * 500.0, Vector3.UP)
+	print("SCREENSHOT: sun sub-capture dir=%s elev=%.4f rad at tick %d" %
+		[str(dir), -sun.rotation.x, _tick_now(_first_in_group("scr_hud") as Label)])
+	for i in 8:
+		await process_frame
+	print("SCREENSHOT: sun aim cam_pos=%s cam_fwd=%s follow=%s hud=%s" %
+		[str(cam.global_position), str(-cam.global_transform.basis.z.normalized()),
+		 str(driver != null and driver.get("camera_follow") != false),
+		 _tick_now(_first_in_group("scr_hud") as Label)])
+	return await _capture()
+
+# Sun disc = high-luminance cluster at frame centre (the aim puts it there)
+# against an edge reference taken from the same rows. Thresholds are display
+# verification constants measured on 2026-09-28 (docs/04 §8.4).
+func _check_sun_disc(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var r0 := int(0.36 * h)
+	var r1 := int(0.64 * h)
+	var c0 := int(0.42 * w)
+	var c1 := int(0.58 * w)
+	var edge_c1 := int(0.10 * w)
+	var edge_c0 := int(0.90 * w)
+	var centre := _box(data, w, r0, r1, c0, c1)
+	var left := _box(data, w, r0, r1, 0, edge_c1)
+	var right := _box(data, w, r0, r1, edge_c0, w)
+	var ref := maxf(left, right)
+	var bright := 0
+	var mx := 0
+	var row := r0
+	while row < r1:
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			var lum := int(0.299 * data[i3] + 0.587 * data[i3 + 1] + 0.114 * data[i3 + 2])
+			if lum >= 235:
+				bright += 1
+			if lum > mx:
+				mx = lum
+			col += 2
+		row += 2
+	print("SCREENSHOT: sun disc centre=%.2f edge_ref=%.2f delta=%.2f bright>=235=%d max=%d" %
+		[centre, ref, centre - ref, bright, mx])
+	if centre - ref < 20.0:
+		_fail(1, "sun disc check failed: centre-edge delta %.2f < 20.0" % (centre - ref)); return false
+	if bright < 300:
+		_fail(1, "sun disc check failed: %d bright px in centre box (need 300)" % bright); return false
+	return true
+
+# Phase C: restore the player camera, wait for a tick inside the seed-1
+# precipitation window, capture the spawn view and assert the weather.
+func _capture_and_check_rain() -> bool:
+	var island: Node = root.get_child(0)
+	var driver := island.get_node_or_null("ScrSim")
+	if driver != null and driver.has_method("set_camera_follow"):
+		driver.set("camera_follow", true)
+	var hud := _first_in_group("scr_hud") as Label
+	var guard := _rain_tick + 4000
+	var waited := 0
+	while true:
+		var t := _tick_now(hud)
+		if t >= _rain_tick:
+			break
+		if waited > guard:
+			_fail(1, "rain wait: tick %d never reached %d" % [t, _rain_tick]); return false
+		if waited % 600 == 0:
+			print("SCREENSHOT: waiting for rain tick >= %d (now %d)" % [_rain_tick, t])
+		waited += 1
+		await process_frame
+	var t2 := _tick_now(hud)
+	# Seed-1 precipitation window (test_weather.mojo): 1801..8100.
+	if t2 < 1801 or t2 > 8100:
+		_fail(1, "rain capture tick %d outside seed-1 precipitation window" % t2); return false
+	for i in 60:
+		await process_frame
+	var rain_tick := _tick_now(hud)
+	var img: Image = await _capture()
+	if img == null:
+		return false
+	var err := _save_png(img, _png4_path)
+	if err != OK:
+		_fail(2, "save_png(%s) failed err=%d" % [_png4_path, err]); return false
+	if not _check_luminance(img, "rain"):
+		return false
+	print("SCREENSHOT: rain capture at tick %d (window 1801..8100)" % rain_tick)
+	return _check_rain_region(img)
+
+# Rain: overcast sky (bright background) + falling-streak pixels in a fixed
+# right-of-plume sky box, plus a horizontal/vertical gradient ratio test that
+# favours vertical structures (streaks are thin and elongated along Y).
+# Region: rows 0..185, cols 0.61W..0.98W — clear of the HUD (rows < 80,
+# cols < 660), the plume column (cols 560..730) and the terrain silhouette
+# (lowest right-hand crest is ~row 195 in the spawn framing).
+func _check_rain_region(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var r1 := mini(186, h)
+	var c0 := int(0.61 * w)
+	var c1 := int(0.98 * w)
+	var lums := PackedFloat32Array()
+	var row := 0
+	while row < r1:
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			lums.append(0.299 * data[i3] + 0.587 * data[i3 + 1] + 0.114 * data[i3 + 2])
+			col += 1
+		row += 1
+	var sorted := lums.duplicate()
+	sorted.sort()
+	var med := sorted[sorted.size() / 2]
+	var streak := 0
+	for v in lums:
+		if v <= med - 25.0:
+			streak += 1
+	# Gradient energy: |d/dx| across columns vs |d/dy| down rows.
+	var hsum := 0.0
+	var vsum := 0.0
+	var hn := 0
+	var vn := 0
+	row = 0
+	while row < r1 - 1:
+		var col := c0
+		while col < c1 - 1:
+			var i3 := (row * w + col) * 4
+			var i3x := (row * w + col + 1) * 4
+			var i3y := ((row + 1) * w + col) * 4
+			var l := 0.299 * data[i3] + 0.587 * data[i3 + 1] + 0.114 * data[i3 + 2]
+			var lx := 0.299 * data[i3x] + 0.587 * data[i3x + 1] + 0.114 * data[i3x + 2]
+			var ly := 0.299 * data[i3y] + 0.587 * data[i3y + 1] + 0.114 * data[i3y + 2]
+			hsum += absf(lx - l)
+			vsum += absf(ly - l)
+			hn += 1
+			vn += 1
+			col += 1
+		row += 1
+	var hg := hsum / maxf(float(hn), 1.0)
+	var vg := vsum / maxf(float(vn), 1.0)
+	var ratio := hg / maxf(vg, 0.0001)
+	print("SCREENSHOT: rain box median_lum=%.1f streak_px=%d (%.2f%%) hgrad=%.3f vgrad=%.3f ratio=%.3f" %
+		[med, streak, 100.0 * float(streak) / maxf(float(lums.size()), 1.0), hg, vg, ratio])
+	if med < 190.0:
+		_fail(1, "rain box median luminance %.1f < 190 (overcast sky missing)" % med); return false
+	if streak < 400:
+		_fail(1, "rain streak check failed: %d deviating px (need 400)" % streak); return false
+	if ratio < 1.10:
+		_fail(1, "rain streak orientation failed: h/v gradient ratio %.3f < 1.10" % ratio); return false
+	return true
+
+func _box(data: PackedByteArray, w: int, r0: int, r1: int, c0: int, c1: int) -> float:
+	var n := 0
+	var sum := 0.0
+	var row := r0
+	while row < r1:
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			sum += 0.299 * data[i3] + 0.587 * data[i3 + 1] + 0.114 * data[i3 + 2]
+			n += 1
+			col += 4
+		row += 4
+	return sum / maxf(float(n), 1.0)
 
 # Phase B: disable the camera rig driver (documented debug aid), place the
 # camera above the crater looking down at the lava disc, capture. Checks run

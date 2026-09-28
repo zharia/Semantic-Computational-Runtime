@@ -12,7 +12,7 @@ The **Godot render provider** realizes SCR renderable semantic state as a Godot-
 
 ```text
 Renderable semantic state (Mojo sim, projected to RenderSnapshot)
-        │ contract: 104_contract.md (byte schema v1, C ABI v1)
+        │ contract: 104_contract.md (byte schema v3, C ABI v1)
         ▼
 Godot render provider adapter (GDExtension, godot-cpp)
         │ representation conversion only
@@ -31,10 +31,12 @@ Godot scene graph / shaders / lights  (manifestation)
 
 | Capability | Status |
 |---|---|
-| `RenderSnapshotDecode` (schema v1) | Implemented — milestone 0002 |
+| `RenderSnapshotDecode` (byte schema v3; v1→v2→v3) | Implemented — milestones 0002–0004 |
 | `TerrainMeshManifestation` (chunked ArrayMesh) | Implemented — milestone 0002 |
 | `OceanSurfaceManifestation` (Gerstner shader) | Implemented — milestone 0002 |
-| `SkyManifestation` (time-of-day sun + fog) | Implemented — milestone 0002 |
+| `SkyManifestation` (time-of-day sun, derived dome gradient, atmosphere-derived fog) | Implemented — milestones 0002, 0004 |
+| `CloudDeckManifestation` (cloud_cover → `scr_clouds`) | Implemented — milestone 0004 |
+| `PrecipitationManifestation` (precipitation → `scr_rain`, wetness tint) | Implemented — milestone 0004 |
 | `PlayerCameraManifestation` | Implemented — milestone 0002 |
 | `InputUplink` (scr_input_batch) | Implemented — milestone 0002 |
 
@@ -45,6 +47,9 @@ Godot scene graph / shaders / lights  (manifestation)
 | `realizes` | `SCR-LIB-RENDER` |
 | `consumes` | `SCR-APP-GODOT-0001` snapshot contract (104_contract.md) |
 | `implements` | `SCR-LIB-MATH-GERSTNER` manifestation (display only) |
+| `consumes` | `SCR-LIB-MATH-ATMOSPHERE` (solar arc, fog derivation — sim bytes authoritative) |
+| `consumes` | `SCR-LIB-RENDER-SKY` (cloud deck manifestation) |
+| `consumes` | `SCR-LIB-SIMULATION-WEATHER` (precipitation/wind manifestation — sim state authoritative) |
 | `subordinate-to` | SCR semantic library, Mojo simulation core |
 
 Derived relationships recorded in [103_provider.graph.json](103_provider.graph.json).

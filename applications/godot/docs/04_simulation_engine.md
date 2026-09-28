@@ -1,8 +1,8 @@
 # 04 — Simulation Engine Design
 
 **Purpose:** Capture the simulation engine design for the Mojo/Godot application.
-**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; honest gaps marked `TBD — future milestone`)
-**Owner milestone:** [v0.0.1 / milestone 0003 — Volcano](../program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
+**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; honest gaps marked `TBD — future milestone`)
+**Owner milestone:** [v0.0.1 / milestone 0004 — Atmosphere & Weather](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) (baseline: [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
 
 ---
 
@@ -18,14 +18,14 @@
 | Mojo ↔ Godot data flow (binding protocol) | **Active — §4.3** |
 | Headless execution mode | **Active — §7** |
 | Scene graph ↔ semantic state mapping | **Active — §5** |
-| Parameter table (AP-7, incl. volcano/plume/glow) | **Active — §6** |
+| Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0003)
+## 2. Current Implementation (v0.0.1 / milestone 0004)
 
 - `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
 - `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**.
-- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 2**).
+- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 3**).
 - Tests: 8/8 Mojo spec test files, 47 tests (0003 adds `test_volcano.mojo`; see §4.4), ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow region checks), playability gate (see §8).
 
 ## 3. Constraints Carried Forward (normative, from governing docs)
@@ -46,7 +46,8 @@
 | `IslandSubject` | `sim/island.mojo` | synthesized terrain (height field `grid_n × grid_n`, cell size, chunks), biome/material column assignment, spawn (beach band), peak height, `used_materials` |
 | `PlayerSubject` | `sim/subjects.mojo` | feet position, velocity, yaw/pitch, `on_ground`, `in_water` — **all locomotion integration lives here** |
 | `HydrologySubject` | `sim/subjects.mojo` + `ocean/gerstner.mojo` | Gerstner wave state (sea level, amplitude, wavenumber, steepness, direction, phase speed, phase offset) |
-| `AtmosphereSubject` (lite) | `sim/subjects.mojo` | `atmosphere_from_time`: time-of-day hours, sun azimuth/elevation, sun intensity — pure projection of `simulation_time`; `night_factor(sun_elevation)` (0003 §3.3: glow = emissive × night_factor) |
+| `AtmosphereSubject` | `sim/subjects.mojo` (0004) | time-of-day on **sim time**, solar arc (`sun_elevation_at_hours`, `sun_azimuth_at_hours` — sole solar authority, AP-16), sun color/intensity, sky palette tiers, **derived fog** (`fog_density_of`, `fog_color_of`), `night_factor(elevation)`; pure functions of `simulation_time`/elevation — no wall clock (AP-15) |
+| `WeatherSubject` | `weather/state.mojo` (0004) | seeded weather state machine: profile draws every `WEATHER_TRANSITION_TICK_STEP` from a PRNG stream initialized from `World.seed`, Hermite-blended then held; owns `cloud_cover`, `precipitation`, `wind_x/z` (gust-modulated), `fog_bias`, `wetness` (rise/decay) |
 | `VolcanoSubject` | `sim/volcano.mojo` (0003) | caldera center/radius, lake level, emissive intensity, crust fraction, effusion state machine (seeded, `EFFUSION_TICK_STEP` draws), plume parameters, glow intensity — pure function of `(seed, simulation_tick, atmosphere)`; `volcano_from_island` + `volcano_tick` driven from `world.mojo` |
 
 Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps on regeneration), `state_generation` (every tick), `simulation_tick`, `simulation_time`.
@@ -62,10 +63,10 @@ Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps 
 
 ### 4.3 Provider Interface Contract (Mojo outputs → Godot inputs)
 
-Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v2**, C ABI, input batch, parameter table). Summary:
+Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v3**, C ABI, input batch, parameter table). Summary:
 
-- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=2**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
-- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME` (0003 additive), little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bump `1 → 2` (0003 §3.5): adapter refuses any schema ≠ 2; `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
+- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=3**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
+- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bumps: `1 → 2` (0003 §3.5, VOLCANO/PLUME) and `2 → 3` (0004 §3.5: **SKY 32 → 64 B = 16×f32**, sections 1–4 and 6–8 byte-identical). Adapter refuses any schema ≠ 3 and validates every SKY range (`hours ∈ [0,24]`, `elevation ∈ [±1.7]`, `cover/precip/wetness ∈ [0,1]`, `fog_density/sun_intensity ≥ 0`, NaN always rejected); `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
 - **Uplink:** `scr_input_batch` (20 bytes) — raw intent only; the sim integrates.
 - **Transport:** in-process (`dlopen` of `build/libscr_sim.so`); contract is transport-agnostic (IPC swap deferred, spec §9).
 
@@ -73,19 +74,19 @@ Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../prov
 
 | Layer | Test | What it proves |
 |---|---|---|
-| Spec (Mojo) | `tests/mojo/test_*.mojo` — 8 files, 47 tests | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, **volcano subject (0003: effusion sequence, ranges, glow semantics)** |
-| Binding | `tests/abi_smoke.py` (49 checks) | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 2 + VOLCANO/PLUME field checks** |
-| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 2 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
+| Spec (Mojo) | `tests/mojo/test_*.mojo` — 10 files | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, volcano subject (0003: effusion sequence, ranges, glow semantics), **atmosphere (0004: solar arc goldens, fog derivation, palette tiers)**, **weather (0004: seed-1 golden transition list, seed 2 differs, wind range)** |
+| Binding | `tests/abi_smoke.py` | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 3 + 16×f32 SKY field checks** |
+| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 3 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
 | Integration | `tests/godot/godot_load_test.sh` | headless main-scene load, extension registration, zero `ERROR:` lines |
-| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + **plume/lava region checks and, with `SCR_EXPECT_GLOW=1`, the night-glow spot check (§8.3)** |
+| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + **0004: sun-disc sub-capture (§8.4) and rain-window capture with streak metrics (§8.4)** |
 | Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through |
-| Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) |
+| Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) + **AP-15 (no wall-clock tokens in weather/atmosphere sim sources)** |
 
 All Mojo checks are **raise-based** (`_check(cond, msg)` → `raise Error`): this toolchain compiles `assert` to a no-op (verified in `test_volcano.mojo`), so the 0003 sprint converted every `assert` in `test_synthesis_conformance`, `test_gerstner`, `test_catalog` to `_check` — which immediately exposed three latent test-vs-spec bugs (§8.3).
 
 ### 4.5 Successor Specification Reference
 
-Exact successor sequencing: `TBD — future milestone` (spec §10 table; Rule 10).
+Milestone 0004 (atmosphere & weather) is **complete** (§8.4). Exact successor sequencing for 0005+: `TBD — future milestone` (spec §10 table; Rule 10).
 
 ## 5. Scene ↔ State Mapping (the ADAPTER CONTRACT)
 
@@ -97,14 +98,16 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | `scr_terrain` | `Node3D` | `3 TERRAIN` | creates/updates children `Chunk_i` (`MeshInstance3D`, `ArrayMesh`, **world-space vertices**, per-material-id surfaces from MATERIALS; chunk `origin` stored as node meta). **Winding:** sim/contract §4.3 emits CCW front faces; Godot defaults to CW front (`CULL_BACK`), so the adapter swaps index order (`out3[0],out3[2],out3[1]`) when building surfaces — conversion at the provider boundary, contract unchanged |
 | `scr_meta` | `Node` | `2 TERRAIN_META` | meta keys `sea_level` (float), `peak_height` (float), `spawn_position` (Vector3) |
 | `scr_ocean` | `MeshInstance3D` + `ShaderMaterial` | `4 OCEAN` | shader params **exactly**: `sea_level, amplitude, frequency, steepness, dir_x, dir_z, speed, phase` (every physics frame) |
-| `scr_sun` | `DirectionalLight3D` | `5 SKY` | `set_rotation(-sun_elevation, sun_azimuth, 0)` rad; `light_energy = sun_intensity` |
-| `scr_env` | `WorldEnvironment` | `5 SKY` | `environment.fog_enabled = true`, `fog_density`, `fog_light_color` |
+| `scr_sun` | `DirectionalLight3D` | `5 SKY` | `set_rotation(-sun_elevation, sun_azimuth, 0)` rad (node **+Z points at the sun** — §8.4 sun sub-capture relies on this); `light_energy = sun_intensity`; `light_color = (sun_color_r,g,b)` (0004) |
+| `scr_env` | `WorldEnvironment` + `Sky(ProceduralSkyMaterial)` | `5 SKY` | **fog:** `fog_enabled = true`, `fog_density`, `fog_light_color` straight from SKY (AP-17 — no scene literal); **dome gradient derived** (contract §4.3 note): `horizon = lerp(fog_color, sun_color, 0.25)`, `zenith = horizon × (0.40, 0.55, 0.90)`, `ground_horizon = horizon`, `ground_bottom = zenith × 0.35`, `sky_energy_multiplier = energy_multiplier = 0.5 + 0.5·clamp(sun_intensity,0,1)` (constants §6.6) |
 | `scr_camera` | `Camera3D` (or rig `Node3D`) | `1 PLAYER` | global position = `player.position + (0, eye_height, 0)`; `rotation = (pitch, yaw, 0)` — **no sign flips** (sim forward = `(−sin yaw, −cos yaw)` = Godot −Z under +yaw) |
 | `scr_hud` | `Label` | envelope | text `tick %d | gen %d | seed %d` |
 | `scr_materials` | `Node` | `6 MATERIALS` | meta `materials` = Dictionary `id → {albedo, roughness, emissive, opacity}` (also used to derive `StandardMaterial3D` per chunk surface) |
 | `scr_crater_lava` | `MeshInstance3D` + `ShaderMaterial` (0003) | `7 VOLCANO` | position `(center_x, lake_level + 1, center_z)` (1 u glow-free lift, display), non-uniform scale `(radius, 1, radius)`, shader uniforms `emissive_intensity`, `crust_fraction`, `radius` |
 | `scr_crater_glow` | `OmniLight3D` (0003) | `7 VOLCANO` | `light_energy = glow_intensity` (sim-computed; adapter must NOT re-derive “night”, AP-11); position `(center_x, lake_level + GLOW_DISPLAY_LIFT_U, center_z)` — **display lift 60 u**, geometry rationale + measurement chain in §8.3 |
 | `scr_plume` | `GPUParticles3D` + `ParticleProcessMaterial` (0003) | `8 PLUME` | position = plume origin, `lifetime`, `amount = round(rate·lifetime)` (clamped 1..4096), `emitting = rate > 0`, `initial_velocity_min = max = v0`, `spread`, `set_turbulence_enabled(turbulence > 0)` with **velocity influence locked to 0** (§8.3) |
+| `scr_clouds` | `MeshInstance3D` (PlaneMesh 8000×8000 at y = `CLOUD_PLANE_ALTITUDE`) + `ShaderMaterial` (0004) | `5 SKY` | single uniform `cloud_cover ∈ [0,1]` written on change; pattern, scale, drift and fades are display-only (`shaders/clouds.gdshader`, §6.6) |
+| `scr_rain` | `GPUParticles3D` + `ParticleProcessMaterial` (0004) | `5 SKY` | `emitting = (precipitation > 0)`; `amount_ratio = precipitation` (drives live count **and** emission rate — avoids `set_amount`, which restarts the GPU system); wetness: `albedo = catalog_albedo × (1 − 0.35·wetness)` re-applied inside `update_materials()` so the per-frame catalog rewrite cannot erase it |
 
 **Input uplink (scene → sim):** `scripts/player_input.gd` calls
 `ScrSim.submit_input(move_x, move_y, look_dx, look_dy, jump, sprint, action_primary, action_secondary)`
@@ -216,6 +219,35 @@ Scene/adapter **display constants** (representation only, never semantics):
 - Plume display: `QuadMesh size 2.0`, `billboard_mode = 3` (BILLBOARD_PARTICLES — quads are back-face culled otherwise), material `albedo (0.78,0.77,0.75)`, `transparency = 1`, process material `gravity (0,0,0)`, turbulence noise = engine defaults (`strength 1.0`, `scale 9.0`, `speed (0,0,0)`), `amount` cached from `round(rate·lifetime)` cap 4096.
 - Screenshot gate region constants (verification only): plume window rows `[0.02H, 0.12H]` × cols `[0.40W, 0.60W]`, per-channel margin-median sky reference, dev > 60, row hits ≥ 10, need ≥ 5 rows; lava warm `(R≥120, R≥G+25, R≥B+60)` within 90 px of projected centre, need ≥ 400; night glow dome box rows `[85,130]` × cols `[560,780]`, warm10 (`R≥70, R−B≥10, R≥G−10`) ≥ 50 **and** max `R−B` ≥ 25 **and** dome luminance printed vs flank background.
 
+### 6.6 Atmosphere & weather (0004, `parameters.mojo` + adapter + scene)
+
+**Sim-side** (`src/mojo/sim/parameters.mojo`, AP-7 / AP-17 — derived by formula, not eye-tuned):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `WEATHER_TRANSITION_TICK_STEP` / `WEATHER_BLEND_TICKS` | 1800 / 900 | ticks (30 s / 15 s @ 60 Hz) |
+| CLEAR profile — `cloud / precip / wind / fog_bias` | 0.15 / 0.0 / (1.6, 1.0) / 0.0 | — / — / u·s⁻¹ / — |
+| OVERCAST_STRATUS profile | 0.88 / 0.0 / (3.2, 2.4) / 0.45 | as above |
+| TROPICAL_MONSOON profile | 0.97 / 0.8 / (6.5, 4.8) / 0.85 | as above |
+| `WETNESS_RISE_RATE` / `WETNESS_DECAY_RATE` | 0.15 / 0.01 | s⁻¹ (at `precip = 1` / dry-out) |
+| `WIND_GUST_FRACTION` / `WIND_GUST_PERIOD_TICKS` / `WIND_MAX_SPEED` | 0.18 / 960 / 12.0 | — / ticks / u·s⁻¹ |
+| `CLOUD_PLANE_ALTITUDE` | 400.0 | m above sea level |
+| `FOG_DENSITY = BASE + 0.0030·C + 0.0040·P + 0.0010·fog_bias + 0.0015·night` | BASE 0.0030 | strictly increasing in C and P (test-enforced) |
+| `fog_color = lerp(lerp(CLEAR, STORM, w), NIGHT, night·0.85)`, `w = min(1, 0.6·C + 0.7·P)` | CLEAR (0.58,0.66,0.78), STORM (0.40,0.44,0.50), NIGHT (0.05,0.07,0.13) | RGB |
+| Sky palette tiers (zenith/horizon × night/dawn/sunset/noon, sun color × night/low/rising/golden/warm/noon) | see file | RGB |
+
+**Adapter display constants** (`scr_godot_adapter.cpp` — representation only, never semantics, like `GLOW_DISPLAY_LIFT_U` §6.5):
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `SKY_HORIZON_SUN_MIX` | 0.25 | how much `sun_color` mixes into the derived horizon (contract §4.3) |
+| `SKY_ZENITH_SCALE_R/G/B` | 0.40 / 0.55 / 0.90 | horizon → zenith tint (blue-leaning) |
+| `SKY_GROUND_DARKEN` | 0.35 | below-horizon multiplier |
+| `SKY_ENERGY_MIN` | 0.50 | `sky_energy = SKY_ENERGY_MIN + (1−SKY_ENERGY_MIN)·clamp(sun_intensity,0,1)` |
+| `WETNESS_TINT` | 0.35 | `albedo = catalog × (1 − WETNESS_TINT·wetness)` |
+
+**Scene display** (`island.tscn`, `shaders/clouds.gdshader`): cloud plane at `CLOUD_PLANE_ALTITUDE` (400 m — low-deck cumulus band mid-point), `noise_scale 0.0035`, `opacity 0.85`, drift `(wind_x, wind_z)·0.02` u/frame; shader constants `OCTAVES 5`, `WARP_AMOUNT 0.55`, `EDGE_WIDTH 0.10`, `COVER_GATE 0.004`, `FADE_NEAR 1100`, `FADE_FAR 3600`, `PLANE_EDGE 3600`. Rain: `QuadMesh 0.1×1.6`, box extents `(110, 30, 130)`, speed 26–34 u/s, gravity `(0, −6, 0)`, `amount 12000`, `lifetime 2.2`, albedo `(0.62, 0.68, 0.78)`, material `alpha 0.7` (contrast tuning — §8.4).
+
 ## 7. Gerstner: sim vs display authority · water-foam deviation
 
 - **Sim is authoritative.** `ocean/gerstner.mojo` computes `y(x,z,t) = sea + A·cos θ` (grounding: `player.in_water`, shoreline), Jacobian `J = 1 − Q·k·A·cos θ`, foam thresholds, all per `SCR-LIB-MATH-GERSTNER`.
@@ -224,7 +256,7 @@ Scene/adapter **display constants** (representation only, never semantics):
 - **Foam:** snapshot carries no foam field; the shader recomputes the *same closed form* `J = 1 − Q·k·A·cos θ`. Sim thresholds (§6.3) stay authoritative for physics; the display thresholds + clamped `fwidth` AA half-widths (§6.4) are tuned for subtle crests and diverge deliberately.
 - **Deviation from `SCR-LIB-RENDER-WATER` (recorded, not silent):** the library intent is *shoreline* foam from `y_terrain(x,z)` vs `y_water(x,z,t)`. The display side has no terrain-height texture; the shader approximates foam as **crest foam only** (Jacobian + normalized-height surges). Terrain-vs-water shoreline foam = `TBD — future milestone`.
 - **Sun specular:** the shader applies Fresnel toward a sky tint; it has no access to the sun node's direction, so there is no sun-aligned specular lobe. Display simplification, recorded here.
-- **Sky:** `ProceduralSkyMaterial` gradient (static palette) in `island.tscn`; time-of-day lighting arrives via the `scr_sun` rotation/energy each frame. The sky *gradient* itself does not re-tint per time-of-day (static gradient — honest note). Custom `shaders/sky.gdshader` = `TBD — future milestone`.
+- **Sky:** `ProceduralSkyMaterial` gradient in `island.tscn`; time-of-day lighting arrives via `scr_sun` rotation/energy/colour each frame. **The dome gradient is no longer a static palette (0004):** it is re-derived every frame from SKY (`horizon ← fog_color/sun_color`, zenith/ground scales, energy — §5, constants §6.6), so dawn/day/night re-tint follows the contract. The derivation is *display-side* and lives in the adapter; the sim SKY bytes stay authoritative (AP-16). Custom `shaders/sky.gdshader` = `TBD — future milestone`.
 
 ## 8. Verification Record (procedures + Sprint-04 run)
 
@@ -500,22 +532,58 @@ debug aid, not gameplay; motion-mode mouse path unexercised headless.
 | AP-14 inventing quench semantics | PASS | `lava_water_quench` consumed only via catalog vocabulary; quench = documented partial (§9) |
 | AP-1..AP-10 | PASS | unchanged review in §8 (layout AP-1/AP-4, no dynamic_cast, table dispatch, no presentation→sim writes, provider docs) |
 
+### 8.4 Milestone 0004 — Sprint 03/04 verification record (2026-09-28)
+
+**Gates (all PASS, one final pass from repo root):**
+
+| # | Command | Result / evidence |
+|---|---|---|
+| 1 | `.venv/bin/mojo run -I src/mojo tests/mojo/test_<x>.mojo` × **10 files** | PASS — incl. new `test_atmosphere` (solar-arc goldens, fog derivation monotone in C and P, palette tiers) and `test_weather` (seed-1 golden transition list, seed 2 diverges, `‖wind‖ < 12`) |
+| 2 | `python3 tests/abi_smoke.py` | PASS — schema **3**, 16×f32 SKY field checks |
+| 3 | `bash tests/test_schema_mismatch.sh` | PASS — refuses schema ≠ 3 (5 checks) |
+| 4 | `bash scripts/check_layout.sh` | PASS — incl. AP-15 wall-clock grep on weather/atmosphere sim sources |
+| 5 | `bash scripts/build_godot_provider.sh` | OK — provider builds, extension list emitted |
+| 6 | `bash tests/godot/godot_load_test.sh` | PASS — 0 `ERROR:` lines |
+| 7 | `bash tests/godot/godot_playability_test.sh` | PASS — move/turn/jump, camera bounds, no fall-through |
+| 8 | `bash tests/godot/godot_screenshot.sh` (noon) | **PASS** + sun sub-capture + rain window (numbers below) |
+| 9 | `SCR_EXPECT_GLOW=1 bash tests/godot/godot_screenshot.sh` (night, `TIME_OF_DAY_START_HOURS = 21.0`, fixture regen + rebuild) | **PASS** — `crater glow light_energy=0.663`, `dome warm10=649 max_r_minus_b=95 lum=30.9 | flank lum=0.2`, spawn mean luminance `7.10` (stddev 19.60), `LUMINANCE: PASS (non-blank)` |
+
+Parameter/fixture discipline: night run regenerates `tests/fixtures/snapshot_seed1_tick1.bin` (228668 B) with `TIME_OF_DAY_START_HOURS = 21.0`, then **reverts to 12.0, regenerates and rebuilds** — repo left at 12.0, fixture byte-stable.
+
+**Gate 8 measurements (noon):**
+
+- Sun sub-capture: `centre=176.17 edge_ref=151.97 delta=24.19 bright>=235=434 max=242` (thresholds `delta ≥ 20`, `bright ≥ 235` count `≥ 300`).
+- Rain window (tick 4230, weather window 1801..8100): `median_lum=246.6 streak_px=10572 (11.99%) hgrad=1.413 vgrad=0.849 ratio=1.665` (thresholds `median ≥ 190`, `streak ≥ 400`, `h/v ratio ≥ 1.10`).
+- Spawn frame: `mean=131.67 stddev=67.11`; rain PNG4: `mean=108.01 stddev=78.79`. (Ratio varies run-to-run — GPU particle layout is not deterministic — margin over the 1.10 threshold is ~1.5×.)
+
+**Findings & deviations (recorded, not silent):**
+
+1. **Sun-in-frame conflict (recorded per spec §7, decision "Option 1").** §1.1 locks `elevation(12:00) = SUN_ELEVATION_MAX = 1.2 rad = 68.75°` while spawn pitch ≈ 0 and FOV = 70° (half 35°) ⇒ the disc sits **33.75° above the frame top**; azimuth is correct (sun dead ahead, measured forward·sun = cos 68.75°). Widening `sun_angle_max` / `sun_curve` was tested and **rejected** (sky washes white, no disc, delta only +8..+15). Instead: criterion satisfied by a **sun-aimed sub-capture from the spawn position** (`godot_screenshot.gd::_capture_sun`, same pattern as 0003 phase-B crater camera; spawn view untouched). Spec §7 sun criterion is ticked **with an inline note** pointing here — never claimed as satisfied by the spawn view. Reproduction of the geometry is in the section below.
+2. **Engine exponential fog erases the cloud deck.** Default `fog_density 3.5e-3` at 100% transmittance-constant puts the deck (570–1500 u away at 400 m altitude) under ≈ `1 − e^{−0.0035·1000} ≈ 97%` fog. `clouds.gdshader` therefore declares `render_mode fog_disabled` and applies its **own** distance + radial fade (`FADE_NEAR 1100`, `FADE_FAR 3600`, `PLANE_EDGE 3600`). Deviation from engine fog is display-local and inside the cloud shader only; `scr_env` fog still applies to terrain/ocean.
+3. **Night sky is now dark (0004 change vs 0003).** Because the dome gradient is derived from SKY (§5), a night frame legitimately measures `mean=7.11`. Two gate consequences, both fixed in the gate rather than by faking the sim: `check_luminance.py` runs with `--min-mean 3.0 --min-stddev 1.5` under `SCR_EXPECT_GLOW` (still a non-black-frame floor), and the **plume colour-deviation region check is skipped at night** — plume and sky are both dark, so the contrast test has nothing to contrast against. Plume *presence* is still asserted by node state (`emitting` / `amount` / `lifetime` / velocity).
+4. **Wetness must be applied inside `update_materials()`.** The per-frame catalog rewrite would otherwise erase the tint the moment it was written; the tint (`albedo × (1 − 0.35·wetness)`) is applied at the end of that path, and `wetness_` is latched from `sv.sky+60` immediately after decode.
+5. **Rain contrast over an overcast-white background.** Initial particle colour `(0.78, 0.77, 0.75)` was invisible against `fog_light_color`-washed sky. Tuned to `(0.62, 0.68, 0.78)` albedo + material `alpha 0.7`, particle colour alpha 1.0; streak metric now `ratio ≥ 1.5` measured (threshold 1.10).
+
+**Anti-pattern review (spec §2.1):** AP-15 no wall-clock reads (grep gate green; weather driven by `simulation_time` + seeded PRNG) · AP-16 single solar authority (sun direction/color/intensity only from SKY; no second arc formula in `godot/`) · AP-17 fog/cloud/rain values computed by `parameters.mojo` formulas, scene carries no hand-tuned fog literal · AP-18 schema bumped 2 → 3 with fixture regen, envelope/abi/negative tests updated in the same sprint.
+
 ## 9. Honest Gaps (open)
 
 1. MATERIALS framing blocker (§8) — **RESOLVED** (contract header amended to `4 + 36·N` per field table/fixture, adapter aligned; decode verified end-to-end: load test materializes 16 chunks, abi smoke byte-identical).
 2. Godot-cpp from-scratch bootstrap recipe not re-run clean-room ([02 §1.1](02_development_environment.md)).
-3. Sky gradient is static (§7); shoreline foam approximated (§7); sun specular simplified (§7); **night skybox stays bright** (§8.3 — only sun energy drops at night; a time-tinted sky = 0004 sky work).
+3. Shoreline foam approximated (§7); sun specular simplified (§7). ~~Sky gradient static / night skybox bright~~ — **RESOLVED in 0004**: dome gradient now derived per frame from SKY (§5), so the night frame is dark (measured spawn mean luminance 7.10 vs 131.67 at noon — §8.4).
 4. Performance budgets — `TBD — future milestone`.
 5. Swim/`MAP_BOUND` comptime helpers live outside `parameters.mojo` (§6.1) — sim-side cleanup deferred.
 6. Interactive (non-headless) manual play session not recorded this sprint — scripted run is the evidence; manual fallback documented.
 7. AP-2 indirect-only semantic-library coverage (§8 review): no standalone conformance tests for `MATH-NOISE`, `RENDER-SKY`, `SPATIAL` frame algebra, `PHYSICS` constants — currently exercised indirectly. `TBD — future milestone`.
 8. **Turbulence velocity-influence display semantics (0003):** Godot's velocity-influence mode cancels buoyant columns (§8.3); the noise field is exposed with influence locked at 0. Display-side turbulence that preserves column physics (curl-noise advection in-shader / successor particle integrator) = `TBD — future milestone`.
 9. **`lava_water_quench` is a documented partial (0003 AP-14):** consumed only to the extent implemented (catalog vocabulary + reaction name); voxel reaction evaluator completes in milestone 0005 — never implied as working.
-10. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
+10. **Sun disc absent from the default spawn frame (0004 §8.4):** the locked arc puts the disc 33.75° above the 70°-FOV frame top at noon; the gate therefore uses a sun-aimed sub-capture from the spawn position (decision "Option 1"). An in-frame spawn sun would require relaxing §1.1's `SUN_ELEVATION_MAX` or spawn pitch — both spec-owned, not silently changed.
+11. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
 
 ## References
 
 - [Documentation index](README.md)
+- [spec — milestone 0004 (Atmosphere & Weather)](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md)
 - [spec — milestone 0003 (Volcano)](../program_increments/v0.0.1/milestone_0003_volcano/spec.md)
 - [spec — milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md)
 - [104_contract.md (normative)](../../providers/render/graphics/godot/104_contract.md)

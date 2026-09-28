@@ -4,7 +4,7 @@
 **Milestone:** 0004 — Atmosphere & Weather (diurnal progression, wind, clouds, precipitation)
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract + in-process GDExtension (godot-cpp)
@@ -315,21 +315,21 @@ catalog, path, conformance, determinism, honesty).
 
 Commands run from repo root.
 
-- [ ] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_atmosphere.mojo` and `…/test_weather.mojo` PASS; existing 7 spec-test files still PASS.
-- [ ] **Arc correctness (automated):** `test_atmosphere.mojo` asserts, for hours 09/12/15, sun elevation > 0 and azimuth within the spawn-facing visible sector (values recorded in-test as golden expectations after Sprint 01); elevation crosses zero at 06:00 and 18:00.
-- [ ] **Weather determinism (automated):** `test_weather.mojo` asserts seed-1 transition tick list equals committed golden list; a second run with seed 2 differs; two runs with seed 1 are identical.
-- [ ] **SIM-time only (automated):** grep gate in `scripts/check_layout.sh` (extended): no `Time.get_`, `OS.get_`, `datetime` reads in `src/mojo/weather/` or atmosphere paths → PASS.
-- [ ] **Schema bump:** `scr_sim_schema_version() == N+1` via `python3 applications/godot/tests/abi_smoke.py` PASS (SKY 16×f32 checks); fixture regenerated; `test_golden_fixture.mojo` PASS.
-- [ ] **Negative test:** `bash applications/godot/tests/test_schema_mismatch.sh` PASS (stub = `SCR_SIM_SCHEMA_VER + 1`).
-- [ ] **Projection purity:** `test_projection_purity.mojo` PASS.
-- [ ] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
-- [ ] **Sun visible in frame (automated):** extended `godot_screenshot.gd`/`check_luminance.py` asserts a high-luminance cluster in the expected sky region for the spawn view at start-of-run daytime (sun disk region check, thresholds committed in the script); documented manual fallback in script header (0002 pattern).
-- [ ] **Rain visible on schedule (automated + capture):** capture scheduled at a tick inside the seed-1 precipitation window (§3.3); screenshot asserts falling-streak pixels in the lower sky region; exact tick/commands recorded in `docs/04` §8.
-- [ ] **Fog derived (automated):** `test_atmosphere.mojo` asserts fog density increases monotonically with cloud cover and precipitation and equals `parameters.mojo` formula output at boundary values (no scene-side constants).
-- [ ] **Playability unaffected:** `bash applications/godot/tests/godot/godot_playability_test.sh` PASS (camera bounds, jump, yaw-sign leg).
-- [ ] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1, AP-4, new AP-15 grep).
-- [ ] **Docs:** `04` (weather model, SKY rows, params, deviations), `06`, `104_contract.md` updated.
-- [ ] **Anti-pattern review:** 0002 AP-1..10, 0003 AP-11..14, this AP-15..18 checked item-by-item, evidence in `docs/04` §8.
+- [x] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_atmosphere.mojo` and `…/test_weather.mojo` PASS; existing 7 spec-test files still PASS.
+- [x] **Arc correctness (automated):** `test_atmosphere.mojo` asserts, for hours 09/12/15, sun elevation > 0 and azimuth within the spawn-facing visible sector (values recorded in-test as golden expectations after Sprint 01); elevation crosses zero at 06:00 and 18:00.
+- [x] **Weather determinism (automated):** `test_weather.mojo` asserts seed-1 transition tick list equals committed golden list; a second run with seed 2 differs; two runs with seed 1 are identical.
+- [x] **SIM-time only (automated):** grep gate in `scripts/check_layout.sh` (extended): no `Time.get_`, `OS.get_`, `datetime` reads in `src/mojo/weather/` or atmosphere paths → PASS.
+- [x] **Schema bump:** `scr_sim_schema_version() == N+1` via `python3 applications/godot/tests/abi_smoke.py` PASS (SKY 16×f32 checks); fixture regenerated; `test_golden_fixture.mojo` PASS.
+- [x] **Negative test:** `bash applications/godot/tests/test_schema_mismatch.sh` PASS (stub = `SCR_SIM_SCHEMA_VER + 1`).
+- [x] **Projection purity:** `test_projection_purity.mojo` PASS.
+- [x] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
+- [x] **Sun visible in frame (automated)** — satisfied by a **sun-aimed sub-capture** from the spawn position, not by the default spawn view (recorded deviation, `docs/04` §8.4): extended `godot_screenshot.gd::_capture_sun` re-aims the camera at the SKY sun direction **from the spawn position** and asserts a high-luminance cluster against edge references (`delta ≥ 20`, `bright ≥ 235` count `≥ 300`; thresholds committed in the script); the default spawn view is asserted separately for non-blankness. Measured: `delta=24.19 bright=434 max=242`. The spawn view cannot contain the disc while §1.1 locks `elevation(12:00)=SUN_ELEVATION_MAX=1.2 rad` (68.75°) against a 70° FOV — see `docs/04` §8.4.
+- [x] **Rain visible on schedule (automated + capture):** capture scheduled at a tick inside the seed-1 precipitation window (§3.3); screenshot asserts falling-streak pixels in the lower sky region; exact tick/commands recorded in `docs/04` §8.
+- [x] **Fog derived (automated):** `test_atmosphere.mojo` asserts fog density increases monotonically with cloud cover and precipitation and equals `parameters.mojo` formula output at boundary values (no scene-side constants).
+- [x] **Playability unaffected:** `bash applications/godot/tests/godot/godot_playability_test.sh` PASS (camera bounds, jump, yaw-sign leg).
+- [x] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1, AP-4, new AP-15 grep).
+- [x] **Docs:** `04` (weather model, SKY rows, params, deviations), `06`, `104_contract.md` updated.
+- [x] **Anti-pattern review:** 0002 AP-1..10, 0003 AP-11..14, this AP-15..18 checked item-by-item, evidence in `docs/04` §8.
 
 ---
 

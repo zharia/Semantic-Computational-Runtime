@@ -1,7 +1,9 @@
-# Spec test — Snapshot binary schema (104_contract.md §4, schema 2), including
+# Spec test — Snapshot binary schema (104_contract.md §4, schema 3), including
 # loud-failure behaviour for malformed input (§8: never silently coerced).
 # Milestone_0003 §7 additions: envelope schema_version == 2, sections
 # 7 VOLCANO / 8 PLUME framing + payload validation, schema ≠ 2 rejection.
+# Milestone_0004 §7 additions: SKY grows to 64 bytes (16×f32), schema == 3,
+# schema ∈ {1, 2, 4} rejected, SKY fields round-trip the atmosphere derivation.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -17,10 +19,6 @@ from sim.parameters import (
     GRID_N,
     CELL_SIZE,
     EYE_HEIGHT,
-    FOG_DENSITY,
-    FOG_COLOR_R,
-    FOG_COLOR_G,
-    FOG_COLOR_B,
     PITCH_CLAMP,
     WAVE_AMPLITUDE,
     WAVE_STEEPNESS,
@@ -56,6 +54,7 @@ from snapshot.types import (
     SEC_PLUME,
     VOLCANO_BYTES,
     PLUME_BYTES,
+    SKY_BYTES,
     get_u32,
     get_f32,
     get_f64,
@@ -110,8 +109,8 @@ def test_envelope_layout() raises:
     _check(len(data) >= ENVELOPE_BYTES, "envelope present")
     # Documented offsets (§4.1), little-endian, explicit.
     _check(get_u32(data, 0) == 0x53524353, "magic 'SCRS'")
-    _check(SCHEMA_VERSION == 2, "sim parameters SCHEMA_VERSION == 2")
-    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 2")
+    _check(SCHEMA_VERSION == 3, "sim parameters SCHEMA_VERSION == 3")
+    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 3")
     var env = decode_envelope(data)
     _check(
         Int(env.section_count) == SECTIONS_AT_TICK1,
@@ -150,7 +149,8 @@ def test_section_framing_and_sizes() raises:
     _check(secs[pi].length == 44, "PLAYER section = 44 bytes (§4.3 header)")
     _check(secs[mi].length == 32, "TERRAIN_META = 32 bytes")
     _check(secs[oi].length == 32, "OCEAN = 32 bytes")
-    _check(secs[ki].length == 32, "SKY = 32 bytes")
+    _check(secs[ki].length == SKY_BYTES, "SKY = 64 bytes (schema 3)")
+    _check(secs[ki].length == 64, "SKY = 16×f32")
     _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO = 32 bytes (§4.3 §7)")
     _check(secs[pli].length == PLUME_BYTES, "PLUME = 32 bytes (§4.3 §8)")
     # Section ids in contract order 1..8.
@@ -194,7 +194,9 @@ def test_player_and_meta_payloads() raises:
 
 
 def test_ocean_sky_materials_payloads() raises:
-    var data = _snapshot_at_tick1()
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var data = encode_snapshot(world, True)
     var env = decode_envelope(data)
     var secs = decode_sections(data, env)
     var oc = read_ocean(data, secs[find_section(secs, SEC_OCEAN)])
@@ -207,11 +209,30 @@ def test_ocean_sky_materials_payloads() raises:
     _check(oc[6] > 3.0 and oc[6] < 4.0, "speed c = sqrt(g/k)")
     _check(oc[7] >= 0.0 and oc[7] < 6.2832, "phase folded to [0, 2π)")
     var sk = read_sky(data, secs[find_section(secs, SEC_SKY)])
-    _check(abs(sk[3] - Float32(FOG_DENSITY)) < 1e-7, "fog_density")
-    _check(abs(sk[4] - Float32(FOG_COLOR_R)) < 1e-6, "fog r")
-    _check(abs(sk[5] - Float32(FOG_COLOR_G)) < 1e-6, "fog g")
-    _check(abs(sk[6] - Float32(FOG_COLOR_B)) < 1e-6, "fog b")
-    _check(sk[0] >= 9.0, "clock starts at 9.0 h")
+    var a = world.atmosphere
+    _check(abs(sk[0] - Float32(a.time_of_day_hours)) < 1e-6, "hours round-trip")
+    _check(abs(sk[1] - Float32(a.sun_azimuth)) < 1e-6, "azimuth round-trip")
+    _check(abs(sk[2] - Float32(a.sun_elevation)) < 1e-6, "elevation round-trip")
+    _check(abs(sk[3] - Float32(a.fog_density)) < 1e-7, "fog_density derived")
+    _check(abs(sk[4] - Float32(a.fog_r)) < 1e-6, "fog r")
+    _check(abs(sk[5] - Float32(a.fog_g)) < 1e-6, "fog g")
+    _check(abs(sk[6] - Float32(a.fog_b)) < 1e-6, "fog b")
+    _check(abs(sk[7] - Float32(a.sun_intensity)) < 1e-6, "sun_intensity")
+    _check(abs(sk[8] - Float32(a.sun_color_r)) < 1e-6, "sun color r")
+    _check(abs(sk[9] - Float32(a.sun_color_g)) < 1e-6, "sun color g")
+    _check(abs(sk[10] - Float32(a.sun_color_b)) < 1e-6, "sun color b")
+    _check(abs(sk[11] - Float32(a.cloud_cover)) < 1e-6, "cloud_cover")
+    _check(abs(sk[12] - Float32(a.precipitation)) < 1e-6, "precipitation")
+    _check(abs(sk[13] - Float32(a.wind_x)) < 1e-6, "wind_x")
+    _check(abs(sk[14] - Float32(a.wind_z)) < 1e-6, "wind_z")
+    _check(abs(sk[15] - Float32(a.wetness)) < 1e-6, "wetness")
+    _check(sk[0] >= 12.0, "clock starts at 12.0 h")
+    # Range invariants (104_contract §4.3 SKY / §6).
+    _check(sk[11] >= 0.0 and sk[11] <= 1.0, "cloud_cover ∈ [0,1]")
+    _check(sk[12] >= 0.0 and sk[12] <= 1.0, "precipitation ∈ [0,1]")
+    _check(sk[15] >= 0.0 and sk[15] <= 1.0, "wetness ∈ [0,1]")
+    _check(sk[7] >= 0.0, "sun_intensity ≥ 0")
+    _check(sk[3] >= 0.0, "fog_density ≥ 0")
     var mdi = find_section(secs, SEC_MATERIALS)
     var count = Int(read_materials_count(data, secs[mdi]))
     _check(count >= 1, "materials present")
@@ -312,14 +333,17 @@ def test_bad_inputs_fail_loudly() raises:
     for i in range(ENVELOPE_BYTES - 1):
         trunc.append(data[i])
     _check(_expect_error(trunc), "truncation must raise")
-    # Unsupported schemas: schema 1 (pre-bump) and schema 3 (future) must both
-    # be refused — only SCHEMA_VERSION (2) is accepted (0003 §3.5).
+    # Unsupported schemas: 1 (pre-bump), 2 (previous) and 4 (future) must all
+    # be refused — only SCHEMA_VERSION (3) is accepted (0004 §1.1).
     var schema1 = data.copy()
     schema1[4] = 1
-    _check(_expect_error(schema1), "schema 1 must be refused (expected 2)")
-    var schema3 = data.copy()
-    schema3[4] = 3
-    _check(_expect_error(schema3), "schema 3 must be refused (expected 2)")
+    _check(_expect_error(schema1), "schema 1 must be refused (expected 3)")
+    var schema2 = data.copy()
+    schema2[4] = 2
+    _check(_expect_error(schema2), "schema 2 must be refused (expected 3)")
+    var schema4 = data.copy()
+    schema4[4] = 4
+    _check(_expect_error(schema4), "schema 4 must be refused (expected 3)")
     # payload_bytes inconsistent with buffer length.
     var wrong_len = data.copy()
     wrong_len[40] = wrong_len[40] + 1

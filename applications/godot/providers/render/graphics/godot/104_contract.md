@@ -28,7 +28,7 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 | `scr_sim_init(seed)` | First call; initializes Mojo runtime + world; 0 = ok |
 | `scr_sim_shutdown()` | Tear down; safe after init |
 | `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (1) |
-| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (2) |
+| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (3) |
 | `scr_sim_step(dt, input*)` | Accumulate `dt`; run 0..n fixed ticks @ 60 Hz; input applied per executed tick; returns ticks run (≥0) or `SCR_ERR_*` |
 | `scr_sim_snapshot_size()` | Size of snapshot from most recent successful step |
 | `scr_sim_snapshot_write(buf, cap)` | Serialize; returns bytes written or `SCR_ERR_BUF_SMALL` etc. |
@@ -37,18 +37,20 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 
 **Adapter startup rejection:** refuse to run when `scr_sim_abi_version() != SCR_SIM_ABI_VERSION || scr_sim_schema_version() != SCR_SIM_SCHEMA_VER` (negative test required by exit criteria).
 
-## 4. Snapshot binary schema (version 2)
+## 4. Snapshot binary schema (version 3)
 
 All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit padding (all offsets documented). Offsets are bytes from snapshot start.
 
 **Schema 1 → 2 migration (milestone_0003 §3.5):** the envelope `schema_version` field is now `2`; sections **1–6 are byte-identical to schema 1** (tables below unchanged); sections `7 VOLCANO` and `8 PLUME` are added; `section_count` for a full snapshot is `8` (was `6`). Schema-1 readers MUST refuse schema-2 bytes via the startup gate (§3/§7) — they must never guess unknown layouts.
+
+**Schema 2 → 3 migration (milestone_0004 §1.1):** the envelope `schema_version` field is now `3`; sections 1–4 and 6–8 are byte-identical to schema 2 (tables below unchanged); **section 5 SKY grows from 32 bytes (8×f32) to 64 bytes (16×f32)** — its first 8 fields keep their schema-2 offsets (0..31), fields 8..15 append the sun-color triple, weather inputs and wetness (§4.3). `section_count` for a full snapshot stays `8`. Schema-1 and schema-2 readers MUST refuse schema-3 bytes via the startup gate (§3/§7).
 
 ### 4.1 Envelope (48 bytes, always present)
 
 | Off | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x53524353` (bytes `S C R S`) |
-| 4 | u32 | `schema_version` | = 2 |
+| 4 | u32 | `schema_version` | = 3 |
 | 8 | u32 | `section_count` | number of sections that follow |
 | 12 | u32 | `world_version` | increments on world regeneration |
 | 16 | u32 | `state_generation` | increments every commit |
@@ -125,9 +127,28 @@ Presence: TERRAIN sections are emitted **in the first snapshot after init and wh
 
 Wave displacement contract: `SCR-LIB-MATH-GERSTNER` (`lib/202_Math/Gerstner/101_definition.md`). Godot displaces vertices for display only; sim-side heights are authoritative for player grounding.
 
-**5 — SKY** (32 bytes, 8×f32)
+**5 — SKY** (64 bytes, 16×f32; schema 3, [milestone_0004 §1.1](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md))
 
-`time_of_day_hours, sun_azimuth, sun_elevation, fog_density, fog_color_r, fog_color_g, fog_color_b, sun_intensity`
+| Off | Type | Field |
+|---|---|---|
+| 0 | f32 | `time_of_day_hours` (0..24, simulation-time-derived) |
+| 4 | f32 | `sun_azimuth` (rad; spawn-facing arc, §6) |
+| 8 | f32 | `sun_elevation` (rad) |
+| 12 | f32 | `fog_density` (derived, §6 — never a display literal) |
+| 16 | f32 | `fog_color_r` |
+| 20 | f32 | `fog_color_g` |
+| 24 | f32 | `fog_color_b` |
+| 28 | f32 | `sun_intensity` (≥ 0; 0 at night) |
+| 32 | f32 | `sun_color_r` (palette tier, §6) |
+| 36 | f32 | `sun_color_g` |
+| 40 | f32 | `sun_color_b` |
+| 44 | f32 | `cloud_cover` (0..1, weather subject) |
+| 48 | f32 | `precipitation` (0..1, weather subject) |
+| 52 | f32 | `wind_x` (u/s, world frame) |
+| 56 | f32 | `wind_z` (u/s, world frame) |
+| 60 | f32 | `wetness` (0..1, accumulated) |
+
+The section is exactly 64 bytes; `fog_density`/`fog_color_*` are the atmosphere derivation over the weather inputs (§6), and `wind_x`/`wind_z`/`wetness` mirror the weather subject (gust multiplier included). Sky-dome zenith/horizon colors are sim-side palette authority (A01_Render/Sky §2) consumed by the adapter through the SKY fog/sun colors — they are NOT separate wire fields; the adapter derives the dome gradient from `fog_color_*` + `sun_color_*` (sprint-03 adapter work).
 
 **6 — MATERIALS** (4 + 36·N bytes)
 
@@ -230,6 +251,33 @@ Volcano / plume / glow (schema 2; AP-7 — single home `applications/godot/src/m
 | `VOLCANO_LAKE_RADIUS_FALLBACK` (no CALDERA_LAKE columns; = `CALDERA_LAKE_RADIUS`) | 20.0 | u |
 
 Glow derivation (milestone_0003 §3.3): `glow_intensity = emissive_intensity · night_factor(sun_elevation)`, `night_factor` a pure function of the existing `AtmosphereSubject`: 0 for elevation ≥ 0, else `min(−elevation / GLOW_NIGHT_ELEVATION_REF, GLOW_NIGHT_MAX_FACTOR)`.
+
+Solar arc / palette / fog / weather (schema 3, milestone_0004; AP-7 — single home `applications/godot/src/mojo/sim/parameters.mojo`, mirrored here):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `SUN_ELEVATION_MAX` | 1.2 | rad |
+| `SUN_INTENSITY_NOON` | 1.0 | — |
+| `SUN_ENERGY_HORIZON` (tier energy at the horizon) | 0.75 | × |
+| `SUN_ELEVATION_NOON_DEG` (energy reaches 1.0 here) | 45.0 | deg |
+| `SKY_ELEV_NIGHT_DEG` / `SKY_ELEV_SUNSET_DEG` / `SKY_ELEV_DAWN_LOW_DEG` | −10 / −5 / 0 | deg |
+| `SKY_ELEV_GOLDEN_DEG` / `SKY_ELEV_DAWN_HIGH_DEG` / `SKY_ELEV_WARM_DEG` / `SKY_ELEV_NOON_DEG` | 10 / 15 / 25 / 45 | deg |
+| `FOG_DENSITY_BASE` | 0.0030 | 1/u |
+| `FOG_COEF_CLOUD` / `FOG_COEF_PRECIP` / `FOG_COEF_BIAS` / `FOG_COEF_NIGHT` | 0.0030 / 0.0040 / 0.0010 / 0.0015 | 1/u per unit |
+| `FOG_COLOR_CLOUD_MIX` / `FOG_COLOR_PRECIP_MIX` / `FOG_COLOR_NIGHT_MIX` | 0.60 / 0.70 / 0.85 | × |
+| `WEATHER_TRANSITION_TICK_STEP` (draw cadence; AP-12) | 1800 | ticks (30 s @ 60 Hz) |
+| `WEATHER_BLEND_TICKS` (Hermite blend window) | 900 | ticks (15 s @ 60 Hz) |
+| `WETNESS_RISE_RATE` (at precipitation = 1) | 0.15 | 1/s |
+| `WETNESS_DECAY_RATE` (dry-out) | 0.01 | 1/s |
+| `WIND_GUST_FRACTION` / `WIND_GUST_PERIOD_TICKS` / `WIND_MAX_SPEED` | 0.18 / 960 / 12.0 | × / ticks / u/s |
+| `CLOUD_PLANE_ALTITUDE` (display cloud plane) | 400.0 | m |
+
+Derivations (all pure functions of simulation state — AP-11/AP-15):
+
+- **Solar arc (§4.3 SKY 0..8, single authority AP-16):** `elevation(h) = SUN_ELEVATION_MAX · sin(π(h − 6)/12)` (exact zeros at 06:00/18:00); `azimuth(h) = spawn_yaw + π + π(h − 12)/12` folded to `[−π, π)` with horizontal direction `(sin az, cos az)` — the daytime arc lies inside the spawn-facing hemisphere (06:00 = facing − π/2, noon = facing, 18:00 = facing + π/2). `sun_intensity = SUN_INTENSITY_NOON · sin(elevation) · energy(elevation)` for elevation > 0, else 0; `energy` interpolates `SUN_ENERGY_HORIZON → 1.0` over `0° → SUN_ELEVATION_NOON_DEG`.
+- **Palette tiers:** zenith / horizon / sun colors are piecewise-linear blends of the §6 `SKY_*` / `SUN_*` knot constants over elevation (linear between knots ⇒ continuous at every tier boundary); `FOG_*` clear/storm/night knot constants give `fog_color = lerp(lerp(clear, storm, min(1, 0.60·C + 0.70·P)), night, 0.85·night_factor)`.
+- **Fog density:** `fog_density = FOG_DENSITY_BASE + FOG_COEF_CLOUD·C + FOG_COEF_PRECIP·P + FOG_COEF_BIAS·fog_bias + FOG_COEF_NIGHT·night_factor` — strictly increasing in cloud cover and precipitation (every coefficient > 0), clamped ≥ 0.
+- **Weather machine:** profile draw (CLEAR / OVERCAST / MONSOON) every `WEATHER_TRANSITION_TICK_STEP` ticks from the world seed (splitmix64; AP-12 — no wall clock), Hermite-blended over `WEATHER_BLEND_TICKS` at each draw change; wetness integrates `WETNESS_RISE_RATE·P·dt` up and `WETNESS_DECAY_RATE·dt` down in `[0, 1]`; wind = profile vector × `(1 + WIND_GUST_FRACTION·sin(2π·tick/WIND_GUST_PERIOD_TICKS + phase))`, clamped to `WIND_MAX_SPEED`. Weather feeds only the atmosphere derivation — never display (AP-11).
 
 ## 7. Versioning & compatibility
 

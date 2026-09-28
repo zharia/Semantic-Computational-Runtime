@@ -2,11 +2,11 @@ id: SCR-PROVIDER-RENDER-GODOT
 name: Godot Render Provider
 domain: render
 technology: godot
-version: 0.2.0
+version: 0.3.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
-schema_version: 2
+schema_version: 3
 abi_version: 1
 
 purpose: >
@@ -39,6 +39,15 @@ capabilities:
   - id: CAP-GODOT-CRATER-GLOW
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0003
+  - id: CAP-GODOT-ATMOSPHERE-DERIVATION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0004
+  - id: CAP-GODOT-CLOUD-DECK
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0004
+  - id: CAP-GODOT-PRECIPITATION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0004
 
 depends_on:
   - SCR-LIB-RENDER
@@ -52,6 +61,8 @@ implementation:
 
 limitations:
   - Snapshot transport is in-process dlopen only (IPC transport = future milestone)
-  - No weather, vegetation, fauna manifestation (successor milestones)
+  - No vegetation, fauna manifestation (successor milestones)
   - Plume turbulence noise exposed with velocity influence locked to 0 (Godot velocity-influence collapses buoyant columns; docs/04 §8.3) — display turbulence = future milestone
-  - Night skybox gradient is static (sun energy drops, sky does not retint) — milestone 0004
+  - Sun disc is not in the default spawn frame (arc elevation 68.75° vs FOV half-angle 35°); verified via a sun-aimed sub-capture — recorded deviation, docs/04 §8.4
+  - Cloud/rain pattern, scale and drift are display-only (cloud_cover/precipitation are the wire contract)
+  - Engine exponential fog disabled in the cloud shader with shader-local fades (deck was fully fogged out) — docs/04 §8.4

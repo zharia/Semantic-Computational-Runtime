@@ -1,9 +1,10 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/player_input.gd" id="1_player"]
 [ext_resource type="Shader" path="res://shaders/ocean.gdshader" id="2_ocean"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3_hud"]
 [ext_resource type="Shader" path="res://shaders/lava.gdshader" id="4_lava"]
+[ext_resource type="Shader" path="res://shaders/clouds.gdshader" id="5_clouds"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ocean"]
 size = Vector2(768, 768)
@@ -95,6 +96,41 @@ billboard_mode = 3
 size = Vector2(2.0, 2.0)
 material = SubResource("StandardMaterial3D_plume")
 
+[sub_resource type="PlaneMesh" id="PlaneMesh_clouds"]
+size = Vector2(8000, 8000)
+subdivide_width = 8
+subdivide_depth = 8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_clouds"]
+shader = ExtResource("5_clouds")
+shader_parameter/cloud_cover = 0.0
+shader_parameter/cloud_color = Color(0.95, 0.96, 0.98, 1)
+shader_parameter/noise_scale = 0.0035
+shader_parameter/drift_speed = 0.004
+shader_parameter/opacity = 0.85
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_rain"]
+direction = Vector3(0, -1, 0)
+spread = 0.0
+initial_velocity_min = 26.0
+initial_velocity_max = 34.0
+gravity = Vector3(0, -6, 0)
+emission_shape = 3
+emission_box_extents = Vector3(110, 30, 130)
+color = Color(0.62, 0.68, 0.78, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rain"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.62, 0.68, 0.78, 0.7)
+roughness = 1.0
+billboard_mode = 2
+cull_mode = 2
+
+[sub_resource type="QuadMesh" id="QuadMesh_rain"]
+size = Vector2(0.1, 1.6)
+material = SubResource("StandardMaterial3D_rain")
+
 [node name="Island" type="Node3D"]
 script = ExtResource("1_player")
 
@@ -168,3 +204,22 @@ visibility_aabb = AABB(-40, -20, -40, 80, 90, 80)
 local_coords = false
 process_material = SubResource("ParticleProcessMaterial_plume")
 draw_pass_1 = SubResource("QuadMesh_plume")
+
+[node name="Clouds" type="MeshInstance3D" parent="." groups=["scr_clouds"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 400, 0)
+mesh = SubResource("PlaneMesh_clouds")
+material_override = SubResource("ShaderMaterial_clouds")
+cast_shadow = 0
+
+[node name="Rain" type="GPUParticles3D" parent="." groups=["scr_rain"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 45, -15)
+emitting = false
+amount = 12000
+lifetime = 2.2
+one_shot = false
+explosiveness = 0.0
+randomness = 0.05
+visibility_aabb = AABB(-260, -60, -300, 520, 180, 560)
+local_coords = false
+process_material = SubResource("ParticleProcessMaterial_rain")
+draw_pass_1 = SubResource("QuadMesh_rain")
