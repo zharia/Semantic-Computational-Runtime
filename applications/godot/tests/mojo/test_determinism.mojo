@@ -1,13 +1,28 @@
 # Spec test — Determinism invariant (milestone_0002 §6.8, 104_contract §3):
 # same seed + same input sequence ⇒ byte-identical snapshot sequence.
+# Milestone_0003 §7 amendment: byte identity MUST cover sections 7 VOLCANO
+# and 8 PLUME (schema 2, section_count == 8).
 # Headless: runs without Godot.
+#
+# NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
+# (verified: `assert False` does not stop execution). Every check below uses
+# `_check`, which raises Error ⇒ TestSuite reports FAIL and exits non-zero.
 
 from std.collections import List
 from std.testing import TestSuite
 
 from sim.world import world_init, step_world, world_fingerprint
 from sim.input import InputBatch
+from sim.parameters import SCHEMA_VERSION
 from snapshot.encode import encode_snapshot
+from snapshot.decode import decode_envelope, decode_sections, find_section
+from snapshot.types import (
+    SEC_VOLCANO,
+    SEC_PLUME,
+    VOLCANO_BYTES,
+    PLUME_BYTES,
+    get_u32,
+)
 
 comptime SCRIPTED_MOVE_X: Float32 = 0.5
 comptime SCRIPTED_MOVE_Y: Float32 = 1.0
@@ -16,6 +31,12 @@ comptime SCRIPTED_LOOK_DY: Float32 = -0.1
 comptime SCRIPTED_JUMP: UInt8 = 1
 comptime SCRIPTED_SPRINT: UInt8 = 0
 comptime SEQ_TICKS: Int = 5
+
+
+def _check(cond: Bool, msg: String) raises:
+    """Raise-based check (see header note: `assert` is a no-op here)."""
+    if not cond:
+        raise Error(msg)
 
 
 def scripted_input() -> InputBatch:
@@ -36,7 +57,7 @@ def run_sequence(seed: UInt32, input: InputBatch) raises -> List[List[UInt8]]:
     var out = List[List[UInt8]]()
     for _ in range(SEQ_TICKS):
         var ran = step_world(world, 1.0 / 60.0, input)
-        assert ran == 1, "dt=1/60 must run exactly one tick"
+        _check(ran == 1, "dt=1/60 must run exactly one tick")
         out.append(encode_snapshot(world, True))
     return out^
 
@@ -50,30 +71,83 @@ def bytes_equal(a: List[UInt8], b: List[UInt8]) -> Bool:
     return True
 
 
+def section_payload(data: List[UInt8], sid: UInt32) raises -> List[UInt8]:
+    """Raw payload bytes of one section (adapter-style read)."""
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var i = find_section(secs, sid)
+    _check(i >= 0, "missing section " + String(sid))
+    var out = List[UInt8]()
+    for k in range(secs[i].length):
+        out.append(data[secs[i].offset + k])
+    return out^
+
+
 def test_same_seed_same_sequence_is_byte_identical() raises:
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(1, scripted_input())
-    assert len(a) == SEQ_TICKS and len(b) == SEQ_TICKS
+    _check(len(a) == SEQ_TICKS and len(b) == SEQ_TICKS, "sequence length")
     for i in range(SEQ_TICKS):
-        assert bytes_equal(a[i], b[i]), "snapshot " + String(i) + " differs"
+        _check(bytes_equal(a[i], b[i]), "snapshot " + String(i) + " differs")
 
 
 def test_different_seed_changes_snapshot() raises:
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(2, scripted_input())
-    assert not bytes_equal(a[0], b[0]), "seed must change the snapshot"
-    assert not bytes_equal(a[SEQ_TICKS - 1], b[SEQ_TICKS - 1])
+    _check(not bytes_equal(a[0], b[0]), "seed must change the snapshot")
+    _check(
+        not bytes_equal(a[SEQ_TICKS - 1], b[SEQ_TICKS - 1]),
+        "seed must change the last snapshot",
+    )
 
 
 def test_sequence_is_progressive_not_stuck() raises:
     var a = run_sequence(1, scripted_input())
     # tick counter and state generation advance every snapshot.
     for i in range(1, SEQ_TICKS):
-        assert not bytes_equal(a[i - 1], a[i]), "consecutive snapshots equal"
+        _check(
+            not bytes_equal(a[i - 1], a[i]),
+            "consecutive snapshots equal",
+        )
     # state_generation (u32 LE at envelope offset 16) counts committed ticks:
     # first snapshot is post-step, so it is already 1.
-    assert a[0][16] == 1 and a[0][17] == 0
-    assert a[SEQ_TICKS - 1][16] == UInt8(SEQ_TICKS)
+    _check(a[0][16] == 1 and a[0][17] == 0, "first snapshot state_generation == 1")
+    _check(
+        a[SEQ_TICKS - 1][16] == UInt8(SEQ_TICKS),
+        "last snapshot state_generation == SEQ_TICKS",
+    )
+
+
+def test_volcano_plume_sections_in_byte_identity() raises:
+    """Milestone_0003 §7: byte identity covers sections 7/8 (schema 2)."""
+    var a = run_sequence(1, scripted_input())
+    var b = run_sequence(1, scripted_input())
+    var snap = a[SEQ_TICKS - 1].copy()
+    # Envelope: schema 2, eight sections (1..8).
+    _check(SCHEMA_VERSION == 2, "sim parameters SCHEMA_VERSION == 2")
+    _check(
+        Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
+        "envelope schema_version == 2",
+    )
+    var env = decode_envelope(snap)
+    _check(Int(env.section_count) == 8, "section_count == 8 (schema 2)")
+    # VOLCANO / PLUME framing: present, exactly 32 bytes each.
+    var secs = decode_sections(snap, env)
+    var vi = find_section(secs, SEC_VOLCANO)
+    var pi = find_section(secs, SEC_PLUME)
+    _check(vi >= 0, "section 7 VOLCANO present")
+    _check(pi >= 0, "section 8 PLUME present")
+    _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO is 32 bytes")
+    _check(secs[pi].length == PLUME_BYTES, "PLUME is 32 bytes")
+    # Explicit payload-level byte identity across the two runs, including the
+    # VOLCANO state that changes with the seeded effusion schedule.
+    var va = section_payload(a[SEQ_TICKS - 1], SEC_VOLCANO)
+    var vb = section_payload(b[SEQ_TICKS - 1], SEC_VOLCANO)
+    var pa = section_payload(a[SEQ_TICKS - 1], SEC_PLUME)
+    var pb = section_payload(b[SEQ_TICKS - 1], SEC_PLUME)
+    _check(bytes_equal(va, vb), "VOLCANO payload differs between equal runs")
+    _check(bytes_equal(pa, pb), "PLUME payload differs between equal runs")
+    _check(len(va) == 32 and len(pa) == 32, "payload sizes 32/32")
 
 
 def test_world_fingerprint_tracks_step() raises:
@@ -81,22 +155,22 @@ def test_world_fingerprint_tracks_step() raises:
     var fp0 = world_fingerprint(world)
     _ = step_world(world, 1.0 / 60.0, scripted_input())
     var fp1 = world_fingerprint(world)
-    assert fp0 != fp1, "fingerprint must change after a tick"
+    _check(fp0 != fp1, "fingerprint must change after a tick")
     var world2 = world_init(1)
     _ = step_world(world2, 1.0 / 60.0, scripted_input())
-    assert world_fingerprint(world2) == fp1, "fingerprint must be deterministic"
+    _check(world_fingerprint(world2) == fp1, "fingerprint must be deterministic")
 
 
 def test_fixed_timestep_accumulator() raises:
     var world = world_init(1)
     var idle = InputBatch()
     # Two half-ticks accumulate to one tick.
-    assert step_world(world, 1.0 / 120.0, idle) == 0
-    assert step_world(world, 1.0 / 120.0, idle) == 1
+    _check(step_world(world, 1.0 / 120.0, idle) == 0, "first half-tick commits 0")
+    _check(step_world(world, 1.0 / 120.0, idle) == 1, "second half-tick commits 1")
     # Zero dt runs nothing.
-    assert step_world(world, 0.0, idle) == 0
+    _check(step_world(world, 0.0, idle) == 0, "zero dt runs nothing")
     # Frame clamp: 10 s frame runs at most 0.05 s = 3 ticks.
-    assert step_world(world, 10.0, idle) == 3
+    _check(step_world(world, 10.0, idle) == 3, "frame clamp caps at 3 ticks")
 
 
 def main() raises:
@@ -105,6 +179,7 @@ def main() raises:
             test_same_seed_same_sequence_is_byte_identical,
             test_different_seed_changes_snapshot,
             test_sequence_is_progressive_not_stuck,
+            test_volcano_plume_sections_in_byte_identity,
             test_world_fingerprint_tracks_step,
             test_fixed_timestep_accumulator,
         )

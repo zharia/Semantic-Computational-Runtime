@@ -4,7 +4,7 @@
 **Milestone:** 0003 — Volcano (lava lake + convective plume)
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract + in-process GDExtension (godot-cpp)
@@ -295,19 +295,19 @@ conformance, determinism, honesty) — **unchanged and normative**.
 All commands run from repo root. Every criterion is an automated test or a
 documented procedure with commands.
 
-- [ ] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_volcano.mojo` PASS, and the existing 7 spec-test files (determinism, projection_purity, envelope, synthesis_conformance, gerstner, catalog, golden_fixture) still PASS.
-- [ ] **Schema bump verified:** `scr_sim_schema_version() == 2` (abi_smoke) and envelope `schema_version == 2`; `tests/fixtures/snapshot_seed1_tick1.bin` regenerated (`gen_golden_fixture.mojo`) and `test_golden_fixture.mojo` PASS.
-- [ ] **Contract decode + negative:** `python3 applications/godot/tests/abi_smoke.py` PASS including VOLCANO/PLUME field checks; `bash applications/godot/tests/test_schema_mismatch.sh` PASS (stub refuses `SCR_SIM_SCHEMA_VER + 1`, accepts real lib).
-- [ ] **Determinism incl. volcano:** headless N-tick run, seed 1, scripted inputs ⇒ byte-identical snapshot sequence including sections 7/8 (`test_determinism.mojo`).
-- [ ] **Projection purity:** world fingerprint unchanged across projection (`test_projection_purity.mojo`).
-- [ ] **Glow semantics test:** `test_volcano.mojo` asserts `glow_intensity == 0` for sun above horizon and `> 0` below (no manual check needed).
-- [ ] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
-- [ ] **Plume + lava rendered:** `bash applications/godot/tests/godot/godot_screenshot.sh` PASS (luminance thresholds as in `04` §8) **plus** plume presence: documented extension of `godot_screenshot.gd` asserting non-sky pixels in the crater-above column (region check around the caldera center); fallback documented manual capture in the script header (same pattern as 0002).
-- [ ] **Night crater glow (manual, documented):** procedure in `docs/04` — set `TIME_OF_DAY_START_HOURS = 21.0` in `src/mojo/sim/parameters.mojo`, regenerate fixture, `bash applications/godot/scripts/build_godot_provider.sh`, `bash applications/godot/tests/godot/godot_screenshot.sh`, capture `build/island.png`, confirm crater glow spot above terrain luminance background, then revert parameter and regenerate fixture. Exact commands recorded in `docs/04` §8.
-- [ ] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1 engine-free `src/mojo/`, AP-4 no absolute paths).
-- [ ] **Catalog:** `test_catalog.mojo` PASS (lava/ash/sulfur/obsidian ids derivable from `materials_catalog.json`).
-- [ ] **Docs:** `04` (subject/groups/params/gap), `06`, `104_contract.md` schema 2 updated.
-- [ ] **Anti-pattern review:** 0002 §2.1 AP-1..AP-10 + this spec §2.1 AP-11..AP-14 checked item-by-item against the diff, evidence recorded in `docs/04` §8.
+- [x] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_volcano.mojo` PASS, and the existing 7 spec-test files (determinism, projection_purity, envelope, synthesis_conformance, gerstner, catalog, golden_fixture) still PASS.
+- [x] **Schema bump verified:** `scr_sim_schema_version() == 2` (abi_smoke) and envelope `schema_version == 2`; `tests/fixtures/snapshot_seed1_tick1.bin` regenerated (`gen_golden_fixture.mojo`) and `test_golden_fixture.mojo` PASS.
+- [x] **Contract decode + negative:** `python3 applications/godot/tests/abi_smoke.py` PASS including VOLCANO/PLUME field checks; `bash applications/godot/tests/test_schema_mismatch.sh` PASS (stub refuses `SCR_SIM_SCHEMA_VER + 1`, accepts real lib).
+- [x] **Determinism incl. volcano:** headless N-tick run, seed 1, scripted inputs ⇒ byte-identical snapshot sequence including sections 7/8 (`test_determinism.mojo`).
+- [x] **Projection purity:** world fingerprint unchanged across projection (`test_projection_purity.mojo`).
+- [x] **Glow semantics test:** `test_volcano.mojo` asserts `glow_intensity == 0` for sun above horizon and `> 0` below (no manual check needed).
+- [x] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
+- [x] **Plume + lava rendered:** `bash applications/godot/tests/godot/godot_screenshot.sh` PASS (luminance thresholds as in `04` §8) **plus** plume presence: documented extension of `godot_screenshot.gd` asserting non-sky pixels in the crater-above column (region check around the caldera center); fallback documented manual capture in the script header (same pattern as 0002).
+- [x] **Night crater glow (manual, documented):** procedure in `docs/04` — set `TIME_OF_DAY_START_HOURS = 21.0` in `src/mojo/sim/parameters.mojo`, regenerate fixture, `bash applications/godot/scripts/build_godot_provider.sh`, `bash applications/godot/tests/godot/godot_screenshot.sh`, capture `build/island.png`, confirm crater glow spot above terrain luminance background, then revert parameter and regenerate fixture. Exact commands recorded in `docs/04` §8.
+- [x] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1 engine-free `src/mojo/`, AP-4 no absolute paths).
+- [x] **Catalog:** `test_catalog.mojo` PASS (lava/ash/sulfur/obsidian ids derivable from `materials_catalog.json`).
+- [x] **Docs:** `04` (subject/groups/params/gap), `06`, `104_contract.md` schema 2 updated.
+- [x] **Anti-pattern review:** 0002 §2.1 AP-1..AP-10 + this spec §2.1 AP-11..AP-14 checked item-by-item against the diff, evidence recorded in `docs/04` §8.
 
 ---
 

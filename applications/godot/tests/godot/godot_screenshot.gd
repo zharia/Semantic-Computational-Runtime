@@ -1,36 +1,70 @@
-# godot_screenshot.gd — automated island screenshot + non-blank luminance check.
+# godot_screenshot.gd — automated island screenshot + content/plume/lava checks.
 #
-# Spec: milestone_0002 §7 exit criterion 2 ("automated screenshot (non-blank/
-# luminance check) or documented manual capture").
+# Spec: milestone_0002 §7 exit criterion 2 (luminance capture) and
+#       milestone_0003 §7 exit criterion 8 (plume presence via a region check
+#       around the caldera centre) + lava rendering evidence.
 #
 # Run (RENDERED game mode — a display/GPU is required; do NOT pass --headless):
 #   timeout 300 godot --path applications/godot/godot \
 #       -s applications/godot/tests/godot/godot_screenshot.gd -- \
-#       --frames=300 --png=applications/godot/build/island.png
+#       --png=applications/godot/build/island.png \
+#       --png2=applications/godot/build/island_crater.png
 # (or use the runner: bash applications/godot/tests/godot/godot_screenshot.sh)
+#
+# Night-glow procedure (docs/04 §8) reuses this script with --expect-glow.
 #
 # Exit codes: 0 PASS · 1 scene/content assertion failed · 2 capture failed ·
 #             3 image blank (luminance check failed).
 #
-# Assertions beyond raw luminance (so a sky-only frame cannot pass while the
-# island is missing):
-#   * Terrain group has >= 1 Chunk_* child (adapter materialized the TERRAIN
-#     section — proof the snapshot pipeline works end to end)
-#   * scr_meta carries sea_level + spawn_position (TERRAIN_META applied)
-#   * scr_hud label text starts with "tick " (HUD applied)
-# Luminance thresholds (display-verification constants, not gameplay values):
-#   mean > 10.0 and stddev > 5.0 over 8-bit luminance of a 64-row subsample.
+# Phases
+#   A. Tick-wait: run until the HUD reports tick >= --tick-min (default 1900).
+#      Rationale (docs/04 §8): seed-1 effusion is active on ticks 1500..2099;
+#      the plume needs `lifetime` (6 s) of emission to reach steady state, so
+#      1900 + 60 settle frames captures a fully developed plume at ~1960.
+#      Spawn-view capture -> --png.
+#   B. Crater-view capture -> --png2 (the caldera floor is occluded from the
+#      spawn camera by the rim, so the lava assertion needs its own view;
+#      camera_follow is a documented debug aid — temporarily disabled).
+#
+# Assertions (beyond raw luminance):
+#   * Terrain Chunk_* children, scr_meta fields, HUD text (0002 pipeline).
+#   * Node state: scr_plume emitting == (rate > 0), amount == rate*lifetime,
+#     lifetime/spread/initial velocity/turbulence from the PLUME section;
+#     scr_crater_lava transform + lava shader uniforms from VOLCANO;
+#     scr_crater_glow energy == sim glow (0 by day, > 0 with --expect-glow).
+#   * Plume region check (0003 §7): non-sky pixels in the crater-above column
+#     (rows 0.02H..0.12H x cols 0.40W..0.60W) vs a per-row sky reference taken
+#     from the left/right image margins (fog makes the horizon row-dependent).
+#   * Lava region check (phase B): warm pixels (R>=120, R>=G+25, R>=B+60)
+#     near the projected centre of the scr_crater_lava node.
+#   * Night glow (--expect-glow, phase A): warm pixels in the volcano
+#     silhouette band — the crater light spills onto the outer flank (no
+#     shadows, omni_range covers it) and must stand out above background.
+#
+# All thresholds are display-verification constants, not gameplay values;
+# provenance recorded in docs/04_simulation_engine.md §8.
 extends SceneTree
 
-var _png_path := "res://../build/island.png"  # globalized below (repo build/)
-var _frames := 300
+var _png_path := "res://../build/island.png"
+var _png2_path := "res://../build/island_crater.png"
+var _settle_frames := 60
+var _tick_min := 1900
+var _expect_glow := false
+var _lava_centre := Vector3.ZERO
+var _lava_cam: Camera3D = null
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--png="):
 			_png_path = a.trim_prefix("--png=")
+		elif a.begins_with("--png2="):
+			_png2_path = a.trim_prefix("--png2=")
 		elif a.begins_with("--frames="):
-			_frames = maxi(1, int(a.trim_prefix("--frames=")))
+			_settle_frames = maxi(1, int(a.trim_prefix("--frames=")))
+		elif a.begins_with("--tick-min="):
+			_tick_min = maxi(0, int(a.trim_prefix("--tick-min=")))
+		elif a.begins_with("--expect-glow"):
+			_expect_glow = true
 	_run()
 
 func _fail(code: int, msg: String) -> void:
@@ -48,16 +82,119 @@ func _run() -> void:
 	for i in 30:
 		await physics_frame
 
-	# --- run the scene for N frames, then capture ---------------------------
-	for i in _frames:
+	# --- phase A: tick-wait to a fully developed plume ----------------------
+	var hud := _first_in_group("scr_hud") as Label
+	var tick := -1
+	var waited := 0
+	var frame_cap := _tick_min + 2000
+	while true:
+		tick = _tick_now(hud)
+		if tick >= _tick_min:
+			break
+		if waited > frame_cap:
+			_fail(1, "sim stuck: tick %d never reached %d" % [tick, _tick_min]); return
+		if waited % 600 == 0:
+			print("SCREENSHOT: waiting for tick >= %d (now %d)" % [_tick_min, tick])
+		waited += 1
 		await process_frame
-	await RenderingServer.frame_post_draw
+	print("SCREENSHOT: tick target reached: %d" % tick)
 
+	# Settle by TICK, not by frames: on a slow render loop Godot executes
+	# several fixed physics ticks per rendered frame (observed ~4), so a
+	# frame-based settle raced past the effusion window (ticks 1500..2099).
+	var settle_target := _tick_min + 40
+	while _tick_now(hud) < settle_target:
+		if _tick_now(hud) >= 2100:
+			_fail(1, "settled past effusion window (tick %d >= 2100)" % _tick_now(hud)); return
+		await process_frame
+
+	# Node state MUST be asserted at capture time (window + sim continue to
+	# run while PNGs are written and pixels are scanned).
+	var state_tick := _tick_now(hud)
+	print("SCREENSHOT: state assertions at tick %d" % state_tick)
+	if state_tick < _tick_min or state_tick >= 2100:
+		_fail(1, "capture tick %d outside effusing window [1900,2100)" % state_tick); return
+	if not _check_node_state():
+		return
+
+	# --- capture BOTH views back to back BEFORE any heavy checks ------------
+	var img: Image = await _capture()
+	if img == null:
+		return
+	var img2: Image = await _capture_crater()
+	if img2 == null:
+		return
+
+	# --- phase A checks ------------------------------------------------------
+	var err := _save_png(img, _png_path)
+	if err != OK:
+		_fail(2, "save_png(%s) failed err=%d" % [_png_path, err]); return
+	if not _check_luminance(img, "spawn"):
+		return
+
+	var chunks := 0
+	var terrain: Node = _first_in_group("scr_terrain")
+	if terrain != null:
+		for c in terrain.get_children():
+			if String(c.name).begins_with("Chunk_"):
+				chunks += 1
+	if chunks < 1:
+		_fail(1, "no Chunk_* meshes under scr_terrain (snapshot TERRAIN not applied)"); return
+	print("SCREENSHOT: terrain chunks = ", chunks)
+
+	var meta_n: Node = _first_in_group("scr_meta")
+	if meta_n == null or not meta_n.has_meta("sea_level") \
+			or not meta_n.has_meta("spawn_position"):
+		_fail(1, "scr_meta missing sea_level/spawn_position (TERRAIN_META not applied)"); return
+	print("SCREENSHOT: meta sea_level=", meta_n.get_meta("sea_level"),
+	      " spawn=", meta_n.get_meta("spawn_position"))
+
+	if hud == null or not String(hud.text).begins_with("tick "):
+		_fail(1, "scr_hud text not set by adapter (snapshot not applied)"); return
+	print("SCREENSHOT: hud = ", hud.text)
+
+	if not _check_plume_region(img):
+		return
+
+	if _expect_glow and not _check_glow_region(img):
+		return
+
+	# --- phase B checks ------------------------------------------------------
+	err = _save_png(img2, _png2_path)
+	if err != OK:
+		_fail(2, "save_png(%s) failed err=%d" % [_png2_path, err]); return
+	if not _check_lava_region(img2):
+		return
+
+	print("SCREENSHOT: PASS")
+	quit(0)
+
+func _tick_now(hud: Label) -> int:
+	if hud != null and String(hud.text).begins_with("tick "):
+		return int(String(hud.text).trim_prefix("tick ").split(" ")[0])
+	return -1
+
+func _capture() -> Image:
+	await RenderingServer.frame_post_draw
 	var img: Image = root.get_texture().get_image()
 	if img == null or img.is_empty():
-		_fail(2, "viewport image unavailable"); return
+		_fail(2, "viewport image unavailable")
+		return null
+	return img
 
-	# --- luminance check (8-bit luma Y = 0.299R + 0.587G + 0.114B) ----------
+func _save_png(img: Image, path: String) -> Error:
+	var out := path
+	if out.begins_with("res://") or out.begins_with("user://"):
+		out = ProjectSettings.globalize_path(out)
+	elif not out.begins_with("/"):
+		out = OS.get_environment("PWD") + "/" + out
+	DirAccess.make_dir_recursive_absolute(out.get_base_dir())
+	var err := img.save_png(out)
+	if err == OK:
+		print("SCREENSHOT: wrote ", out)
+	return err
+
+func _check_luminance(img: Image, tag: String) -> bool:
 	var w := img.get_width()
 	var h := img.get_height()
 	var rgba := img.duplicate()
@@ -80,51 +217,268 @@ func _run() -> void:
 		y += 4
 	var mean := sum / float(n)
 	var stddev := sqrt(maxf(0.0, sumsq / float(n) - mean * mean))
-	print("SCREENSHOT: %dx%d mean_luminance=%.2f stddev=%.2f" % [w, h, mean, stddev])
-
-	var out := _png_path
-	if out.begins_with("res://") or out.begins_with("user://"):
-		out = ProjectSettings.globalize_path(out)
-	elif not out.begins_with("/"):
-		out = OS.get_environment("PWD") + "/" + out
-	var dir := out.get_base_dir()
-	DirAccess.make_dir_recursive_absolute(dir)
-	var err := img.save_png(out)
-	if err != OK:
-		_fail(2, "save_png(%s) failed err=%d" % [out, err]); return
-	print("SCREENSHOT: wrote ", out)
-
+	print("SCREENSHOT: %s %dx%d mean_luminance=%.2f stddev=%.2f" % [tag, w, h, mean, stddev])
 	if mean <= 10.0:
-		_fail(3, "mean luminance %.2f <= 10.0 (blank/dark frame)" % mean); return
+		_fail(3, "%s mean luminance %.2f <= 10.0 (blank/dark frame)" % [tag, mean]); return false
 	if stddev <= 5.0:
-		_fail(3, "stddev %.2f <= 5.0 (uniform frame, no content)" % stddev); return
+		_fail(3, "%s stddev %.2f <= 5.0 (uniform frame, no content)" % [tag, stddev]); return false
+	return true
 
-	# --- content assertions -------------------------------------------------
-	var chunks := 0
-	var terrain: Node = _first_in_group("scr_terrain")
-	if terrain != null:
-		for c in terrain.get_children():
-			if String(c.name).begins_with("Chunk_"):
-				chunks += 1
-	if chunks < 1:
-		_fail(1, "no Chunk_* meshes under scr_terrain (snapshot TERRAIN not applied)"); return
-	print("SCREENSHOT: terrain chunks = ", chunks)
+func _check_node_state() -> bool:
+	# --- scr_plume ---------------------------------------------------------
+	var plume_n: Node = _first_in_group("scr_plume")
+	if plume_n == null:
+		_fail(1, "group scr_plume absent from island.tscn"); return false
+	var plume := plume_n as GPUParticles3D
+	if plume == null:
+		_fail(1, "scr_plume is not a GPUParticles3D"); return false
+	if not plume.emitting:
+		_fail(1, "scr_plume.emitting == false at effusing tick (PLUME not applied)"); return false
+	if plume.amount != 360:
+		_fail(1, "scr_plume.amount = %d, expected 360 (rate 60/s x lifetime 6 s)" % plume.amount); return false
+	if absf(plume.lifetime - 6.0) > 0.001:
+		_fail(1, "scr_plume.lifetime = %f, expected 6.0" % plume.lifetime); return false
+	var pm := plume.process_material as ParticleProcessMaterial
+	if pm == null:
+		_fail(1, "scr_plume.process_material is not a ParticleProcessMaterial"); return false
+	if absf(pm.initial_velocity_min - 8.5) > 0.001 or absf(pm.initial_velocity_max - 8.5) > 0.001:
+		_fail(1, "plume initial velocity %f/%f, expected 8.5" % [pm.initial_velocity_min, pm.initial_velocity_max]); return false
+	if absf(pm.spread - 15.0) > 0.001:
+		_fail(1, "plume spread %f, expected 15.0" % pm.spread); return false
+	if not pm.turbulence_enabled:
+		_fail(1, "plume turbulence_enabled == false (PLUME.turbulence not applied)"); return false
+	# Godot velocity-influence turbulence collapses the buoyant column
+	# (docs/04 §8): the adapter gates the noise field on PLUME.turbulence but
+	# must hold the influence channel at 0 — guard against regressions here.
+	if pm.turbulence_influence_min > 0.0001 or pm.turbulence_influence_max > 0.0001:
+		_fail(1, "plume turbulence influence %f/%f, expected 0 (column collapse)" %
+		      [pm.turbulence_influence_min, pm.turbulence_influence_max]); return false
+	if pm.gravity != Vector3.ZERO:
+		_fail(1, "plume gravity %s, expected zero (buoyant display = velocity only)" % str(pm.gravity)); return false
+	print("SCREENSHOT: plume emitting amount=%d lifetime=%.1f v0=%.2f spread=%.1f turbulence_enabled=%s influence=%.2f" %
+	      [plume.amount, plume.lifetime, pm.initial_velocity_min, pm.spread, str(pm.turbulence_enabled), pm.turbulence_influence_min])
 
-	var meta_n: Node = _first_in_group("scr_meta")
-	if meta_n == null or not meta_n.has_meta("sea_level") \
-			or not meta_n.has_meta("spawn_position"):
-		_fail(1, "scr_meta missing sea_level/spawn_position (TERRAIN_META not applied)"); return
-	print("SCREENSHOT: meta sea_level=", meta_n.get_meta("sea_level"),
-	      " spawn=", meta_n.get_meta("spawn_position"))
+	# --- scr_crater_lava ---------------------------------------------------
+	var lava_n: Node = _first_in_group("scr_crater_lava")
+	if lava_n == null:
+		_fail(1, "group scr_crater_lava absent from island.tscn"); return false
+	var lava := lava_n as MeshInstance3D
+	if lava == null:
+		_fail(1, "scr_crater_lava is not a MeshInstance3D"); return false
+	var mat := lava.material_override as ShaderMaterial
+	if mat == null:
+		_fail(1, "scr_crater_lava.material_override is not a ShaderMaterial"); return false
+	var emissive := float(mat.get_shader_parameter("emissive_intensity"))
+	var crust := float(mat.get_shader_parameter("crust_fraction"))
+	var radius := float(mat.get_shader_parameter("radius"))
+	if emissive <= 0.0:
+		_fail(1, "lava emissive_intensity %f <= 0 (VOLCANO not applied)" % emissive); return false
+	if crust < 0.0 or crust > 1.0:
+		_fail(1, "lava crust_fraction %f outside [0,1]" % crust); return false
+	if absf(lava.scale.x - radius) > 0.01 or absf(lava.scale.z - radius) > 0.01:
+		_fail(1, "lava scale %s != shader radius %f (transform/uniform disagree)" % [str(lava.scale), radius]); return false
+	var meta_chk: Node = _first_in_group("scr_meta")
+	var sea := float(meta_chk.get_meta("sea_level")) if meta_chk != null else -1.0
+	if lava.global_position.y <= sea:
+		_fail(1, "lava lake y %f not above sea_level %f" % [lava.global_position.y, sea]); return false
+	print("SCREENSHOT: lava emissive=%.3f crust=%.3f radius=%.2f pos=%s" %
+	      [emissive, crust, radius, str(lava.global_position)])
 
-	var hud := _first_in_group("scr_hud") as Label
-	if hud == null or not String(hud.text).begins_with("tick "):
-		_fail(1, "scr_hud text not set by adapter (snapshot not applied)"); return
-	print("SCREENSHOT: hud = ", hud.text)
+	# --- scr_crater_glow ---------------------------------------------------
+	var glow_n: Node = _first_in_group("scr_crater_glow")
+	if glow_n == null:
+		_fail(1, "group scr_crater_glow absent from island.tscn"); return false
+	var glow := glow_n as OmniLight3D
+	if glow == null:
+		_fail(1, "scr_crater_glow is not an OmniLight3D"); return false
+	if _expect_glow:
+		if glow.light_energy <= 0.05:
+			_fail(1, "night run: crater glow light_energy = %f, expected > 0" % glow.light_energy); return false
+	else:
+		if glow.light_energy > 0.0001:
+			_fail(1, "day run: crater glow light_energy = %f, expected 0 (sim night_factor)" % glow.light_energy); return false
+	print("SCREENSHOT: crater glow light_energy=%.3f" % glow.light_energy)
+	return true
 
+# Plume: non-sky pixels in the crater-above column (0003 §7 region check).
+# Sky reference per row = median of the left/right 5% margin columns; the
+# plume window sits above the rim silhouette, so deviation there is plume.
+func _check_plume_region(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var r0 := int(0.02 * h)
+	var r1 := int(0.12 * h)
+	var c0 := int(0.40 * w)
+	var c1 := int(0.60 * w)
+	var margin := int(0.05 * w)
+	var rows_hit := 0
+	var px_hit := 0
+	var row := r0
+	while row < r1:
+		# Per-channel sky reference: median of each channel separately over
+		# the left/right margin columns. (A summed-median reference divides
+		# the sky sum by 3 and misreads every chromatic sky pixel as a hit.)
+		var rr := PackedInt32Array()
+		var gg := PackedInt32Array()
+		var bb := PackedInt32Array()
+		var xm := 0
+		while xm < margin:
+			var i3 := (row * w + xm) * 4
+			rr.append(int(data[i3]))
+			gg.append(int(data[i3 + 1]))
+			bb.append(int(data[i3 + 2]))
+			var i3r := (row * w + (w - 1 - xm)) * 4
+			rr.append(int(data[i3r]))
+			gg.append(int(data[i3r + 1]))
+			bb.append(int(data[i3r + 2]))
+			xm += 4
+		rr.sort()
+		gg.sort()
+		bb.sort()
+		var ref_r := rr[rr.size() / 2]
+		var ref_g := gg[gg.size() / 2]
+		var ref_b := bb[bb.size() / 2]
+		var row_hits := 0
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			var dev: int = absi(int(data[i3]) - ref_r) + \
+				absi(int(data[i3 + 1]) - ref_g) + absi(int(data[i3 + 2]) - ref_b)
+			# Summed per-channel deviation > 60 (i.e. avg > 20/ch): catches
+			# both the grey-ramp shift (plume over sky) and chromatic offsets
+			# (ash grey over blue sky) without the sum-of-channels bug above.
+			if dev > 60:
+				row_hits += 1
+				px_hit += 1
+			col += 4
+		if row_hits >= 10:
+			rows_hit += 1
+		row += 1
+	print("SCREENSHOT: plume window rows_with_10plus_hits=%d of %d, deviating_px=%d" %
+	      [rows_hit, r1 - r0, px_hit])
+	if rows_hit < 5:
+		_fail(1, "plume region check failed: %d rows with >=10 deviating px (need 5)" % rows_hit); return false
+	return true
 
-	print("SCREENSHOT: PASS")
-	quit(0)
+# Night glow: warm pixels (R clearly above B) in the volcano silhouette band.
+func _check_glow_region(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var r0 := int(0.10 * h)
+	var r1 := int(0.75 * h)
+	var c0 := int(0.30 * w)
+	var c1 := int(0.70 * w)
+	var warm := 0
+	var row := r0
+	while row < r1:
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			var r := int(data[i3])
+			var g := int(data[i3 + 1])
+			var b := int(data[i3 + 2])
+			if r >= 70 and r - b >= 30 and r >= g - 10:
+				warm += 1
+			col += 4
+		row += 2
+	print("SCREENSHOT: glow band warm_px=%d" % warm)
+	# Dome box (crater-above silhouette): warm count + max r-b + luminance.
+	var d_warm10 := 0
+	var d_maxrb := -999
+	var d_lum := 0.0
+	var d_n := 0
+	for yy3 in range(85, 130):
+		for xx3 in range(560, 780):
+			var j3 := (yy3 * w + xx3) * 4
+			var rr := int(data[j3])
+			var gg := int(data[j3 + 1])
+			var bb := int(data[j3 + 2])
+			if rr - bb > d_maxrb:
+				d_maxrb = rr - bb
+			if rr >= 70 and rr - bb >= 10 and rr >= gg - 10:
+				d_warm10 += 1
+			d_lum += 0.2126 * rr + 0.7152 * gg + 0.0722 * bb
+			d_n += 1
+	var f_lum := 0.0
+	var f_n := 0
+	for yy4 in range(200, 260):
+		for xx4 in range(300, 450):
+			var j4 := (yy4 * w + xx4) * 4
+			f_lum += 0.2126 * int(data[j4]) + 0.7152 * int(data[j4 + 1]) 				+ 0.0722 * int(data[j4 + 2])
+			f_n += 1
+	print("SCREENSHOT: dome warm10=%d max_r_minus_b=%d lum=%.1f | flank lum=%.1f" %
+	      [d_warm10, d_maxrb, d_lum / maxf(float(d_n), 1.0),
+	       f_lum / maxf(float(f_n), 1.0)])
+	if d_warm10 < 50 or d_maxrb < 25:
+		_fail(1, "night glow check failed: dome warm10=%d max_r-b=%d (need >=50 / >=25)" %
+			[d_warm10, d_maxrb]); return false
+	return true
+
+# Phase B: disable the camera rig driver (documented debug aid), place the
+# camera above the crater looking down at the lava disc, capture. Checks run
+# later in _run so both images are grabbed before the effusion window closes.
+func _capture_crater() -> Image:
+	var island: Node = root.get_child(0)
+	var driver := island.get_node_or_null("ScrSim")
+	if driver != null and driver.has_method("set_camera_follow"):
+		driver.set("camera_follow", false)
+	var lava := _first_in_group("scr_crater_lava") as MeshInstance3D
+	var cam := _first_in_group("scr_camera") as Camera3D
+	if lava == null or cam == null:
+		_fail(1, "phase B: missing scr_crater_lava / scr_camera"); return null
+	_lava_centre = lava.global_position
+	_lava_cam = cam
+	# Stand *inside* the crater (rim crest ~y38, disc edge r~20): from
+	# lava+(24,26,24) the sightline to the lake crosses the near rim ~8 u
+	# below its crest and only shows sulfur terrain. +16,+24,+16 keeps the
+	# camera above the inner wall and looks down onto the disc (46 deg).
+	cam.global_position = _lava_centre + Vector3(16.0, 24.0, 16.0)
+	cam.look_at(_lava_centre, Vector3.UP)
+	for i in 5:
+		await process_frame
+	return await _capture()
+
+# Lava: warm pixels within 90 px of the projected centre of the lava disc.
+func _check_lava_region(img: Image) -> bool:
+	var cam := _lava_cam as Camera3D
+	if cam == null:
+		_fail(1, "phase B: crater camera missing"); return false
+	var w := img.get_width()
+	var h := img.get_height()
+	var sp := cam.unproject_position(_lava_centre)
+	var data := _rgba(img)
+	var rad := 90.0
+	var warm := 0
+	var r0 := clampi(int(sp.y - rad), 0, h - 1)
+	var r1 := clampi(int(sp.y + rad), 0, h - 1)
+	var c0 := clampi(int(sp.x - rad), 0, w - 1)
+	var c1 := clampi(int(sp.x + rad), 0, w - 1)
+	var row := r0
+	while row <= r1:
+		var col := c0
+		while col <= c1:
+			var dx := float(col) - sp.x
+			var dy := float(row) - sp.y
+			if dx * dx + dy * dy <= rad * rad:
+				var i3 := (row * w + col) * 4
+				var r := int(data[i3])
+				var g := int(data[i3 + 1])
+				var b := int(data[i3 + 2])
+				if r >= 120 and r >= g + 25 and r >= b + 60:
+					warm += 1
+			col += 1
+		row += 1
+	print("SCREENSHOT: crater view warm_px=%d around projected lava centre %s" % [warm, str(sp)])
+	if warm < 400:
+		_fail(1, "lava region check failed: %d warm px (need 400) in crater view" % warm); return false
+	return true
+
+func _rgba(img: Image) -> PackedByteArray:
+	var rgba := img.duplicate()
+	rgba.convert(Image.FORMAT_RGBA8)
+	return rgba.get_data()
 
 func _first_in_group(g: String) -> Node:
 	var arr := get_nodes_in_group(g)

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# test_schema_mismatch.sh — negative test (milestone_0002 exit criterion):
-# "schema_version mismatch between adapter and sim is rejected loudly".
+# test_schema_mismatch.sh — negative test (milestone_0002 exit criterion,
+# milestone_0003 AP-13): "schema_version mismatch between adapter and sim is
+# rejected loudly".
 #
-# Builds a stub libscr_sim whose scr_sim_schema_version() returns 2, then
-# loads it through adapter/scr_sim_loader.h — the exact loader the GDExtension
-# adapter uses — and asserts refusal (SCR_LOAD_ERR_SCHEMA).
-# When the real schema-1 library is present it is loaded as a control
-# (must be accepted), proving the refusal is mismatch-specific.
+# Builds a stub libscr_sim whose scr_sim_schema_version() returns
+# SCR_SIM_SCHEMA_VER + 1 (derived from adapter/scr_godot_abi.h, so future
+# bumps keep the stub one ahead), then loads it through
+# adapter/scr_sim_loader.h — the exact loader the GDExtension adapter uses —
+# and asserts refusal (SCR_LOAD_ERR_SCHEMA).
+# When the real library (current SCR_SIM_SCHEMA_VER) is present it is loaded
+# as a control (must be accepted), proving the refusal is mismatch-specific.
 #
 # Usage (repo root or anywhere):  bash applications/godot/tests/test_schema_mismatch.sh
 # Exit 0 = pass, 1 = fail.
@@ -28,7 +31,7 @@ RUNNER="${TMP_DIR}/schema_mismatch_test"
 CC="${CC:-cc}"
 
 echo "== schema mismatch negative test =="
-echo "[build] stub library (scr_sim_schema_version() -> 2)"
+echo "[build] stub library (scr_sim_schema_version() -> SCR_SIM_SCHEMA_VER + 1)"
 "${CC}" -std=c11 -shared -fPIC -Wall -DSCR_STUB_IMPL \
     -I"${ADAPTER_DIR}" \
     -o "${STUB_SO}" "${SCRIPT_DIR}/schema_mismatch_test.c"

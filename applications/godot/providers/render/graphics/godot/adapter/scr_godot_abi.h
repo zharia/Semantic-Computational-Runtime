@@ -17,8 +17,11 @@
 extern "C" {
 #endif
 
-#define SCR_SIM_ABI_VERSION  1u  /* C ABI symbol-contract version */
-#define SCR_SIM_SCHEMA_VER   1u  /* snapshot binary schema version */
+#define SCR_SIM_ABI_VERSION  1u  /* C ABI symbol-contract version (unchanged) */
+/* Snapshot binary schema version. 1 -> 2 (milestone_0003 §3.5): additive
+ * sections 7 VOLCANO + 8 PLUME; symbol set unchanged. Adapter refuses any
+ * library whose scr_sim_schema_version() != this value. */
+#define SCR_SIM_SCHEMA_VER   2u
 
 /* Snapshot section identifiers (104_contract.md §4). */
 #define SCR_SEC_PLAYER       1u
@@ -27,6 +30,8 @@ extern "C" {
 #define SCR_SEC_OCEAN        4u
 #define SCR_SEC_SKY          5u
 #define SCR_SEC_MATERIALS    6u
+#define SCR_SEC_VOLCANO      7u  /* schema 2 (milestone_0003 §3.2) */
+#define SCR_SEC_PLUME        8u
 
 /* Snapshot magic: bytes 'S','C','R','S' read as little-endian u32. */
 #define SCR_SNAPSHOT_MAGIC   0x53524353u

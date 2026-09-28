@@ -64,17 +64,27 @@ def _cstr_to_string(p: Pointer[mut=False, c_char, ImmUntrackedOrigin]) -> String
 
 
 def _parse_dec(s: String) -> UInt64:
+    # Parse the leading decimal run only. setenv values written by an
+    # unterminated buffer (or any environment noise after the digits) must
+    # not invalidate the address: strtoull semantics, leading digits win.
+    # A non-digit BEFORE any digit still yields 0 (=> SCR_ERR_NOT_INIT).
     var acc: UInt64 = 0
+    var seen = False
     for b in s.bytes():
         var c = Int(b)
         if c < 48 or c > 57:
-            return 0
+            break
         acc = acc * 10 + UInt64(c - 48)
+        seen = True
+    if not seen:
+        return 0
     return acc
 
 
 def _read_handle_addr() -> UInt64:
-    var name = HANDLE_ENV
+    # NUL-terminate the key (see _write_handle_addr) so getenv sees exactly
+    # "SCR_SIM_HANDLE" and never a buffer-garbage-suffixed key.
+    var name = HANDLE_ENV + chr(0)
     var p = external_call["getenv", Pointer[mut=False, c_char, ImmUntrackedOrigin]](
         name.unsafe_ptr()
     )
@@ -84,13 +94,18 @@ def _read_handle_addr() -> UInt64:
 
 
 def _write_handle_addr(addr: UInt64):
-    var name = HANDLE_ENV
-    var value = String(addr)
+    # C-string discipline: String.unsafe_ptr() is NOT NUL-terminated, so
+    # setenv()/getenv() can pick up trailing buffer garbage (observed value
+    # "56164209393664//" — digits then junk; libc strtoull tolerated it, the
+    # strict decimal parse did NOT, returning 0 => SCR_ERR_NOT_INIT on every
+    # step). Append chr(0) explicitly for both key and value.
+    var name = HANDLE_ENV + chr(0)
+    var value = String(addr) + chr(0)
     _ = external_call["setenv", c_int](name.unsafe_ptr(), value.unsafe_ptr(), c_int(1))
 
 
 def _clear_handle_addr():
-    var name = HANDLE_ENV
+    var name = HANDLE_ENV + chr(0)
     _ = external_call["unsetenv", c_int](name.unsafe_ptr())
 
 

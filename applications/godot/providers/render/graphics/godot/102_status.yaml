@@ -2,11 +2,11 @@ id: SCR-PROVIDER-RENDER-GODOT
 name: Godot Render Provider
 domain: render
 technology: godot
-version: 0.1.0
+version: 0.2.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
-schema_version: 1
+schema_version: 2
 abi_version: 1
 
 purpose: >
@@ -30,6 +30,15 @@ capabilities:
   - id: CAP-GODOT-INPUT-UPLINK
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0002
+  - id: CAP-GODOT-VOLCANO-LAKE
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0003
+  - id: CAP-GODOT-PLUME
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0003
+  - id: CAP-GODOT-CRATER-GLOW
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0003
 
 depends_on:
   - SCR-LIB-RENDER
@@ -43,4 +52,6 @@ implementation:
 
 limitations:
   - Snapshot transport is in-process dlopen only (IPC transport = future milestone)
-  - No weather, lava/plume, vegetation, fauna manifestation (successor milestones)
+  - No weather, vegetation, fauna manifestation (successor milestones)
+  - Plume turbulence noise exposed with velocity influence locked to 0 (Godot velocity-influence collapses buoyant columns; docs/04 §8.3) — display turbulence = future milestone
+  - Night skybox gradient is static (sun energy drops, sky does not retint) — milestone 0004

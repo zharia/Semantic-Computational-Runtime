@@ -1,19 +1,74 @@
 {
   "id": "SCR-PROVIDER-RENDER-GODOT",
-  "version": 1,
+  "version": 2,
   "derived": true,
   "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
   "nodes": [
-    { "id": "SCR-PROVIDER-RENDER-GODOT", "label": "Godot Render Provider" },
-    { "id": "SCR-LIB-RENDER", "label": "Render semantic domain" },
-    { "id": "SCR-LIB-MATH-GERSTNER", "label": "Gerstner wave contract" },
-    { "id": "SCR-APP-GODOT", "label": "Godot application" },
-    { "id": "SCR-MOJO-SIM-CORE", "label": "Mojo simulation core (applications/godot/src/mojo)" }
+    {
+      "id": "SCR-PROVIDER-RENDER-GODOT",
+      "label": "Godot Render Provider"
+    },
+    {
+      "id": "SCR-LIB-RENDER",
+      "label": "Render semantic domain"
+    },
+    {
+      "id": "SCR-LIB-MATH-GERSTNER",
+      "label": "Gerstner wave contract"
+    },
+    {
+      "id": "SCR-APP-GODOT",
+      "label": "Godot application"
+    },
+    {
+      "id": "SCR-MOJO-SIM-CORE",
+      "label": "Mojo simulation core (applications/godot/src/mojo)"
+    },
+    {
+      "id": "SCR-LIB-RENDER-VOLCANO",
+      "label": "Volcano render contract (lava/plume/glow)"
+    },
+    {
+      "id": "SCR-LIB-RENDER-PARTICLE",
+      "label": "Particle render contract"
+    }
   ],
   "edges": [
-    { "source": "SCR-PROVIDER-RENDER-GODOT", "target": "SCR-LIB-RENDER", "relationship": "REALIZED_BY", "semantics": "provider realizes render domain semantics as Godot presentation" },
-    { "source": "SCR-PROVIDER-RENDER-GODOT", "target": "SCR-MOJO-SIM-CORE", "relationship": "CONSUMED_BY", "semantics": "adapter consumes RenderSnapshot from sim core; input uplink reversed" },
-    { "source": "SCR-PROVIDER-RENDER-GODOT", "target": "SCR-LIB-MATH-GERSTNER", "relationship": "CONSUMED_BY", "semantics": "ocean display displaces per Gerstner contract; sim heights authoritative" },
-    { "source": "SCR-APP-GODOT", "target": "SCR-PROVIDER-RENDER-GODOT", "relationship": "CONTAINS", "semantics": "application hosts the provider adapter and scene" }
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-RENDER",
+      "relationship": "REALIZED_BY",
+      "semantics": "provider realizes render domain semantics as Godot presentation"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-MOJO-SIM-CORE",
+      "relationship": "CONSUMED_BY",
+      "semantics": "adapter consumes RenderSnapshot from sim core; input uplink reversed"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-MATH-GERSTNER",
+      "relationship": "CONSUMED_BY",
+      "semantics": "ocean display displaces per Gerstner contract; sim heights authoritative"
+    },
+    {
+      "source": "SCR-APP-GODOT",
+      "target": "SCR-PROVIDER-RENDER-GODOT",
+      "relationship": "CONTAINS",
+      "semantics": "application hosts the provider adapter and scene"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-RENDER-VOLCANO",
+      "relationship": "CONSUMED_BY",
+      "semantics": "adapter manifests VOLCANO/PLUME sections (lava disc, GPUParticles3D plume, crater glow light); sim state authoritative (AP-11)"
+    },
+    {
+      "source": "SCR-PROVIDER-RENDER-GODOT",
+      "target": "SCR-LIB-RENDER-PARTICLE",
+      "relationship": "CONSUMED_BY",
+      "semantics": "plume emitted as GPUParticles3D per Particle contract (locked, 0003 \u00a71.1)"
+    }
   ]
 }

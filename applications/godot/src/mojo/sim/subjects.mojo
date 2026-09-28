@@ -1,5 +1,8 @@
 # Simulation subjects (Sprint 01): PlayerSubject locomotion, HydrologySubject
 # (Gerstner state over the ocean), AtmosphereSubject-lite (diurnal arc).
+# Milestone 0003 Sprint 01 adds night_factor — the pure sun-elevation →
+# night factor used by VolcanoSubject's crater glow (104_contract §4.3
+# VOLCANO.glow_intensity).
 #
 # Locomotion parameters come from sim/parameters.mojo ONLY (AP-7):
 # walk 4.25, sprint 8.0, jump 5.8, gravity −10, pitch ±1.45, eye 1.7,
@@ -27,6 +30,8 @@ from sim.parameters import (
     SUN_INTENSITY_NOON,
     GRID_N,
     CELL_SIZE,
+    GLOW_NIGHT_MAX_FACTOR,
+    GLOW_NIGHT_ELEVATION_REF,
 )
 from sim.input import (
     InputBatch,
@@ -125,6 +130,26 @@ def atmosphere_from_time(sim_time: Float64) -> AtmosphereSubject:
         intensity = SUN_INTENSITY_NOON * sin(out.sun_elevation)
     out.sun_intensity = intensity
     return out^
+
+
+def night_factor(sun_elevation: Float64) -> Float64:
+    """Pure night factor for the crater glow (milestone_0003 §3.3):
+    glow_intensity = emissive_intensity · night_factor(sun_elevation).
+
+    0 while the sun is at/above the horizon; rises linearly with depth below
+    the horizon to GLOW_NIGHT_MAX_FACTOR at −GLOW_NIGHT_ELEVATION_REF rad,
+    clamped there. Pure function of AtmosphereSubject.sun_elevation only —
+    no wall clock, no display input (AP-11 / AP-12)."""
+    if sun_elevation >= 0.0:
+        return 0.0
+    if GLOW_NIGHT_ELEVATION_REF <= 0.0:
+        return GLOW_NIGHT_MAX_FACTOR
+    var f = -sun_elevation / GLOW_NIGHT_ELEVATION_REF
+    if f > GLOW_NIGHT_MAX_FACTOR:
+        return GLOW_NIGHT_MAX_FACTOR
+    if f < 0.0:
+        return 0.0
+    return f
 
 
 # ---------------------------------------------------------------------------

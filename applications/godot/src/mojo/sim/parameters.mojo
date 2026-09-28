@@ -83,9 +83,31 @@ comptime SUN_ELEVATION_MAX: Float64 = 1.2    # rad, peak elevation of the diurna
 # saturation = fluid.lava's emission (the catalog maximum) at load time.
 comptime MATERIAL_EMISSION_SATURATION: Float64 = 25000.0
 
+# --- Volcano / lava lake + plume (milestone_0003 spec §5; SCR-LIB-RENDER-VOLCANO)
+# Crust-factor radiance (Volcano §2.1): L = (1−C)·E_core + C·E_crust with the
+# normative colors core (1.0, 0.72, 0.12) / crust (0.12, 0.04, 0.02). The
+# snapshot carries the scalar energy; E_core/E_crust below are the brightest
+# (red) channel of each color. Effusion draws from a seeded PRNG stream once
+# per EFFUSION_TICK_STEP ticks (AP-12: no unseeded RNG).
+comptime LAVA_EMISSIVE_CORE: Float64 = 1.0     # scalar of E_core (bright channel)
+comptime LAVA_EMISSIVE_CRUST: Float64 = 0.12   # scalar of E_crust (bright channel)
+comptime LAVA_CRUST_DORMANT: Float64 = 0.85    # crust fraction C at state 0
+comptime LAVA_CRUST_EFFUSING: Float64 = 0.15   # crust fraction C at state 1
+comptime EFFUSION_TICK_STEP: Int = 300         # ticks between draws (5 s @ 60 Hz)
+comptime EFFUSION_ACTIVE_PROBABILITY: Float64 = 0.35  # P(effusing) per draw
+comptime PLUME_RATE_DORMANT: Float64 = 0.0     # rate 0 ⇒ idle emitter (§3.2)
+comptime PLUME_RATE_EFFUSING: Float64 = 60.0   # emission rate while effusing (1/s)
+comptime PLUME_VELOCITY: Float64 = 8.5         # u/s, w0 (Volcano §2.2)
+comptime PLUME_SPREAD: Float64 = 15.0          # deg, emission cone half-angle
+comptime PLUME_TURBULENCE: Float64 = 0.35      # turbulence amount (display noise)
+comptime PLUME_LIFETIME: Float64 = 6.0         # s, particle lifetime (> 0)
+comptime GLOW_NIGHT_MAX_FACTOR: Float64 = 1.0  # night_factor cap
+comptime GLOW_NIGHT_ELEVATION_REF: Float64 = SUN_ELEVATION_MAX  # saturates here
+comptime VOLCANO_LAKE_RADIUS_FALLBACK: Float64 = CALDERA_LAKE_RADIUS  # no lake cells
+
 # --- Snapshot contract constants (104_contract §4) -------------------------
 comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
-comptime SCHEMA_VERSION: UInt32 = 1
+comptime SCHEMA_VERSION: UInt32 = 2  # 1 → 2: +VOLCANO(7), +PLUME(8) (0003 §3.5)
 comptime ABI_VERSION: UInt32 = 1
 
 # --- Error codes (scr_godot_abi.h) ----------------------------------------

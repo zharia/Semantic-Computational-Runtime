@@ -4,6 +4,7 @@
 
 from std.collections import List
 
+from sim.parameters import SCHEMA_VERSION
 from snapshot.types import (
     ENVELOPE_BYTES,
     SECTION_HEADER_BYTES,
@@ -13,6 +14,12 @@ from snapshot.types import (
     SEC_OCEAN,
     SEC_SKY,
     SEC_MATERIALS,
+    SEC_VOLCANO,
+    SEC_PLUME,
+    VOLCANO_BYTES,
+    PLUME_BYTES,
+    VOLCANO,
+    PLUME,
     get_u8,
     get_u32,
     get_f32,
@@ -71,8 +78,14 @@ def decode_envelope(data: List[UInt8]) raises -> Envelope:
     if env.magic != 0x53524353:
         raise Error("bad snapshot magic")
     env.schema_version = get_u32(data, 4)
-    if env.schema_version != 1:
-        raise Error("unsupported schema version " + String(env.schema_version))
+    if env.schema_version != SCHEMA_VERSION:
+        raise Error(
+            "unsupported schema version "
+            + String(env.schema_version)
+            + " (expected "
+            + String(SCHEMA_VERSION)
+            + ")"
+        )
     env.section_count = get_u32(data, 8)
     env.world_version = get_u32(data, 12)
     env.state_generation = get_u32(data, 16)
@@ -97,6 +110,8 @@ def _known_id(id: UInt32) -> Bool:
         or id == SEC_OCEAN
         or id == SEC_SKY
         or id == SEC_MATERIALS
+        or id == SEC_VOLCANO
+        or id == SEC_PLUME
     )
 
 
@@ -186,6 +201,55 @@ def read_sky(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
     for i in range(8):
         out.append(get_f32(data, sec.offset + 4 * i))
     return out^
+
+
+def read_volcano(data: List[UInt8], sec: SectionRef) raises -> VOLCANO:
+    """32-byte VOLCANO (§4.3 §7): f32×7 @0..24, u8 effusion_state @28,
+    3 pad bytes @29..31 that MUST be zero (loud, never silently coerced)."""
+    if sec.length != VOLCANO_BYTES:
+        raise Error("VOLCANO section must be " + String(VOLCANO_BYTES) + " bytes")
+    var v = VOLCANO()
+    var o = sec.offset
+    v.center_x = get_f32(data, o)
+    v.center_z = get_f32(data, o + 4)
+    v.radius = get_f32(data, o + 8)
+    v.lake_level = get_f32(data, o + 12)
+    v.emissive_intensity = get_f32(data, o + 16)
+    v.crust_fraction = get_f32(data, o + 20)
+    v.glow_intensity = get_f32(data, o + 24)
+    v.effusion_state = get_u8(data, o + 28)
+    if v.effusion_state > 1:
+        raise Error(
+            "VOLCANO effusion_state must be 0 or 1, got "
+            + String(v.effusion_state)
+        )
+    v.pad0 = get_u8(data, o + 29)
+    v.pad1 = get_u8(data, o + 30)
+    v.pad2 = get_u8(data, o + 31)
+    if v.pad0 != 0 or v.pad1 != 0 or v.pad2 != 0:
+        raise Error("VOLCANO pad nonzero at bytes 29..31")
+    return v^
+
+
+def read_plume(data: List[UInt8], sec: SectionRef) raises -> PLUME:
+    """32-byte PLUME (§4.3 §8): 8×f32. rate == 0 ⇒ emitter idle."""
+    if sec.length != PLUME_BYTES:
+        raise Error("PLUME section must be " + String(PLUME_BYTES) + " bytes")
+    var p = PLUME()
+    var o = sec.offset
+    p.origin_x = get_f32(data, o)
+    p.origin_y = get_f32(data, o + 4)
+    p.origin_z = get_f32(data, o + 8)
+    p.rate = get_f32(data, o + 12)
+    p.initial_velocity = get_f32(data, o + 16)
+    p.spread = get_f32(data, o + 20)
+    p.turbulence = get_f32(data, o + 24)
+    p.lifetime = get_f32(data, o + 28)
+    if p.lifetime <= 0.0:
+        raise Error("PLUME lifetime must be > 0")
+    if p.rate < 0.0:
+        raise Error("PLUME rate must be >= 0")
+    return p^
 
 
 def read_materials_count(data: List[UInt8], sec: SectionRef) raises -> UInt32:

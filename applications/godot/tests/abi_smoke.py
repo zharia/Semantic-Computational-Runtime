@@ -42,6 +42,10 @@ SCR_SEC_TERRAIN = 3
 SCR_SEC_OCEAN = 4
 SCR_SEC_SKY = 5
 SCR_SEC_MATERIALS = 6
+SCR_SEC_VOLCANO = 7  # schema 2 (milestone_0003 §3.2)
+SCR_SEC_PLUME = 8
+
+SCHEMA_VERSION = 2  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
 
 FIXED_DT = 1.0 / 60.0
 
@@ -141,7 +145,7 @@ def main() -> int:
     abi_v = lib.scr_sim_abi_version()
     schema_v = lib.scr_sim_schema_version()
     check(abi_v == 1, f"scr_sim_abi_version() == 1 (got {abi_v})")
-    check(schema_v == 1, f"scr_sim_schema_version() == 1 (got {schema_v})")
+    check(schema_v == SCHEMA_VERSION, f"scr_sim_schema_version() == {SCHEMA_VERSION} (got {schema_v})")
 
     print("\n[2] pre-init error codes")
     check(
@@ -177,29 +181,76 @@ def main() -> int:
     snapshot = bytes(buf)
     check(snapshot == fixture, "FFI snapshot byte-identical to golden fixture")
     check(snapshot[:4] == b"SCRS", "magic bytes 'SCRS'")
-    check(snapshot[4:8] == b"\x01\x00\x00\x00", "schema_version == 1 (LE)")
+    check(
+        snapshot[4:8] == b"\x02\x00\x00\x00",
+        "schema_version == 2 (LE)",
+    )
 
-    # Section framing walk (§4.2).
+    # Section framing walk (§4.2), schema 2: sections 1..8.
     import struct as _st
 
     section_count = _st.unpack_from("<I", snapshot, 8)[0]
     payload_bytes = _st.unpack_from("<I", snapshot, 40)[0]
-    check(section_count == 6, f"section_count == 6 (got {section_count})")
+    check(section_count == 8, f"section_count == 8 (got {section_count})")
     check(
         payload_bytes == len(snapshot) - 48,
         f"payload_bytes {payload_bytes} == len-48",
     )
     off = 48
     ids = []
+    spans: dict[int, tuple[int, int]] = {}
     for _ in range(section_count):
         sid, slen = _st.unpack_from("<II", snapshot, off)
         ids.append(sid)
+        spans[sid] = (off + 8, slen)
         off += 8 + slen
     check(
-        ids == [1, 2, 3, 4, 5, 6],
+        ids == [1, 2, 3, 4, 5, 6, 7, 8],
         f"section ids in contract order (got {ids})",
     )
     check(off == len(snapshot), "framing consumes the payload exactly")
+    check(
+        SCR_SEC_VOLCANO in spans and SCR_SEC_PLUME in spans,
+        "sections 7 VOLCANO and 8 PLUME present",
+    )
+
+    print("\n[3b] VOLCANO + PLUME field sanity (104_contract §4.3 §7/§8)")
+    v_off, v_len = spans[SCR_SEC_VOLCANO]
+    check(v_len == 32, f"VOLCANO section is 32 bytes (got {v_len})")
+    center_x, center_z, radius, lake_level, emissive, crust, glow = (
+        _st.unpack_from("<7f", snapshot, v_off)
+    )
+    effusion_state = snapshot[v_off + 28]
+    pad = bytes(snapshot[v_off + 29 : v_off + 32])
+    check(radius > 0.0, f"VOLCANO.radius > 0 (got {radius})")
+    check(lake_level > 0.0, f"VOLCANO.lake_level above sea level (got {lake_level})")
+    check(emissive > 0.0, f"VOLCANO.emissive_intensity > 0 (got {emissive})")
+    check(0.0 <= crust <= 1.0, f"VOLCANO.crust_fraction in [0,1] (got {crust})")
+    check(glow >= 0.0 and glow <= emissive, f"0 <= glow <= emissive (got {glow})")
+    check(glow == 0.0, "day (12:00 start): glow_intensity == 0")
+    check(effusion_state in (0, 1), f"effusion_state in {{0,1}} (got {effusion_state})")
+    check(pad == b"\x00\x00\x00", f"VOLCANO pad bytes 29..31 are zero (got {pad!r})")
+
+    p_off, p_len = spans[SCR_SEC_PLUME]
+    check(p_len == 32, f"PLUME section is 32 bytes (got {p_len})")
+    origin_x, origin_y, origin_z, rate, velocity, spread, turbulence, lifetime = (
+        _st.unpack_from("<8f", snapshot, p_off)
+    )
+    check(rate >= 0.0, f"PLUME.rate >= 0 (got {rate})")
+    check(velocity > 0.0, f"PLUME.initial_velocity > 0 (got {velocity})")
+    check(spread > 0.0, f"PLUME.spread > 0 (got {spread})")
+    check(turbulence >= 0.0, f"PLUME.turbulence >= 0 (got {turbulence})")
+    check(lifetime > 0.0, f"PLUME.lifetime > 0 (got {lifetime})")
+    check(origin_y > 0.0, f"PLUME.origin above sea level (got {origin_y})")
+    dist2 = (origin_x - center_x) ** 2 + (origin_z - center_z) ** 2
+    check(
+        dist2 <= radius * radius + 1e-6,
+        f"PLUME.origin over the caldera (dist {dist2 ** 0.5:.3f} <= radius {radius:.3f})",
+    )
+    check(
+        (effusion_state == 1 and rate > 0.0) or (effusion_state == 0 and rate == 0.0),
+        f"effusion_state {effusion_state} maps to rate {rate} (0 ⇒ idle emitter)",
+    )
 
     print("\n[4] buffer guard + terrain suppression")
     check(
@@ -210,6 +261,22 @@ def main() -> int:
     check(ticks2 == 1, f"second step runs one tick (got {ticks2})")
     size2 = lib.scr_sim_snapshot_size()
     check(size2 < size, f"TERRAIN suppressed on second snapshot ({size2} < {size})")
+    buf2 = (ctypes.c_uint8 * size2)()
+    check(
+        lib.scr_sim_snapshot_write(buf2, size2) == size2,
+        "second snapshot writes in full",
+    )
+    snap2 = bytes(buf2)
+    ids2 = []
+    off2 = 48
+    for _ in range(_st.unpack_from("<I", snap2, 8)[0]):
+        sid2, slen2 = _st.unpack_from("<II", snap2, off2)
+        ids2.append(sid2)
+        off2 += 8 + slen2
+    check(
+        ids2 == [1, 2, 4, 5, 6, 7, 8],
+        f"VOLCANO/PLUME emitted on every snapshot (got {ids2})",
+    )
 
     print("\n[5] null input = idle batch")
     ticks3 = lib.scr_sim_step(FIXED_DT, None)

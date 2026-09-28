@@ -27,9 +27,15 @@ from snapshot.types import (
     SEC_OCEAN,
     SEC_SKY,
     SEC_MATERIALS,
+    SEC_VOLCANO,
+    SEC_PLUME,
+    VOLCANO,
+    PLUME,
     put_u32,
     put_f32,
     put_f64,
+    put_volcano,
+    put_plume,
 )
 
 comptime TWO_PI: Float64 = 6.283185307179586
@@ -176,6 +182,38 @@ def _append_section(
         payload.append(data[i])
 
 
+def _encode_volcano(world: World) -> List[UInt8]:
+    """7 VOLCANO (32 bytes): 7×f32 + u8 effusion_state + 3 pad (§4.3)."""
+    var v = VOLCANO()
+    v.center_x = Float32(world.volcano.center_x)
+    v.center_z = Float32(world.volcano.center_z)
+    v.radius = Float32(world.volcano.radius)
+    v.lake_level = Float32(world.volcano.lake_level)
+    v.emissive_intensity = Float32(world.volcano.emissive_intensity)
+    v.crust_fraction = Float32(world.volcano.crust_fraction)
+    v.glow_intensity = Float32(world.volcano.glow_intensity)
+    v.effusion_state = world.volcano.effusion_state
+    var b = List[UInt8]()
+    put_volcano(b, v)
+    return b^
+
+
+def _encode_plume(world: World) -> List[UInt8]:
+    """8 PLUME (32 bytes): 8×f32 (§4.3); rate 0 ⇒ idle emitter."""
+    var p = PLUME()
+    p.origin_x = Float32(world.volcano.plume_origin_x)
+    p.origin_y = Float32(world.volcano.plume_origin_y)
+    p.origin_z = Float32(world.volcano.plume_origin_z)
+    p.rate = Float32(world.volcano.plume_rate)
+    p.initial_velocity = Float32(world.volcano.plume_initial_velocity)
+    p.spread = Float32(world.volcano.plume_spread)
+    p.turbulence = Float32(world.volcano.plume_turbulence)
+    p.lifetime = Float32(world.volcano.plume_lifetime)
+    var b = List[UInt8]()
+    put_plume(b, p)
+    return b^
+
+
 def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
     """Serialize the world projection (104_contract §4).
     include_terrain: TERRAIN emitted only when terrain (re)generation
@@ -206,6 +244,15 @@ def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
 
     var materials = _encode_materials(world)
     _append_section(payload, SEC_MATERIALS, materials^)
+    section_count += 1
+
+    # Sections 7/8: emitted EVERY snapshot (104_contract §4.3 / 0003 §3.2).
+    var volcano = _encode_volcano(world)
+    _append_section(payload, SEC_VOLCANO, volcano^)
+    section_count += 1
+
+    var plume = _encode_plume(world)
+    _append_section(payload, SEC_PLUME, plume^)
     section_count += 1
 
     # Envelope (48 bytes) + payload.

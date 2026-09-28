@@ -23,6 +23,8 @@ comptime OCEAN_BYTES: Int = 32
 comptime SKY_BYTES: Int = 32
 comptime MATERIALS_HEADER_BYTES: Int = 4
 comptime MATERIAL_RECORD_BYTES: Int = 36
+comptime VOLCANO_BYTES: Int = 32  # 7×f32 + u8 effusion_state + 3 pad
+comptime PLUME_BYTES: Int = 32  # 8×f32
 
 comptime SEC_PLAYER: UInt32 = 1
 comptime SEC_TERRAIN_META: UInt32 = 2
@@ -30,6 +32,96 @@ comptime SEC_TERRAIN: UInt32 = 3
 comptime SEC_OCEAN: UInt32 = 4
 comptime SEC_SKY: UInt32 = 5
 comptime SEC_MATERIALS: UInt32 = 6
+comptime SEC_VOLCANO: UInt32 = 7  # schema 2 (milestone_0003 §3.2)
+comptime SEC_PLUME: UInt32 = 8
+
+
+struct VOLCANO(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """Section 7 payload (104_contract §4.3, milestone_0003 §3.2 — locked):
+    7×f32 (28 bytes) + u8 effusion_state (offset 28) + 3 pad = exactly 32.
+    Wire layout = field order below; pad0..pad2 are always written as 0."""
+
+    var center_x: Float32
+    var center_z: Float32
+    var radius: Float32
+    var lake_level: Float32
+    var emissive_intensity: Float32
+    var crust_fraction: Float32
+    var glow_intensity: Float32
+    var effusion_state: UInt8  # 0 dormant, 1 effusing
+    var pad0: UInt8
+    var pad1: UInt8
+    var pad2: UInt8
+
+    def __init__(out self):
+        self.center_x = 0.0
+        self.center_z = 0.0
+        self.radius = 0.0
+        self.lake_level = 0.0
+        self.emissive_intensity = 0.0
+        self.crust_fraction = 0.0
+        self.glow_intensity = 0.0
+        self.effusion_state = 0
+        self.pad0 = 0
+        self.pad1 = 0
+        self.pad2 = 0
+
+    def __deinit__(deinit self):
+        pass
+
+
+struct PLUME(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """Section 8 payload (104_contract §4.3, milestone_0003 §3.2 — locked):
+    8×f32 = exactly 32 bytes. rate == 0 ⇒ emitter idle."""
+
+    var origin_x: Float32
+    var origin_y: Float32
+    var origin_z: Float32
+    var rate: Float32
+    var initial_velocity: Float32
+    var spread: Float32
+    var turbulence: Float32
+    var lifetime: Float32
+
+    def __init__(out self):
+        self.origin_x = 0.0
+        self.origin_y = 0.0
+        self.origin_z = 0.0
+        self.rate = 0.0
+        self.initial_velocity = 0.0
+        self.spread = 0.0
+        self.turbulence = 0.0
+        self.lifetime = 0.0
+
+    def __deinit__(deinit self):
+        pass
+
+
+def put_volcano(mut buf: List[UInt8], v: VOLCANO):
+    """Serialize the VOLCANO section: f32×7 at 0,4,…,24; u8 at 28; pad 29..31."""
+    put_f32(buf, v.center_x)
+    put_f32(buf, v.center_z)
+    put_f32(buf, v.radius)
+    put_f32(buf, v.lake_level)
+    put_f32(buf, v.emissive_intensity)
+    put_f32(buf, v.crust_fraction)
+    put_f32(buf, v.glow_intensity)
+    put_u8(buf, v.effusion_state)
+    put_u8(buf, v.pad0)
+    put_u8(buf, v.pad1)
+    put_u8(buf, v.pad2)
+
+
+def put_plume(mut buf: List[UInt8], p: PLUME):
+    """Serialize the PLUME section: f32×8 at 0,4,…,28."""
+    put_f32(buf, p.origin_x)
+    put_f32(buf, p.origin_y)
+    put_f32(buf, p.origin_z)
+    put_f32(buf, p.rate)
+    put_f32(buf, p.initial_velocity)
+    put_f32(buf, p.spread)
+    put_f32(buf, p.turbulence)
+    put_f32(buf, p.lifetime)
 
 
 def put_u8(mut buf: List[UInt8], v: UInt8):

@@ -3,6 +3,11 @@
 # lib/A01_Render/Material/materials_catalog.json, loaded repo-relative
 # (AP-4: no absolute paths).
 
+# NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
+# (verified in test_volcano.mojo: `assert False` does not stop execution).
+# Every check below uses `_check`, which raises Error => TestSuite reports
+# FAIL and exits non-zero.
+
 from std.collections import List
 from std.testing import TestSuite
 from std.math import abs
@@ -29,30 +34,36 @@ from sim.parameters import MATERIAL_EMISSION_SATURATION
 comptime REL_PATH = "lib/A01_Render/Material/materials_catalog.json"
 
 
+def _check(cond: Bool, msg: String) raises:
+    """Raise-based check (see header note: `assert` is a no-op here)."""
+    if not cond:
+        raise Error(msg)
+
+
 def test_catalog_loads_repo_relative() raises:
     var root = find_repo_root()
-    assert root.byte_length() > 0, "repo root discoverable"
+    _check(root.byte_length() > 0,  "repo root discoverable")
     var path = join_path(root, REL_PATH)
     # AP-4: path is built repo-relative; must exist and parse.
     var doc = parse_json(read_file_text(path))
-    assert doc.has("materials"), "catalog has materials array"
+    _check(doc.has("materials"),  "catalog has materials array")
     var materials = doc.get("materials")
-    assert materials.len() >= 96, "full catalog present"
+    _check(materials.len() >= 96,  "full catalog present")
 
 def test_vocabulary_ids_stable() raises:
     var cat = load_catalog()
-    assert cat.count() == MAT_VOCAB_COUNT, "one def per vocabulary code"
+    _check(cat.count() == MAT_VOCAB_COUNT,  "one def per vocabulary code")
     # Vocab → catalog id strings (single source, table-driven).
-    assert vocab_catalog_id_string(MAT_BEDROCK) == "rock.basalt", "deviation: bedrock→basalt"
-    assert vocab_catalog_id_string(MAT_BASALT) == "rock.basalt"
-    assert vocab_catalog_id_string(MAT_SAND) == "soil.sand"
-    assert vocab_catalog_id_string(MAT_OBSIDIAN) == "rock.obsidian"
-    assert vocab_catalog_id_string(MAT_DIRT) == "soil.dirt"
-    assert vocab_catalog_id_string(MAT_PUMICE) == "rock.pumice"
-    assert vocab_catalog_id_string(MAT_SULFUR) == "mineral.sulfur"
-    assert vocab_catalog_id_string(MAT_ASH) == "mineral.ash"
-    assert vocab_catalog_id_string(MAT_WATER) == "fluid.water"
-    assert vocab_catalog_id_string(MAT_LAVA) == "fluid.lava"
+    _check(vocab_catalog_id_string(MAT_BEDROCK) == "rock.basalt",  "deviation: bedrock→basalt")
+    _check(vocab_catalog_id_string(MAT_BASALT) == "rock.basalt", "line 47")
+    _check(vocab_catalog_id_string(MAT_SAND) == "soil.sand", "line 48")
+    _check(vocab_catalog_id_string(MAT_OBSIDIAN) == "rock.obsidian", "line 49")
+    _check(vocab_catalog_id_string(MAT_DIRT) == "soil.dirt", "line 50")
+    _check(vocab_catalog_id_string(MAT_PUMICE) == "rock.pumice", "line 51")
+    _check(vocab_catalog_id_string(MAT_SULFUR) == "mineral.sulfur", "line 52")
+    _check(vocab_catalog_id_string(MAT_ASH) == "mineral.ash", "line 53")
+    _check(vocab_catalog_id_string(MAT_WATER) == "fluid.water", "line 54")
+    _check(vocab_catalog_id_string(MAT_LAVA) == "fluid.lava", "line 55")
 
 
 def test_derivation_matches_raw_catalog() raises:
@@ -72,26 +83,26 @@ def test_derivation_matches_raw_catalog() raises:
         for i in range(len(index_by_id)):
             if index_by_id[i] == want_id:
                 found = i
-        assert found >= 0, "id missing in raw catalog: " + want_id
+        _check(found >= 0, "id missing in raw catalog: " + want_id)
         var entry = materials.at(found)
         var optical = entry.get("optical")
         var defn = cat.defs[code].copy()
         # Stable id = array position.
-        assert Int(defn.catalog_index) == found, "stable id drift"
-        assert defn.catalog_id == want_id, "id string drift"
+        _check(Int(defn.catalog_index) == found,  "stable id drift")
+        _check(defn.catalog_id == want_id,  "id string drift")
         # Albedo / roughness / opacity / emissive derivation (SCR-LIB-RENDER-MATERIAL).
         var albedo = optical.get("base_color_srgb")
-        assert abs(defn.albedo_r - Float32(albedo.at(0).as_float())) < 1e-6
-        assert abs(defn.albedo_g - Float32(albedo.at(1).as_float())) < 1e-6
-        assert abs(defn.albedo_b - Float32(albedo.at(2).as_float())) < 1e-6
-        assert abs(defn.roughness - Float32(optical.get("roughness").as_float())) < 1e-6
+        _check(abs(defn.albedo_r - Float32(albedo.at(0).as_float())) < 1e-6, "line 84")
+        _check(abs(defn.albedo_g - Float32(albedo.at(1).as_float())) < 1e-6, "line 85")
+        _check(abs(defn.albedo_b - Float32(albedo.at(2).as_float())) < 1e-6, "line 86")
+        _check(abs(defn.roughness - Float32(optical.get("roughness").as_float())) < 1e-6, "line 87")
         var transmission = Float64(optical.get("transmission").as_float())
-        assert abs(Float64(defn.opacity) - (1.0 - transmission)) < 1e-5, "opacity = 1 − transmission"
+        _check(abs(Float64(defn.opacity) - (1.0 - transmission)) < 1e-5,  "opacity = 1 − transmission")
         var emission = Float64(optical.get("emission_cd_m2").as_float())
         var scale = emission / MATERIAL_EMISSION_SATURATION
         if scale > 1.0:
             scale = 1.0
-        assert abs(Float64(defn.emissive_r) - Float64(defn.albedo_r) * scale) < 1e-5, "emissive = albedo·sat"
+        _check(abs(Float64(defn.emissive_r) - Float64(defn.albedo_r) * scale) < 1e-5,  "emissive = albedo·sat")
 
 
 def test_no_hand_authored_vocabulary() raises:
@@ -109,7 +120,7 @@ def test_no_hand_authored_vocabulary() raises:
         for i in range(len(index_by_id)):
             if index_by_id[i] == want:
                 found = True
-        assert found, "vocabulary id not from catalog: " + want
+        _check(found, "vocabulary id not from catalog: " + want)
 
 
 def main() raises:

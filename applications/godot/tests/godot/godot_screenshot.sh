@@ -5,8 +5,11 @@
 #   1. Display probe: needs a real display/GPU (rendered game mode).
 #      If neither $DISPLAY nor xvfb-run is available, prints the documented
 #      MANUAL capture procedure (exit-criteria fallback) and exits 2.
-#   2. Runs godot_screenshot.gd (content assertions + capture + in-script
-#      luminance check) in RENDERED game mode (never --headless).
+#   2. Runs godot_screenshot.gd (content assertions + tick-wait to a fully
+#      developed plume + spawn/crater captures + in-script luminance check) in
+#      RENDERED game mode (never --headless).
+#      Env: TICK_MIN (default 1900), FRAMES (settle frames, default 60),
+#      SCR_EXPECT_GLOW=1 adds the night-glow assertion (docs/04 §8).
 #   3. Re-checks the PNG with check_luminance.py (independent decoder).
 #
 # Exit: 0 PASS · 1 content/scene assertion failed · 2 capture/display failure
@@ -17,8 +20,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 PROJ="${REPO_ROOT}/applications/godot/godot"
 PNG="${REPO_ROOT}/applications/godot/build/island.png"
+PNG2="${REPO_ROOT}/applications/godot/build/island_crater.png"
 GODOT_BIN="${GODOT_BIN:-godot}"
-FRAMES="${FRAMES:-300}"
+FRAMES="${FRAMES:-60}"   # settle frames after the tick-wait (see .gd header)
+TICK_MIN="${TICK_MIN:-1900}"
+EXTRA_ARGS=()
+if [[ -n "${SCR_EXPECT_GLOW:-}" ]]; then EXTRA_ARGS+=("--expect-glow"); fi
 
 manual_fallback() {
     cat >&2 <<'EOF'
@@ -55,7 +62,8 @@ trap 'rm -f "${LOG}"' EXIT
 
 timeout 300 "${WRAP[@]}" "${GODOT_BIN}" --path "${PROJ}" \
     -s "${REPO_ROOT}/applications/godot/tests/godot/godot_screenshot.gd" \
-    -- "--frames=${FRAMES}" "--png=${PNG}" >"${LOG}" 2>&1
+    -- "--frames=${FRAMES}" "--tick-min=${TICK_MIN}" "--png=${PNG}" \
+    "--png2=${PNG2}" "${EXTRA_ARGS[@]}" >"${LOG}" 2>&1
 rc=$?
 
 grep -E "SCREENSHOT:|SCRIPT ERROR|ERROR: SCR" "${LOG}" | sort -u | head -40

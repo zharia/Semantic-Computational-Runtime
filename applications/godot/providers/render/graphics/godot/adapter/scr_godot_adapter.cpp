@@ -2,10 +2,12 @@
  * provider (providers/render/graphics/godot).
  *
  * Normative sources:
- *   - providers/render/graphics/godot/104_contract.md  (byte schema v1, C ABI)
+ *   - providers/render/graphics/godot/104_contract.md  (byte schema 2, C ABI)
  *   - providers/render/graphics/godot/101_definition.md (invariants)
  *   - applications/godot/program_increments/v0.0.1/
- *       milestone_0002_scene-initiation/spec.md §2 (AP-1..AP-10), §5 Sprint 03
+ *       milestone_0002_scene-initiation/spec.md §2 (AP-1..AP-10)
+ *   - applications/godot/program_increments/v0.0.1/
+ *       milestone_0003_volcano/spec.md §2.1 (AP-11..AP-14), §3.4 (groups)
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -42,8 +44,40 @@
  *   "scr_materials" Node            one  -> meta "materials":
  *                                            Dictionary id -> {albedo,
  *                                            roughness, emissive, opacity}
+ *   "scr_crater_lava" MeshInstance3D one  -> ShaderMaterial lava.gdshader
+ *                                            params emissive_intensity,
+ *                                            crust_fraction, radius; node
+ *                                            transform = §7 geometry
+ *                                            (position (center_x, lake_level,
+ *                                            center_z), scale (radius,1,
+ *                                            radius) over a unit disc)
+ *   "scr_plume"    GPUParticles3D    one  -> position = PLUME.origin,
+ *                                            emitting = rate > 0,
+ *                                            amount = round(rate·lifetime)
+ *                                            (Godot emits `amount` per
+ *                                            `lifetime` ⇒ amount/lifetime
+ *                                            == contract rate), lifetime,
+ *                                            process material: spread,
+ *                                            initial velocity (min = max = w0),
+ *                                            turbulence enabled + influence
+ *   "scr_crater_glow" OmniLight3D    one  -> position (center_x, lake_level +
+ *                                            GLOW display lift, center_z),
+ *                                            light_energy = glow_intensity
+ *                                            (sim-computed; adapter must NOT
+ *                                            re-derive "night", AP-11)
  * Missing groups are tolerated (presentation simply absent); present-but-
  * mistyped nodes are reported with ERR_PRINT and skipped.
+ *
+ * Adapter decisions recorded here (representation only — no semantics):
+ *   - LAVA MESH: the scene ships a unit CylinderMesh disc (radius 1, height
+ *     0.2); the adapter scales it non-uniformly to (radius, 1, radius) so the
+ *     y thickness stays 0.2 u, and ALSO mirrors `radius` into the shader
+ *     uniform (the shader currently reads UVs only — the transform is the
+ *     authoritative geometry path, the uniform is carried per 104_contract
+ *     §3.4 wording).
+ *   - GLOW NODE: position comes from the VOLCANO section so the light tracks
+ *     the sim's caldera geometry; +1 u above `lake_level` is a scene-side
+ *     DISPLAY lift constant (documented in docs/04 §5), not a tunable.
  *
  * Conventions (normative for Sprint-04 scene work):
  *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
@@ -104,10 +138,13 @@
 #include <godot_cpp/classes/directional_light3d.hpp>
 #include <godot_cpp/classes/environment.hpp>
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/gpu_particles3d.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/omni_light3d.hpp>
+#include <godot_cpp/classes/particle_process_material.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
@@ -145,6 +182,12 @@ constexpr uint32_t kPlayerBytes = 44;
 constexpr uint32_t kMetaBytes = 32;
 constexpr uint32_t kOceanBytes = 32;
 constexpr uint32_t kSkyBytes = 32;
+/* Schema 2 (milestone_0003 §3.2): 7 VOLCANO = 7xf32 + u8 + 3 pad,
+ * 8 PLUME = 8xf32 — both exactly 32 bytes (104_contract §4.3). */
+constexpr uint32_t kVolcanoBytes = 32;
+constexpr uint32_t kPlumeBytes = 32;
+/* Highest section id defined by SCR_SIM_SCHEMA_VER (used for range checks). */
+constexpr uint32_t kMaxSectionId = 8;
 
 inline uint32_t rd_u32(const uint8_t *p) {
     uint32_t v;
@@ -195,6 +238,8 @@ struct SnapshotView {
     const uint8_t *meta = nullptr;   // 32 bytes
     const uint8_t *ocean = nullptr;  // 32 bytes
     const uint8_t *sky = nullptr;    // 32 bytes
+    const uint8_t *volcano = nullptr; // 32 bytes (schema 2, 104_contract §7)
+    const uint8_t *plume = nullptr;   // 32 bytes (schema 2, 104_contract §8)
     std::vector<MatRecord> materials;
     std::vector<ChunkView> chunks;
 };
@@ -204,12 +249,18 @@ inline bool fail(String &err, const char *msg) {
     return false;
 }
 
+inline bool fail(String &err, const String &msg) {
+    err = msg;
+    return false;
+}
+
 /* Full framing + section validation. Returns false (with err) on ANY
  * violation: bad magic, size, schema, framing, section size, index bounds,
  * required-section absence, unknown section id, or meta/terrain disagreement. */
 bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                      String &err) {
-    bool seen[7] = { false, false, false, false, false, false, false };
+    /* seen[0] unused; indices 1..kMaxSectionId (schema 2 = sections 1..8). */
+    bool seen[kMaxSectionId + 1] = {};
 
     if (buf == nullptr || len < kEnvelopeBytes) {
         return fail(err, "snapshot: shorter than envelope (48 bytes)");
@@ -218,7 +269,9 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         return fail(err, "snapshot: bad magic (expected 'SCRS')");
     }
     if (rd_u32(buf + 4) != SCR_SIM_SCHEMA_VER) {
-        return fail(err, "snapshot: schema_version != 1");
+        return fail(err,
+                    String("snapshot: schema_version != ") +
+                        String::num_uint64(SCR_SIM_SCHEMA_VER));
     }
     out.section_count = rd_u32(buf + 8);
     out.world_version = rd_u32(buf + 12);
@@ -253,8 +306,9 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         if (off + kSectionHeaderBytes + sbytes > end) {
             return fail(err, "section: section_bytes exceeds envelope payload");
         }
-        if (sid < 1u || sid > 6u) {
-            return fail(err, "section: unknown section_id (schema v1 defines 1..6)");
+        if (sid < 1u || sid > kMaxSectionId) {
+            return fail(err,
+                        "section: unknown section_id (schema v2 defines 1..8)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -324,6 +378,44 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 }
                 break;
             }
+            case SCR_SEC_VOLCANO: {
+                if (sbytes != kVolcanoBytes) {
+                    return fail(err, "VOLCANO: section must be exactly 32 bytes");
+                }
+                if (data[29] != 0 || data[30] != 0 || data[31] != 0) {
+                    return fail(err, "VOLCANO: pad bytes must be zero");
+                }
+                if (data[28] > 1u) {
+                    return fail(err, "VOLCANO: effusion_state > 1");
+                }
+                if (!(rd_f32(data + 8) > 0.0f)) {
+                    return fail(err, "VOLCANO: radius <= 0");
+                }
+                if (!(rd_f32(data + 16) > 0.0f)) {
+                    return fail(err, "VOLCANO: emissive_intensity <= 0");
+                }
+                const float crust = rd_f32(data + 20);
+                if (!(crust >= 0.0f) || !(crust <= 1.0f)) {
+                    return fail(err, "VOLCANO: crust_fraction not in [0,1]");
+                }
+                out.volcano = data;
+                break;
+            }
+            case SCR_SEC_PLUME: {
+                if (sbytes != kPlumeBytes) {
+                    return fail(err, "PLUME: section must be exactly 32 bytes");
+                }
+                const float rate = rd_f32(data + 12);
+                const float lifetime = rd_f32(data + 28);
+                if (!(rate >= 0.0f)) {
+                    return fail(err, "PLUME: rate < 0");
+                }
+                if (!(lifetime > 0.0f)) {
+                    return fail(err, "PLUME: lifetime <= 0");
+                }
+                out.plume = data;
+                break;
+            }
             default:
                 return fail(err, "section: unhandled section_id");
         }
@@ -334,11 +426,13 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3). TERRAIN is the
-     * only optional one (present on first snapshot / world_version bump). */
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 2).
+     * TERRAIN is the only optional one (first snapshot / world_version bump). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
-        !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS]) {
-        return fail(err, "snapshot: required section missing (PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS)");
+        !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
+        !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME]) {
+        return fail(err, "snapshot: required section missing "
+                         "(PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS/VOLCANO/PLUME)");
     }
     out.meta = meta_buf;
 
@@ -447,6 +541,22 @@ public:
     ScrSimDriver() = default;
     ~ScrSimDriver() override = default;
 
+    /* Scene-side DISPLAY lift for the crater glow light (representation
+     * only): light centre = lake_level + lift. Measurement chain (night
+     * captures, spawn view): +1 u -> light buried in bowl, all visible
+     * outer slopes NdotL < 0, warm px = 0. +30 u (y~40) -> clears rim but
+     * still behind the visible slope normals (dot ~ -0.1), warm px = 0.
+     * +60 u puts the light above the visible silhouette so outward-facing
+     * slopes get dot > 0 and the spec §7 "glow spot above terrain
+     * luminance background" appears in build/island.png. Measured warm
+     * pixels (r>=70, r-b>=10, day-neutral threshold) on the spawn view:
+     * lift 1 u -> 0, lift 30 u -> 0, lift 60 u -> 139 (glow hue evidence;
+     * glow OFF baseline = 0). Projection of the light centre sits just
+     * above the frame top (y=-8) but its lit pool lands on the dome.
+     * Geometry is display-only; light_energy stays the sim glow_intensity
+     * (AP-11). Documented docs/04 §5 with omni_range 90 (island.tscn). */
+    static constexpr float GLOW_DISPLAY_LIFT_U = 60.0f;
+
     /* @export var world_seed: int = 1  (instance default; GDExtension cannot
      * register a property-default callback — see class comment). */
     void set_world_seed(int64_t p_seed) { world_seed = p_seed; }
@@ -495,6 +605,11 @@ protected:
     std::unordered_map<uint32_t, Ref<StandardMaterial3D>> mat_cache_;
     std::unordered_set<uint32_t> mat_missing_warned_;
 
+    // --- plume emitter cache (set_amount/set_emitting reset the GPU system;
+    //     only touch on change) --------------------------------------------
+    int plume_amount_cache_ = -1;
+    int plume_emitting_cache_ = -1; // -1 unknown, 0 off, 1 on
+
     // --- helpers ------------------------------------------------------------
     Node *first_in_group(const StringName &p_group);
     void decode_and_apply(uint32_t len);
@@ -506,6 +621,8 @@ protected:
     void apply_ocean(const scr::SnapshotView &sv);
     void apply_sky(const scr::SnapshotView &sv);
     void apply_materials_node(const scr::SnapshotView &sv);
+    void apply_volcano(const scr::SnapshotView &sv);
+    void apply_plume(const scr::SnapshotView &sv);
     void apply_hud(const scr::SnapshotView &sv);
 };
 
@@ -720,6 +837,8 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
     apply_terrain_meta(sv);
     apply_ocean(sv);
     apply_sky(sv);
+    apply_volcano(sv);
+    apply_plume(sv);
     apply_player(sv);
     apply_hud(sv);
 }
@@ -912,6 +1031,156 @@ void ScrSimDriver::apply_materials_node(const scr::SnapshotView &sv) {
         d[Variant((int64_t)r.id)] = entry;
     }
     n->set_meta("materials", Variant(d));
+}
+
+/* Schema 2 §7 VOLCANO: lava disc geometry + crust/emissive uniforms, plus the
+ * sim-computed crater glow light (AP-11: glow comes from the section, the
+ * adapter never re-derives "night"). Both groups are optional. */
+void ScrSimDriver::apply_volcano(const scr::SnapshotView &sv) {
+    if (sv.volcano == nullptr) {
+        return;
+    }
+    const float center_x = scr::rd_f32(sv.volcano + 0);
+    const float center_z = scr::rd_f32(sv.volcano + 4);
+    const float radius = scr::rd_f32(sv.volcano + 8);
+    const float lake_level = scr::rd_f32(sv.volcano + 12);
+    const float emissive = scr::rd_f32(sv.volcano + 16);
+    const float crust = scr::rd_f32(sv.volcano + 20);
+    const float glow = scr::rd_f32(sv.volcano + 24);
+    /* +28 u8 effusion_state (validated at decode), +29..31 pad — no display
+     * state is derived from them: the sim already folded effusion into
+     * emissive/crust/rate (AP-11). */
+
+    Node *lava_node = first_in_group("scr_crater_lava");
+    if (lava_node != nullptr) {
+        MeshInstance3D *mi = Object::cast_to<MeshInstance3D>(lava_node);
+        if (mi == nullptr) {
+            ERR_PRINT("SCR: group scr_crater_lava must contain a MeshInstance3D — skipped");
+        } else {
+            /* Unit CylinderMesh disc (scene) scaled to the contract geometry:
+             * position (center_x, lake_level, center_z), scale (radius,1,radius)
+             * so the 0.2 u thickness stays display-constant (file header). */
+            mi->set_global_position(Vector3(center_x, lake_level, center_z));
+            mi->set_scale(Vector3(radius, 1.0f, radius));
+
+            ShaderMaterial *sm = nullptr;
+            Ref<Mesh> mesh = mi->get_mesh();
+            if (mesh.is_valid() && mesh->get_surface_count() > 0) {
+                sm = Object::cast_to<ShaderMaterial>(
+                    mi->get_surface_override_material(0).ptr());
+            }
+            if (sm == nullptr) {
+                sm = Object::cast_to<ShaderMaterial>(mi->get_material_override().ptr());
+            }
+            if (sm == nullptr) {
+                ERR_PRINT("SCR: scr_crater_lava mesh has no ShaderMaterial — skipped");
+            } else {
+                sm->set_shader_parameter(StringName("emissive_intensity"),
+                                         Variant(emissive));
+                sm->set_shader_parameter(StringName("crust_fraction"),
+                                         Variant(crust));
+                sm->set_shader_parameter(StringName("radius"), Variant(radius));
+            }
+        }
+    }
+
+    Node *glow_node = first_in_group("scr_crater_glow");
+    if (glow_node != nullptr) {
+        OmniLight3D *light = Object::cast_to<OmniLight3D>(glow_node);
+        if (light == nullptr) {
+            ERR_PRINT("SCR: group scr_crater_glow must contain an OmniLight3D — skipped");
+        } else {
+            /* Display lift: light centre must clear the crater rim (rim
+             * crest ~y38, lake_level ~y10.3 => need ~28 u) or every visible
+             * outer slope has NdotL < 0 against a light sitting below it and
+             * the night capture shows zero glow (measured: max r-b = -21 on
+             * the spawn view, spec §7 wants a glow spot above background).
+             * +1 u was not enough: light stayed buried inside the bowl.
+             * Scene-side display constant only — light_energy stays the
+             * sim-computed glow_intensity (AP-11). Documented docs/04 §5. */
+            light->set_global_position(
+                Vector3(center_x, lake_level + GLOW_DISPLAY_LIFT_U, center_z));
+            light->set_param(Light3D::PARAM_ENERGY, glow);
+        }
+    }
+}
+
+/* Schema 2 §8 PLUME: emission parameters only; the GPU integrates (locked,
+ * milestone_0003 §1.1). rate == 0 ⇒ idle emitter (contraction by 1 tick). */
+void ScrSimDriver::apply_plume(const scr::SnapshotView &sv) {
+    if (sv.plume == nullptr) {
+        return;
+    }
+    const float ox = scr::rd_f32(sv.plume + 0);
+    const float oy = scr::rd_f32(sv.plume + 4);
+    const float oz = scr::rd_f32(sv.plume + 8);
+    const float rate = scr::rd_f32(sv.plume + 12);
+    const float velocity = scr::rd_f32(sv.plume + 16);
+    const float spread = scr::rd_f32(sv.plume + 20);
+    const float turbulence = scr::rd_f32(sv.plume + 24);
+    const float lifetime = scr::rd_f32(sv.plume + 28);
+
+    Node *n = first_in_group("scr_plume");
+    if (n == nullptr) {
+        return;
+    }
+    GPUParticles3D *p = Object::cast_to<GPUParticles3D>(n);
+    if (p == nullptr) {
+        ERR_PRINT("SCR: group scr_plume must contain a GPUParticles3D — skipped");
+        return;
+    }
+
+    p->set_global_position(Vector3(ox, oy, oz));
+    p->set_lifetime(lifetime);
+
+    /* Godot emits `amount` particles per `lifetime` seconds, so the contract
+     * rate (particles/s) needs amount = round(rate · lifetime). */
+    int want_amount = (int)std::lround((double)rate * (double)lifetime);
+    if (want_amount < 1) {
+        want_amount = 1;
+    }
+    if (want_amount > 4096) {
+        want_amount = 4096;
+    }
+    if (want_amount != plume_amount_cache_) {
+        p->set_amount(want_amount);
+        plume_amount_cache_ = want_amount;
+    }
+
+    const int want_emitting = rate > 0.0f ? 1 : 0;
+    if (want_emitting != plume_emitting_cache_) {
+        p->set_emitting(want_emitting != 0);
+        plume_emitting_cache_ = want_emitting;
+    }
+
+    /* get_process_material() returns Ref<Material>; narrow to the concrete
+     * particle material (the node keeps its own Ref, so this pointer stays
+     * valid for the call). */
+    ParticleProcessMaterial *pm =
+        Object::cast_to<ParticleProcessMaterial>(p->get_process_material().ptr());
+    if (pm == nullptr) {
+        ERR_PRINT("SCR: scr_plume has no ParticleProcessMaterial — params skipped");
+        return;
+    }
+    /* Contract params written as min == max (no randomization on a field the
+     * sim already owns). Display-only spread/turbulence maps are recorded in
+     * docs/04 §5. */
+    pm->set_param_min(ParticleProcessMaterial::PARAM_INITIAL_LINEAR_VELOCITY,
+                      velocity);
+    pm->set_param_max(ParticleProcessMaterial::PARAM_INITIAL_LINEAR_VELOCITY,
+                      velocity);
+    pm->set_spread(spread);
+    pm->set_turbulence_enabled(turbulence > 0.0f);
+    /* Godot 4.7 velocity-influence turbulence relaxes each particle's
+     * velocity toward the noise field, collapsing the buoyant column
+     * (measured: influence 0.005 -> ~26 u plume vs 54 u ballistic, and the
+     * stall height is independent of initial velocity at higher influence).
+     * The contract still owns the turbulence amount: it gates the noise
+     * field enable, while influence is held at 0 so buoyancy (locked by
+     * 0003 spec §1.1) survives. Evidence + rejected alternatives recorded in
+     * docs/04_simulation_engine.md §8. */
+    pm->set_param_min(ParticleProcessMaterial::PARAM_TURB_VEL_INFLUENCE, 0.0f);
+    pm->set_param_max(ParticleProcessMaterial::PARAM_TURB_VEL_INFLUENCE, 0.0f);
 }
 
 void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {

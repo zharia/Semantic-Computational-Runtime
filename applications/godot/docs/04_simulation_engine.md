@@ -1,8 +1,8 @@
 # 04 — Simulation Engine Design
 
 **Purpose:** Capture the simulation engine design for the Mojo/Godot application.
-**Status:** Active (filled for milestone 0002 — Sprint 01..04; honest gaps marked `TBD — future milestone`)
-**Owner milestone:** [v0.0.1 / milestone 0002 — Scene Initiation](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md) (baseline: [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
+**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; honest gaps marked `TBD — future milestone`)
+**Owner milestone:** [v0.0.1 / milestone 0003 — Volcano](../program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
 
 ---
 
@@ -18,15 +18,15 @@
 | Mojo ↔ Godot data flow (binding protocol) | **Active — §4.3** |
 | Headless execution mode | **Active — §7** |
 | Scene graph ↔ semantic state mapping | **Active — §5** |
-| Locomotion parameter table (AP-7) | **Active — §6** |
+| Parameter table (AP-7, incl. volcano/plume/glow) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0002)
+## 2. Current Implementation (v0.0.1 / milestone 0003)
 
-- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
-- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), `shaders/ocean.gdshader`.
-- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md`.
-- Tests: 36/36 Mojo spec tests, ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate, playability gate (see §8).
+- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
+- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**.
+- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 2**).
+- Tests: 8/8 Mojo spec test files, 47 tests (0003 adds `test_volcano.mojo`; see §4.4), ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow region checks), playability gate (see §8).
 
 ## 3. Constraints Carried Forward (normative, from governing docs)
 
@@ -46,11 +46,12 @@
 | `IslandSubject` | `sim/island.mojo` | synthesized terrain (height field `grid_n × grid_n`, cell size, chunks), biome/material column assignment, spawn (beach band), peak height, `used_materials` |
 | `PlayerSubject` | `sim/subjects.mojo` | feet position, velocity, yaw/pitch, `on_ground`, `in_water` — **all locomotion integration lives here** |
 | `HydrologySubject` | `sim/subjects.mojo` + `ocean/gerstner.mojo` | Gerstner wave state (sea level, amplitude, wavenumber, steepness, direction, phase speed, phase offset) |
-| `AtmosphereSubject` (lite) | `sim/subjects.mojo` | `atmosphere_from_time`: time-of-day hours, sun azimuth/elevation, sun intensity — pure projection of `simulation_time` |
+| `AtmosphereSubject` (lite) | `sim/subjects.mojo` | `atmosphere_from_time`: time-of-day hours, sun azimuth/elevation, sun intensity — pure projection of `simulation_time`; `night_factor(sun_elevation)` (0003 §3.3: glow = emissive × night_factor) |
+| `VolcanoSubject` | `sim/volcano.mojo` (0003) | caldera center/radius, lake level, emissive intensity, crust fraction, effusion state machine (seeded, `EFFUSION_TICK_STEP` draws), plume parameters, glow intensity — pure function of `(seed, simulation_tick, atmosphere)`; `volcano_from_island` + `volcano_tick` driven from `world.mojo` |
 
 Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps on regeneration), `state_generation` (every tick), `simulation_tick`, `simulation_time`.
 
-**Semantic library consumption** (spec §4 table, by ID — not by comment, AP-2): `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` (biome→material table + bedrock/sea-level invariants, conformance-tested), `SCR-LIB-MATH-NOISE` (spec-only, implemented in `synthesis/noise.mojo`), `SCR-LIB-MATH-GERSTNER` (spec-only, implemented in `ocean/gerstner.mojo`), `SCR-LIB-FIELD` (height queries), `SCR-LIB-GEOMETRY` (mesh arrays are representation), `SCR-LIB-RENDER-MATERIAL` (catalog `lib/A01_Render/Material/materials_catalog.json`, repo-relative), `SCR-LIB-RENDER-WATER` (foam intent — see §4.6 deviation), `SCR-LIB-RENDER-SKY` (diurnal arc + gradient sky), `SCR-LIB-SPATIAL` frames (world frame explicit; Godot transforms = representation), `SCR-LIB-PHYSICS` quantities/gravity (gravity constant), `lib/804_Application` (Port→Adapter→Provider layering).
+**Semantic library consumption** (spec §4 table, by ID — not by comment, AP-2): `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` (biome→material table + bedrock/sea-level invariants, conformance-tested), `SCR-LIB-MATH-NOISE` (spec-only, implemented in `synthesis/noise.mojo`), `SCR-LIB-MATH-GERSTNER` (spec-only, implemented in `ocean/gerstner.mojo`), `SCR-LIB-FIELD` (height queries), `SCR-LIB-GEOMETRY` (mesh arrays are representation), `SCR-LIB-RENDER-MATERIAL` (catalog `lib/A01_Render/Material/materials_catalog.json`, repo-relative), `SCR-LIB-RENDER-WATER` (foam intent — see §4.6 deviation), `SCR-LIB-RENDER-SKY` (diurnal arc + gradient sky), `SCR-LIB-RENDER-VOLCANO` (0003: lava/plume/glow subject semantics in `sim/volcano.mojo`, spec-only parts deferred — §9), `SCR-LIB-SPATIAL` frames (world frame explicit; Godot transforms = representation), `SCR-LIB-PHYSICS` quantities/gravity (gravity constant), `lib/804_Application` (Port→Adapter→Provider layering).
 
 ### 4.2 Engine Architecture (step loop, state ownership)
 
@@ -61,10 +62,10 @@ Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps 
 
 ### 4.3 Provider Interface Contract (Mojo outputs → Godot inputs)
 
-Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema v1, C ABI, input batch, parameter table). Summary:
+Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v2**, C ABI, input batch, parameter table). Summary:
 
-- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (=1), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
-- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced).
+- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=2**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
+- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME` (0003 additive), little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bump `1 → 2` (0003 §3.5): adapter refuses any schema ≠ 2; `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
 - **Uplink:** `scr_input_batch` (20 bytes) — raw intent only; the sim integrates.
 - **Transport:** in-process (`dlopen` of `build/libscr_sim.so`); contract is transport-agnostic (IPC swap deferred, spec §9).
 
@@ -72,13 +73,15 @@ Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../prov
 
 | Layer | Test | What it proves |
 |---|---|---|
-| Spec (Mojo) | `tests/mojo/test_*.mojo` — 7 files, 36 tests | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture |
-| Binding | `tests/abi_smoke.py` (26 checks) | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture |
-| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema≠1 loudly; accepts schema 1 |
+| Spec (Mojo) | `tests/mojo/test_*.mojo` — 8 files, 47 tests | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, **volcano subject (0003: effusion sequence, ranges, glow semantics)** |
+| Binding | `tests/abi_smoke.py` (49 checks) | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 2 + VOLCANO/PLUME field checks** |
+| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 2 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
 | Integration | `tests/godot/godot_load_test.sh` | headless main-scene load, extension registration, zero `ERROR:` lines |
-| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) |
+| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + **plume/lava region checks and, with `SCR_EXPECT_GLOW=1`, the night-glow spot check (§8.3)** |
 | Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through |
 | Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) |
+
+All Mojo checks are **raise-based** (`_check(cond, msg)` → `raise Error`): this toolchain compiles `assert` to a no-op (verified in `test_volcano.mojo`), so the 0003 sprint converted every `assert` in `test_synthesis_conformance`, `test_gerstner`, `test_catalog` to `_check` — which immediately exposed three latent test-vs-spec bugs (§8.3).
 
 ### 4.5 Successor Specification Reference
 
@@ -99,6 +102,9 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | `scr_camera` | `Camera3D` (or rig `Node3D`) | `1 PLAYER` | global position = `player.position + (0, eye_height, 0)`; `rotation = (pitch, yaw, 0)` — **no sign flips** (sim forward = `(−sin yaw, −cos yaw)` = Godot −Z under +yaw) |
 | `scr_hud` | `Label` | envelope | text `tick %d | gen %d | seed %d` |
 | `scr_materials` | `Node` | `6 MATERIALS` | meta `materials` = Dictionary `id → {albedo, roughness, emissive, opacity}` (also used to derive `StandardMaterial3D` per chunk surface) |
+| `scr_crater_lava` | `MeshInstance3D` + `ShaderMaterial` (0003) | `7 VOLCANO` | position `(center_x, lake_level + 1, center_z)` (1 u glow-free lift, display), non-uniform scale `(radius, 1, radius)`, shader uniforms `emissive_intensity`, `crust_fraction`, `radius` |
+| `scr_crater_glow` | `OmniLight3D` (0003) | `7 VOLCANO` | `light_energy = glow_intensity` (sim-computed; adapter must NOT re-derive “night”, AP-11); position `(center_x, lake_level + GLOW_DISPLAY_LIFT_U, center_z)` — **display lift 60 u**, geometry rationale + measurement chain in §8.3 |
+| `scr_plume` | `GPUParticles3D` + `ParticleProcessMaterial` (0003) | `8 PLUME` | position = plume origin, `lifetime`, `amount = round(rate·lifetime)` (clamped 1..4096), `emitting = rate > 0`, `initial_velocity_min = max = v0`, `spread`, `set_turbulence_enabled(turbulence > 0)` with **velocity influence locked to 0** (§8.3) |
 
 **Input uplink (scene → sim):** `scripts/player_input.gd` calls
 `ScrSim.submit_input(move_x, move_y, look_dx, look_dy, jump, sprint, action_primary, action_secondary)`
@@ -184,6 +190,31 @@ Ocean mesh: `PlaneMesh` 768×768 u, `subdivide_width/depth = 512` (≈1.5 u
 cells ⇒ >5 samples per 8 u wavelength; size chosen so the plane edge sits
 beyond the visible horizon band — display resolution choice, not a gameplay
 value).
+
+### 6.5 Volcano / plume / glow (0003, `parameters.mojo` + scene display)
+
+Sim-side tunables (`src/mojo/sim/parameters.mojo`, AP-7):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `LAVA_EMISSIVE_CORE` / `LAVA_EMISSIVE_CRUST` | 1.0 / 0.12 | × E_core, × E_crust |
+| `LAVA_CRUST_DORMANT` / `LAVA_CRUST_EFFUSING` | 0.85 / 0.15 | crust fraction C |
+| `EFFUSION_TICK_STEP` | 300 | ticks between draws (5 s @ 60 Hz) |
+| `EFFUSION_ACTIVE_PROBABILITY` | 0.35 | P(effusing) per draw (seeded, AP-12) |
+| `PLUME_RATE_DORMANT` / `PLUME_RATE_EFFUSING` | 0.0 / 60.0 | 1/s |
+| `PLUME_VELOCITY` (w0) | 8.5 | u/s |
+| `PLUME_SPREAD` | 15.0 | deg (cone half-angle) |
+| `PLUME_TURBULENCE` | 0.35 | turbulence amount (drives `set_turbulence_enabled`, influence locked 0 — §8.3) |
+| `PLUME_LIFETIME` | 6.0 | s |
+| `GLOW_NIGHT_MAX_FACTOR` / `GLOW_NIGHT_ELEVATION_REF` | 1.0 / 1.2 | night_factor cap / elevation ref (rad) |
+| `VOLCANO_LAKE_RADIUS_FALLBACK` | `CALDERA_LAKE_RADIUS` | no-lake fallback |
+
+Scene/adapter **display constants** (representation only, never semantics):
+
+- `GLOW_DISPLAY_LIFT_U = 60.0` (adapter, `scr_godot_adapter.cpp`) + `omni_range = 90.0`, `omni_attenuation = 0.4`, `light_color (1, 0.6, 0.25)` (`island.tscn`) — glow light geometry; rationale + measurement chain §8.3.
+- Lava display lift `+1 u` above `lake_level`; `lava.gdshader` `albedo_scale = 0.35` (anti-overexposure display uniform).
+- Plume display: `QuadMesh size 2.0`, `billboard_mode = 3` (BILLBOARD_PARTICLES — quads are back-face culled otherwise), material `albedo (0.78,0.77,0.75)`, `transparency = 1`, process material `gravity (0,0,0)`, turbulence noise = engine defaults (`strength 1.0`, `scale 9.0`, `speed (0,0,0)`), `amount` cached from `round(rate·lifetime)` cap 4096.
+- Screenshot gate region constants (verification only): plume window rows `[0.02H, 0.12H]` × cols `[0.40W, 0.60W]`, per-channel margin-median sky reference, dev > 60, row hits ≥ 10, need ≥ 5 rows; lava warm `(R≥120, R≥G+25, R≥B+60)` within 90 px of projected centre, need ≥ 400; night glow dome box rows `[85,130]` × cols `[560,780]`, warm10 (`R≥70, R−B≥10, R≥G−10`) ≥ 50 **and** max `R−B` ≥ 25 **and** dome luminance printed vs flank background.
 
 ## 7. Gerstner: sim vs display authority · water-foam deviation
 
@@ -371,19 +402,121 @@ terrain ~18–40% (was never the defect); `camera_follow` default `true` is a
 debug aid, not gameplay; motion-mode mouse path unexercised headless.
 
 
+### 8.3 Milestone 0003 (Volcano) — Sprint-04 verification record (2026-09-28)
+
+**Evidence-driven findings (measurement chains, not guesses):**
+
+1. **Plume invisible → root cause: turbulence velocity influence (display
+   measurement campaign).** Godot 4.7 `ParticleProcessMaterial` turbulence
+   with `PARAM_TURB_VEL_INFLUENCE > 0` relaxes each particle's velocity toward
+   the noise field, cancelling the buoyant initial velocity: measured plume
+   height `≈26 u` at influence `0.005` vs `≈54 u` ballistic (`v0·lifetime`),
+   collapsing further as influence rose; stall height ≈ `v0 /
+   (influence × fixed_fps 30)`. Influence-over-life curves, strength, scale,
+   speed, displacement and randomness sweeps either failed or were no-ops
+   (`turbulence_initial_displacement` is unreliable in 4.7 — never claimed).
+   **Locked mapping (adapter):** `set_turbulence_enabled(turbulence > 0)`
+   (semantic gate from the contract value) with velocity influence min/max
+   **locked to 0.0** — noise field available for future display use, column
+   physics stays ballistic. Probe scripts + full numbers: `/tmp/opencode/
+   turbmatrix*.gd`, `growth*.gd` (session artifacts; conclusions restated
+   here). Gate regression guard asserts `turbulence_enabled == true` AND
+   `influence == 0`.
+2. **Renderer kept Forward+/Vulkan.** Spec locks `GPUParticles3D` (0003
+   §1.1); `gl_compatibility` cannot run it. `project.godot` features now
+   `"4.7", "Forward Plus"` with a justification comment. Environment:
+   Godot 4.7.2, GTX 1650, Vulkan 1.4.351.
+3. **Particle-API gotchas (verified):** `GPUParticles3D.get_aabb()` always
+   returns zero — use `capture_aabb()`; `-s` SceneTree mode does simulate
+   particles; QuadMesh draw passes are back-face culled unless
+   `billboard_mode = 3`; default gravity `(0,−9.8,0)` must be zeroed.
+4. **Latent test-vs-spec bugs exposed by the `assert` → `_check`
+   conversion** (0003 sprint; this toolchain compiles `assert` to a no-op):
+   - `test_gerstner` “unit normal”: spec §2.2 defines `N = B × T`
+     **unnormalized**; test now checks non-degenerate + upward-facing.
+   - `test_synthesis_conformance` “corner exact”: test omitted the half-cell
+     offset — cell centres are `c_i = (i + 0.5 − N/2)·CELL_SIZE`.
+   - `test_synthesis_conformance` “caldera lake surface must be water”:
+     0002 §3 table locks `CALDERA_LAKE → LAVA`; expectation corrected.
+   Product code unchanged in all three — the test expectations were wrong.
+5. **`runtime.mojo` env-handle fix (0003):** `String.from_utf8` env-buffer
+   handle carried a trailing NUL into `SCR_SIM_*` reads (aborted the CLI
+   headless path); fixed by trimming at the C boundary — verified 5/5 clean
+   CLI runs + 4/4 abi-smoke.
+6. **Night glow evidence path (spec §7 manual procedure).** Command chain
+   (from repo root):
+
+   ```bash
+   # set comptime TIME_OF_DAY_START_HOURS = 21.0 in src/mojo/sim/parameters.mojo
+   .venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/gen_golden_fixture.mojo
+   bash applications/godot/scripts/build_godot_provider.sh
+   SCR_EXPECT_GLOW=1 bash applications/godot/tests/godot/godot_screenshot.sh
+   # then revert to 12.0, regenerate fixture, rebuild, day capture re-verified
+   ```
+
+   Result: `crater glow light_energy = 0.663` (> 0 only at night — sim
+   `night_factor`, AP-11), glow spot on the dome **dome warm10 = 301,
+   max R−B = 30, dome luminance 140.2 vs dark-flank background 36.9**
+   (glow-OFF baseline: warm10 = 0, max R−B = −20). PNG
+   `build/island.png` read and confirmed visually (warm spot above the
+   sulfur cap). Day revert re-confirmed: `light_energy = 0.000`.
+   Measurement chain for the display lift (why 60 u): +1 u → light buried
+   in the crater bowl, every visible outer slope has `NdotL < 0`,
+   warm px = 0; +30 u (y≈40) → still behind the visible slope normals,
+   warm px = 0; +60 u (y≈70) → light above the visible silhouette, slopes
+   get `dot > 0`, spot appears (light centre projects just above the frame
+   top, y = −8; its lit pool lands on the dome). Honest note: the night
+   **skybox stays bright** (static `ProceduralSkyMaterial`, §7) — terrain
+   darkens via `sun_intensity = 0`, ambient stays sky-sourced.
+7. **Screenshot-gate fixes:** plume reference rebuilt as **per-channel
+   margin-median** (the old sum-of-channels/3 form false-passed on a
+   chromatic sky); crater camera moved **inside** the crater
+   (`lava + (16, 24, 16)` — the old `(24,26,24)` was rim-occluded, warm
+   px = 0); settle is **tick-based** (`tick_min + 40`) because the render
+   loop runs ~4 physics ticks/frame and a frame-based settle raced past
+   the effusion window.
+
+**Final gate results (2026-09-28, fresh run):**
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | 8 mojo spec-test files (`catalog, determinism, envelope, gerstner, golden_fixture, projection_purity, synthesis_conformance, volcano`) | PASS 8/8 files — 47/47 tests |
+| 2 | `build_godot_provider.sh` | PASS (7 `scr_sim_*` symbols) |
+| 3 | `abi_smoke.py` | PASS (49 checks incl. schema 2 + VOLCANO/PLUME fields) |
+| 4 | `test_schema_mismatch.sh` | PASS (5 checks; stub refuses `SCR_SIM_SCHEMA_VER + 1`) |
+| 5 | `check_layout.sh` | PASS (AP-1 + AP-4; leftover probe scripts removed) |
+| 6 | `godot_load_test.sh` | PASS (0 ERROR lines) |
+| 7 | `godot_screenshot.sh` (day) | PASS — mean 156.35 / stddev 67.64; plume rows 22/72; `light_energy = 0.000`; PNGs read (plume above sulfur cap; crater lava disc) |
+| 8 | `godot_screenshot.sh` (`SCR_EXPECT_GLOW=1`, night) | PASS — `light_energy = 0.663`, dome warm10 = 301, max R−B = 30, dome lum 140.2 vs flank 36.9; day revert re-confirmed |
+| 9 | `godot_playability_test.sh` | PASS (`horizontal=24.00 jump_gain=1.73 yaw_delta=-0.750 fails=0`) |
+
+**Anti-pattern review (0003 §2.1 AP-11..AP-14 + 0002 §2.1 AP-1..AP-10):**
+
+| # | Verdict | Evidence |
+|---|---|---|
+| AP-11 display-derived lava/plume/glow state | PASS | all state (level, emissive, crust, effusion, glow, rate/velocity/spread/turbulence/lifetime) arrives in `7 VOLCANO`/`8 PLUME`; adapter only mirrors (§5 rows); `albedo_scale`, lifts, quad size, light colour = documented display (§6.5) |
+| AP-12 unseeded randomness | PASS | effusion draws seeded from `World.seed` (`EFFUSION_TICK_STEP`, `EFFUSION_ACTIVE_PROBABILITY`); golden sequence locked in `test_volcano.mojo`; particle jitter display-only, no feedback |
+| AP-13 schema growth without bump | PASS | `SCHEMA_VERSION 2`, fixture regenerated (228636 B), abi_smoke VOLCANO/PLUME checks, envelope schema==2, mismatch negative green |
+| AP-14 inventing quench semantics | PASS | `lava_water_quench` consumed only via catalog vocabulary; quench = documented partial (§9) |
+| AP-1..AP-10 | PASS | unchanged review in §8 (layout AP-1/AP-4, no dynamic_cast, table dispatch, no presentation→sim writes, provider docs) |
+
 ## 9. Honest Gaps (open)
 
 1. MATERIALS framing blocker (§8) — **RESOLVED** (contract header amended to `4 + 36·N` per field table/fixture, adapter aligned; decode verified end-to-end: load test materializes 16 chunks, abi smoke byte-identical).
 2. Godot-cpp from-scratch bootstrap recipe not re-run clean-room ([02 §1.1](02_development_environment.md)).
-3. Sky gradient is static (§7); shoreline foam approximated (§7); sun specular simplified (§7).
+3. Sky gradient is static (§7); shoreline foam approximated (§7); sun specular simplified (§7); **night skybox stays bright** (§8.3 — only sun energy drops at night; a time-tinted sky = 0004 sky work).
 4. Performance budgets — `TBD — future milestone`.
 5. Swim/`MAP_BOUND` comptime helpers live outside `parameters.mojo` (§6.1) — sim-side cleanup deferred.
 6. Interactive (non-headless) manual play session not recorded this sprint — scripted run is the evidence; manual fallback documented.
 7. AP-2 indirect-only semantic-library coverage (§8 review): no standalone conformance tests for `MATH-NOISE`, `RENDER-SKY`, `SPATIAL` frame algebra, `PHYSICS` constants — currently exercised indirectly. `TBD — future milestone`.
+8. **Turbulence velocity-influence display semantics (0003):** Godot's velocity-influence mode cancels buoyant columns (§8.3); the noise field is exposed with influence locked at 0. Display-side turbulence that preserves column physics (curl-noise advection in-shader / successor particle integrator) = `TBD — future milestone`.
+9. **`lava_water_quench` is a documented partial (0003 AP-14):** consumed only to the extent implemented (catalog vocabulary + reaction name); voxel reaction evaluator completes in milestone 0005 — never implied as working.
+10. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
 
 ## References
 
 - [Documentation index](README.md)
+- [spec — milestone 0003 (Volcano)](../program_increments/v0.0.1/milestone_0003_volcano/spec.md)
 - [spec — milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md)
 - [104_contract.md (normative)](../../providers/render/graphics/godot/104_contract.md)
 - [src/mojo/sim/parameters.mojo](../src/mojo/sim/parameters.mojo) (parameter source of truth)

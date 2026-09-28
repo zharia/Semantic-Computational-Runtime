@@ -1,8 +1,9 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/player_input.gd" id="1_player"]
 [ext_resource type="Shader" path="res://shaders/ocean.gdshader" id="2_ocean"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3_hud"]
+[ext_resource type="Shader" path="res://shaders/lava.gdshader" id="4_lava"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ocean"]
 size = Vector2(768, 768)
@@ -48,6 +49,51 @@ fog_enabled = true
 fog_density = 0.0045
 fog_light_color = Color(0.58, 0.66, 0.78, 1)
 fog_sky_affect = 0.3
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_lava"]
+top_radius = 1.0
+bottom_radius = 1.0
+height = 0.2
+radial_segments = 64
+rings = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lava"]
+shader = ExtResource("4_lava")
+shader_parameter/emissive_intensity = 0.85
+shader_parameter/crust_fraction = 1.0
+shader_parameter/radius = 20.0
+shader_parameter/core_color = Color(1, 0.45, 0.08, 1)
+shader_parameter/crust_color = Color(0.12, 0.04, 0.02, 1)
+shader_parameter/pattern_scale = 7.0
+shader_parameter/pattern_strength = 0.55
+shader_parameter/emission_gain = 1.6
+shader_parameter/albedo_scale = 0.35
+shader_parameter/shimmer_amount = 0.05
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_plume"]
+direction = Vector3(0, 1, 0)
+spread = 15.0
+initial_velocity_min = 8.5
+initial_velocity_max = 8.5
+gravity = Vector3(0, 0, 0)
+emission_shape = 0
+turbulence_enabled = true
+turbulence_noise_strength = 1.0
+turbulence_noise_scale = 9.0
+turbulence_noise_speed = Vector3(0, 0, 0)
+turbulence_influence_min = 0.0
+turbulence_influence_max = 0.0
+color = Color(1, 1, 1, 0.62)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plume"]
+transparency = 1
+albedo_color = Color(0.78, 0.77, 0.75, 1)
+roughness = 1.0
+billboard_mode = 3
+
+[sub_resource type="QuadMesh" id="QuadMesh_plume"]
+size = Vector2(2.0, 2.0)
+material = SubResource("StandardMaterial3D_plume")
 
 [node name="Island" type="Node3D"]
 script = ExtResource("1_player")
@@ -98,3 +144,27 @@ theme_override_font_sizes/font_size = 14
 [node name="Meta" type="Node" parent="." groups=["scr_meta"]]
 
 [node name="Materials" type="Node" parent="." groups=["scr_materials"]]
+
+[node name="CraterLava" type="MeshInstance3D" parent="." groups=["scr_crater_lava"]]
+mesh = SubResource("CylinderMesh_lava")
+material_override = SubResource("ShaderMaterial_lava")
+cast_shadow = 0
+
+[node name="CraterGlow" type="OmniLight3D" parent="." groups=["scr_crater_glow"]]
+light_color = Color(1, 0.6, 0.25, 1)
+light_energy = 0.0
+shadow_enabled = false
+omni_range = 90.0
+omni_attenuation = 0.4
+
+[node name="Plume" type="GPUParticles3D" parent="." groups=["scr_plume"]]
+emitting = false
+amount = 360
+lifetime = 6.0
+one_shot = false
+explosiveness = 0.0
+randomness = 0.0
+visibility_aabb = AABB(-40, -20, -40, 80, 90, 80)
+local_coords = false
+process_material = SubResource("ParticleProcessMaterial_plume")
+draw_pass_1 = SubResource("QuadMesh_plume")

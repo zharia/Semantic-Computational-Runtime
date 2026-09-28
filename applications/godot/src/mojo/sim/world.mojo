@@ -1,7 +1,8 @@
 # World — commit metadata + fixed-timestep integration (Sprint 01).
 #
 # Owns (milestone spec §3.1): world_version / state_generation /
-# simulation_tick / simulation_time and the four subjects. Fixed tick 60 Hz;
+# simulation_tick / simulation_time and the five subjects (player, hydro,
+# atmosphere, volcano — milestone 0003, catalog). Fixed tick 60 Hz;
 # frame dt clamped to 0.05 s (104_contract §6). Determinism: same seed +
 # same input sequence + dt = 1/60 per call ⇒ identical state trajectory.
 #
@@ -20,6 +21,7 @@ from sim.subjects import (
     atmosphere_from_time,
     player_tick,
 )
+from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
 from ocean.gerstner import make_ocean, OceanState
 from materials.catalog import MaterialCatalog, MaterialDef, load_catalog
 from synthesis.noise import splitmix64
@@ -37,6 +39,7 @@ struct World(Movable, Deinitable):
     var player: PlayerSubject
     var hydro: HydrologySubject
     var atmosphere: AtmosphereSubject
+    var volcano: VolcanoSubject
     var catalog: MaterialCatalog
 
     def __init__(out self, seed: UInt32):
@@ -51,6 +54,7 @@ struct World(Movable, Deinitable):
         self.player = PlayerSubject()
         self.hydro = HydrologySubject(make_ocean())
         self.atmosphere = AtmosphereSubject()
+        self.volcano = VolcanoSubject()
         self.catalog = MaterialCatalog(List[MaterialDef](), "")
 
     def __deinit__(deinit self):
@@ -75,6 +79,10 @@ def world_init(seed: UInt32) raises -> World:
     player.in_water = False
     world.player = player^
     world.atmosphere = atmosphere_from_time(0.0)
+    # Volcano: geometry from the island's CALDERA_LAKE columns, then the
+    # tick-0 state draw (seeded effusion schedule) + glow at the initial sky.
+    world.volcano = volcano_from_island(world.island)
+    volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
     world.world_version = 1  # first generation
     world.state_generation = 0
     world.simulation_tick = 0
@@ -90,6 +98,8 @@ def tick_world(mut world: World, input: InputBatch):
     world.simulation_time = Float64(world.simulation_tick) * FIXED_DT
     world.state_generation += 1
     world.atmosphere = atmosphere_from_time(world.simulation_time)
+    # Volcano state is a pure function of (seed, tick, atmosphere) — AP-12.
+    volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
 
 
 def step_world(mut world: World, frame_dt: Float64, input: InputBatch) -> Int32:
@@ -210,6 +220,27 @@ def world_fingerprint(world: World) -> UInt64:
     h = _fold_f64(h, world.hydro.ocean.wave.omega)
     h = _fold_f64(h, world.atmosphere.time_of_day_hours)
     h = _fold_f64(h, world.atmosphere.sun_elevation)
+
+    # Volcano subject (milestone_0003): geometry, effusion/crust/emissive,
+    # glow, plume emission params. Folded so a projection that mutated any
+    # volcano field would be caught by the projection-purity test.
+    h = _fold_f64(h, world.volcano.center_x)
+    h = _fold_f64(h, world.volcano.center_z)
+    h = _fold_f64(h, world.volcano.radius)
+    h = _fold_f64(h, world.volcano.lake_level)
+    h = _fold_f64(h, world.volcano.emissive_intensity)
+    h = _fold_f64(h, world.volcano.crust_fraction)
+    h = _fold_byte(h, world.volcano.effusion_state)
+    h = _fold_f64(h, world.volcano.glow_intensity)
+    h = _fold_f64(h, world.volcano.plume_origin_x)
+    h = _fold_f64(h, world.volcano.plume_origin_y)
+    h = _fold_f64(h, world.volcano.plume_origin_z)
+    h = _fold_f64(h, world.volcano.plume_rate)
+    h = _fold_f64(h, world.volcano.plume_initial_velocity)
+    h = _fold_f64(h, world.volcano.plume_spread)
+    h = _fold_f64(h, world.volcano.plume_turbulence)
+    h = _fold_f64(h, world.volcano.plume_lifetime)
+
     h = _fold_str(h, world.catalog.root)
     for i in range(world.catalog.count()):
         var d = world.catalog.defs[i].copy()
