@@ -34,6 +34,12 @@ comptime SEC_SKY: UInt32 = 5
 comptime SEC_MATERIALS: UInt32 = 6
 comptime SEC_VOLCANO: UInt32 = 7  # schema 2 (milestone_0003 §3.2)
 comptime SEC_PLUME: UInt32 = 8
+comptime SEC_SHORE_FOAM: UInt32 = 9  # schema 4 (milestone_0005 §3.3)
+
+# §9 SHORE_FOAM framing (104_contract §4.3): u32 grid_n + f32 cell_size
+# + f32 sea_level = 12-byte header, then grid_n² f32 foam values.
+comptime SHORE_FOAM_HEADER_BYTES: Int = 12
+comptime SHORE_FOAM_MAX_GRID: Int = 1024  # decode-side sanity bound
 
 
 struct VOLCANO(Copyable, Movable, Deinitable, ImplicitlyCopyable):

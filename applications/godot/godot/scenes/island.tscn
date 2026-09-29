@@ -29,6 +29,8 @@ shader_parameter/fresnel_power = 4.0
 shader_parameter/foam_jacobian_threshold = 0.58
 shader_parameter/foam_height_threshold = 0.998
 shader_parameter/specular_gain = 1.0
+shader_parameter/foam_grid_n = 64.0
+shader_parameter/foam_cell_size = 4.0
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.22, 0.42, 0.8, 1)

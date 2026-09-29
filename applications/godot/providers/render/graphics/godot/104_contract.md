@@ -4,7 +4,7 @@
 **Status:** Normative
 **Owner milestone:** [applications/godot v0.0.1 / milestone 0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../../../../applications/godot/program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md))
 **C ABI header:** [`adapter/scr_godot_abi.h`](adapter/scr_godot_abi.h) (single source of truth for symbol names, struct layouts, error codes)
-**Schema version:** `2` (1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5: additive sections `7 VOLCANO`, `8 PLUME`; symbol set unchanged)
+**Schema version:** `4` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); symbol set unchanged in all
 
 ---
 
@@ -28,7 +28,7 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 | `scr_sim_init(seed)` | First call; initializes Mojo runtime + world; 0 = ok |
 | `scr_sim_shutdown()` | Tear down; safe after init |
 | `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (1) |
-| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (3) |
+| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (4) |
 | `scr_sim_step(dt, input*)` | Accumulate `dt`; run 0..n fixed ticks @ 60 Hz; input applied per executed tick; returns ticks run (≥0) or `SCR_ERR_*` |
 | `scr_sim_snapshot_size()` | Size of snapshot from most recent successful step |
 | `scr_sim_snapshot_write(buf, cap)` | Serialize; returns bytes written or `SCR_ERR_BUF_SMALL` etc. |
@@ -37,7 +37,7 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 
 **Adapter startup rejection:** refuse to run when `scr_sim_abi_version() != SCR_SIM_ABI_VERSION || scr_sim_schema_version() != SCR_SIM_SCHEMA_VER` (negative test required by exit criteria).
 
-## 4. Snapshot binary schema (version 3)
+## 4. Snapshot binary schema (version 4)
 
 All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit padding (all offsets documented). Offsets are bytes from snapshot start.
 
@@ -45,12 +45,14 @@ All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit pa
 
 **Schema 2 → 3 migration (milestone_0004 §1.1):** the envelope `schema_version` field is now `3`; sections 1–4 and 6–8 are byte-identical to schema 2 (tables below unchanged); **section 5 SKY grows from 32 bytes (8×f32) to 64 bytes (16×f32)** — its first 8 fields keep their schema-2 offsets (0..31), fields 8..15 append the sun-color triple, weather inputs and wetness (§4.3). `section_count` for a full snapshot stays `8`. Schema-1 and schema-2 readers MUST refuse schema-3 bytes via the startup gate (§3/§7).
 
+**Schema 3 → 4 migration (milestone_0005 §3.6):** the envelope `schema_version` field is now `4`. Two coordinated changes require this bump (AP-21): **(a) new section `9 SHORE_FOAM`** — `section_count` for a full snapshot grows from `8` to `9`, emitted **every snapshot** (the shore-foam field evolves with wave phase; suppressing it would freeze the surf line); **(b) TERRAIN per-vertex payload semantic reframe** — the per-vertex record keeps its exact 4-byte stride but its meaning changes from a single `u32 material id` to the tuple `(u8 material_id, u8 blend_id, u8 blend_weight, u8 pad)` (§4.3 §3). Sections 1–2 and 4–8 are byte-identical to schema 3; the TERRAIN section is *stride-neutral* (same byte count and offsets for every other field), which is precisely why it is a **silent-if-unversioned meaning change**: schema-3 and schema-4 TERRAIN bytes differ only in tuple interpretation. Schema-1/2/3 readers MUST refuse schema-4 bytes via the startup gate (§3/§7), and the adapter decode MUST switch on schema, never guess (AP-21).
+
 ### 4.1 Envelope (48 bytes, always present)
 
 | Off | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x53524353` (bytes `S C R S`) |
-| 4 | u32 | `schema_version` | = 3 |
+| 4 | u32 | `schema_version` | = 4 |
 | 8 | u32 | `section_count` | number of sections that follow |
 | 12 | u32 | `world_version` | increments on world regeneration |
 | 16 | u32 | `state_generation` | increments every commit |
@@ -73,7 +75,7 @@ Sections follow the envelope consecutively. Each section:
 
 `payload_bytes = Σ (8 + section_bytes)`.
 
-Sections are emitted in id order 1,2,3,4,5,6,7,8. Sections 1, 2, 4, 5, 6, **7, 8** are emitted **every snapshot**; section 3 (TERRAIN) follows the presence rule in §4.3.
+Sections are emitted in id order 1,2,3,4,5,6,7,8,9. Sections 1, 2, 4, 5, 6, **7, 8, 9** are emitted **every snapshot**; section 3 (TERRAIN) follows the presence rule in §4.3.
 
 ### 4.3 Section payloads
 
@@ -116,8 +118,19 @@ then `chunk_count` records, each:
 | 16 | u32 | `idx_count` (multiple of 3) |
 | 20 | f32×(3·V) | `vertices` |
 | … | f32×(3·V) | `normals` (unit length) |
-| … | u32×V | `material_ids` (per vertex; catalog id, §6) |
+| … | record×V | `blend_tuples` (per vertex, 4 bytes each — schema 4, below) |
 | … | u32×I | `indices` (into this chunk's vertices, CCW front faces) |
+
+**Schema 4 per-vertex tuple (stride-neutral reframe of the schema-3 `u32 material_ids`; milestone_0005 §3.6, AP-21):**
+
+| Rel. | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u8 | `material_id` | dominant material — stable catalog id (§6), same value the schema-3 `material_ids` slot carried |
+| 1 | u8 | `blend_id` | blend partner catalog id; `== material_id` when `blend_weight == 0` (identity / no blend) |
+| 2 | u8 | `blend_weight` | 0..255 ⇒ mix factor 0..1 toward `blend_id` (adapter `mix(albedo[dominant], albedo[blend], w/255)`) |
+| 3 | u8 | `pad` | = 0; MUST be rejected loudly on decode |
+
+Meaning change (documented even though the stride is identical — AP-21): schema 3 carried a lone `u32 material_id` per vertex; schema 4 interprets the same 4 bytes as the tuple above. The byte count of the TERRAIN section is unchanged (`20 + (3V + 3V + V + I)·4` per chunk), so byte-level size checks cannot distinguish the two schemas — only `schema_version` can. The **dominant** (`material_id`) still groups mesh surfaces by material exactly as schema 3 did; `blend_id`/`blend_weight` describe a synthesis-owned boundary feather band (blend pairs are restricted to the two adjacent biomes' permitted surface sets — Synthesis §2; lava columns are never blended).
 
 Presence: TERRAIN sections are emitted **in the first snapshot after init and whenever `world_version` increments** (sim tracks generation state internally); in all other snapshots the section is absent ⇒ adapter keeps existing meshes. TERRAIN_META is emitted every snapshot and its `chunk_count` **persists** across suppressed-TERRAIN snapshots (describes the cached terrain; must not be zeroed). All other sections are emitted every snapshot.
 
@@ -199,6 +212,17 @@ All VOLCANO state is sim-owned (`VolcanoSubject`): level, emissive, crust, effus
 
 PLUME carries **emission parameters only** — the GPU integrates particles for display (locked decision, milestone_0003 §1.1). `rate < 0` and `lifetime <= 0` MUST be rejected loudly on decode.
 
+**9 — SHORE_FOAM** (12 + 4·`grid_n²` bytes = 16 396 B at `grid_n = 64`; schema 4, [milestone_0005 §3.3](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md))
+
+| Off | Type | Field |
+|---|---|---|
+| 0 | u32 | `grid_n` (cells per side; == TERRAIN_META.grid_n, 64) |
+| 4 | f32 | `cell_size` (world units per cell; == TERRAIN_META.cell_size) |
+| 8 | f32 | `sea_level` (foam field datum, world y) |
+| 12 | f32×(grid_n²) | `foam` — shore-foam field `F(x, z, t) ∈ [0, 1]`, row-major `iz · grid_n + ix`, cell centers, world xz aligned with the terrain grid |
+
+Emitted **every snapshot** (foam evolves with wave phase — locked open decision, milestone_0005 §1.3.2). The field is computed sim-side, VERBATIM from the library formula `F = clamp(1 − Δy/d_foam, 0, 1)² · (0.6 + 0.4·sin(6Δy − 4t))` with `d_foam = 1.8 m` (`SCR-LIB-RENDER-WATER` §3, parameters in §6) over the terrain height field and the Gerstner authority (`src/mojo/sim/shore.mojo` is the formula's single home, AP-19). Deep water (`Δy ≥ 1.8`) and land above the max wave reach carry exactly 0. The adapter uploads the grid as an `ImageTexture`; the ocean shader **shades** this field for the shore band and never re-derives terrain-vs-water depth (AP-19). Crest whitecaps remain the disjoint 0002 display path (AP-22: `FOAM_JACOBIAN_THRESHOLD` / `FOAM_HEIGHT_THRESHOLD` in §6). Decode MUST reject: length ≠ `12 + 4·grid_n²`, `grid_n = 0` or `grid_n > 1024`, any value outside `[0, 1]` (§8 loud failure).
+
 ## 5. Input uplink (`scr_input_batch`, 20 bytes packed)
 
 | Off | Type | Field |
@@ -249,6 +273,17 @@ Volcano / plume / glow (schema 2; AP-7 — single home `applications/godot/src/m
 | `GLOW_NIGHT_MAX_FACTOR` (night_factor cap) | 1.0 | × |
 | `GLOW_NIGHT_ELEVATION_REF` (elevation depth where night_factor saturates; = `SUN_ELEVATION_MAX`) | 1.2 | rad |
 | `VOLCANO_LAKE_RADIUS_FALLBACK` (no CALDERA_LAKE columns; = `CALDERA_LAKE_RADIUS`) | 20.0 | u |
+
+Shore foam + boundary blending (schema 4, milestone_0005; AP-7 — single home `applications/godot/src/mojo/sim/parameters.mojo`, mirrored here):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `FOAM_DEPTH_M` (`d_foam` of `SCR-LIB-RENDER-WATER` §3; shore formula `clamp(1 − Δy/d_foam, 0, 1)² · (0.6 + 0.4·sin(6Δy − 4t))`) | 1.8 | m (u) |
+| `FEATHER_WIDTH_CELLS` (blend band half-width around a synthesis material boundary; base ramp `(FEATHER − d)/FEATHER`) | 4 | cells |
+| `BLEND_DITHER_AMP` (deterministic noise dither added to the ramp before clamping; `< ramp step / 2` keeps the quantised ramp strictly monotonic) | 0.10 | × |
+| `BLEND_DITHER_FREQUENCY` (dither gradient-noise cycles per world unit; same seeded noise family as 0002 synthesis) | 0.18 | 1/u |
+
+Display-only crest thresholds (schema 1, unchanged by milestone_0005 — AP-22: shore foam ≠ crest foam): `FOAM_JACOBIAN_THRESHOLD = 0.65` (J < 0.65 ⇒ whitecap), `FOAM_HEIGHT_THRESHOLD = 0.7` (normalized height > 0.7).
 
 Glow derivation (milestone_0003 §3.3): `glow_intensity = emissive_intensity · night_factor(sun_elevation)`, `night_factor` a pure function of the existing `AtmosphereSubject`: 0 for elevation ≥ 0, else `min(−elevation / GLOW_NIGHT_ELEVATION_REF, GLOW_NIGHT_MAX_FACTOR)`.
 

@@ -44,8 +44,11 @@ SCR_SEC_SKY = 5
 SCR_SEC_MATERIALS = 6
 SCR_SEC_VOLCANO = 7  # schema 2 (milestone_0003 §3.2)
 SCR_SEC_PLUME = 8
+SCR_SEC_SHORE_FOAM = 9  # schema 4 (milestone_0005 §3.3)
 
-SCHEMA_VERSION = 3  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
+SCHEMA_VERSION = 4  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
+SHORE_FOAM_BYTES = 12 + 4 * 64 * 64  # u32 grid_n + f32 cell_size + f32 sea_level + 64² f32
+TERRAIN_BYTES_SEED1 = 228100  # schema-3 size: the 4-byte vertex tuple is stride-neutral
 
 FIXED_DT = 1.0 / 60.0
 
@@ -182,16 +185,16 @@ def main() -> int:
     check(snapshot == fixture, "FFI snapshot byte-identical to golden fixture")
     check(snapshot[:4] == b"SCRS", "magic bytes 'SCRS'")
     check(
-        snapshot[4:8] == b"\x03\x00\x00\x00",
-        "schema_version == 3 (LE)",
+        snapshot[4:8] == b"\x04\x00\x00\x00",
+        "schema_version == 4 (LE)",
     )
 
-    # Section framing walk (§4.2), schema 2: sections 1..8.
+    # Section framing walk (§4.2), schema 4: sections 1..9.
     import struct as _st
 
     section_count = _st.unpack_from("<I", snapshot, 8)[0]
     payload_bytes = _st.unpack_from("<I", snapshot, 40)[0]
-    check(section_count == 8, f"section_count == 8 (got {section_count})")
+    check(section_count == 9, f"section_count == 9 (got {section_count})")
     check(
         payload_bytes == len(snapshot) - 48,
         f"payload_bytes {payload_bytes} == len-48",
@@ -205,7 +208,7 @@ def main() -> int:
         spans[sid] = (off + 8, slen)
         off += 8 + slen
     check(
-        ids == [1, 2, 3, 4, 5, 6, 7, 8],
+        ids == [1, 2, 3, 4, 5, 6, 7, 8, 9],
         f"section ids in contract order (got {ids})",
     )
     check(off == len(snapshot), "framing consumes the payload exactly")
@@ -213,6 +216,7 @@ def main() -> int:
         SCR_SEC_VOLCANO in spans and SCR_SEC_PLUME in spans,
         "sections 7 VOLCANO and 8 PLUME present",
     )
+    check(SCR_SEC_SHORE_FOAM in spans, "section 9 SHORE_FOAM present")
 
     print("\n[3a] SKY field sanity (schema 3, 104_contract §4.3 §5)")
     k_off, k_len = spans[SCR_SEC_SKY]
@@ -248,6 +252,82 @@ def main() -> int:
     check(0.0 <= wetness <= 1.0, f"SKY.wetness in [0,1] (got {wetness})")
     check(all(0.0 <= c <= 1.0 for c in (fog_r, fog_g, fog_b)), "fog color in [0,1]")
     check(all(0.0 <= c <= 1.0 for c in (sun_r, sun_g, sun_b)), "sun color in [0,1]")
+
+    print("\n[3c] SHORE_FOAM decode (104_contract §4.3 §9, schema 4)")
+    f_off, f_len = spans[SCR_SEC_SHORE_FOAM]
+    check(
+        f_len == SHORE_FOAM_BYTES,
+        f"SHORE_FOAM section is 12 + 4*64^2 = {SHORE_FOAM_BYTES} bytes (got {f_len})",
+    )
+    foam_grid_n, foam_cell_size, foam_sea_level = _st.unpack_from(
+        "<Iff", snapshot, f_off
+    )
+    check(foam_grid_n == 64, f"SHORE_FOAM.grid_n == 64 (got {foam_grid_n})")
+    check(
+        abs(foam_cell_size - 4.0) < 1e-6,
+        f"SHORE_FOAM.cell_size == 4.0 (got {foam_cell_size})",
+    )
+    check(
+        abs(foam_sea_level - 0.0) < 1e-6,
+        f"SHORE_FOAM.sea_level == 0.0 (got {foam_sea_level})",
+    )
+    foam = _st.unpack_from(f"<{64 * 64}f", snapshot, f_off + 12)
+    check(
+        all(0.0 <= v <= 1.0 for v in foam),
+        f"all {len(foam)} foam values in [0,1] "
+        f"(min {min(foam):.4f}, max {max(foam):.4f})",
+    )
+    foam_nz = sum(1 for v in foam if v > 0.0)
+    check(
+        foam_nz > 0,
+        f"shore band carries foam (> 0 cells with F > 0: {foam_nz} near shore)",
+    )
+    check(max(foam) > 0.0, f"some cells exceed 0 near shore (max {max(foam):.4f})")
+
+    print("\n[3d] TERRAIN vertex blend tuples (104_contract §4.3 §3, schema 4)")
+    t_off, t_len = spans[SCR_SEC_TERRAIN]
+    check(
+        t_len == TERRAIN_BYTES_SEED1,
+        f"TERRAIN section stride-neutral vs schema 3 "
+        f"({TERRAIN_BYTES_SEED1} bytes, got {t_len})",
+    )
+    terrain_chunks = _st.unpack_from("<I", snapshot, t_off)[0]
+    check(terrain_chunks == 16, f"TERRAIN chunk_count == 16 (got {terrain_chunks})")
+    rec_off = t_off + 4
+    tuple_count = 0
+    blended_count = 0
+    for _c in range(terrain_chunks):
+        ox, oy, oz, vc, ic = _st.unpack_from("<3fII", snapshot, rec_off)
+        payload = rec_off + 20
+        tuples_off = payload + 4 * (3 * vc + 3 * vc)  # vertices + normals
+        for j in range(vc):
+            mat, blend, weight, pad = _st.unpack_from("<4B", snapshot, tuples_off + 4 * j)
+            check_guard = (
+                mat < 96 and blend < 96 and pad == 0 and weight <= 255
+                and (weight > 0 or blend == mat)
+            )
+            if not check_guard:
+                check(
+                    False,
+                    f"bad TERRAIN tuple at chunk {_c} vertex {j}: "
+                    f"({mat}, {blend}, {weight}, {pad})",
+                )
+                break
+            if weight > 0:
+                blended_count += 1
+            tuple_count += 1
+        else:
+            rec_off = tuples_off + 4 * vc + 4 * ic
+            continue
+        break
+    check(
+        tuple_count == terrain_chunks * 289,
+        f"walked {tuple_count} vertex tuples ({terrain_chunks} x 289)",
+    )
+    check(
+        blended_count > 0,
+        f"seed-1 terrain carries blended boundary vertices ({blended_count})",
+    )
 
     print("\n[3b] VOLCANO + PLUME field sanity (104_contract §4.3 §7/§8)")
     v_off, v_len = spans[SCR_SEC_VOLCANO]
@@ -309,8 +389,8 @@ def main() -> int:
         ids2.append(sid2)
         off2 += 8 + slen2
     check(
-        ids2 == [1, 2, 4, 5, 6, 7, 8],
-        f"VOLCANO/PLUME emitted on every snapshot (got {ids2})",
+        ids2 == [1, 2, 4, 5, 6, 7, 8, 9],
+        f"VOLCANO/PLUME/SHORE_FOAM emitted on every snapshot (got {ids2})",
     )
 
     print("\n[5] null input = idle batch")

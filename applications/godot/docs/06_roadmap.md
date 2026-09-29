@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0004 Sprint 04)
+**Status:** Active (updated by milestone 0005 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -16,6 +16,7 @@
 | v0.0.1 | 0002 — Scene Initiation (volcanic island) | Complete — all 14 exit criteria verified; see [spec](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md) + [04 §8](04_simulation_engine.md) |
 | v0.0.1 | 0003 — Volcano (lava lake, plume, glow) | Complete — all §7 exit criteria verified (schema 2, 8/8 mojo suites 47/47, 9 gates incl. night-glow procedure); see [spec](../program_increments/v0.0.1/milestone_0003_volcano/spec.md) + [04 §8.3](04_simulation_engine.md) |
 | v0.0.1 | 0004 — Atmosphere & Weather (diurnal sky, clouds, rain, wind) | Complete — 9 gates PASS (schema 3, 10 mojo suites, sun sub-capture + rain window, night re-derivation); see [spec](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) + [04 §8.4](04_simulation_engine.md) |
+| v0.0.1 | 0005 — Shoreline Fidelity (shore foam, crater material blending, quench evaluator) | Complete — all §7 exit criteria verified (schema 4, 13 mojo suites, foam-only-at-shoreline gate, crater-rim capture); see [spec](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) + [04 §8.5](04_simulation_engine.md) |
 
 ### Milestone 0004 status detail (verified)
 
@@ -28,6 +29,18 @@ Resolved during verification: static skybox → dome derived from SKY each frame
 Honest gaps: sun disc not in the *spawn* view (recorded deviation), cloud pattern/scale display-only, no volumetric scattering — [04 §9](04_simulation_engine.md).
 
 Anti-pattern review (spec §7 final item): **PASS** — AP-15..AP-18 checked item-by-item, evidence in [04 §8.4](04_simulation_engine.md).
+
+### Milestone 0005 status detail (verified)
+
+Sprints 01–04 delivered: sim-side `shore.mojo` foam field (library-formula exact), feather+dither material blending (`blend.mojo`, `FEATHER_WIDTH_CELLS=4`), quench evaluator (`quench.mojo`, zero seed-1 triggers asserted), schema **4** (`9 SHORE_FOAM` = 12 B header + `grid_n²·f32` = 16396 B at `grid_n=64`, TERRAIN per-vertex `(dominant, blend, weight, pad)` tuples, fixture regenerated), adapter decode/validate/upload (foam texture refreshed every snapshot, per-vertex blended vertex albedo), `ocean.gdshader` shore band sampled from world xz (AP-19), extended gates (`check_shoreline_foam.py`).
+
+Final gates: 13/13 mojo spec-test files PASS (`test_shoreline_foam`, `test_material_blending` incl. `test_seed1_crater_rim_has_feather_band`, `test_quench`, `test_synthesis_conformance`, `test_envelope`, `test_golden_fixture`, `test_determinism`, `test_projection_purity`, `test_catalog`, `test_gerstner`, `test_atmosphere`, `test_weather`, `test_volcano`), abi_smoke (schema 4) PASS, schema-mismatch PASS, layout PASS, build OK, load PASS (0 `ERROR:` lines), screenshot + aerial + shoreline-foam gates PASS (`in-band=1082 out-of-band=0`), playability PASS.
+
+Resolved during verification: vertex-colour albedo color-space (catalog is `base_color_srgb` — without `FLAG_SRGB_VERTEX_COLOR` the render washed out; rendered probe showed albedo-path 0.4 → 0.4 vs vertex-path 0.4 → 0.667, flag restores pixel-exact parity); godot-cpp binding names `vertex_color_use_as_albedo` → `FLAG_ALBEDO_FROM_VERTEX_COLOR`; foam texture row order (v=0 → image row 0, rendered probe, no flip); white-ring artifact replaced by the texture-driven shore band (crest path untouched, AP-22).
+
+Honest gaps: roughness/emission/opacity stay the grouped surface's dominant material (spec §1.1 recorded limitation); foam texture resolution = sim grid (64², linear-filtered); quench steam/energy manifestation and live lava-to-sea quench remain `TBD` (spec §9) — [04 §9](04_simulation_engine.md).
+
+Anti-pattern review (spec §7 final item): **PASS** — AP-19..AP-22 checked item-by-item, evidence in [04 §8.5](04_simulation_engine.md).
 
 ### Milestone 0002 status detail (verified)
 
@@ -59,14 +72,13 @@ Future increments build on the stabilized snapshot contract. Each has a normativ
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| 0005 | [Shoreline fidelity](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) | Real shoreline foam + crater material blending (kills rim teeth) | `A01_Render/Water`, `801_Spatial/Voxel/Synthesis` |
 | 0006 | [Ecology](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) | Flora scatter + seabird flocking | `705_Ecology`, `601_Agent` (flocking: parent def — child absent, noted) |
 | 0007 | [Editing, hotbar, physics](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) | Voxel dig/place, catalog hotbar, minimal rigid bodies | `501_Physics`, `A01_Render/Material` |
 | 0008 | [IPC transport](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) | Out-of-process sim over socket, byte-identical semantics | `804_Application`, `503_Simulation/Snapshot` |
 
-Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005–0008 remain Planned.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006–0008 remain Planned.
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0005–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0006–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 

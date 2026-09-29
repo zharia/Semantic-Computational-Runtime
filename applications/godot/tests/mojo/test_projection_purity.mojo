@@ -12,6 +12,7 @@ from std.testing import TestSuite
 
 from sim.world import world_init, step_world, world_fingerprint
 from sim.input import InputBatch
+from sim.parameters import GRID_N
 from snapshot.encode import encode_snapshot
 from snapshot.decode import (
     decode_envelope,
@@ -28,6 +29,8 @@ from snapshot.decode import (
     terrain_chunk_byte_span,
     read_volcano,
     read_plume,
+    read_shore_foam,
+    read_terrain_tuple,
 )
 from snapshot.types import (
     SEC_PLAYER,
@@ -38,6 +41,7 @@ from snapshot.types import (
     SEC_MATERIALS,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
 )
 
 
@@ -49,8 +53,9 @@ def _check(cond: Bool, msg: String) raises:
 
 def _drive_projection(data: List[UInt8]) raises -> Int:
     """Consume the snapshot exactly like an adapter would; returns a checksum
-    so the reads cannot be optimized away. Sections 7/8 are read too — the
-    volcano projection path is read-only (0003 §6 invariant 3)."""
+    so the reads cannot be optimized away. Sections 7/8 and 9 are read too —
+    the volcano and shore-foam projection paths are read-only (0003 §6
+    invariant 3; 0005 §3.3: the projection reads the foam field)."""
     var env = decode_envelope(data)
     var secs = decode_sections(data, env)
     var sum = 0
@@ -78,6 +83,11 @@ def _drive_projection(data: List[UInt8]) raises -> Int:
     var plmi = find_section(secs, SEC_PLUME)
     var pm = read_plume(data, secs[plmi])
     sum += Int(pm.rate) + Int(pm.lifetime) + Int(pm.origin_y)
+    # 9 SHORE_FOAM (schema 4): adapter-style read, no world access.
+    var fi = find_section(secs, SEC_SHORE_FOAM)
+    var foam = read_shore_foam(data, secs[fi])
+    sum += Int(foam[0]) + Int(foam[3] * 1000.0)
+    sum += Int(foam[3 + GRID_N * GRID_N - 1] * 1000.0)
     var ti = find_section(secs, SEC_TERRAIN)
     if ti < 0:
         return sum  # TERRAIN absent by contract (§4.3): adapter keeps meshes
@@ -87,6 +97,12 @@ def _drive_projection(data: List[UInt8]) raises -> Int:
         sum += Int(ch[3])
         var span = terrain_chunk_byte_span(data, secs[ti], c)
         sum += span[1] - span[0]
+        # Walk the schema-4 vertex blend tuples of every vertex (stride 4).
+        var vc = Int(ch[3])
+        var v_off = span[0] + 20 + 4 * (6 * vc)  # header + vertices + normals
+        for j in range(vc):
+            var t = read_terrain_tuple(data, v_off + 4 * j)
+            sum += Int(t.material) + Int(t.blend) + Int(t.weight)
     return sum
 
 
@@ -180,6 +196,25 @@ def test_world_fingerprint_includes_volcano_state() raises:
     _check(world_fingerprint(world) == base, "fingerprint fully restored")
 
 
+def test_world_fingerprint_includes_foam_state() raises:
+    """0005 §7/§3.3: the fingerprint folds the shore-foam field — a projection
+    that read it must not change it, and a mutated field is detected."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var base = world_fingerprint(world)
+    var snap = encode_snapshot(world, True)
+    _ = _drive_projection(snap)
+    _check(
+        world_fingerprint(world) == base,
+        "SHORE_FOAM projection mutated world (foam fingerprint drift)",
+    )
+    var saved = world.foam[10]
+    world.foam[10] = 0.75 if saved != 0.75 else 0.25
+    _check(world_fingerprint(world) != base, "fingerprint misses foam state")
+    world.foam[10] = saved
+    _check(world_fingerprint(world) == base, "fingerprint not restored")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -187,5 +222,6 @@ def main() raises:
             test_purity_after_steps_and_repeated_projection,
             test_projection_is_pure_and_repeatable,
             test_world_fingerprint_includes_volcano_state,
+            test_world_fingerprint_includes_foam_state,
         )
     ]().run()

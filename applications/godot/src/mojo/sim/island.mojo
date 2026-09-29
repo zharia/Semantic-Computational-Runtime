@@ -20,6 +20,8 @@ from synthesis.voxel import (
     BIOME_VOLCANIC_SLOPE,
     FEATURE_NONE,
 )
+from synthesis.blend import BlendTuple, compute_blends
+from synthesis.quench import run_quench_pass
 from materials.catalog import MAT_BEDROCK, MAT_WATER, MAT_VOCAB_COUNT, MAT_BASALT
 from sim.parameters import (
     GRID_N,
@@ -40,7 +42,8 @@ struct TerrainChunk(Copyable, Movable, Deinitable):
     var origin_z: Float64
     var vertices: List[Float32]  # 3·V, world units
     var normals: List[Float32]  # 3·V, unit length
-    var material_ids: List[UInt32]  # V catalog ids (per vertex)
+    var material_ids: List[UInt32]  # V voxel codes (per vertex)
+    var blends: List[BlendTuple]  # V boundary blend tuples (milestone_0005)
     var indices: List[UInt32]  # I, multiples of 3, CCW front faces
 
     def __init__(out self, origin_x: Float64, origin_y: Float64, origin_z: Float64):
@@ -50,6 +53,7 @@ struct TerrainChunk(Copyable, Movable, Deinitable):
         self.vertices = List[Float32]()
         self.normals = List[Float32]()
         self.material_ids = List[UInt32]()
+        self.blends = List[BlendTuple]()
         self.indices = List[UInt32]()
 
     def __deinit__(deinit self):
@@ -67,6 +71,7 @@ struct IslandSubject(Movable, Deinitable):
     var heights: List[Float64]  # GRID_N² cell-center heights (world y)
     var biomes: List[Int]  # GRID_N² biome codes (voxel.mojo)
     var surface_materials: List[UInt32]  # GRID_N² voxel codes
+    var blends: List[BlendTuple]  # GRID_N² boundary blend tuples (§3.4)
     var chunks: List[TerrainChunk]
     var spawn_x: Float64
     var spawn_y: Float64
@@ -74,12 +79,17 @@ struct IslandSubject(Movable, Deinitable):
     var peak_height: Float64
     var used_materials: List[UInt32]  # distinct codes present, sorted asc
     var chunk_count: Int
+    # World-gen quench accounting (synthesis/quench.mojo; not a wire section).
+    var quench_count: Int
+    var quench_steam_units: Int
+    var quench_energy_j: Float64
 
     def __init__(out self, seed: UInt32):
         self.seed = seed
         self.heights = List[Float64]()
         self.biomes = List[Int]()
         self.surface_materials = List[UInt32]()
+        self.blends = List[BlendTuple]()
         self.chunks = List[TerrainChunk]()
         self.spawn_x = 0.0
         self.spawn_y = 0.0
@@ -87,6 +97,9 @@ struct IslandSubject(Movable, Deinitable):
         self.peak_height = 0.0
         self.used_materials = List[UInt32]()
         self.chunk_count = 0
+        self.quench_count = 0
+        self.quench_steam_units = 0
+        self.quench_energy_j = 0.0
 
     def __deinit__(deinit self):
         pass
@@ -125,6 +138,17 @@ def build_island(seed: UInt32) raises -> IslandSubject:
             if h > peak:
                 peak = h
     island.peak_height = peak
+
+    # --- boundary blend tuples (milestone_0005 §3.4, seeded, pure) --------
+    island.blends = compute_blends(
+        island.surface_materials, island.biomes, ctx
+    )
+
+    # --- world-gen quench evaluation (material_reactions.json verbatim) ---
+    var quench = run_quench_pass(island.biomes, island.heights, GRID_N, ctx)
+    island.quench_count = quench.count()
+    island.quench_steam_units = quench.steam_units
+    island.quench_energy_j = quench.energy_j
 
     # --- spawn: first beach-band cell in scan order (deterministic) -------
     var found = False
@@ -251,6 +275,9 @@ def build_island(seed: UInt32) raises -> IslandSubject:
                         cell_iz = GRID_N - 1
                     chunk.material_ids.append(
                         island.surface_materials[cell_iz * GRID_N + cell_ix]
+                    )
+                    chunk.blends.append(
+                        island.blends[cell_iz * GRID_N + cell_ix]
                     )
             # Indices: two CCW triangles per cell quad (+y front faces):
             # (a, c, b) and (b, c, d) with a=(i,j), b=(i+1,j), c=(i,j+1).

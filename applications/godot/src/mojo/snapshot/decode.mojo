@@ -8,6 +8,8 @@ from sim.parameters import SCHEMA_VERSION
 from snapshot.types import (
     ENVELOPE_BYTES,
     SECTION_HEADER_BYTES,
+    SHORE_FOAM_HEADER_BYTES,
+    SHORE_FOAM_MAX_GRID,
     SEC_PLAYER,
     SEC_TERRAIN_META,
     SEC_TERRAIN,
@@ -16,6 +18,7 @@ from snapshot.types import (
     SEC_MATERIALS,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SKY_BYTES,
@@ -113,6 +116,7 @@ def _known_id(id: UInt32) -> Bool:
         or id == SEC_MATERIALS
         or id == SEC_VOLCANO
         or id == SEC_PLUME
+        or id == SEC_SHORE_FOAM
     )
 
 
@@ -322,3 +326,71 @@ def terrain_chunk_byte_span(
             return (o, o + rec)
         o += rec
     raise Error("chunk not found")
+
+
+# --- Schema 4 (milestone_0005) readers ---------------------------------------
+
+struct TerrainTuple(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """One TERRAIN vertex blend tuple (schema 4): (u8 dominant catalog id,
+    u8 blend partner catalog id, u8 weight 0..255, u8 pad = 0)."""
+
+    var material: UInt8
+    var blend: UInt8
+    var weight: UInt8
+    var pad: UInt8
+
+    def __init__(out self, material: UInt8, blend: UInt8, weight: UInt8, pad: UInt8):
+        self.material = material
+        self.blend = blend
+        self.weight = weight
+        self.pad = pad
+
+    def __deinit__(deinit self):
+        pass
+
+
+def read_terrain_tuple(data: List[UInt8], off: Int) raises -> TerrainTuple:
+    """Read one 4-byte vertex tuple at absolute offset `off`; pad MUST be 0
+    (loud decode — §8, never silently coerced)."""
+    var t = TerrainTuple(
+        get_u8(data, off),
+        get_u8(data, off + 1),
+        get_u8(data, off + 2),
+        get_u8(data, off + 3),
+    )
+    if t.pad != 0:
+        raise Error("TERRAIN tuple pad nonzero at offset " + String(off))
+    return t
+
+
+def read_shore_foam(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
+    """9 SHORE_FOAM → [grid_n, cell_size, sea_level, foam_0 .. foam_{n²-1}].
+
+    Validates framing: length == 12 + 4·grid_n², 0 < grid_n ≤ 1024, and
+    every foam value ∈ [0, 1] (loud on violation, §8)."""
+    if sec.length < SHORE_FOAM_HEADER_BYTES:
+        raise Error("SHORE_FOAM section shorter than its header")
+    var o = sec.offset
+    var grid_n = get_u32(data, o)
+    if grid_n == 0 or Int(grid_n) > SHORE_FOAM_MAX_GRID:
+        raise Error("SHORE_FOAM grid_n out of range: " + String(grid_n))
+    var expect = SHORE_FOAM_HEADER_BYTES + 4 * Int(grid_n) * Int(grid_n)
+    if sec.length != expect:
+        raise Error(
+            "SHORE_FOAM section must be " + String(expect)
+            + " bytes, got " + String(sec.length)
+        )
+    var cell_size = get_f32(data, o + 4)
+    var sea_level = get_f32(data, o + 8)
+    var out = List[Float32]()
+    out.append(Float32(grid_n))
+    out.append(cell_size)
+    out.append(sea_level)
+    for i in range(Int(grid_n) * Int(grid_n)):
+        var v = get_f32(data, o + SHORE_FOAM_HEADER_BYTES + 4 * i)
+        if v < 0.0 or v > 1.0:
+            raise Error(
+                "SHORE_FOAM value out of [0,1] at index " + String(i)
+            )
+        out.append(v)
+    return out^

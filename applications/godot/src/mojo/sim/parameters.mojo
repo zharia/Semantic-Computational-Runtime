@@ -238,9 +238,30 @@ comptime GLOW_NIGHT_MAX_FACTOR: Float64 = 1.0  # night_factor cap
 comptime GLOW_NIGHT_ELEVATION_REF: Float64 = SUN_ELEVATION_MAX  # saturates here
 comptime VOLCANO_LAKE_RADIUS_FALLBACK: Float64 = CALDERA_LAKE_RADIUS  # no lake cells
 
+# --- Shoreline foam + boundary blending (milestone_0005; AP-7) --------------
+# FOAM_DEPTH_M: d_foam of SCR-LIB-RENDER-WATER §3 (normative library value,
+#   shore formula: clamp(1 − Δy/d_foam, 0, 1)² · (0.6 + 0.4·sin(6Δy − 4t))).
+# FEATHER_WIDTH_CELLS: feather band half-width around a synthesis material
+#   boundary (milestone_0005 §3.4): cells at BFS distance < this from the
+#   boundary carry a (dominant, blend, weight) tuple; base ramp
+#   (FEATHER − d)/FEATHER ∈ (0, 1].
+# BLEND_DITHER_AMP: deterministic noise dither amplitude added to the base
+#   ramp BEFORE clamping to [0,1]. Kept < ramp step / 2 (0.25/2 with
+#   FEATHER_WIDTH_CELLS = 4) so the weight ramp stays strictly monotonic
+#   toward the boundary after quantisation (test_material_blending).
+# BLEND_DITHER_FREQUENCY: cycles/world-unit of the dither gradient noise
+#   (wavelength ≈ 5.5 u ≈ 1.4 cells — per-cell granularity, seeded family).
+comptime FOAM_DEPTH_M: Float64 = 1.8  # u (m), SCR-LIB-RENDER-WATER §3
+comptime FEATHER_WIDTH_CELLS: Int = 4
+comptime BLEND_DITHER_AMP: Float64 = 0.10
+comptime BLEND_DITHER_FREQUENCY: Float64 = 0.18
+
 # --- Snapshot contract constants (104_contract §4) -------------------------
 comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
-comptime SCHEMA_VERSION: UInt32 = 3  # 2 → 3: SKY 32 → 64 B, 16×f32 (0004 §3.5)
+# 3 → 4 (milestone_0005 §3.6): NEW section 9 SHORE_FOAM (every snapshot) and
+# TERRAIN vertex payload re-framed u32 material id → (u8, u8, u8, u8) blend
+# tuple (identical byte count, new meaning — AP-21).
+comptime SCHEMA_VERSION: UInt32 = 4
 comptime ABI_VERSION: UInt32 = 1
 
 # --- Error codes (scr_godot_abi.h) ----------------------------------------

@@ -11,8 +11,12 @@
 #      Env: TICK_MIN (default 1900), FRAMES (settle frames, default 60),
 #      SCR_EXPECT_GLOW=1 adds the night-glow assertion (docs/04 §8).
 #   3. Re-checks the PNG with check_luminance.py (independent decoder).
+#   4. (milestone_0005 §7) Aerial capture with fog OFF via
+#      godot_aerial_diagnostic.gd, then check_shoreline_foam.py asserts the
+#      bright water pixels sit within ±FOAM_BAND_M of the y_terrain = sea_level
+#      contour ("foam only at the shoreline").
 #
-# Exit: 0 PASS · 1 content/scene assertion failed · 2 capture/display failure
+# Exit: 0 PASS · 1 content/scene or foam-gate assertion failed · 2 capture/display failure
 #       (manual fallback printed) · 3 blank image.
 set -uo pipefail
 
@@ -61,7 +65,7 @@ fi
 mkdir -p "$(dirname "${PNG}")"
 cd "${REPO_ROOT}"
 LOG="$(mktemp)"
-trap 'rm -f "${LOG}"' EXIT
+trap 'rm -f "${LOG}" "${LOG}.aerial"' EXIT
 
 timeout 300 "${WRAP[@]}" "${GODOT_BIN}" --path "${PROJ}" \
     -s "${REPO_ROOT}/applications/godot/tests/godot/godot_screenshot.gd" \
@@ -93,6 +97,25 @@ case ${rc} in
     3) echo "screenshot: blank frame (in-script luminance check failed)" >&2; exit 3 ;;
     *) echo "screenshot: godot exited ${rc}" >&2; tail -20 "${LOG}" >&2; exit 2 ;;
 esac
+
+# 0005 §7 "foam only at the shoreline": overhead capture (fog OFF — the gate
+# measures bright pixels, and fog would wash the whole frame bright; this is
+# a deliberate display-verification condition, not a gameplay value), then
+# the independent contour-distance check against the committed seed-1 height
+# field. Fallback: manual capture procedure in check_shoreline_foam.py /
+# godot_aerial_diagnostic.gd headers (0002 pattern).
+AERIAL="${REPO_ROOT}/applications/godot/build/aerial.png"
+timeout 300 "${WRAP[@]}" "${GODOT_BIN}" --path "${PROJ}" \
+    -s "${REPO_ROOT}/applications/godot/tests/godot/godot_aerial_diagnostic.gd" \
+    -- "--png=${AERIAL}" "--frames=60" "--fog=0" >"${LOG}.aerial" 2>&1
+arc=$?
+grep -E "AERIAL:|SCRIPT ERROR|ERROR: SCR" "${LOG}.aerial" | sort -u | head -30
+if [[ ${arc} -ne 0 ]]; then
+    echo "screenshot: aerial capture failed (rc ${arc})" >&2
+    tail -20 "${LOG}.aerial" >&2
+    exit 2
+fi
+python3 "${SCRIPT_DIR}/check_shoreline_foam.py" "${AERIAL}" || exit $?
 
 echo "godot_screenshot: PASS (${PNG})"
 exit 0

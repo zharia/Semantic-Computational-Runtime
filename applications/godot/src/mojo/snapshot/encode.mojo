@@ -17,6 +17,7 @@ from materials.catalog import MAT_WATER, MAT_VOCAB_COUNT
 from snapshot.types import (
     ENVELOPE_BYTES,
     SECTION_HEADER_BYTES,
+    SHORE_FOAM_HEADER_BYTES,
     SEC_PLAYER,
     SEC_TERRAIN_META,
     SEC_TERRAIN,
@@ -25,9 +26,11 @@ from snapshot.types import (
     SEC_MATERIALS,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
     VOLCANO,
     PLUME,
     put_u32,
+    put_u8,
     put_f32,
     put_f64,
     put_volcano,
@@ -85,9 +88,19 @@ def _encode_terrain(world: World) raises -> List[UInt8]:
             put_f32(b, c.vertices[j])
         for j in range(len(c.normals)):
             put_f32(b, c.normals[j])
-        # Vertex material ids: voxel code → stable catalog id (§4.3).
+        # Vertex payload: 4-byte blend tuple (schema 4, 0005 §3.6) —
+        # (u8 dominant catalog id, u8 blend partner catalog id, u8 weight,
+        #  u8 pad 0). Stride-neutral vs schema 3's per-vertex u32 material id.
+        # No-blend vertices carry blend == dominant, weight == 0.
         for j in range(len(c.material_ids)):
-            put_u32(b, world.catalog.defs[Int(c.material_ids[j])].catalog_index)
+            var mat_cat = world.catalog.defs[Int(c.material_ids[j])].catalog_index
+            var partner_cat = world.catalog.defs[Int(c.blends[j].blend)].catalog_index
+            if mat_cat > 255 or partner_cat > 255:
+                raise Error("catalog index does not fit u8 blend tuple")
+            put_u8(b, UInt8(mat_cat))
+            put_u8(b, UInt8(partner_cat))
+            put_u8(b, c.blends[j].weight)
+            put_u8(b, 0)
         for j in range(len(c.indices)):
             put_u32(b, c.indices[j])
     return b^
@@ -223,6 +236,26 @@ def _encode_plume(world: World) -> List[UInt8]:
     return b^
 
 
+def _encode_shore_foam(world: World) raises -> List[UInt8]:
+    """9 SHORE_FOAM (schema 4, 104_contract §4.3): 12-byte header
+    (u32 grid_n, f32 cell_size, f32 sea_level) + grid_n² f32 foam values,
+    row-major (iz · grid_n + ix), element ∈ [0,1] (milestone_0005 §3.3)."""
+    if len(world.foam) != GRID_N * GRID_N:
+        raise Error(
+            "foam field must be " + String(GRID_N * GRID_N) + " values, got "
+            + String(len(world.foam))
+        )
+    var b = List[UInt8]()
+    put_u32(b, UInt32(GRID_N))
+    put_f32(b, Float32(CELL_SIZE))
+    put_f32(b, Float32(world.hydro.ocean.sea_level))
+    if len(b) != SHORE_FOAM_HEADER_BYTES:
+        raise Error("SHORE_FOAM header size drift")
+    for i in range(len(world.foam)):
+        put_f32(b, world.foam[i])
+    return b^
+
+
 def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
     """Serialize the world projection (104_contract §4).
     include_terrain: TERRAIN emitted only when terrain (re)generation
@@ -262,6 +295,11 @@ def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
 
     var plume = _encode_plume(world)
     _append_section(payload, SEC_PLUME, plume^)
+    section_count += 1
+
+    # Section 9: shore foam field — EVERY snapshot (0005 §3.3, schema 4).
+    var foam = _encode_shore_foam(world)
+    _append_section(payload, SEC_SHORE_FOAM, foam^)
     section_count += 1
 
     # Envelope (48 bytes) + payload.

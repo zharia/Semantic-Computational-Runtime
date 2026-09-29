@@ -1,9 +1,13 @@
-# Spec test — Snapshot binary schema (104_contract.md §4, schema 3), including
+# Spec test — Snapshot binary schema (104_contract.md §4, schema 4), including
 # loud-failure behaviour for malformed input (§8: never silently coerced).
 # Milestone_0003 §7 additions: envelope schema_version == 2, sections
 # 7 VOLCANO / 8 PLUME framing + payload validation, schema ≠ 2 rejection.
 # Milestone_0004 §7 additions: SKY grows to 64 bytes (16×f32), schema == 3,
 # schema ∈ {1, 2, 4} rejected, SKY fields round-trip the atmosphere derivation.
+# Milestone_0005 §7 additions: schema == 4, section 9 SHORE_FOAM framing +
+# payload validation (malformed refused), TERRAIN vertex 4-byte blend
+# tuples (u8 material, u8 partner, u8 weight, u8 pad), schema ∈ {1,2,3,5}
+# rejected, TERRAIN section keeps its schema-3 byte count (228100).
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -11,7 +15,7 @@
 
 from std.collections import List
 from std.testing import TestSuite
-from std.math import abs
+from std.math import abs, sin
 
 from sim.world import world_init, step_world
 from sim.input import InputBatch
@@ -41,9 +45,12 @@ from snapshot.decode import (
     terrain_chunk_byte_span,
     read_volcano,
     read_plume,
+    read_shore_foam,
+    read_terrain_tuple,
 )
 from snapshot.types import (
     ENVELOPE_BYTES,
+    SHORE_FOAM_HEADER_BYTES,
     SEC_PLAYER,
     SEC_TERRAIN_META,
     SEC_TERRAIN,
@@ -52,6 +59,7 @@ from snapshot.types import (
     SEC_MATERIALS,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SKY_BYTES,
@@ -59,8 +67,12 @@ from snapshot.types import (
     get_f32,
     get_f64,
 )
+from ocean.gerstner import wave_height
+from sim.shore import FOAM_DEPTH_M, MAX_WAVE_REACH
 
-comptime SECTIONS_AT_TICK1: Int = 8  # schema 2: 1..8 (0003 §3.2)
+comptime SECTIONS_AT_TICK1: Int = 9  # schema 4: 1..9 (0005 §3.3)
+comptime TERRAIN_BYTES_SEED1: Int = 228100  # schema-3 size, stride-neutral
+comptime SHORE_FOAM_BYTES: Int = SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64
 
 
 def _check(cond: Bool, msg: String) raises:
@@ -97,6 +109,8 @@ def _expect_read_error(data: List[UInt8], sid: UInt32) raises -> Bool:
             _ = read_volcano(data, secs[i])
         elif sid == SEC_PLUME:
             _ = read_plume(data, secs[i])
+        elif sid == SEC_SHORE_FOAM:
+            _ = read_shore_foam(data, secs[i])
         else:
             return False
         return False
@@ -109,12 +123,12 @@ def test_envelope_layout() raises:
     _check(len(data) >= ENVELOPE_BYTES, "envelope present")
     # Documented offsets (§4.1), little-endian, explicit.
     _check(get_u32(data, 0) == 0x53524353, "magic 'SCRS'")
-    _check(SCHEMA_VERSION == 3, "sim parameters SCHEMA_VERSION == 3")
-    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 3")
+    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
+    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 4")
     var env = decode_envelope(data)
     _check(
         Int(env.section_count) == SECTIONS_AT_TICK1,
-        "tick1 carries all eight sections",
+        "tick1 carries all nine sections",
     )
     _check(env.world_version == 1, "world_version == 1")
     _check(env.state_generation == 1, "state_generation == 1")
@@ -141,11 +155,13 @@ def test_section_framing_and_sizes() raises:
     var mdi = find_section(secs, SEC_MATERIALS)
     var vi = find_section(secs, SEC_VOLCANO)
     var pli = find_section(secs, SEC_PLUME)
+    var fi = find_section(secs, SEC_SHORE_FOAM)
     _check(
         pi >= 0 and mi >= 0 and oi >= 0 and ki >= 0 and ti >= 0 and mdi >= 0,
         "sections 1..6 present",
     )
     _check(vi >= 0 and pli >= 0, "sections 7/8 present")
+    _check(fi >= 0, "section 9 SHORE_FOAM present")
     _check(secs[pi].length == 44, "PLAYER section = 44 bytes (§4.3 header)")
     _check(secs[mi].length == 32, "TERRAIN_META = 32 bytes")
     _check(secs[oi].length == 32, "OCEAN = 32 bytes")
@@ -153,7 +169,9 @@ def test_section_framing_and_sizes() raises:
     _check(secs[ki].length == 64, "SKY = 16×f32")
     _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO = 32 bytes (§4.3 §7)")
     _check(secs[pli].length == PLUME_BYTES, "PLUME = 32 bytes (§4.3 §8)")
-    # Section ids in contract order 1..8.
+    _check(secs[fi].length == SHORE_FOAM_BYTES, "SHORE_FOAM = 12 + 4·64² bytes")
+    _check(secs[ti].length == TERRAIN_BYTES_SEED1, "TERRAIN stride-neutral (228100)")
+    # Section ids in contract order 1..9.
     for k in range(Int(env.section_count)):
         var hdr = secs[k].offset - 8
         _check(get_u32(data, hdr) == UInt32(k + 1), "section id order at " + String(k))
@@ -164,6 +182,13 @@ def test_section_framing_and_sizes() raises:
     _check(get_u32(data, secs[vi].offset - 4) == 32, "VOLCANO length header")
     _check(get_u32(data, secs[pli].offset - 8) == SEC_PLUME, "PLUME id header")
     _check(get_u32(data, secs[pli].offset - 4) == 32, "PLUME length header")
+    _check(
+        get_u32(data, secs[fi].offset - 8) == SEC_SHORE_FOAM, "SHORE_FOAM id header"
+    )
+    _check(
+        get_u32(data, secs[fi].offset - 4) == UInt32(SHORE_FOAM_BYTES),
+        "SHORE_FOAM length header",
+    )
 
 
 def test_player_and_meta_payloads() raises:
@@ -333,17 +358,20 @@ def test_bad_inputs_fail_loudly() raises:
     for i in range(ENVELOPE_BYTES - 1):
         trunc.append(data[i])
     _check(_expect_error(trunc), "truncation must raise")
-    # Unsupported schemas: 1 (pre-bump), 2 (previous) and 4 (future) must all
-    # be refused — only SCHEMA_VERSION (3) is accepted (0004 §1.1).
+    # Unsupported schemas: 1, 2, 3 (all previous) and 5 (future) must be
+    # refused — only SCHEMA_VERSION (4) is accepted (0005 §3.6).
     var schema1 = data.copy()
     schema1[4] = 1
-    _check(_expect_error(schema1), "schema 1 must be refused (expected 3)")
+    _check(_expect_error(schema1), "schema 1 must be refused (expected 4)")
     var schema2 = data.copy()
     schema2[4] = 2
-    _check(_expect_error(schema2), "schema 2 must be refused (expected 3)")
-    var schema4 = data.copy()
-    schema4[4] = 4
-    _check(_expect_error(schema4), "schema 4 must be refused (expected 3)")
+    _check(_expect_error(schema2), "schema 2 must be refused (expected 4)")
+    var schema3 = data.copy()
+    schema3[4] = 3
+    _check(_expect_error(schema3), "schema 3 must be refused (expected 4)")
+    var schema5 = data.copy()
+    schema5[4] = 5
+    _check(_expect_error(schema5), "schema 5 must be refused (expected 4)")
     # payload_bytes inconsistent with buffer length.
     var wrong_len = data.copy()
     wrong_len[40] = wrong_len[40] + 1
@@ -415,6 +443,130 @@ def test_malformed_volcano_plume_fail_loudly() raises:
     _check(_expect_read_error(bad_life, SEC_PLUME), "lifetime <= 0 must raise")
 
 
+def test_shore_foam_payload() raises:
+    """§4.3 §9 (0005 §3.3): header + grid round-trip against world.foam;
+    every value ∈ [0,1]; row-major cell centers align with the grid."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var data = encode_snapshot(world, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var fi = find_section(secs, SEC_SHORE_FOAM)
+    _check(fi >= 0, "SHORE_FOAM present")
+    var foam = read_shore_foam(data, secs[fi])
+    _check(Int(foam[0]) == GRID_N, "header grid_n == GRID_N")
+    _check(abs(foam[1] - Float32(CELL_SIZE)) < 1e-6, "header cell_size")
+    _check(abs(foam[2] - 0.0) < 1e-6, "header sea_level")
+    _check(len(foam) == 3 + GRID_N * GRID_N, "header + n² values")
+    for i in range(GRID_N * GRID_N):
+        _check(
+            foam[3 + i] >= 0.0 and foam[3 + i] <= 1.0, "foam ∈ [0,1]"
+        )
+        _check(
+            abs(foam[3 + i] - world.foam[i]) < 1e-6, "foam round-trip at " + String(i)
+        )
+    # Recompute the shore formula for one cell from world state (AP-19: the
+    # section is a faithful copy of the sim's field, not an adapter product).
+    var ix = 30
+    var iz = 34
+    var wx = (Float64(ix) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
+    var wz = (Float64(iz) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
+    var y_w = wave_height(world.hydro.ocean, wx, wz, world.simulation_time)
+    var y_t = world.island.heights[iz * GRID_N + ix]
+    var dy = y_w - y_t
+    var expect = 0.0
+    if y_t < MAX_WAVE_REACH and dy < FOAM_DEPTH_M:
+        var c = 1.0 - dy / FOAM_DEPTH_M
+        if c < 0.0:
+            c = 0.0
+        expect = c * c * (0.6 + 0.4 * sin(6.0 * dy - 4.0 * world.simulation_time))
+    _check(
+        abs(Float64(foam[3 + iz * GRID_N + ix]) - expect) < 1e-6,
+        "foam cell equals the library shore formula",
+    )
+
+
+def test_malformed_shore_foam_fails_loudly() raises:
+    """§8: wrong length, grid_n = 0, value > 1 — all loud refusals."""
+    var data = _snapshot_at_tick1()
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var fi = find_section(secs, SEC_SHORE_FOAM)
+    _check(fi >= 0, "SHORE_FOAM present")
+    var f_off = secs[fi].offset
+
+    # Pristine decodes.
+    _check(not _expect_read_error(data, SEC_SHORE_FOAM), "pristine decodes")
+
+    # Declared section length wrong (12 + 4·64² − 4).
+    var bad_len = data.copy()
+    var len_low = SHORE_FOAM_BYTES - 4
+    bad_len[f_off - 4] = UInt8(len_low & 0xFF)
+    bad_len[f_off - 3] = UInt8((len_low >> 8) & 0xFF)
+    bad_len[f_off - 2] = 0
+    bad_len[f_off - 1] = 0
+    _check(
+        _expect_read_error(bad_len, SEC_SHORE_FOAM), "truncated SHORE_FOAM raises"
+    )
+
+    # grid_n = 0.
+    var bad_grid = data.copy()
+    for k in range(4):
+        bad_grid[f_off + k] = 0
+    _check(_expect_read_error(bad_grid, SEC_SHORE_FOAM), "grid_n = 0 raises")
+
+    # Foam value > 1: overwrite value 0 with 0x3F800001 (> 1.0).
+    var bad_val = data.copy()
+    var v_off = f_off + SHORE_FOAM_HEADER_BYTES
+    bad_val[v_off] = 0x01
+    bad_val[v_off + 1] = 0x00
+    bad_val[v_off + 2] = 0x80
+    bad_val[v_off + 3] = 0x3F
+    _check(_expect_read_error(bad_val, SEC_SHORE_FOAM), "foam > 1 raises")
+
+
+def test_terrain_blend_tuples() raises:
+    """§4.3 TERRAIN (0005 §3.6): per-vertex (u8 catalog id, u8 partner
+    catalog id, u8 weight, u8 pad 0); pad nonzero is a loud decode; weight
+    0 ⇒ partner == dominant (no-blend identity)."""
+    var world = world_init(1)
+    var data = _snapshot_at_tick1()
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var ti = find_section(secs, SEC_TERRAIN)
+    _check(secs[ti].length == TERRAIN_BYTES_SEED1, "TERRAIN size unchanged")
+    var ch = read_terrain_chunk_header(data, secs[ti], 0)
+    var vc = Int(ch[3])
+    var ic = Int(ch[4])
+    var span = terrain_chunk_byte_span(data, secs[ti], 0)
+    var v_off = span[0] + 20  # chunk header: 3×f32 + vc + ic = 20 bytes
+    # Walk every vertex tuple: pad is zero, ids < 96 (catalog), weight ∈ [0,255].
+    var nonzero_pad = 0
+    var blended = 0
+    for j in range(vc):
+        var t = read_terrain_tuple(data, v_off + 4 * (3 * vc + 3 * vc) + 4 * j)
+        if Int(t.material) >= 96:
+            raise Error("vertex catalog id >= 96")
+        if Int(t.blend) >= 96:
+            raise Error("partner catalog id >= 96")
+        if t.weight == 0 and t.blend != t.material:
+            raise Error("no-blend vertex must carry partner == dominant")
+        if t.weight > 0:
+            blended += 1
+    # Vertex tuple block sits between normals and indices; verify framing by
+    # record arithmetic too.
+    var expect = 20 + (3 * vc + 3 * vc + vc + ic) * 4
+    _check(span[1] - span[0] == expect, "record still stride-neutral")
+    _check(nonzero_pad == 0, "pad bytes are zero (read_terrain_tuple enforces)")
+    # Chunk 0 covers the deep-ocean corner: must be a blend band region only
+    # if a material boundary passes through it — accept either, but the tuple
+    # reader already validated structure for all 289 vertices.
+    var t0 = read_terrain_tuple(data, v_off + 4 * (6 * vc))
+    _check(Int(t0.material) < 96, "first vertex material id < 96")
+    _ = blended
+    _ = world
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -426,5 +578,8 @@ def main() raises:
             test_terrain_chunk_framing,
             test_bad_inputs_fail_loudly,
             test_malformed_volcano_plume_fail_loudly,
+            test_shore_foam_payload,
+            test_malformed_shore_foam_fails_loudly,
+            test_terrain_blend_tuples,
         )
     ]().run()

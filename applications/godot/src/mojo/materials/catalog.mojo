@@ -29,7 +29,10 @@ comptime MAT_LAVA: UInt32 = 6
 comptime MAT_WATER: UInt32 = 7
 comptime MAT_DIRT: UInt32 = 8
 comptime MAT_PUMICE: UInt32 = 9
-comptime MAT_VOCAB_COUNT: Int = 10
+# milestone_0005: non-source lava quench outcome (material_reactions.json
+# reaction.lava_water_quench → rock.cobblestone); unused by any biome row.
+comptime MAT_COBBLESTONE: UInt32 = 10
+comptime MAT_VOCAB_COUNT: Int = 11
 
 
 def vocab_catalog_id_string(code: UInt32) raises -> String:
@@ -47,6 +50,7 @@ def vocab_catalog_id_string(code: UInt32) raises -> String:
     table.append("fluid.water")  # 7 MAT_WATER
     table.append("soil.dirt")  # 8 MAT_DIRT
     table.append("rock.pumice")  # 9 MAT_PUMICE
+    table.append("rock.cobblestone")  # 10 MAT_COBBLESTONE (quench, 0005)
     return table[Int(code)].copy()
 
 

@@ -2,11 +2,11 @@ id: SCR-PROVIDER-RENDER-GODOT
 name: Godot Render Provider
 domain: render
 technology: godot
-version: 0.3.0
+version: 0.4.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
-schema_version: 3
+schema_version: 4
 abi_version: 1
 
 purpose: >
@@ -48,6 +48,12 @@ capabilities:
   - id: CAP-GODOT-PRECIPITATION
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0004
+  - id: CAP-GODOT-SHORE-FOAM
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0005
+  - id: CAP-GODOT-TERRAIN-MATERIAL-BLEND
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0005
 
 depends_on:
   - SCR-LIB-RENDER

@@ -1,7 +1,8 @@
 # Spec test — Determinism invariant (milestone_0002 §6.8, 104_contract §3):
 # same seed + same input sequence ⇒ byte-identical snapshot sequence.
 # Milestone_0003 §7 amendment: byte identity MUST cover sections 7 VOLCANO
-# and 8 PLUME (schema 2, section_count == 8).
+# and 8 PLUME. Milestone_0005: byte identity MUST also cover section 9
+# SHORE_FOAM (schema 4, section_count == 9 with TERRAIN).
 # Headless: runs without Godot.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
@@ -17,10 +18,13 @@ from sim.parameters import SCHEMA_VERSION
 from snapshot.encode import encode_snapshot
 from snapshot.decode import decode_envelope, decode_sections, find_section
 from snapshot.types import (
+    SEC_TERRAIN,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
     VOLCANO_BYTES,
     PLUME_BYTES,
+    SHORE_FOAM_HEADER_BYTES,
     get_u32,
 )
 
@@ -119,35 +123,54 @@ def test_sequence_is_progressive_not_stuck() raises:
 
 
 def test_volcano_plume_sections_in_byte_identity() raises:
-    """Milestone_0003 §7: byte identity covers sections 7/8 (schema 2)."""
+    """Byte identity covers sections 7/8 and 9 SHORE_FOAM (schema 4)."""
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(1, scripted_input())
     var snap = a[SEQ_TICKS - 1].copy()
-    # Envelope: schema 2, eight sections (1..8).
-    _check(SCHEMA_VERSION == 3, "sim parameters SCHEMA_VERSION == 3")
+    # Envelope: schema 4, nine sections (1..9 with TERRAIN).
+    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
     _check(
         Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
-        "envelope schema_version == 3",
+        "envelope schema_version == 4",
     )
     var env = decode_envelope(snap)
-    _check(Int(env.section_count) == 8, "section_count == 8 (schema 2)")
-    # VOLCANO / PLUME framing: present, exactly 32 bytes each.
+    _check(Int(env.section_count) == 9, "section_count == 9 (schema 4)")
+    # VOLCANO / PLUME / SHORE_FOAM framing.
     var secs = decode_sections(snap, env)
     var vi = find_section(secs, SEC_VOLCANO)
     var pi = find_section(secs, SEC_PLUME)
+    var fi = find_section(secs, SEC_SHORE_FOAM)
     _check(vi >= 0, "section 7 VOLCANO present")
     _check(pi >= 0, "section 8 PLUME present")
+    _check(fi >= 0, "section 9 SHORE_FOAM present")
     _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO is 32 bytes")
     _check(secs[pi].length == PLUME_BYTES, "PLUME is 32 bytes")
+    _check(
+        secs[fi].length == SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64,
+        "SHORE_FOAM is 12 + 4·64² bytes",
+    )
     # Explicit payload-level byte identity across the two runs, including the
     # VOLCANO state that changes with the seeded effusion schedule.
     var va = section_payload(a[SEQ_TICKS - 1], SEC_VOLCANO)
     var vb = section_payload(b[SEQ_TICKS - 1], SEC_VOLCANO)
     var pa = section_payload(a[SEQ_TICKS - 1], SEC_PLUME)
     var pb = section_payload(b[SEQ_TICKS - 1], SEC_PLUME)
+    var fa = section_payload(a[SEQ_TICKS - 1], SEC_SHORE_FOAM)
+    var fb = section_payload(b[SEQ_TICKS - 1], SEC_SHORE_FOAM)
     _check(bytes_equal(va, vb), "VOLCANO payload differs between equal runs")
     _check(bytes_equal(pa, pb), "PLUME payload differs between equal runs")
+    _check(bytes_equal(fa, fb), "SHORE_FOAM payload differs between equal runs")
     _check(len(va) == 32 and len(pa) == 32, "payload sizes 32/32")
+    # TERRAIN (schema 4 vertex blend tuples): byte identity MUST cover the
+    # per-vertex (u8 material, u8 partner, u8 weight, u8 pad) records — the
+    # full payload compare below is strictly stronger than a tuple-only one.
+    var ta = section_payload(a[0], SEC_TERRAIN)
+    var tb = section_payload(b[0], SEC_TERRAIN)
+    _check(
+        bytes_equal(ta, tb),
+        "TERRAIN payload (vertex blend tuples) byte-identical between runs",
+    )
+    _check(len(ta) == len(tb), "TERRAIN stride-neutral across runs")
 
 
 def test_world_fingerprint_tracks_step() raises:

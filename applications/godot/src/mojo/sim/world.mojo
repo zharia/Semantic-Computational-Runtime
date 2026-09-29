@@ -23,6 +23,7 @@ from sim.subjects import (
     player_tick,
 )
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
+from sim.shore import compute_foam_field
 from weather.state import WeatherSubject, weather_tick
 from ocean.gerstner import make_ocean, OceanState
 from materials.catalog import MaterialCatalog, MaterialDef, load_catalog
@@ -44,6 +45,7 @@ struct World(Movable, Deinitable):
     var atmosphere: AtmosphereSubject
     var volcano: VolcanoSubject
     var catalog: MaterialCatalog
+    var foam: List[Float32]  # GRID_N² shore foam (§3.3; f32, row-major)
 
     def __init__(out self, seed: UInt32):
         self.seed = seed
@@ -60,6 +62,7 @@ struct World(Movable, Deinitable):
         self.atmosphere = AtmosphereSubject()
         self.volcano = VolcanoSubject()
         self.catalog = MaterialCatalog(List[MaterialDef](), "")
+        self.foam = List[Float32]()
 
     def __deinit__(deinit self):
         pass
@@ -94,6 +97,10 @@ def world_init(seed: UInt32) raises -> World:
     # tick-0 state draw (seeded effusion schedule) + glow at the initial sky.
     world.volcano = volcano_from_island(world.island)
     volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
+    # Shore foam field (§3.3): computed at init from (island, ocean, t=0).
+    world.foam = compute_foam_field(
+        world.island.heights, world.hydro.ocean, world.simulation_time
+    )
     world.world_version = 1  # first generation
     world.state_generation = 0
     world.simulation_tick = 0
@@ -102,7 +109,7 @@ def world_init(seed: UInt32) raises -> World:
     return world^
 
 
-def tick_world(mut world: World, input: InputBatch):
+def tick_world(mut world: World, input: InputBatch) raises:
     """Execute exactly one fixed tick (dt = 1/60)."""
     player_tick(world.player, input, world.island, world.hydro, world.simulation_time)
     world.simulation_tick += 1
@@ -117,9 +124,14 @@ def tick_world(mut world: World, input: InputBatch):
     )
     # Volcano state is a pure function of (seed, tick, atmosphere) — AP-12.
     volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
+    # Shore foam (§3.3): pure function of (island heights, ocean, sim time) —
+    # recomputed once per committed tick so the projection stays read-only.
+    world.foam = compute_foam_field(
+        world.island.heights, world.hydro.ocean, world.simulation_time
+    )
 
 
-def step_world(mut world: World, frame_dt: Float64, input: InputBatch) -> Int32:
+def step_world(mut world: World, frame_dt: Float64, input: InputBatch) raises -> Int32:
     """Accumulate frame_dt (clamped to 0.05 s), run 0..n fixed ticks.
     The input batch is applied to EVERY tick executed by this call.
     Returns the number of ticks run (>= 0)."""
@@ -224,6 +236,10 @@ def world_fingerprint(world: World) -> UInt64:
             h = _fold_f32(h, c.normals[j])
         for j in range(len(c.material_ids)):
             h = _fold_u64(h, UInt64(c.material_ids[j]))
+        for j in range(len(c.blends)):
+            h = _fold_u64(h, UInt64(c.blends[j].material))
+            h = _fold_u64(h, UInt64(c.blends[j].blend))
+            h = _fold_byte(h, c.blends[j].weight)
         for j in range(len(c.indices)):
             h = _fold_u64(h, UInt64(c.indices[j]))
     for i in range(len(world.island.used_materials)):
@@ -288,6 +304,12 @@ def world_fingerprint(world: World) -> UInt64:
     h = _fold_f64(h, world.volcano.plume_spread)
     h = _fold_f64(h, world.volcano.plume_turbulence)
     h = _fold_f64(h, world.volcano.plume_lifetime)
+
+    # Shore foam field (§3.3) — folded so a projection that touched it fails
+    # the projection-purity test.
+    h = _fold_u64(h, UInt64(len(world.foam)))
+    for i in range(len(world.foam)):
+        h = _fold_f32(h, world.foam[i])
 
     h = _fold_str(h, world.catalog.root)
     for i in range(world.catalog.count()):

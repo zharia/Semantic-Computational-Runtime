@@ -220,6 +220,88 @@ def test_spawn_is_on_the_island_beach() raises:
     _check(world.island.spawn_y == h,  "spawn y anchored to field")
 
 
+def test_blend_tuples_inside_pipeline_invariants() raises:
+    """milestone_0005 §3.4: blend tuples live INSIDE the pipeline invariants —
+    shape, write-once dominant (AP-20), identity when unblended, no lava in
+    any tuple, and a stable surface/height grid across pure rebuilds."""
+    var island = build_island(1)
+    _check(
+        len(island.blends) == PARAM_GRID_N * PARAM_GRID_N,
+        "tuple grid is GRID_N²",
+    )
+    var blended = 0
+    for i in range(PARAM_GRID_N * PARAM_GRID_N):
+        var t = island.blends[i]
+        _check(
+            t.material == island.surface_materials[i],
+            "tuple dominant must equal the assigned surface (write-once)",
+        )
+        if t.weight == 0:
+            _check(t.blend == t.material, "unblended tuple is identity")
+        else:
+            blended += 1
+            _check(t.blend != t.material, "blended tuple partner differs")
+            if t.material == MAT_LAVA or t.blend == MAT_LAVA:
+                raise Error("lava must never appear in a blend tuple")
+    _check(blended > 0, "seed-1 has feathered boundary cells")
+    # The blend pass reads the surface grid — rebuilding from the same seed
+    # must reproduce heights and surfaces exactly (purity + determinism).
+    var again = build_island(1)
+    for i in range(PARAM_GRID_N * PARAM_GRID_N):
+        _check(
+            again.heights[i] == island.heights[i],
+            "height grid unstable across rebuilds",
+        )
+        _check(
+            again.surface_materials[i] == island.surface_materials[i],
+            "surface grid unstable across rebuilds",
+        )
+        _check(
+            again.blends[i].material == island.blends[i].material
+            and again.blends[i].blend == island.blends[i].blend
+            and again.blends[i].weight == island.blends[i].weight,
+            "blend tuples unstable across rebuilds at " + String(i),
+        )
+
+
+def test_crater_rim_seams_are_feathered() raises:
+    """milestone_0005 §3.4 crater-rim fix: every seed-1 material seam whose
+    differing neighbour is not lava carries a nonzero feather weight (the
+    documented 0002 crater 'teeth' location); lava seams stay unblended."""
+    var island = build_island(1)
+    var n = PARAM_GRID_N
+    var seams = 0
+    for iz in range(n):
+        for ix in range(n):
+            var i = iz * n + ix
+            var m = island.surface_materials[i]
+            var seam_non_lava = False
+            if ix + 1 < n:
+                var mn = island.surface_materials[i + 1]
+                if mn != m and m != MAT_LAVA and mn != MAT_LAVA:
+                    seam_non_lava = True
+            if iz + 1 < n:
+                var ms = island.surface_materials[i + n]
+                if ms != m and m != MAT_LAVA and ms != MAT_LAVA:
+                    seam_non_lava = True
+            if not seam_non_lava:
+                continue
+            seams += 1
+            _check(
+                island.blends[i].weight > 0,
+                "non-lava seam at (" + String(ix) + "," + String(iz)
+                + ") is unfeathered",
+            )
+    _check(seams > 0, "seed-1 has non-lava material seams")
+    # Lava columns are excluded from blending (§3.6).
+    for i in range(n * n):
+        if island.surface_materials[i] == MAT_LAVA:
+            _check(
+                island.blends[i].weight == 0,
+                "lava column feathered at " + String(i),
+            )
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -231,5 +313,7 @@ def main() raises:
             test_biome_surface_table_is_closed_over_vocabulary,
             test_surface_material_matches_row,
             test_spawn_is_on_the_island_beach,
+            test_blend_tuples_inside_pipeline_invariants,
+            test_crater_rim_seams_are_feathered,
         )
     ]().run()

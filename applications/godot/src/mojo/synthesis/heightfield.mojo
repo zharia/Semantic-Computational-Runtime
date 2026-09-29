@@ -104,9 +104,19 @@ def terrain_height(ctx: NoiseContext, x: Float64, z: Float64) raises -> Float64:
 
 def height_at_cell(ctx: NoiseContext, ix: Int, iz: Int) raises -> Float64:
     """Height at grid cell (ix, iz) center, world coordinates."""
-    var x = (Float64(ix) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
-    var z = (Float64(iz) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
+    var x = cell_center_x(ix)
+    var z = cell_center_z(iz)
     return terrain_height(ctx, x, z)
+
+
+def cell_center_x(ix: Int) -> Float64:
+    """World x of grid column ix's cell center (row-major grid, §3.2)."""
+    return (Float64(ix) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
+
+
+def cell_center_z(iz: Int) -> Float64:
+    """World z of grid row iz's cell center (row-major grid, §3.2)."""
+    return (Float64(iz) + 0.5 - Float64(GRID_N) / 2.0) * CELL_SIZE
 
 
 def bilinear_sample(

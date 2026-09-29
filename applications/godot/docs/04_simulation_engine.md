@@ -21,7 +21,7 @@
 | Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0004)
+## 2. Current Implementation (v0.0.1 / milestone 0005)
 
 - `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
 - `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**.
@@ -95,9 +95,9 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | Group (scene) | Node type | Snapshot section | Applied as |
 |---|---|---|---|
 | `scr_sim` | `ScrSim` (GDExtension, `world_seed = 1`) | — (producer) | `_physics_process`: batch input → `scr_sim_step` → decode snapshot → apply |
-| `scr_terrain` | `Node3D` | `3 TERRAIN` | creates/updates children `Chunk_i` (`MeshInstance3D`, `ArrayMesh`, **world-space vertices**, per-material-id surfaces from MATERIALS; chunk `origin` stored as node meta). **Winding:** sim/contract §4.3 emits CCW front faces; Godot defaults to CW front (`CULL_BACK`), so the adapter swaps index order (`out3[0],out3[2],out3[1]`) when building surfaces — conversion at the provider boundary, contract unchanged |
+| `scr_terrain` | `Node3D` | `3 TERRAIN` | creates/updates children `Chunk_i` (`MeshInstance3D`, `ArrayMesh`, **world-space vertices**, surfaces grouped by the **dominant** id of the schema-4 blend tuple; chunk `origin` stored as node meta). Each emitted vertex carries `ARRAY_COLOR = mix(catalog[dom].albedo, catalog[blend].albedo, weight/255)` and the surface material sets `FLAG_ALBEDO_FROM_VERTEX_COLOR` + `FLAG_SRGB_VERTEX_COLOR` so `final albedo = blended_albedo × (1 − 0.35·wetness)` (sRGB flag required: catalog is `base_color_srgb`, probe-measured — §8.5). Surfaces are still keyed by dominant id, materials still derived only from the dominant MATERIALS record (AP-20). **Winding:** sim/contract §4.3 emits CCW front faces; Godot defaults to CW front (`CULL_BACK`), so the adapter swaps index order (`out3[0],out3[2],out3[1]`) when building surfaces — conversion at the provider boundary, contract unchanged |
 | `scr_meta` | `Node` | `2 TERRAIN_META` | meta keys `sea_level` (float), `peak_height` (float), `spawn_position` (Vector3) |
-| `scr_ocean` | `MeshInstance3D` + `ShaderMaterial` | `4 OCEAN` | shader params **exactly**: `sea_level, amplitude, frequency, steepness, dir_x, dir_z, speed, phase` (every physics frame) |
+| `scr_ocean` | `MeshInstance3D` + `ShaderMaterial` | `4 OCEAN` + `9 SHORE_FOAM` | shader params **exactly**: `sea_level, amplitude, frequency, steepness, dir_x, dir_z, speed, phase` (every physics frame); plus (0005) `foam_shore` (`ImageTexture`, FORMAT_RF `grid_n×grid_n`, **re-uploaded every snapshot** — the field evolves with wave phase), `foam_grid_n`, `foam_cell_size` from the SHORE_FOAM header. `sea_level` keeps arriving from OCEAN (same sim datum); the shader maps world xz → uv alone (AP-19) |
 | `scr_sun` | `DirectionalLight3D` | `5 SKY` | `set_rotation(-sun_elevation, sun_azimuth, 0)` rad (node **+Z points at the sun** — §8.4 sun sub-capture relies on this); `light_energy = sun_intensity`; `light_color = (sun_color_r,g,b)` (0004) |
 | `scr_env` | `WorldEnvironment` + `Sky(ProceduralSkyMaterial)` | `5 SKY` | **fog:** `fog_enabled = true`, `fog_density`, `fog_light_color` straight from SKY (AP-17 — no scene literal); **dome gradient derived** (contract §4.3 note): `horizon = lerp(fog_color, sun_color, 0.25)`, `zenith = horizon × (0.40, 0.55, 0.90)`, `ground_horizon = horizon`, `ground_bottom = zenith × 0.35`, `sky_energy_multiplier = energy_multiplier = 0.5 + 0.5·clamp(sun_intensity,0,1)` (constants §6.6) |
 | `scr_camera` | `Camera3D` (or rig `Node3D`) | `1 PLAYER` | global position = `player.position + (0, eye_height, 0)`; `rotation = (pitch, yaw, 0)` — **no sign flips** (sim forward = `(−sin yaw, −cos yaw)` = Godot −Z under +yaw) |
@@ -107,7 +107,7 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | `scr_crater_glow` | `OmniLight3D` (0003) | `7 VOLCANO` | `light_energy = glow_intensity` (sim-computed; adapter must NOT re-derive “night”, AP-11); position `(center_x, lake_level + GLOW_DISPLAY_LIFT_U, center_z)` — **display lift 60 u**, geometry rationale + measurement chain in §8.3 |
 | `scr_plume` | `GPUParticles3D` + `ParticleProcessMaterial` (0003) | `8 PLUME` | position = plume origin, `lifetime`, `amount = round(rate·lifetime)` (clamped 1..4096), `emitting = rate > 0`, `initial_velocity_min = max = v0`, `spread`, `set_turbulence_enabled(turbulence > 0)` with **velocity influence locked to 0** (§8.3) |
 | `scr_clouds` | `MeshInstance3D` (PlaneMesh 8000×8000 at y = `CLOUD_PLANE_ALTITUDE`) + `ShaderMaterial` (0004) | `5 SKY` | single uniform `cloud_cover ∈ [0,1]` written on change; pattern, scale, drift and fades are display-only (`shaders/clouds.gdshader`, §6.6) |
-| `scr_rain` | `GPUParticles3D` + `ParticleProcessMaterial` (0004) | `5 SKY` | `emitting = (precipitation > 0)`; `amount_ratio = precipitation` (drives live count **and** emission rate — avoids `set_amount`, which restarts the GPU system); wetness: `albedo = catalog_albedo × (1 − 0.35·wetness)` re-applied inside `update_materials()` so the per-frame catalog rewrite cannot erase it |
+| `scr_rain` | `GPUParticles3D` + `ParticleProcessMaterial` (0004) | `5 SKY` | `emitting = (precipitation > 0)`; `amount_ratio = precipitation` (drives live count **and** emission rate — avoids `set_amount`, which restarts the GPU system); wetness: (0005) gain `(1 − 0.35·wetness)` now lives in the material `albedo_color` and multiplies the vertex-colour albedo (catalog moved to `ARRAY_COLOR`), re-applied inside `update_materials()` so the per-frame rewrite cannot erase it |
 
 **Input uplink (scene → sim):** `scripts/player_input.gd` calls
 `ScrSim.submit_input(move_x, move_y, look_dx, look_dy, jump, sprint, action_primary, action_secondary)`
@@ -248,13 +248,35 @@ Scene/adapter **display constants** (representation only, never semantics):
 
 **Scene display** (`island.tscn`, `shaders/clouds.gdshader`): cloud plane at `CLOUD_PLANE_ALTITUDE` (400 m — low-deck cumulus band mid-point), `noise_scale 0.0035`, `opacity 0.85`, drift `(wind_x, wind_z)·0.02` u/frame; shader constants `OCTAVES 5`, `WARP_AMOUNT 0.55`, `EDGE_WIDTH 0.10`, `COVER_GATE 0.004`, `FADE_NEAR 1100`, `FADE_FAR 3600`, `PLANE_EDGE 3600`. Rain: `QuadMesh 0.1×1.6`, box extents `(110, 30, 130)`, speed 26–34 u/s, gravity `(0, −6, 0)`, `amount 12000`, `lifetime 2.2`, albedo `(0.62, 0.68, 0.78)`, material `alpha 0.7` (contrast tuning — §8.4).
 
-## 7. Gerstner: sim vs display authority · water-foam deviation
+### 6.7 Shoreline fidelity (0005, `parameters.mojo` + scene mirrors)
+
+Source of truth: `src/mojo/sim/parameters.mojo` (§6 preamble). Normative defaults:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `FOAM_DEPTH_M` | `1.8` u | `d_foam` of `SCR-LIB-RENDER-WATER` §3 — `F = 0` for `Δy ≥ 1.8` |
+| `FEATHER_WIDTH_CELLS` | `4` | feather-band half-width (cells) around a synthesis material boundary |
+| `BLEND_DITHER_AMP` | `0.10` | deterministic noise dither added to the base feather ramp |
+| `BLEND_DITHER_FREQUENCY` | `0.18` | cycles/world-unit of the dither gradient noise |
+| `SEA_LEVEL` / `GRID_N` / `CELL_SIZE` | `0.0` / `64` / `4.0` | water datum + height-field geometry (also the SHORE_FOAM grid: 12 + 4·64² = **16 396 B**) |
+| `SCHEMA_VERSION` | `4` | + `9 SHORE_FOAM`, TERRAIN 4-byte blend tuples (AP-21) |
+
+Scene-side display mirrors (`island.tscn` §6.4 pattern): `foam_grid_n = 64.0`,
+`foam_cell_size = 4.0` — frame-0 defaults overwritten from the SHORE_FOAM
+header every snapshot (contract §4.3 is the authority; the mirrors exist so the
+shader never samples with stale geometry). Crest thresholds
+`foam_jacobian_threshold / foam_height_threshold` stay the 0002 display tunings
+(§6.4) — untouched by 0005 (AP-22).
+
+## 7. Gerstner: sim vs display authority · shore-foam deviation (RESOLVED 0005)
 
 - **Sim is authoritative.** `ocean/gerstner.mojo` computes `y(x,z,t) = sea + A·cos θ` (grounding: `player.in_water`, shoreline), Jacobian `J = 1 − Q·k·A·cos θ`, foam thresholds, all per `SCR-LIB-MATH-GERSTNER`.
 - **Shader is display.** `shaders/ocean.gdshader` re-derives §2.1 displacement from the OCEAN uniforms. **Time evolution comes only from the `phase` uniform** (the encoder folds `−ω·t + φ` into it, `snapshot/encode.mojo::_encode_ocean`); the shader deliberately does **not** use built-in `TIME` — doing both would double-count. Horizontal shoaling (`Q·A·d·sin θ`) is display-only (gerstner.mojo header note). The `speed` field is carried per contract but unused by the shader (temporal term arrives in `phase`).
 - **Display wave spectrum (defect fix, 2026-09-27).** The single contract harmonic rendered as perfectly parallel periodic stripes ("corduroy"). The vertex stage now sums **6 display-only harmonics** derived from the *same* contract uniforms (no new uniform names, no sim change): direction_i = contract dir rotated ≤ ±40° (`W_OFF`), k_i = `frequency·W_KS[i]` with `W_KS ∈ [0.75,1.60]`, amplitude shares `A_i = amplitude·W_RAW[i]/2.30` **normalised so ΣA_i == `amplitude`** (crest envelope unchanged — beaches never more submerged than the authoritative single wave), temporal term `sqrt(W_KS[i])·phase + W_PH[i]` (deep-water dispersion ω = √(g·k) ⇒ ω_i/ω = √(k_i/k)). Constants live in the shader header (display-only, not gameplay tunables). Sim `gerstner.mojo` single-harmonic physics (grounding, in-water, foam) unchanged and still authoritative.
-- **Foam:** snapshot carries no foam field; the shader recomputes the *same closed form* `J = 1 − Q·k·A·cos θ`. Sim thresholds (§6.3) stay authoritative for physics; the display thresholds + clamped `fwidth` AA half-widths (§6.4) are tuned for subtle crests and diverge deliberately.
-- **Deviation from `SCR-LIB-RENDER-WATER` (recorded, not silent):** the library intent is *shoreline* foam from `y_terrain(x,z)` vs `y_water(x,z,t)`. The display side has no terrain-height texture; the shader approximates foam as **crest foam only** (Jacobian + normalized-height surges). Terrain-vs-water shoreline foam = `TBD — future milestone`.
+- **Foam (crest path, display-only, unchanged by 0005):** the shader still recomputes the *same closed form* `J = 1 − Q·k·A·cos θ` for **crest** whitecaps. Sim thresholds (§6.3) stay authoritative for physics; the display thresholds + clamped `fwidth` AA half-widths (§6.4) are tuned for subtle crests and diverge deliberately.
+- **Shore foam (schema 4, 0005 — deviation RESOLVED):** the snapshot now carries `9 SHORE_FOAM` — the sim-computed field `F(Δy, t)` over the height grid (library formula, `test_shoreline_foam.mojo` asserts exact agreement). The adapter uploads it as a FORMAT_RF texture every snapshot (`foam_shore`); the fragment stage maps world xz → uv with `foam_grid_n`/`foam_cell_size` and shades `F` — **the shader never re-derives `y_terrain` (AP-19)**; it has no terrain-height texture and does not need one. Crest and shore paths are disjoint (sim field is exactly 0 in deep water; crest gates stay closed at the shore) and combine with `max()` (AP-22), never a double-counting sum.
+- **Still recorded (0005):** the library's *display* intent of a depth-tinted shoreline (color ramp from `y_water − y_terrain`) remains out of scope — the shader blends deep/shallow by crest + view angle only, and `SCR-LIB-RENDER-WATER`'s depth coloring stays `TBD` (spec §9; no contract field for display depth).
+- **Sun specular:** the shader applies Fresnel toward a sky tint; it has no access to the sun node's direction, so there is no sun-aligned specular lobe. Display simplification, recorded here.
 - **Sun specular:** the shader applies Fresnel toward a sky tint; it has no access to the sun node's direction, so there is no sun-aligned specular lobe. Display simplification, recorded here.
 - **Sky:** `ProceduralSkyMaterial` gradient in `island.tscn`; time-of-day lighting arrives via `scr_sun` rotation/energy/colour each frame. **The dome gradient is no longer a static palette (0004):** it is re-derived every frame from SKY (`horizon ← fog_color/sun_color`, zenith/ground scales, energy — §5, constants §6.6), so dawn/day/night re-tint follows the contract. The derivation is *display-side* and lives in the adapter; the sim SKY bytes stay authoritative (AP-16). Custom `shaders/sky.gdshader` = `TBD — future milestone`.
 
@@ -566,23 +588,76 @@ Parameter/fixture discipline: night run regenerates `tests/fixtures/snapshot_see
 
 **Anti-pattern review (spec §2.1):** AP-15 no wall-clock reads (grep gate green; weather driven by `simulation_time` + seeded PRNG) · AP-16 single solar authority (sun direction/color/intensity only from SKY; no second arc formula in `godot/`) · AP-17 fog/cloud/rain values computed by `parameters.mojo` formulas, scene carries no hand-tuned fog literal · AP-18 schema bumped 2 → 3 with fixture regen, envelope/abi/negative tests updated in the same sprint.
 
+### 8.5 Milestone 0005 (Shoreline Fidelity) — Sprint 03/04 verification record (2026-09-29)
+
+**Sprints 01–02 (sim + contract):** `sim/shore.mojo` (library-exact `F`, `Δy ≥ 1.8 ⇒ F = 0`),
+`synthesis/blend.mojo` (feather band `4 cells ± 1`, seeded dither),
+`synthesis/quench.mojo` (seed-1 island: **zero** quenches — asserted),
+schema **4** (`9 SHORE_FOAM` 16 396 B at `grid_n=64`; TERRAIN `(dominant, blend, weight, pad)` tuples;
+fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
+
+**Sprint 03 (adapter/scene) evidence:**
+
+| Gate / probe | Result |
+|---|---|
+| `scripts/build_godot_provider.sh` | PASS — provider rebuilt against godot-cpp 4.7 |
+| `tests/godot/godot_load_test.sh` | PASS — 0 `ERROR:` lines (schema-4 snapshot accepted, section 9 required) |
+| `tests/godot/godot_screenshot.sh` (extended) | PASS — day captures + luminance + **aerial + shoreline-foam gate** |
+| `check_shoreline_foam.py build/aerial.png` (final re-run 2026-09-29, independent verification) | PASS — `in-band=1269`, `out-of-band=0` (ratio 0.0000 ≤ 0.02; fog OFF capture, ±6 u band, luma ≥ 0.60 over water; earlier session recorded 1082 on an equivalent valid capture — count varies with capture build/session state, both pass with out=0) |
+| `tests/godot/godot_playability_test.sh` | PASS — jump 1.73 u gain, horizontal 24.0 u, fails=0 |
+| Vertex-colour composition probe (`unshaded` quad) | `ALBEDO = albedo_color × COLOR` (multiply) |
+| Vertex-colour **color-space** probe | albedo-path `0.4 → 0.4`; vertex-path `0.4 → 0.667` (washed out); with `FLAG_SRGB_VERTEX_COLOR`: `0.4 → 0.4` — **flag required**, catalog is `base_color_srgb` |
+| Texture row-order probe (`FORMAT_RF`, rows 0/1) | `v = 0` samples **image row 0** → no flip; shader `v = (z − z0)/(grid_n·cell_size)`, `z0 = −0.5·grid_n·cell_size` |
+| Feather gradient measured (`build/crater_rim_close.png`, y=360 radial scan) | yellow→basalt ramp ≈ 50 px continuous (baseline schema-3 capture: hard `227 → 53` jump within 5 px) — blending renders |
+| `build/crater_rim.png` (glancing rim view, fog OFF) | **PASS** — no alternating sulfur/basalt hard-sliver pattern; boundary follows the intentional sim dither silhouette with a continuous feather ramp. Residual zigzag = column dither (spec §1.1, `BLEND_DITHER_*`, verified identical across runs by `test_material_blending`) |
+
+**Sprint 04 (docs/verification) evidence — full §7 gate run (2026-09-29):**
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | 13/13 mojo spec-test files (`test_shoreline_foam`, `test_material_blending`, `test_quench`, `test_synthesis_conformance`, `test_envelope`, `test_golden_fixture`, `test_determinism`, `test_projection_purity`, `test_catalog`, `test_gerstner`, `test_atmosphere`, `test_weather`, `test_volcano`) | PASS |
+| 2 | Foam formula conformance + projection purity (`test_shoreline_foam`, `test_projection_purity::test_world_fingerprint_includes_foam_state`) | PASS |
+| 3 | Blending conformance (`test_material_blending::test_seed1_crater_rim_has_feather_band`, dither determinism) | PASS |
+| 4 | Quench conformance (`test_quench::test_seed1_island_has_zero_quenches`) | PASS |
+| 5 | `python3 tests/abi_smoke.py` — schema 4, SHORE_FOAM decode, TERRAIN stride | PASS |
+| 6 | `bash tests/test_schema_mismatch.sh` | PASS |
+| 7 | `bash scripts/check_layout.sh` (AP-1, AP-4) | PASS |
+| 8 | `bash tests/godot/godot_load_test.sh` | PASS (0 `ERROR:`) |
+| 9 | `bash tests/godot/godot_screenshot.sh` incl. aerial + `check_shoreline_foam.py` | PASS |
+| 10 | `bash tests/godot/godot_playability_test.sh` | PASS |
+| 11 | Ocean spectrum intact (`test_gerstner` PASS; §6.4 display params untouched) | PASS |
+| 12 | Crater rim visual (`build/crater_rim.png`, table above) | PASS |
+| 13 | Docs (`04`, `06`, `104_contract.md`, `101`, `102`, `103`, spec §3.2 16 400 → 16 396 B) | done |
+
+**Anti-pattern review (spec §7 final item): PASS** — evidence per row:
+
+| AP | Claim | Evidence |
+|---|---|---|
+| AP-19 | Shader never re-derives `y_water − y_terrain` | `ocean.gdshader` samples `foam_shore` by world-xz uv only (header + §7); `check_shoreline_foam.py` derives the contour on the *test* side from the committed fixture (verification, not display) |
+| AP-20 | Materials originate in synthesis; adapter converts representation only | surfaces still grouped by dominant id; albedo = `mix(catalog…)` from MATERIALS records (`apply_terrain`); no material invented — decode rejects unknown blend partners (`TERRAIN: blend_id not present in MATERIALS`) |
+| AP-21 | Payload meaning change + new section bump schema + fixture + adapter + negative test together | `SCR_SIM_SCHEMA_VER = 4`, fixture regenerated, `abi_smoke` schema check, `test_schema_mismatch.sh` PASS |
+| AP-22 | 0002 display wave spectrum + crest thresholds untouched | shader diff: crest block unchanged (only `foam` → `foam_crest` rename + `max()` combine); §6.4 params unchanged; `test_gerstner` PASS |
+
 ## 9. Honest Gaps (open)
 
 1. MATERIALS framing blocker (§8) — **RESOLVED** (contract header amended to `4 + 36·N` per field table/fixture, adapter aligned; decode verified end-to-end: load test materializes 16 chunks, abi smoke byte-identical).
 2. Godot-cpp from-scratch bootstrap recipe not re-run clean-room ([02 §1.1](02_development_environment.md)).
-3. Shoreline foam approximated (§7); sun specular simplified (§7). ~~Sky gradient static / night skybox bright~~ — **RESOLVED in 0004**: dome gradient now derived per frame from SKY (§5), so the night frame is dark (measured spawn mean luminance 7.10 vs 131.67 at noon — §8.4).
+3. ~~Shoreline foam approximated~~ — **RESOLVED in 0005**: snapshot carries the sim `SHORE_FOAM` field, shader shades it (§7, §8.5). Still open: sun specular simplified (§7); depth-tinted shoreline color remains `TBD` (no display-depth contract field). ~~Sky gradient static / night skybox bright~~ — **RESOLVED in 0004**: dome gradient now derived per frame from SKY (§5), so the night frame is dark (measured spawn mean luminance 7.10 vs 131.67 at noon — §8.4).
 4. Performance budgets — `TBD — future milestone`.
 5. Swim/`MAP_BOUND` comptime helpers live outside `parameters.mojo` (§6.1) — sim-side cleanup deferred.
 6. Interactive (non-headless) manual play session not recorded this sprint — scripted run is the evidence; manual fallback documented.
 7. AP-2 indirect-only semantic-library coverage (§8 review): no standalone conformance tests for `MATH-NOISE`, `RENDER-SKY`, `SPATIAL` frame algebra, `PHYSICS` constants — currently exercised indirectly. `TBD — future milestone`.
 8. **Turbulence velocity-influence display semantics (0003):** Godot's velocity-influence mode cancels buoyant columns (§8.3); the noise field is exposed with influence locked at 0. Display-side turbulence that preserves column physics (curl-noise advection in-shader / successor particle integrator) = `TBD — future milestone`.
-9. **`lava_water_quench` is a documented partial (0003 AP-14):** consumed only to the extent implemented (catalog vocabulary + reaction name); voxel reaction evaluator completes in milestone 0005 — never implied as working.
+9. **`lava_water_quench` (0003 AP-14):** the reaction **evaluator shipped in 0005** (`synthesis/quench.mojo`, `test_quench` PASS; seed-1 island has zero lava↔water adjacency so no quench fires in the default scene). Still open: live lava-to-sea quench activation + steam/energy manifestation = `TBD — future milestone` (spec §9) — never implied as working.
 10. **Sun disc absent from the default spawn frame (0004 §8.4):** the locked arc puts the disc 33.75° above the 70°-FOV frame top at noon; the gate therefore uses a sun-aimed sub-capture from the spawn position (decision "Option 1"). An in-frame spawn sun would require relaxing §1.1's `SUN_ELEVATION_MAX` or spawn pitch — both spec-owned, not silently changed.
+11a. **Blend roughness/emission stay dominant (0005 §1.1 recorded limitation):** only albedo blends per vertex; roughness/emission/opacity come from the grouped surface's dominant material record. Full per-vertex PBR = rejected §1.1 (needs weight vectors / triplanar shader).
+11b. **Foam texture resolution = sim grid (64², linear-filtered):** the shore band interpolates cell-to-cell; a higher-resolution field would need sim-side resampling — no contract for it (Rule 9).
 11. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
 
 ## References
 
 - [Documentation index](README.md)
+- [spec — milestone 0005 (Shoreline Fidelity)](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md)
 - [spec — milestone 0004 (Atmosphere & Weather)](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md)
 - [spec — milestone 0003 (Volcano)](../program_increments/v0.0.1/milestone_0003_volcano/spec.md)
 - [spec — milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md)

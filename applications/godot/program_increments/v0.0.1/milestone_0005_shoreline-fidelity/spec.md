@@ -4,7 +4,7 @@
 **Milestone:** 0005 — Shoreline fidelity & crater material blending
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete (2026-09-29 — all §7 exit criteria verified; evidence: `docs/04` §8.5)
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract + in-process GDExtension (godot-cpp)
@@ -142,7 +142,7 @@ Data-flow rules and fixed-timestep model carry forward unchanged (0002
 |---|---|---|
 | 1–2, 4–8 | unchanged | PLAYER, TERRAIN_META, OCEAN, SKY (+0004 fields if present), MATERIALS (+0003 sections if present) |
 | **3 TERRAIN** | **extended (representation change)** | per-chunk vertex payload: `material_ids u32×V` → records `(material_id u8, blend_id u8, blend_weight u8 (0..255 ⇒ 0..1), pad u8)×V`; all other chunk fields unchanged |
-| **9 SHORE_FOAM** (new) | new | `grid_n u32`, `cell_size f32`, `sea_level f32` (3× headers = 12 B) + `grid_n² × f32` foam values ∈ [0,1] (row-major, cell centers, world xz aligned with the terrain grid) — 16 400 B at `grid_n = 64`. Emitted **every snapshot** (foam evolves with wave phase) |
+| **9 SHORE_FOAM** (new) | new | `grid_n u32`, `cell_size f32`, `sea_level f32` (3× headers = 12 B) + `grid_n² × f32` foam values ∈ [0,1] (row-major, cell centers, world xz aligned with the terrain grid) — 16 396 B at `grid_n = 64`. Emitted **every snapshot** (foam evolves with wave phase) |
 
 ### 3.3 Foam computation (sim)
 
@@ -323,21 +323,21 @@ and normative.
 
 Commands run from repo root. (Milestone-specified visual criteria included.)
 
-- [ ] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_shoreline_foam.mojo`, `…/test_material_blending.mojo`, `…/test_quench.mojo` PASS; existing 7 spec-test files still PASS.
-- [ ] **Foam formula conformance:** `test_shoreline_foam.mojo` evaluates the library formula at committed `(Δy, t)` sample points and asserts exact agreement; `F ∈ [0,1]`; `F = 0` for `Δy ≥ 1.8 m`; field unchanged across projection (purity).
-- [ ] **Blending conformance:** `test_material_blending.mojo` asserts feather band width within `FEATHER_WIDTH_CELLS ± 1` at a synthetic BASALT↔SULFUR boundary, no cross-biome material appears in any column (Synthesis §2), dither identical across two runs with same seed.
-- [ ] **Quench conformance:** `test_quench.mojo` asserts source-lava + adjacent-water → `rock.obsidian`, non-source → `rock.cobblestone`, no-adjacency → unchanged, byproduct `fluid.steam` recorded (values from `material_reactions.json`); current seed-1 island triggers **zero** quenches (no lava↔water adjacency) — asserted and documented.
-- [ ] **Schema bump:** `scr_sim_schema_version() == N+1` via `python3 applications/godot/tests/abi_smoke.py` PASS (SHORE_FOAM decode + TERRAIN stride checks); fixture regenerated; `test_golden_fixture.mojo` PASS.
-- [ ] **Negative test:** `bash applications/godot/tests/test_schema_mismatch.sh` PASS.
-- [ ] **Determinism/purity/catalog:** `test_determinism.mojo`, `test_projection_purity.mojo`, `test_catalog.mojo` PASS (blend albedos derivable from `materials_catalog.json`).
-- [ ] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1, AP-4).
-- [ ] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
-- [ ] **Foam only at shoreline (automated):** `bash applications/godot/tests/godot/godot_screenshot.sh` extended to run `godot_aerial_diagnostic.gd` (overhead capture), then `python3 applications/godot/tests/godot/check_shoreline_foam.py build/aerial.png` asserts: bright foam-luminance pixels lie within a band of ±`FOAM_BAND_M` (default 6 u) of the `y_terrain = sea_level` contour (contour computed from the committed seed-1 height field in the script), and pixel count outside the band ≤ 2% of in-band count — **foam only at the shoreline**. Fallback: documented manual capture + inspection procedure in the script header (0002 pattern).
-- [ ] **Crater rim without teeth (documented visual):** procedure in `docs/04` §8 — run `godot_aerial_diagnostic.gd` crater-rim view (`build/crater_rim.png`), confirm no alternating sulfur/basalt sliver pattern at glancing angle; capture + one-line PASS/FAIL recorded in `docs/04` §8 verification table. (Automated luminance-ripple check across the rim band is a stretch goal recorded as `TBD` if manual suffices per task allowance.)
-- [ ] **Ocean spectrum intact:** existing ocean gates unchanged — display-wave spectrum params in `docs/04` §6.4 untouched; `test_gerstner.mojo` PASS.
-- [ ] **Playability unaffected:** `bash applications/godot/tests/godot/godot_playability_test.sh` PASS.
-- [ ] **Docs:** `04` (§7 deviation resolved → implemented; params; scene rows), `06`, `104_contract.md` updated.
-- [ ] **Anti-pattern review:** 0002 AP-1..10, 0003 AP-11..14, 0004 AP-15..18, this AP-19..22 checked item-by-item, evidence in `docs/04` §8.
+- [x] **Spec tests green:** `.venv/bin/mojo run -I applications/godot/src/mojo applications/godot/tests/mojo/test_shoreline_foam.mojo`, `…/test_material_blending.mojo`, `…/test_quench.mojo` PASS; existing 7 spec-test files still PASS.
+- [x] **Foam formula conformance:** `test_shoreline_foam.mojo` evaluates the library formula at committed `(Δy, t)` sample points and asserts exact agreement; `F ∈ [0,1]`; `F = 0` for `Δy ≥ 1.8 m`; field unchanged across projection (purity).
+- [x] **Blending conformance:** `test_material_blending.mojo` asserts feather band width within `FEATHER_WIDTH_CELLS ± 1` at a synthetic BASALT↔SULFUR boundary, no cross-biome material appears in any column (Synthesis §2), dither identical across two runs with same seed.
+- [x] **Quench conformance:** `test_quench.mojo` asserts source-lava + adjacent-water → `rock.obsidian`, non-source → `rock.cobblestone`, no-adjacency → unchanged, byproduct `fluid.steam` recorded (values from `material_reactions.json`); current seed-1 island triggers **zero** quenches (no lava↔water adjacency) — asserted and documented.
+- [x] **Schema bump:** `scr_sim_schema_version() == N+1` via `python3 applications/godot/tests/abi_smoke.py` PASS (SHORE_FOAM decode + TERRAIN stride checks); fixture regenerated; `test_golden_fixture.mojo` PASS.
+- [x] **Negative test:** `bash applications/godot/tests/test_schema_mismatch.sh` PASS.
+- [x] **Determinism/purity/catalog:** `test_determinism.mojo`, `test_projection_purity.mojo`, `test_catalog.mojo` PASS (blend albedos derivable from `materials_catalog.json`).
+- [x] **Layout gates:** `bash applications/godot/scripts/check_layout.sh` PASS (AP-1, AP-4).
+- [x] **Headless load:** `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines).
+- [x] **Foam only at shoreline (automated):** `bash applications/godot/tests/godot/godot_screenshot.sh` extended to run `godot_aerial_diagnostic.gd` (overhead capture), then `python3 applications/godot/tests/godot/check_shoreline_foam.py build/aerial.png` asserts: bright foam-luminance pixels lie within a band of ±`FOAM_BAND_M` (default 6 u) of the `y_terrain = sea_level` contour (contour computed from the committed seed-1 height field in the script), and pixel count outside the band ≤ 2% of in-band count — **foam only at the shoreline**. Fallback: documented manual capture + inspection procedure in the script header (0002 pattern).
+- [x] **Crater rim without teeth (documented visual):** procedure in `docs/04` §8 — run `godot_aerial_diagnostic.gd` crater-rim view (`build/crater_rim.png`), confirm no alternating sulfur/basalt sliver pattern at glancing angle; capture + one-line PASS/FAIL recorded in `docs/04` §8 verification table. (Automated luminance-ripple check across the rim band is a stretch goal recorded as `TBD` if manual suffices per task allowance.)
+- [x] **Ocean spectrum intact:** existing ocean gates unchanged — display-wave spectrum params in `docs/04` §6.4 untouched; `test_gerstner.mojo` PASS.
+- [x] **Playability unaffected:** `bash applications/godot/tests/godot/godot_playability_test.sh` PASS.
+- [x] **Docs:** `04` (§7 deviation resolved → implemented; params; scene rows), `06`, `104_contract.md` updated.
+- [x] **Anti-pattern review:** 0002 AP-1..10, 0003 AP-11..14, 0004 AP-15..18, this AP-19..22 checked item-by-item, evidence in `docs/04` §8.
 
 ---
 

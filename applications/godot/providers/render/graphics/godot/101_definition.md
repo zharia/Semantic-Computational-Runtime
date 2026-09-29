@@ -12,7 +12,7 @@ The **Godot render provider** realizes SCR renderable semantic state as a Godot-
 
 ```text
 Renderable semantic state (Mojo sim, projected to RenderSnapshot)
-        │ contract: 104_contract.md (byte schema v3, C ABI v1)
+        │ contract: 104_contract.md (byte schema v4, C ABI v1)
         ▼
 Godot render provider adapter (GDExtension, godot-cpp)
         │ representation conversion only
@@ -31,12 +31,14 @@ Godot scene graph / shaders / lights  (manifestation)
 
 | Capability | Status |
 |---|---|
-| `RenderSnapshotDecode` (byte schema v3; v1→v2→v3) | Implemented — milestones 0002–0004 |
+| `RenderSnapshotDecode` (byte schema v4; v1→v2→v3→v4) | Implemented — milestones 0002–0005 |
 | `TerrainMeshManifestation` (chunked ArrayMesh) | Implemented — milestone 0002 |
 | `OceanSurfaceManifestation` (Gerstner shader) | Implemented — milestone 0002 |
 | `SkyManifestation` (time-of-day sun, derived dome gradient, atmosphere-derived fog) | Implemented — milestones 0002, 0004 |
 | `CloudDeckManifestation` (cloud_cover → `scr_clouds`) | Implemented — milestone 0004 |
 | `PrecipitationManifestation` (precipitation → `scr_rain`, wetness tint) | Implemented — milestone 0004 |
+| `ShoreFoamManifestation` (SHORE_FOAM field → `foam_shore` texture on `scr_ocean`) | Implemented — milestone 0005 |
+| `TerrainMaterialBlend` (per-vertex dominant/blend/weight tuples → blended vertex albedo) | Implemented — milestone 0005 |
 | `PlayerCameraManifestation` | Implemented — milestone 0002 |
 | `InputUplink` (scr_input_batch) | Implemented — milestone 0002 |
 
@@ -50,6 +52,7 @@ Godot scene graph / shaders / lights  (manifestation)
 | `consumes` | `SCR-LIB-MATH-ATMOSPHERE` (solar arc, fog derivation — sim bytes authoritative) |
 | `consumes` | `SCR-LIB-RENDER-SKY` (cloud deck manifestation) |
 | `consumes` | `SCR-LIB-SIMULATION-WEATHER` (precipitation/wind manifestation — sim state authoritative) |
+| `consumes` | `SCR-LIB-RENDER-WATER` (shore-foam field manifestation — sim computes the field, shader only shades it, AP-19) |
 | `subordinate-to` | SCR semantic library, Mojo simulation core |
 
 Derived relationships recorded in [103_provider.graph.json](103_provider.graph.json).

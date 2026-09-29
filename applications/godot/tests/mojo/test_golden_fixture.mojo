@@ -1,7 +1,8 @@
 # Spec test — Golden fixture (deterministic byte stream across code changes).
 # Fixture: tests/fixtures/snapshot_seed1_tick1.bin
-#   seed 1 → one step dt = 1/60 → scripted input → all eight sections
-#   (schema 2: 1..6 unchanged, + 7 VOLCANO, + 8 PLUME — 0003 §3.5).
+#   seed 1 → one step dt = 1/60 → scripted input → all nine sections
+#   (schema 4, milestone_0005: 1..8 unchanged framing, + 9 SHORE_FOAM;
+#   TERRAIN vertex payload is the 4-byte blend tuple — same byte count).
 # Scripted input must stay identical to gen_golden_fixture.mojo and
 # tests/abi_smoke.py (all three document the same batch).
 #
@@ -24,7 +25,9 @@ from snapshot.types import (
     SEC_TERRAIN,
     SEC_VOLCANO,
     SEC_PLUME,
+    SEC_SHORE_FOAM,
     ENVELOPE_BYTES,
+    SHORE_FOAM_HEADER_BYTES,
     get_u32,
 )
 from util.files import find_repo_root, join_path, read_file_bytes
@@ -69,9 +72,9 @@ def test_fixture_exists_and_is_well_formed() raises:
     var fixture = read_file_bytes(path)
     _check(len(fixture) > ENVELOPE_BYTES, "fixture must contain envelope")
     _check(get_u32(fixture, 0) == 0x53524353, "magic SCRS")
-    _check(SCHEMA_VERSION == 3, "sim parameters SCHEMA_VERSION == 3")
-    _check(get_u32(fixture, 4) == 3, "schema v3")
-    _check(get_u32(fixture, 8) == 8, "eight sections (first snapshot)")
+    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
+    _check(get_u32(fixture, 4) == 4, "schema v4")
+    _check(get_u32(fixture, 8) == 9, "nine sections (first snapshot)")
     _check(get_u32(fixture, 20) == 1, "simulation_tick = 1")
     _check(get_u32(fixture, 28) == 1, "seed = 1")
     var env = decode_envelope(fixture)
@@ -79,6 +82,12 @@ def test_fixture_exists_and_is_well_formed() raises:
     _check(find_section(secs, SEC_TERRAIN) >= 0, "first snapshot carries TERRAIN")
     _check(find_section(secs, SEC_VOLCANO) >= 0, "fixture carries VOLCANO (7)")
     _check(find_section(secs, SEC_PLUME) >= 0, "fixture carries PLUME (8)")
+    var fi = find_section(secs, SEC_SHORE_FOAM)
+    _check(fi >= 0, "fixture carries SHORE_FOAM (9)")
+    _check(
+        secs[fi].length == SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64,
+        "SHORE_FOAM = 12 + 4·64² bytes",
+    )
     _check(
         Int(env.payload_bytes) == len(fixture) - ENVELOPE_BYTES,
         "payload_bytes == len - 48",

@@ -11,6 +11,9 @@
  *   - applications/godot/program_increments/v0.0.1/
  *       milestone_0004_atmosphere-weather/spec.md §2.1 (AP-15..AP-18),
  *       §3.2 (SKY 64 B), §3.4 (scene binding table)
+ *   - applications/godot/program_increments/v0.0.1/
+ *       milestone_0005_shoreline-fidelity/spec.md §1.1 (decisions (a)/(b)),
+ *       §2.1 (AP-19..AP-22), §3.2/§3.5 (schema 4, SHORE_FOAM, blend tuples)
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -137,13 +140,58 @@
  *     (0..1) becomes a continuous intensity dial. This avoids `set_amount`
  *     (which restarts the GPU system) on every intensity change.
  *   - WETNESS: deterministic representation conversion from the catalog
- *     albedo — for every cached StandardMaterial3D,
- *     `albedo = catalog_albedo * (1 - WETNESS_TINT * wetness)`. Applied
- *     AFTER `update_materials()` each frame so the catalog value is the
- *     always-recomputed base (16 dry => catalog-exact, AP-3).
+ *     albedo — for every cached StandardMaterial3D the surface darkens by
+ *     `(1 - WETNESS_TINT * wetness)`. Since schema 4 (0005) the wetness gain
+ *     lives in `albedo_color` and MULTIPLIES the vertex-colour albedo (the
+ *     catalog value itself is baked into ARRAY_COLOR); rewritten every frame
+ *     from the latched SKY wetness (16 dry => gain 1, AP-3).
  *
- * Conventions (normative for Sprint-04 scene work):
- *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
+ * ---------------------------------------------------------------------------
+ * Milestone 0005 — schema 4 adapter decisions (SHORE_FOAM + blend tuples)
+ * ---------------------------------------------------------------------------
+ * Schema gate: SCR_SIM_SCHEMA_VER == 4 (scr_godot_abi.h); sections 1..9,
+ * SHORE_FOAM required in every snapshot (104_contract §4.2/§4.3).
+ *
+ *   - TERRAIN BLEND TUPLES: the per-vertex 4-byte slot is the schema-4 tuple
+ *     (u8 dominant, u8 blend partner, u8 weight 0..255, u8 pad = 0) — same
+ *     stride as the schema-3 u32 id, new meaning (AP-21). Decode rejects a
+ *     nonzero pad, `weight == 0 && blend_id != material_id`, and any blend
+ *     partner id absent from MATERIALS (loud ERR_PRINT, frame skipped —
+ *     never coerced, 104_contract §8). A dominant id absent from MATERIALS
+ *     keeps the schema-3 behaviour (neutral fallback + one warning).
+ *   - VERTEX-COLOUR ALBEDO (locked, spec §1.1 (b)): surfaces still group by
+ *     dominant id; every emitted vertex carries
+ *         COLOR = mix(albedo[dominant], albedo[blend], w/255)
+ *     from the MATERIALS catalog (representation conversion only — AP-20:
+ *     no material is ever assigned here, only mixed) and the material sets
+ *     the BaseMaterial3D flag `FLAG_ALBEDO_FROM_VERTEX_COLOR` (godot-cpp 4.7
+ *     binding name for `vertex_color_use_as_albedo`) PLUS
+ *     `FLAG_SRGB_VERTEX_COLOR` — probe-measured: the catalog ships
+ *     `base_color_srgb`, and only the sRGB flag reproduces the schema-3
+ *     albedo path pixel-exactly (albedo 0.4 -> 0.4; vertex without the flag
+ *     -> 0.667, washed out). Measured Godot 4.7 semantics (rendered probe):
+ *     the vertex colour MULTIPLIES `albedo_color`
+ *     (ALBEDO = albedo_color.rgb * COLOR.rgb), so the composition is:
+ *         final albedo = blended_albedo × (1 − WETNESS_TINT·wetness)
+ *     implemented as `albedo_color = (gain, gain, gain, opacity)` — the 0004
+ *     wetness gain COMBINES with the vertex colour instead of overwriting it,
+ *     and wetness keeps updating every frame without re-uploading meshes
+ *     (albedo_color is per-material, COLOR is baked per-vertex).
+ *     Roughness / emission / opacity stay the grouped surface's dominant
+ *     material (recorded limitation, spec §1.1). Catalog albedo values live
+ *     in the `scr_materials` meta dictionary unchanged (AP-3).
+ *   - SHORE FOAM TEXTURE (locked, spec §1.1 (a)): section 9 is uploaded as
+ *     an ImageTexture (FORMAT_RF, grid_n × grid_n) and refreshed EVERY
+ *     snapshot (the field evolves with wave phase). Row mapping: image row r
+ *     = contract row `iz` (row-major iz·grid_n + ix, cell centers); Godot
+ *     samples texture v = 0 at image row 0 (rendered probe, Godot 4.7), and
+ *     the shader maps world z → v = (z − z0)/(grid_n·cell_size) with
+ *     z0 = −0.5·grid_n·cell_size, so v = (iz + 0.5)/grid_n lands on row iz
+ *     — NO flip. The shader only shades the field: it never re-derives
+ *     y_water − y_terrain (AP-19). Crest whitecaps stay the disjoint 0002
+ *     display path (AP-22).
+ *
+ * Conventions (normative for Sprint-04 scene work): *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
  *             (-sin yaw, -cos yaw) (src/mojo/sim/subjects.mojo), which equals
  *             Godot's -Z axis rotated by +yaw. No sign flip.
  *   - PITCH:  rotation.x = +pitch. Godot: +rotation.x looks UP; the sim does
@@ -202,6 +250,8 @@
 #include <godot_cpp/classes/environment.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/gpu_particles3d.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node.hpp>
@@ -222,6 +272,8 @@
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -254,8 +306,15 @@ constexpr uint32_t kSkyBytes = 64;
  * 8 PLUME = 8xf32 — both exactly 32 bytes (104_contract §4.3). */
 constexpr uint32_t kVolcanoBytes = 32;
 constexpr uint32_t kPlumeBytes = 32;
-/* Highest section id defined by SCR_SIM_SCHEMA_VER (used for range checks). */
-constexpr uint32_t kMaxSectionId = 8;
+/* Schema 4 (milestone_0005 §3.3): 9 SHORE_FOAM = 12-byte header
+ * (u32 grid_n, f32 cell_size, f32 sea_level) + grid_n² f32 foam values;
+ * 16396 bytes at grid_n = 64 (12 + 4096·4). Size is derived, never hard
+ * coded: sbytes MUST equal 12 + 4·grid_n² (104_contract §4.3 §9). */
+constexpr uint32_t kShoreFoamHeaderBytes = 12;
+constexpr uint32_t kShoreFoamGridMax = 1024;
+/* Highest section id defined by SCR_SIM_SCHEMA_VER (used for range checks).
+ * Schema 4: sections 1..9 (9 = SHORE_FOAM). */
+constexpr uint32_t kMaxSectionId = 9;
 
 inline uint32_t rd_u32(const uint8_t *p) {
     uint32_t v;
@@ -289,8 +348,15 @@ struct ChunkView {
     uint32_t icount = 0;
     const float *verts = nullptr;   // 3 * vcount
     const float *norms = nullptr;   // 3 * vcount
-    const uint32_t *mats = nullptr; // vcount
+    /* Schema 4 blend tuples: 4 bytes per vertex (104_contract §4.3 §3) —
+     * (u8 dominant, u8 blend partner, u8 weight, u8 pad). Same 4·vcount
+     * byte span as the schema-3 u32 id slot. */
+    const uint8_t *mats = nullptr;  // 4 * vcount
     const uint32_t *idx = nullptr;  // icount
+
+    uint8_t dominant_at(uint32_t v) const { return mats[4u * v + 0]; }
+    uint8_t blend_at(uint32_t v) const { return mats[4u * v + 1]; }
+    uint8_t weight_at(uint32_t v) const { return mats[4u * v + 2]; }
 };
 
 struct SnapshotView {
@@ -308,6 +374,11 @@ struct SnapshotView {
     const uint8_t *sky = nullptr;    // 64 bytes (schema 3, 104_contract §4.3)
     const uint8_t *volcano = nullptr; // 32 bytes (schema 2, 104_contract §7)
     const uint8_t *plume = nullptr;   // 32 bytes (schema 2, 104_contract §8)
+    /* 9 SHORE_FOAM (schema 4): 12 + 4·grid_n² bytes, every snapshot. */
+    const uint8_t *shore_foam = nullptr;
+    uint32_t foam_grid_n = 0;
+    float foam_cell_size = 0.0f;
+    float foam_sea_level = 0.0f;
     std::vector<MatRecord> materials;
     std::vector<ChunkView> chunks;
 };
@@ -376,7 +447,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         }
         if (sid < 1u || sid > kMaxSectionId) {
             return fail(err,
-                        "section: unknown section_id (schema 3 defines 1..8)");
+                        "section: unknown section_id (schema 4 defines 1..9)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -515,6 +586,43 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 out.plume = data;
                 break;
             }
+            case SCR_SEC_SHORE_FOAM: {
+                /* 9 SHORE_FOAM (schema 4, 104_contract §4.3 §9): 12-byte
+                 * header + grid_n² f32. Size is DERIVED from grid_n — never
+                 * hard coded (16396 B at grid_n = 64). Range checks written
+                 * so NaN fails (never coerced, §8). */
+                if (sbytes < kShoreFoamHeaderBytes) {
+                    return fail(err, "SHORE_FOAM: section shorter than 12-byte header");
+                }
+                const uint32_t grid_n = rd_u32(data + 0);
+                const float cell_size = rd_f32(data + 4);
+                const float sea_level = rd_f32(data + 8);
+                if (grid_n == 0 || grid_n > kShoreFoamGridMax) {
+                    return fail(err, "SHORE_FOAM: grid_n outside [1,1024]");
+                }
+                const uint64_t want = (uint64_t)kShoreFoamHeaderBytes +
+                                      4ull * (uint64_t)grid_n * (uint64_t)grid_n;
+                if ((uint64_t)sbytes != want) {
+                    return fail(err, "SHORE_FOAM: section_bytes != 12 + 4*grid_n^2");
+                }
+                if (!(cell_size > 0.0f)) {
+                    return fail(err, "SHORE_FOAM: cell_size <= 0");
+                }
+                if (!(sea_level == sea_level)) {
+                    return fail(err, "SHORE_FOAM: sea_level is NaN");
+                }
+                for (uint64_t i = 0; i < (uint64_t)grid_n * grid_n; i++) {
+                    const float f = rd_f32(data + kShoreFoamHeaderBytes + 4 * i);
+                    if (!(f >= 0.0f) || !(f <= 1.0f)) {
+                        return fail(err, "SHORE_FOAM: foam value outside [0,1]");
+                    }
+                }
+                out.shore_foam = data;
+                out.foam_grid_n = grid_n;
+                out.foam_cell_size = cell_size;
+                out.foam_sea_level = sea_level;
+                break;
+            }
             default:
                 return fail(err, "section: unhandled section_id");
         }
@@ -525,13 +633,15 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 3).
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 4).
      * TERRAIN is the only optional one (first snapshot / world_version bump). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
-        !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME]) {
+        !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME] ||
+        !seen[SCR_SEC_SHORE_FOAM]) {
         return fail(err, "snapshot: required section missing "
-                         "(PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS/VOLCANO/PLUME)");
+                         "(PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS/VOLCANO/PLUME/"
+                         "SHORE_FOAM)");
     }
     out.meta = meta_buf;
 
@@ -574,11 +684,28 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
             }
             cv.verts = reinterpret_cast<const float *>(ch + 20);
             cv.norms = cv.verts + 3ull * cv.vcount;
-            cv.mats = reinterpret_cast<const uint32_t *>(cv.norms + 3ull * cv.vcount);
-            cv.idx = cv.mats + cv.vcount;
+            /* Schema 4 (104_contract §4.3 §3): 4-byte blend tuple per vertex
+             * — (u8 dominant, u8 blend partner, u8 weight, u8 pad) — at the
+             * same byte span the schema-3 u32 id occupied (20 + 28·vcount
+             * + 4·icount is unchanged). */
+            cv.mats = reinterpret_cast<const uint8_t *>(cv.norms + 3ull * cv.vcount);
+            cv.idx = reinterpret_cast<const uint32_t *>(cv.mats + 4ull * cv.vcount);
             for (uint32_t i = 0; i < cv.icount; i++) {
                 if (cv.idx[i] >= cv.vcount) {
                     return fail(err, "TERRAIN: index out of vertex range");
+                }
+            }
+            /* Blend-tuple validation (104_contract §4.3 §3, §8): reject the
+             * pad byte, and reject weight == 0 carrying blend != dominant.
+             * Never coerced — frame is skipped with an explicit reason. */
+            for (uint32_t i = 0; i < cv.vcount; i++) {
+                const uint8_t *t = cv.mats + 4ull * i;
+                if (t[3] != 0u) {
+                    return fail(err, "TERRAIN: blend tuple pad byte != 0");
+                }
+                if (t[2] == 0u && t[1] != t[0]) {
+                    return fail(err,
+                                "TERRAIN: weight 0 but blend_id != material_id");
                 }
             }
             out.chunks.push_back(cv);
@@ -597,6 +724,30 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         out.has_terrain = false;
     }
     (void)terrain_buf;
+
+    /* Blend-partner closure (104_contract §4.3 §3): a vertex that actually
+     * blends (weight > 0) must name a partner present in MATERIALS — the
+     * segment can then resolve its albedo from the catalog. The dominant id
+     * keeps the schema-3 neutral-fallback behaviour. Linear scan: MATERIALS
+     * is small (<= ~96 records) and TERRAIN is optional. */
+    if (out.has_terrain) {
+        auto has_material = [&out](uint32_t id) -> bool {
+            for (const MatRecord &m : out.materials) {
+                if (m.id == id) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        for (const ChunkView &cv : out.chunks) {
+            for (uint32_t i = 0; i < cv.vcount; i++) {
+                if (cv.weight_at(i) > 0u && !has_material(cv.blend_at(i))) {
+                    return fail(err,
+                                "TERRAIN: blend_id not present in MATERIALS");
+                }
+            }
+        }
+    }
 
     return true;
 }
@@ -733,6 +884,9 @@ protected:
     int rain_emitting_cache_ = -1;  // -1 unknown, 0 off, 1 on
     float rain_ratio_cache_ = -1.0f;
     float wetness_ = -1.0f;   // latched SKY wetness; used by update_materials
+    /* SHORE_FOAM upload cache (schema 4): FORMAT_RF grid_n × grid_n,
+     * re-uploaded every snapshot (0005 §1.1 (a)). */
+    Ref<ImageTexture> foam_tex_;
     float cloud_cover_cache_ = -1.0f;
 
     // --- helpers ------------------------------------------------------------
@@ -740,10 +894,16 @@ protected:
     void decode_and_apply(uint32_t len);
     void update_materials(const scr::SnapshotView &sv);
     Ref<StandardMaterial3D> material_for(uint32_t id);
+    /* Wet-surface gain from the latched SKY wetness (0004); lives in
+     * albedo_color so it composes with schema-4 vertex-colour albedo. */
+    float wetness_gain() const;
     void apply_player(const scr::SnapshotView &sv);
     void apply_terrain_meta(const scr::SnapshotView &sv);
     void apply_terrain(const scr::SnapshotView &sv);
     void apply_ocean(const scr::SnapshotView &sv);
+    /* Catalog albedo for ARRAY_COLOR (schema 4 blend tuples). Shared warning
+     * set with material_for(): a missing id warns exactly once. */
+    Color albedo_of(uint32_t id);
     void apply_sky(const scr::SnapshotView &sv);
     void apply_weather(const scr::SnapshotView &sv);
     void apply_materials_node(const scr::SnapshotView &sv);
@@ -976,24 +1136,40 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
 
 void ScrSimDriver::update_materials(const scr::SnapshotView &sv) {
     /* Wetness tint is applied HERE, immediately after the catalog write,
-     * because every frame rewrites albedo from the catalog (0004 AP-3:
+     * because every frame rewrites the material from the catalog (0004 AP-3:
      * 16.0 dry => catalog-exact). wetness_ is latched from the SKY bytes
-     * in decode_and_apply() before this call. */
-    const float k = (wetness_ > 0.0f)
-        ? (1.0f - WETNESS_TINT * (wetness_ > 1.0f ? 1.0f : wetness_))
-        : 1.0f;
+     * in decode_and_apply() before this call.
+     *
+     * Schema 4 vertex-colour path (0005 §1.1 (b), probe-verified multiply):
+     * the per-vertex COLOR already carries the blended catalog albedo, so the
+     * material's albedo_color holds ONLY the wetness gain (+ dominant
+     * opacity) and must NOT be overwritten with the catalog value. */
+    const float k = wetness_gain();
     for (const scr::MatRecord &r : sv.materials) {
         mat_records_[r.id] = r;
         auto it = mat_cache_.find(r.id);
         if (it != mat_cache_.end() && it->second.is_valid()) {
             scr::apply_mat_props(it->second.ptr(), r);
-            if (k != 1.0f) {
-                it->second->set_albedo(
-                    Color(r.albedo[0] * k, r.albedo[1] * k, r.albedo[2] * k,
-                          r.opacity));
-            }
+            /* godot-cpp 4.7 exposes `vertex_color_use_as_albedo` as the
+             * BaseMaterial3D flag (probe-verified: ALBEDO = albedo_color ×
+             * vertex COLOR). SRGB flag is REQUIRED: catalog albedo is
+             * base_color_srgb (materials/catalog.mojo), and a rendered probe
+             * shows FLAG_SRGB_VERTEX_COLOR reproduces the schema-3 albedo
+             * path pixel-exactly (0.4 -> 0.4; without it 0.4 -> 0.667,
+             * washed out). */
+            it->second->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR,
+                                 true);
+            it->second->set_flag(BaseMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);
+            it->second->set_albedo(Color(k, k, k, r.opacity));
         }
     }
+}
+
+float ScrSimDriver::wetness_gain() const {
+    /* 0004 wetness: final albedo = vertex_albedo * (1 - TINT * wetness). */
+    return (wetness_ > 0.0f)
+        ? (1.0f - WETNESS_TINT * (wetness_ > 1.0f ? 1.0f : wetness_))
+        : 1.0f;
 }
 
 Ref<StandardMaterial3D> ScrSimDriver::material_for(uint32_t id) {
@@ -1003,16 +1179,39 @@ Ref<StandardMaterial3D> ScrSimDriver::material_for(uint32_t id) {
     }
     Ref<StandardMaterial3D> m;
     m.instantiate();
+    /* Schema 4: albedo arrives as ARRAY_COLOR (mixed dom/blend); this
+     * material only contributes the wetness gain + dominant roughness /
+     * emission / opacity. SRGB vertex flag = catalog is base_color_srgb
+     * (probe: reproduces the schema-3 albedo path exactly). */
+    m->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
+    m->set_flag(BaseMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);
+    const float k = wetness_gain();
     auto rec = mat_records_.find(id);
     if (rec != mat_records_.end()) {
         scr::apply_mat_props(m.ptr(), rec->second);
+        m->set_albedo(Color(k, k, k, rec->second.opacity));
     } else if (mat_missing_warned_.insert(id).second) {
         ERR_PRINT(String("SCR: no MATERIALS record for id ") +
                   String::num_uint64(id) + " — using neutral fallback material");
-        m->set_albedo(Color(0.5f, 0.5f, 0.5f));
+        m->set_albedo(Color(0.5f * k, 0.5f * k, 0.5f * k));
     }
     mat_cache_[id] = m;
     return m;
+}
+
+Color ScrSimDriver::albedo_of(uint32_t id) {
+    /* Catalog albedo for ARRAY_COLOR. Missing id: neutral fallback (same
+     * 0.5 grey as material_for) + one shared warning — never invented. */
+    auto rec = mat_records_.find(id);
+    if (rec != mat_records_.end()) {
+        return Color(rec->second.albedo[0], rec->second.albedo[1],
+                     rec->second.albedo[2], 1.0f);
+    }
+    if (mat_missing_warned_.insert(id).second) {
+        ERR_PRINT(String("SCR: no MATERIALS record for id ") +
+                  String::num_uint64(id) + " — using neutral fallback material");
+    }
+    return Color(0.5f, 0.5f, 0.5f, 1.0f);
 }
 
 void ScrSimDriver::apply_hud(const scr::SnapshotView &sv) {
@@ -1110,6 +1309,37 @@ void ScrSimDriver::apply_ocean(const scr::SnapshotView &sv) {
     for (int i = 0; i < 8; i++) {
         sm->set_shader_parameter(StringName(kNames[i]),
                                  Variant(scr::rd_f32(sv.ocean + 4u * i)));
+    }
+
+    /* 9 SHORE_FOAM (schema 4, 0005 §1.1 (a)): upload the raw grid as a
+     * FORMAT_RF texture and refresh it EVERY snapshot — the field evolves
+     * with wave phase, so a one-shot upload would freeze the shore band.
+     * Row mapping (image row = contract iz, v=0 -> row 0) is documented in
+     * the file header; the shader derives uv from world xz alone (AP-19: no
+     * depth re-derivation). `sea_level` already reaches the shader from the
+     * OCEAN section — both sections carry the same sim datum — so only the
+     * grid geometry (grid_n, cell_size) is bound here. */
+    if (sv.shore_foam != nullptr && sv.foam_grid_n > 0) {
+        const uint32_t n = sv.foam_grid_n;
+        const size_t nbytes = (size_t)n * n * 4u;
+        PackedByteArray bytes;
+        bytes.resize((int64_t)nbytes);
+        std::memcpy(bytes.ptrw(), sv.shore_foam + scr::kShoreFoamHeaderBytes,
+                    nbytes);
+        Ref<Image> img;
+        img.instantiate();
+        img->create((int)n, (int)n, false, Image::FORMAT_RF);
+        img->set_data((int)n, (int)n, false, Image::FORMAT_RF, bytes);
+        if (foam_tex_.is_null() || foam_tex_->get_width() != (int)n ||
+            foam_tex_->get_height() != (int)n) {
+            foam_tex_ = ImageTexture::create_from_image(img);
+        } else {
+            foam_tex_->update(img);
+        }
+        sm->set_shader_parameter(StringName("foam_shore"), foam_tex_);
+        sm->set_shader_parameter(StringName("foam_grid_n"), Variant((float)n));
+        sm->set_shader_parameter(StringName("foam_cell_size"),
+                                 Variant(sv.foam_cell_size));
     }
 }
 
@@ -1478,12 +1708,21 @@ void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {
             terrain->add_child(mi);
         }
 
-        /* Group triangles by per-vertex material id (triangle -> first
-         * vertex's id); one mesh surface per material. Vertices are
-         * world-space; origin kept as provenance meta only. */
+        /* Group triangles by the per-vertex DOMINANT material id (triangle
+         * -> first vertex's id); one mesh surface per dominant material.
+         * Vertices are world-space; origin kept as provenance meta only.
+         *
+         * Schema 4 (0005 §1.1 (b)): each emitted vertex carries its blended
+         * catalog albedo as ARRAY_COLOR —
+         *   COLOR = mix(albedo[dominant], albedo[blend], weight/255)
+         * — which multiplies the material's albedo_color (wetness gain) at
+         * shading time. This is representation conversion only: surfaces are
+         * STILL grouped by dominant id, no material is assigned from data
+         * beyond the existing dominant record (AP-20). */
         struct Surf {
             PackedVector3Array verts;
             PackedVector3Array norms;
+            PackedColorArray cols;
             PackedInt32Array indices;
         };
         std::unordered_map<uint32_t, Surf> surfs;
@@ -1495,7 +1734,7 @@ void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {
             corner[0] = cv.idx[3u * t + 0];
             corner[1] = cv.idx[3u * t + 1];
             corner[2] = cv.idx[3u * t + 2];
-            const uint32_t mid = cv.mats[corner[0]];
+            const uint32_t mid = cv.dominant_at(corner[0]);
             Surf &s = surfs[mid];
             std::unordered_map<uint32_t, uint32_t> &m = remap[mid];
             uint32_t out3[3];
@@ -1510,6 +1749,12 @@ void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {
                     s.norms.append(Vector3(cv.norms[3u * old + 0],
                                            cv.norms[3u * old + 1],
                                            cv.norms[3u * old + 2]));
+                    Color c = albedo_of(cv.dominant_at(old));
+                    const uint8_t w = cv.weight_at(old);
+                    if (w > 0u) {
+                        c = c.lerp(albedo_of(cv.blend_at(old)), w / 255.0f);
+                    }
+                    s.cols.append(c);
                     m.emplace(old, fresh);
                     out3[k] = fresh;
                 } else {
@@ -1532,6 +1777,7 @@ void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {
             arrays.resize(Mesh::ARRAY_MAX);
             arrays[Mesh::ARRAY_VERTEX] = kv.second.verts;
             arrays[Mesh::ARRAY_NORMAL] = kv.second.norms;
+            arrays[Mesh::ARRAY_COLOR] = kv.second.cols;
             arrays[Mesh::ARRAY_INDEX] = kv.second.indices;
             mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
             mesh->surface_set_material(surface, material_for(kv.first));

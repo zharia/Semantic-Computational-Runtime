@@ -19,6 +19,27 @@ shader_type spatial;
 //     provenance documented in docs/04_simulation_engine.md §5 (AP-7).
 //
 // ---------------------------------------------------------------------------
+// SHORE FOAM (schema 4 / section 9 SHORE_FOAM — milestone 0005)
+// ---------------------------------------------------------------------------
+//   * The snapshot NOW carries the sim-computed shore foam field: 12-byte
+//     header (u32 grid_n, f32 cell_size, f32 sea_level) + grid_n² f32, rows
+//     row-major iz·grid_n + ix (104_contract §4.3 §9). The adapter uploads it
+//     as a FORMAT_RF texture EVERY snapshot (foam_shore) and binds the grid
+//     geometry (foam_grid_n, foam_cell_size). `sea_level` reaches this shader
+//     from the OCEAN section — both sections carry the same sim datum.
+//   * AP-19: this shader SHADES the field only. uv comes from world xz
+//     alone; it never re-derives y_water − y_terrain (depth), which stays a
+//     sim authority (src/mojo/sim/shore.mojo).
+//   * Row mapping (adapter probe, Godot 4.7): texture v = 0 samples image row
+//     0, so v = (z − z0)/(grid_n·cell_size) with z0 = −0.5·grid_n·cell_size
+//     maps world cell centers (iz + ½)·CELL_SIZE − N/2·CELL_SIZE onto row iz
+//     with NO flip. The island's z profile is asymmetric, so a flipped row
+//     order shows up immediately as the foam band on the wrong shore.
+//   * AP-22: the crest-whitecap path below (foam_j / foam_h, display spectrum
+//     thresholds) is UNTOUCHED and remains disjoint from the shore band — the
+//     two are combined with max(), the sim field is exactly 0 in deep water.
+//
+// ---------------------------------------------------------------------------
 // DISPLAY-ONLY WAVE SPECTRUM (docs/04 §7) — "water looked fake + repetitive"
 // ---------------------------------------------------------------------------
 // The sim ships ONE harmonic travelling along a single contract direction, so
@@ -62,6 +83,11 @@ uniform float foam_jacobian_threshold;  // mirror of parameters.mojo FOAM_JACOBI
 uniform float foam_height_threshold;    // mirror of parameters.mojo FOAM_HEIGHT_THRESHOLD (display mirror)
 uniform float specular_gain;            // Fresnel highlight strength (display)
 
+// --- SHORE_FOAM section fields (written by adapter every snapshot) ----------
+uniform sampler2D foam_shore : hint_default_black, filter_linear;
+uniform float foam_grid_n;     // cells per side (SHORE_FOAM.grid_n)
+uniform float foam_cell_size;  // world u per cell (SHORE_FOAM.cell_size)
+
 // --- display-only spectrum constants (docs/04 §7) --------------------------
 // Direction offsets (rad) about the contract dir — all within ±40° (0.698 rad).
 const float W_OFF[6] = float[](0.00, 0.62, -0.50, 0.28, -0.68, 0.42);
@@ -75,8 +101,14 @@ const float W_PH[6] = float[](0.00, 2.10, 4.40, 1.30, 5.20, 3.30);
 
 varying float v_norm;  // (y − sea_level)/amplitude ∈ [−1, 1]
 varying float v_jacq;  // Q · Σ k_i·A_i·cosθ_i  (display Jacobian proxy)
+varying vec2 v_xz_col; // pre-displacement world column (x,z) — SHORE_FOAM uv
 
 void vertex() {
+	// Column identity for the shore-band lookup: the sim grid indexes world
+	// xz, and horizontal shoaling below shifts VERTEX.xz — sample the ORIGINAL
+	// column so the shore band does not drag with the display waves (AP-19).
+	v_xz_col = VERTEX.xz;
+
 	float y = sea_level;
 	float jac = 0.0;
 	vec2 horiz = vec2(0.0, 0.0);
@@ -121,7 +153,8 @@ void fragment() {
 	float crest = 0.5 * (v_norm + 1.0);
 	// §2.3 Jacobian generalised to the display spectrum: J ≈ 1 − Q·Σk_i·A_i·
 	// cosθ_i (reduces to the sim's 1 − Q·k·A·cosθ for a single harmonic).
-	// Recomputed here because the snapshot carries no foam field (docs/04).
+	// Crest-based display gates only (docs/04 §6); the sim's shore field is
+	// read from foam_shore below (schema 4).
 	float jacobian = 1.0 - v_jacq;
 
 	// AA half-widths are CLAMPED: fwidth(crest) explodes at grazing angles
@@ -135,9 +168,25 @@ void fragment() {
 	float wh = clamp(fwidth(crest), 1e-4, 0.006);
 	float foam_h = smoothstep(foam_height_threshold - wh,
 	                          foam_height_threshold + wh, crest);
-	// Foam only on high crests: the height term is gated by the scene's
+	// Crest whitecaps (display path): the height term is gated by the scene's
 	// foam_height_threshold; the Jacobian term is a second, independent gate.
-	float foam = clamp(max(foam_j, foam_h), 0.0, 1.0);
+	float foam_crest = clamp(max(foam_j, foam_h), 0.0, 1.0);
+
+	// Shore band (schema 4, SHORE_FOAM): shade the sim-computed field ONLY —
+	// uv from world xz alone (AP-19, never y_water − y_terrain re-derivation).
+	// Outside the grid the field is undefined -> no shore foam.
+	vec2 grid_min = vec2(-0.5 * foam_grid_n * foam_cell_size);
+	vec2 grid_span = vec2(foam_grid_n * foam_cell_size);
+	vec2 fuv = (v_xz_col - grid_min) / grid_span;
+	float foam_s = 0.0;
+	if (fuv.x > 0.0 && fuv.x < 1.0 && fuv.y > 0.0 && fuv.y < 1.0) {
+		foam_s = texture(foam_shore, fuv).r;
+	}
+
+	// AP-22: the two paths stay disjoint (sim field == 0 in deep water,
+	// crest gates stay closed at the shore) — combine with max(), never a
+	// double-counting sum.
+	float foam = clamp(max(foam_crest, foam_s), 0.0, 1.0);
 
 	// Fresnel toward the sky tint (sun-node specular highlight is NOT wired
 	// into this shader — display simplification, documented in docs/04).
@@ -147,8 +196,9 @@ void fragment() {
 	float fresnel = min(pow(1.0 - ndv, fresnel_power), 0.5);
 
 	// Depth-ish blend toward the horizon: grazing view angles (small ndv) lean
-	// deep, wave crests lean shallow. Real shoreline depth needs
-	// y_terrain(x,z), which the display side does not have — deviation from
+	// deep, wave crests lean shallow. Real shoreline depth still needs
+	// y_terrain(x,z), which the display side does not have (the sim's SHORE
+	// field arrives as foam intensity only) — deviation from
 	// SCR-LIB-RENDER-WATER recorded in docs/04_simulation_engine.md.
 	vec3 water = mix(deep_color.rgb, shallow_color.rgb, crest * ndv);
 	vec3 col = mix(water, sky_tint.rgb, fresnel);
