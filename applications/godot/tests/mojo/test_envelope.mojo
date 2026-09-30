@@ -1,4 +1,4 @@
-# Spec test — Snapshot binary schema (104_contract.md §4, schema 4), including
+# Spec test — Snapshot binary schema (104_contract.md §4, schema 5), including
 # loud-failure behaviour for malformed input (§8: never silently coerced).
 # Milestone_0003 §7 additions: envelope schema_version == 2, sections
 # 7 VOLCANO / 8 PLUME framing + payload validation, schema ≠ 2 rejection.
@@ -8,6 +8,9 @@
 # payload validation (malformed refused), TERRAIN vertex 4-byte blend
 # tuples (u8 material, u8 partner, u8 weight, u8 pad), schema ∈ {1,2,3,5}
 # rejected, TERRAIN section keeps its schema-3 byte count (228100).
+# Milestone_0006 §7 additions: schema == 5, sections 10 FLORA / 11 FAUNA
+# framing + payload validation (malformed refused), schema ∈ {1,2,3,4,6}
+# rejected, FLORA gated like TERRAIN / FAUNA every snapshot.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -28,6 +31,8 @@ from sim.parameters import (
     WAVE_STEEPNESS,
     WAVE_WAVELENGTH,
     SCHEMA_VERSION,
+    FLORA_N_MAX,
+    FLOCK_N_MAX,
 )
 from snapshot.encode import encode_snapshot
 from snapshot.decode import (
@@ -47,6 +52,8 @@ from snapshot.decode import (
     read_plume,
     read_shore_foam,
     read_terrain_tuple,
+    read_flora,
+    read_fauna,
 )
 from snapshot.types import (
     ENVELOPE_BYTES,
@@ -60,6 +67,12 @@ from snapshot.types import (
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
+    FLORA_HEADER_BYTES,
+    FLORA_RECORD_BYTES,
+    FAUNA_HEADER_BYTES,
+    FAUNA_RECORD_BYTES,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SKY_BYTES,
@@ -70,7 +83,7 @@ from snapshot.types import (
 from ocean.gerstner import wave_height
 from sim.shore import FOAM_DEPTH_M, MAX_WAVE_REACH
 
-comptime SECTIONS_AT_TICK1: Int = 9  # schema 4: 1..9 (0005 §3.3)
+comptime SECTIONS_AT_TICK1: Int = 11  # schema 5: 1..11 (0006 §1.1)
 comptime TERRAIN_BYTES_SEED1: Int = 228100  # schema-3 size, stride-neutral
 comptime SHORE_FOAM_BYTES: Int = SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64
 
@@ -111,6 +124,10 @@ def _expect_read_error(data: List[UInt8], sid: UInt32) raises -> Bool:
             _ = read_plume(data, secs[i])
         elif sid == SEC_SHORE_FOAM:
             _ = read_shore_foam(data, secs[i])
+        elif sid == SEC_FLORA:
+            _ = read_flora(data, secs[i])
+        elif sid == SEC_FAUNA:
+            _ = read_fauna(data, secs[i])
         else:
             return False
         return False
@@ -123,12 +140,12 @@ def test_envelope_layout() raises:
     _check(len(data) >= ENVELOPE_BYTES, "envelope present")
     # Documented offsets (§4.1), little-endian, explicit.
     _check(get_u32(data, 0) == 0x53524353, "magic 'SCRS'")
-    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
-    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 4")
+    _check(SCHEMA_VERSION == 5, "sim parameters SCHEMA_VERSION == 5")
+    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 5")
     var env = decode_envelope(data)
     _check(
         Int(env.section_count) == SECTIONS_AT_TICK1,
-        "tick1 carries all nine sections",
+        "tick1 carries all eleven sections",
     )
     _check(env.world_version == 1, "world_version == 1")
     _check(env.state_generation == 1, "state_generation == 1")
@@ -156,12 +173,16 @@ def test_section_framing_and_sizes() raises:
     var vi = find_section(secs, SEC_VOLCANO)
     var pli = find_section(secs, SEC_PLUME)
     var fi = find_section(secs, SEC_SHORE_FOAM)
+    var fli = find_section(secs, SEC_FLORA)
+    var fai = find_section(secs, SEC_FAUNA)
     _check(
         pi >= 0 and mi >= 0 and oi >= 0 and ki >= 0 and ti >= 0 and mdi >= 0,
         "sections 1..6 present",
     )
     _check(vi >= 0 and pli >= 0, "sections 7/8 present")
     _check(fi >= 0, "section 9 SHORE_FOAM present")
+    _check(fli >= 0, "section 10 FLORA present (first snapshot)")
+    _check(fai >= 0, "section 11 FAUNA present")
     _check(secs[pi].length == 44, "PLAYER section = 44 bytes (§4.3 header)")
     _check(secs[mi].length == 32, "TERRAIN_META = 32 bytes")
     _check(secs[oi].length == 32, "OCEAN = 32 bytes")
@@ -171,7 +192,23 @@ def test_section_framing_and_sizes() raises:
     _check(secs[pli].length == PLUME_BYTES, "PLUME = 32 bytes (§4.3 §8)")
     _check(secs[fi].length == SHORE_FOAM_BYTES, "SHORE_FOAM = 12 + 4·64² bytes")
     _check(secs[ti].length == TERRAIN_BYTES_SEED1, "TERRAIN stride-neutral (228100)")
-    # Section ids in contract order 1..9.
+    # FLORA/FAUNA framing arithmetic (§4.3 §10/§11): exact 4 + 24·count /
+    # 4 + 20·count, counts within the caps.
+    var flora_count = Int(get_u32(data, secs[fli].offset))
+    var fauna_count = Int(get_u32(data, secs[fai].offset))
+    _check(flora_count > 0 and flora_count <= FLORA_N_MAX, "FLORA count in cap")
+    _check(
+        secs[fli].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * flora_count,
+        "FLORA section = 4 + 24·count",
+    )
+    _check(
+        fauna_count > 0 and fauna_count <= FLOCK_N_MAX, "FAUNA count in cap"
+    )
+    _check(
+        secs[fai].length == FAUNA_HEADER_BYTES + FAUNA_RECORD_BYTES * fauna_count,
+        "FAUNA section = 4 + 20·count",
+    )
+    # Section ids in contract order 1..11.
     for k in range(Int(env.section_count)):
         var hdr = secs[k].offset - 8
         _check(get_u32(data, hdr) == UInt32(k + 1), "section id order at " + String(k))
@@ -358,20 +395,23 @@ def test_bad_inputs_fail_loudly() raises:
     for i in range(ENVELOPE_BYTES - 1):
         trunc.append(data[i])
     _check(_expect_error(trunc), "truncation must raise")
-    # Unsupported schemas: 1, 2, 3 (all previous) and 5 (future) must be
-    # refused — only SCHEMA_VERSION (4) is accepted (0005 §3.6).
+    # Unsupported schemas: 1, 2, 3, 4 (all previous) and 6 (future) must be
+    # refused — only SCHEMA_VERSION (5) is accepted (0006 §1.1 sibling rebase).
     var schema1 = data.copy()
     schema1[4] = 1
-    _check(_expect_error(schema1), "schema 1 must be refused (expected 4)")
+    _check(_expect_error(schema1), "schema 1 must be refused (expected 5)")
     var schema2 = data.copy()
     schema2[4] = 2
-    _check(_expect_error(schema2), "schema 2 must be refused (expected 4)")
+    _check(_expect_error(schema2), "schema 2 must be refused (expected 5)")
     var schema3 = data.copy()
     schema3[4] = 3
-    _check(_expect_error(schema3), "schema 3 must be refused (expected 4)")
-    var schema5 = data.copy()
-    schema5[4] = 5
-    _check(_expect_error(schema5), "schema 5 must be refused (expected 4)")
+    _check(_expect_error(schema3), "schema 3 must be refused (expected 5)")
+    var schema4 = data.copy()
+    schema4[4] = 4
+    _check(_expect_error(schema4), "schema 4 must be refused (expected 5)")
+    var schema6 = data.copy()
+    schema6[4] = 6
+    _check(_expect_error(schema6), "schema 6 must be refused (expected 5)")
     # payload_bytes inconsistent with buffer length.
     var wrong_len = data.copy()
     wrong_len[40] = wrong_len[40] + 1
@@ -567,6 +607,105 @@ def test_terrain_blend_tuples() raises:
     _ = world
 
 
+def test_flora_fauna_payloads() raises:
+    """§4.3 §10/§11 (0006 §3.2): FLORA/FAUNA framing + round-trip against
+    FloraSubject/FlockSubject; FLORA gated like TERRAIN (absent when
+    include_flora = False), FAUNA present either way; malformed records
+    (species_id = 0, scale <= 0, nonzero pad) fail loudly (§8)."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var data = encode_snapshot(world, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+
+    # FLORA round-trip against the sim population (count, every field).
+    var fli = find_section(secs, SEC_FLORA)
+    _check(fli >= 0, "FLORA present in first snapshot")
+    var flora = read_flora(data, secs[fli])
+    _check(Int(len(flora)) == world.flora.count, "FLORA count == FloraSubject.count")
+    _check(world.flora.count > 0 and world.flora.count <= FLORA_N_MAX, "count in cap")
+    for i in range(world.flora.count):
+        var inst = world.flora.instances[i]
+        _check(flora[i].species_id == inst.species_id, "species_id round-trip")
+        _check(abs(flora[i].x - inst.x) < 1e-6, "flora x round-trip")
+        _check(abs(flora[i].y - inst.y) < 1e-6, "flora y round-trip")
+        _check(abs(flora[i].z - inst.z) < 1e-6, "flora z round-trip")
+        _check(abs(flora[i].yaw - inst.yaw) < 1e-6, "flora yaw round-trip")
+        _check(abs(flora[i].scale - inst.scale) < 1e-6, "flora scale round-trip")
+        _check(flora[i].species_id >= 1, "SPECIES_NONE never emitted")
+        _check(flora[i].scale > 0.0, "scale > 0")
+
+    # FAUNA round-trip: every active slot in slot order, pose within bounds.
+    var fai = find_section(secs, SEC_FAUNA)
+    _check(fai >= 0, "FAUNA present")
+    var fauna = read_fauna(data, secs[fai])
+    _check(Int(len(fauna)) == world.flock.count, "FAUNA count == flock.count")
+    _check(world.flock.count <= FLOCK_N_MAX, "count <= FLOCK_N_MAX")
+    for i in range(world.flock.count):
+        var b = world.flock.birds[i]
+        _check(b.active, "wire records map to active slots in order")
+        _check(abs(fauna[i].x - Float32(b.x)) < 1e-6, "bird x round-trip")
+        _check(abs(fauna[i].y - Float32(b.y)) < 1e-6, "bird y round-trip")
+        _check(abs(fauna[i].z - Float32(b.z)) < 1e-6, "bird z round-trip")
+        _check(abs(fauna[i].yaw - Float32(b.yaw)) < 1e-6, "bird yaw round-trip")
+        _check(fauna[i].species_id == 0, "seabird species id")
+        _check(
+            fauna[i].pad0 == 0 and fauna[i].pad1 == 0 and fauna[i].pad2 == 0,
+            "FAUNA pad zero",
+        )
+
+    # Gating: include_flora = False drops section 10 only (FAUNA every
+    # snapshot — §4.3 presence rules).
+    var gated = encode_snapshot(world, True, False)
+    var genv = decode_envelope(gated)
+    var gsecs = decode_sections(gated, genv)
+    _check(find_section(gsecs, SEC_FLORA) < 0, "FLORA suppressed when gated")
+    _check(find_section(gsecs, SEC_FAUNA) >= 0, "FAUNA present when FLORA gated")
+    _check(
+        Int(genv.section_count) == Int(env.section_count) - 1,
+        "gated snapshot drops exactly one section",
+    )
+
+    # Malformed FLORA: species_id = 0 (SPECIES_NONE) at record 0.
+    var f_off = secs[fli].offset
+    _check(not _expect_read_error(data, SEC_FLORA), "pristine FLORA decodes")
+    _check(not _expect_read_error(data, SEC_FAUNA), "pristine FAUNA decodes")
+    var bad_species = data.copy()
+    for k in range(4):
+        bad_species[f_off + FLORA_HEADER_BYTES + 20 + k] = 0
+    _check(
+        _expect_read_error(bad_species, SEC_FLORA), "species_id = 0 must raise"
+    )
+    # Malformed FLORA: scale = 0.0 at record 0.
+    var bad_scale = data.copy()
+    for k in range(4):
+        bad_scale[f_off + FLORA_HEADER_BYTES + 16 + k] = 0
+    _check(_expect_read_error(bad_scale, SEC_FLORA), "scale = 0 must raise")
+    # Malformed FLORA: declared section length off by 4.
+    var bad_len = data.copy()
+    var wrong_len = secs[fli].length - 4
+    var l0 = f_off - 4
+    bad_len[l0] = UInt8(wrong_len & 0xFF)
+    bad_len[l0 + 1] = UInt8((wrong_len >> 8) & 0xFF)
+    bad_len[l0 + 2] = UInt8((wrong_len >> 16) & 0xFF)
+    bad_len[l0 + 3] = UInt8((wrong_len >> 24) & 0xFF)
+    _check(_expect_read_error(bad_len, SEC_FLORA), "FLORA length drift raises")
+    # Malformed FAUNA: nonzero pad byte 17 of record 0.
+    var a_off = secs[fai].offset
+    var bad_pad = data.copy()
+    bad_pad[a_off + FAUNA_HEADER_BYTES + 17] = 1
+    _check(_expect_read_error(bad_pad, SEC_FAUNA), "nonzero FAUNA pad raises")
+    # Malformed FAUNA: declared length off by 4.
+    var bad_alen = data.copy()
+    var alen = secs[fai].length - 4
+    var b0 = a_off - 4
+    bad_alen[b0] = UInt8(alen & 0xFF)
+    bad_alen[b0 + 1] = UInt8((alen >> 8) & 0xFF)
+    bad_alen[b0 + 2] = UInt8((alen >> 16) & 0xFF)
+    bad_alen[b0 + 3] = UInt8((alen >> 24) & 0xFF)
+    _check(_expect_read_error(bad_alen, SEC_FAUNA), "FAUNA length drift raises")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -581,5 +720,6 @@ def main() raises:
             test_shore_foam_payload,
             test_malformed_shore_foam_fails_loudly,
             test_terrain_blend_tuples,
+            test_flora_fauna_payloads,
         )
     ]().run()

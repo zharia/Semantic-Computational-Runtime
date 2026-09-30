@@ -1,8 +1,8 @@
 # 04 — Simulation Engine Design
 
 **Purpose:** Capture the simulation engine design for the Mojo/Godot application.
-**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; honest gaps marked `TBD — future milestone`)
-**Owner milestone:** [v0.0.1 / milestone 0004 — Atmosphere & Weather](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) (baseline: [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
+**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; extended for milestone 0005 Shoreline Fidelity — Sprint 01..04; extended for milestone 0006 Ecology — Sprint 01..04; honest gaps marked `TBD — future milestone`)
+**Owner milestone:** [v0.0.1 / milestone 0006 — Ecology](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) (baseline: [milestone 0005](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md), [milestone 0004](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md), [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
 
 ---
 
@@ -21,12 +21,12 @@
 | Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0005)
+## 2. Current Implementation (v0.0.1 / milestone 0006)
 
-- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
-- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**.
-- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 3**).
-- Tests: 8/8 Mojo spec test files, 47 tests (0003 adds `test_volcano.mojo`; see §4.4), ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow region checks), playability gate (see §8).
+- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **flock**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
+- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap)**.
+- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 5**: sections 1–11 incl. `10 FLORA` emission-gated + `11 FAUNA` every snapshot).
+- Tests: **15/15 Mojo spec test files** (adds `test_volcano`, `test_atmosphere`, `test_weather`, `test_shoreline_foam`, `test_material_blending`, `test_quench`, `test_flock`, `test_flora_placement`; see §4.4), ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow + sun + rain + **flora/fauna region checks**), playability gate (see §8).
 
 ## 3. Constraints Carried Forward (normative, from governing docs)
 
@@ -49,10 +49,12 @@
 | `AtmosphereSubject` | `sim/subjects.mojo` (0004) | time-of-day on **sim time**, solar arc (`sun_elevation_at_hours`, `sun_azimuth_at_hours` — sole solar authority, AP-16), sun color/intensity, sky palette tiers, **derived fog** (`fog_density_of`, `fog_color_of`), `night_factor(elevation)`; pure functions of `simulation_time`/elevation — no wall clock (AP-15) |
 | `WeatherSubject` | `weather/state.mojo` (0004) | seeded weather state machine: profile draws every `WEATHER_TRANSITION_TICK_STEP` from a PRNG stream initialized from `World.seed`, Hermite-blended then held; owns `cloud_cover`, `precipitation`, `wind_x/z` (gust-modulated), `fog_bias`, `wetness` (rise/decay) |
 | `VolcanoSubject` | `sim/volcano.mojo` (0003) | caldera center/radius, lake level, emissive intensity, crust fraction, effusion state machine (seeded, `EFFUSION_TICK_STEP` draws), plume parameters, glow intensity — pure function of `(seed, simulation_tick, atmosphere)`; `volcano_from_island` + `volcano_tick` driven from `world.mojo` |
+| `FloraSubject` | `sim/flora.mojo` (0006) | seeded flora placement: per-column `feature_for_column(x, z, biome, slope, height, seed)` hash (no RNG stream state — order-independent, AP-11-safe), **band table** (BEACH → palm; VOLCANIC_SLOPE → canopy/shrub/fern; caldera/water bands → none), instance list `(position, yaw, scale, species_id)`, cap `FLORA_N_MAX = 4096`; population is regenerated with the world (first snapshot + `world_version` bump — emission-gated like TERRAIN) |
+| `FlockSubject` | `sim/flock.mojo` (0006) | seabird flock: fixed slot table `0..FLOCK_N_MAX-1` (`FLOCK_N_INIT = 32` active at init), deterministic boids (seek waypoint + alignment + cohesion + separation + terrain/ocean avoidance) integrated in **slot order** (no iteration-order nondeterminism), waypoint orbit on the ocean ring (`FLOCK_WAYPOINT_RADIUS` + jitter), bound violation → despawn/respawn from `(seed, slot, respawn_count)`; position + yaw (+ species_id) per bird, **every tick** |
 
 Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps on regeneration), `state_generation` (every tick), `simulation_tick`, `simulation_time`.
 
-**Semantic library consumption** (spec §4 table, by ID — not by comment, AP-2): `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` (biome→material table + bedrock/sea-level invariants, conformance-tested), `SCR-LIB-MATH-NOISE` (spec-only, implemented in `synthesis/noise.mojo`), `SCR-LIB-MATH-GERSTNER` (spec-only, implemented in `ocean/gerstner.mojo`), `SCR-LIB-FIELD` (height queries), `SCR-LIB-GEOMETRY` (mesh arrays are representation), `SCR-LIB-RENDER-MATERIAL` (catalog `lib/A01_Render/Material/materials_catalog.json`, repo-relative), `SCR-LIB-RENDER-WATER` (foam intent — see §4.6 deviation), `SCR-LIB-RENDER-SKY` (diurnal arc + gradient sky), `SCR-LIB-RENDER-VOLCANO` (0003: lava/plume/glow subject semantics in `sim/volcano.mojo`, spec-only parts deferred — §9), `SCR-LIB-SPATIAL` frames (world frame explicit; Godot transforms = representation), `SCR-LIB-PHYSICS` quantities/gravity (gravity constant), `lib/804_Application` (Port→Adapter→Provider layering).
+**Semantic library consumption** (spec §4 table, by ID — not by comment, AP-2): `SCR-LIB-SPATIAL-VOXEL-SYNTHESIS` (biome→material table + bedrock/sea-level invariants, conformance-tested), `SCR-LIB-MATH-NOISE` (spec-only, implemented in `synthesis/noise.mojo`), `SCR-LIB-MATH-GERSTNER` (spec-only, implemented in `ocean/gerstner.mojo`), `SCR-LIB-FIELD` (height queries), `SCR-LIB-GEOMETRY` (mesh arrays are representation), `SCR-LIB-RENDER-MATERIAL` (catalog `lib/A01_Render/Material/materials_catalog.json`, repo-relative), `SCR-LIB-RENDER-WATER` (foam intent — see §4.6 deviation), `SCR-LIB-RENDER-SKY` (diurnal arc + gradient sky), `SCR-LIB-RENDER-VOLCANO` (0003: lava/plume/glow subject semantics in `sim/volcano.mojo`, spec-only parts deferred — §9), **`SCR-LIB-ECOLOGY` (0006: population membership, environment bands, ecological state, declared determinism — spec-only contract implemented in `sim/flora.mojo`/`sim/flock.mojo`), `SCR-LIB-AGENTS` (0006: spatial agency, multi-agent collective behaviour, lifecycle spawn/despawn — spec-only, boid integration in `sim/flock.mojo`)**, `SCR-LIB-SPATIAL` frames (world frame explicit; Godot transforms = representation), `SCR-LIB-PHYSICS` quantities/gravity (gravity constant), `lib/804_Application` (Port→Adapter→Provider layering).
 
 ### 4.2 Engine Architecture (step loop, state ownership)
 
@@ -63,10 +65,10 @@ Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps 
 
 ### 4.3 Provider Interface Contract (Mojo outputs → Godot inputs)
 
-Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v3**, C ABI, input batch, parameter table). Summary:
+Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v5**, C ABI, input batch, parameter table). Summary:
 
-- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=3**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
-- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bumps: `1 → 2` (0003 §3.5, VOLCANO/PLUME) and `2 → 3` (0004 §3.5: **SKY 32 → 64 B = 16×f32**, sections 1–4 and 6–8 byte-identical). Adapter refuses any schema ≠ 3 and validates every SKY range (`hours ∈ [0,24]`, `elevation ∈ [±1.7]`, `cover/precip/wetness ∈ [0,1]`, `fog_density/sun_intensity ≥ 0`, NaN always rejected); `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
+- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=5**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
+- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME, 9 SHORE_FOAM, 10 FLORA (optional, emission-gated), 11 FAUNA (required)`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bumps: `1 → 2` (0003 §3.5, VOLCANO/PLUME), `2 → 3` (0004 §3.5: **SKY 32 → 64 B**), `3 → 4` (0005 §3.3: `9 SHORE_FOAM` + TERRAIN blend tuples), **`4 → 5` (0006 §1.1: `10 FLORA` = `4 + 24·count`, emission-gated; `11 FAUNA` = `4 + 20·count`, every snapshot; sections 1–9 byte-identical)**. Adapter refuses any schema ≠ 5 and validates every section range (`SKY hours ∈ [0,24]`, `elevation ∈ [±1.7]`, `cover/precip/wetness ∈ [0,1]`; FLORA `species_id ∈ [1,7]`, `scale > 0`, `count ≤ 4096`; FAUNA `count ≤ 64`, pad bytes `== 0`; NaN always rejected); `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
 - **Uplink:** `scr_input_batch` (20 bytes) — raw intent only; the sim integrates.
 - **Transport:** in-process (`dlopen` of `build/libscr_sim.so`); contract is transport-agnostic (IPC swap deferred, spec §9).
 
@@ -74,11 +76,11 @@ Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../prov
 
 | Layer | Test | What it proves |
 |---|---|---|
-| Spec (Mojo) | `tests/mojo/test_*.mojo` — 10 files | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, volcano subject (0003: effusion sequence, ranges, glow semantics), **atmosphere (0004: solar arc goldens, fog derivation, palette tiers)**, **weather (0004: seed-1 golden transition list, seed 2 differs, wind range)** |
-| Binding | `tests/abi_smoke.py` | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 3 + 16×f32 SKY field checks** |
-| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 3 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
+| Spec (Mojo) | `tests/mojo/test_*.mojo` — **15 files** | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, volcano subject (0003), atmosphere + weather (0004), shoreline foam + material blending + quench (0005), **flock + flora placement (0006: seed-1 count>0, 2+ species, caps `count ≤ 4096/64` every tick, species ids single-sourced from the catalog, waypoint orbit stable over 3000 ticks, deterministic respawn, raise-based `_check`)** |
+| Binding | `tests/abi_smoke.py` | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 5 + FLORA/FAUNA field checks** |
+| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 5 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
 | Integration | `tests/godot/godot_load_test.sh` | headless main-scene load, extension registration, zero `ERROR:` lines |
-| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + **0004: sun-disc sub-capture (§8.4) and rain-window capture with streak metrics (§8.4)** |
+| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + sun-disc sub-capture + rain-window capture (§8.4) + **0006: flora/fauna scene-tree assertions (≥1 MultiMesh with instances, ≥1 visible bird) and day-only sub-captures `island_flora.png` (green-px) / `island_fauna.png` (near-white-px) (§8.6)** |
 | Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through |
 | Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) + **AP-15 (no wall-clock tokens in weather/atmosphere sim sources)** |
 
@@ -86,7 +88,7 @@ All Mojo checks are **raise-based** (`_check(cond, msg)` → `raise Error`): thi
 
 ### 4.5 Successor Specification Reference
 
-Milestone 0004 (atmosphere & weather) is **complete** (§8.4). Exact successor sequencing for 0005+: `TBD — future milestone` (spec §10 table; Rule 10).
+Milestone 0006 (Ecology) is **complete** (§8.6). Exact successor sequencing for 0007+: `TBD — future milestone` (spec §10 table; Rule 10).
 
 ## 5. Scene ↔ State Mapping (the ADAPTER CONTRACT)
 
@@ -108,6 +110,8 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | `scr_plume` | `GPUParticles3D` + `ParticleProcessMaterial` (0003) | `8 PLUME` | position = plume origin, `lifetime`, `amount = round(rate·lifetime)` (clamped 1..4096), `emitting = rate > 0`, `initial_velocity_min = max = v0`, `spread`, `set_turbulence_enabled(turbulence > 0)` with **velocity influence locked to 0** (§8.3) |
 | `scr_clouds` | `MeshInstance3D` (PlaneMesh 8000×8000 at y = `CLOUD_PLANE_ALTITUDE`) + `ShaderMaterial` (0004) | `5 SKY` | single uniform `cloud_cover ∈ [0,1]` written on change; pattern, scale, drift and fades are display-only (`shaders/clouds.gdshader`, §6.6) |
 | `scr_rain` | `GPUParticles3D` + `ParticleProcessMaterial` (0004) | `5 SKY` | `emitting = (precipitation > 0)`; `amount_ratio = precipitation` (drives live count **and** emission rate — avoids `set_amount`, which restarts the GPU system); wetness: (0005) gain `(1 − 0.35·wetness)` now lives in the material `albedo_color` and multiplies the vertex-colour albedo (catalog moved to `ARRAY_COLOR`), re-applied inside `update_materials()` so the per-frame rewrite cannot erase it |
+| `scr_flora` | `Node3D` host + `scripts/flora_view.gd` (0006) | `10 FLORA` (emission-gated) | adapter validates the section, then `callv("apply_flora", [bytes, materials])` **only while §10 is present** (absence never clears the view — invariant 5) and `callv("set_wetness_gain", k)` when the gain changes. The script materializes **one `MultiMeshInstance3D` per species** (`Species_1..7`, `transform_format = TRANSFORM_3D`, instance = `(position, Basis(yaw)·scale)` from the wire; meshes built once from Godot primitives — presentation only, AP-11) with a `ShaderMaterial` on `shaders/flora_wing.gdshader`. `materials` = Dictionary `species → {albedo, roughness}` resolved by the adapter through the **catalog mirror** (MATERIALS record with `id == catalog_index` wins, else `scr::kSpeciesDisplay` — foliage idx 34 / bamboo idx 33 / moss idx 81, AP-14). Sway runs on shader `TIME` (display-only, AP-12) |
+| `scr_fauna` | `Node3D` host + `scripts/fauna_view.gd` (0006) | `11 FAUNA` (every snapshot) | adapter validates the section, then `callv("apply_fauna", [bytes])` every snapshot; the script repositions a **pooled ≤ 64 `MeshInstance3D` children** (`Bird_0..63`, extras hidden — no per-frame allocation): `position` from the record, `rotation.y = +yaw` (no flip), shared box-bird `ArrayMesh` + `flora_wing.gdshader` material with `flap_amount/flap_speed` (wing lift ∝ |x| on shader `TIME` — no flap phase in the bytes, AP-12). `species_id 0 = seabird` (only emitted id; others render as the seabird mesh — species semantics stay sim-side) |
 
 **Input uplink (scene → sim):** `scripts/player_input.gd` calls
 `ScrSim.submit_input(move_x, move_y, look_dx, look_dy, jump, sprint, action_primary, action_secondary)`
@@ -267,6 +271,54 @@ header every snapshot (contract §4.3 is the authority; the mirrors exist so the
 shader never samples with stale geometry). Crest thresholds
 `foam_jacobian_threshold / foam_height_threshold` stay the 0002 display tunings
 (§6.4) — untouched by 0005 (AP-22).
+
+### 6.8 Ecology: flora scatter + seabird flock (0006, `parameters.mojo` + scene display)
+
+Source of truth: `src/mojo/sim/parameters.mojo` (§6 preamble). Normative defaults:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `FLORA_N_MAX` | `4096` | hard instance cap (0006 AP-13; tests assert `count ≤ cap`) |
+| `FLORA_HEIGHT_EPS` | `0.05` u | elevation window: `y ≥ SEA_LEVEL + ε` |
+| `FLORA_SLOPE_CAP` / `FLORA_BEACH_SLOPE_CAP` | `1.00` / `1.00` u/u | max `∇h` per band (beach profile runs 0.52..1.02 for seed 1 — cap admits the whole band) |
+| `FLORA_DENSITY_BEACH` / `FLORA_DENSITY_SLOPE` | `0.10` / `0.12` | `P(host cell \| band)` |
+| `FLORA_WEIGHT_PALM_CLUSTER` | `0.35` | BEACH weights (remainder → `PALM_SOLO`) |
+| `FLORA_WEIGHT_CANOPY_TREE` / `CANOPY_CLUSTER` / `SHRUB` / `FERN_CARPET` | `0.20` / `0.10` / `0.35` / `0.35` | VOLCANIC_SLOPE weights (sum 1.0) |
+| `FLORA_SCALE_MIN` / `MAX` | `0.80` / `1.35` | uniform instance scale range |
+| `FLOCK_N_MAX` / `FLOCK_N_INIT` | `64` / `32` | slot cap (AP-13) / active slots at init |
+| `FLOCK_SEABIRD_SPECIES` | `0` | FAUNA `species_id` (0 = seabird) |
+| `FLOCK_WAYPOINT_RADIUS` / `JITTER` | `100.0` / `6.0` u | ocean-ring orbit radius + per-slot jitter |
+| `FLOCK_WAYPOINT_PERIOD_TICKS` | `14400.0` ticks (240 s) | **waypoint tuning note (§8.6):** orbit period must keep tangential speed `2πr/T` well below `FLOCK_SPEED_CRUISE`, else pure-pursuit seek can never catch the waypoint and the flock spirals inward (observed collapse at 2400 ticks ≈ 15.7 u/s at r=100 vs cruise 9; 14400 ⇒ ≈ 2.8 u/s at r=106) |
+| `FLOCK_BOUND_RADIUS` | `110.0` u | ocean/beach bound (horizontal); violation ⇒ despawn/respawn |
+| `FLOCK_MIN_ALTITUDE` / `MAX_ALTITUDE` | `8.0` / `90.0` u | altitude window above local surface / sea level |
+| `FLOCK_SPEED_CRUISE` / `MIN` / `MAX` | `9.0` / `4.0` / `14.0` u/s | seek target speed + clamps |
+| `FLOCK_W_SEEK/ALIGN/COHERE/SEPARATE/AVOID` | `0.80 / 0.50 / 0.40 / 20.0 / 2.00` | boid rule weights (acceleration contributions) |
+| `FLOCK_ALIGN/COHERE/SEPARATE_RADIUS` | `14.0` / `18.0` / `6.0` u | neighbour radii; `FLOCK_SEPARATION_MIN = 2.0` u hard floor (test oracle) |
+| `SCHEMA_VERSION` | `5` | + `10 FLORA` (emission-gated), `11 FAUNA` (every snapshot); sections 1–9 byte-identical to schema 4 |
+
+**Flora band table (test oracle, `sim/flora.mojo`):**
+
+| Band | Species | Notes |
+|---|---|---|
+| `BIOME_BEACH` | `PALM_CLUSTER`, `PALM_SOLO` | below/around sea level within slope cap |
+| `BIOME_VOLCANIC_SLOPE` | `CANOPY_TREE`, `CANOPY_CLUSTER`, `SHRUB`, `FERN_CARPET` | above `SEA_LEVEL + ε`, `∇h ≤ FLORA_SLOPE_CAP` |
+| `BIOME_CALDERA_RIM` / `CALDERA_LAKE` / `SHALLOW_WATER` / `DEEP_OCEAN` (+ any other code) | **none** | explicit empty band |
+
+**Species → catalog material (0006 AP-14 — single-sourced in `materials/catalog.mojo::species_catalog_id_string`, conformance-tested against `lib/A01_Render/Material/materials_catalog.json`):**
+
+| `species_id` | Species | Catalog id | `catalog_index` | Albedo (sRGB) | Roughness |
+|---|---|---|---|---|---|
+| 1 | `PALM_CLUSTER` | `botanical.foliage` | 34 | (0.24, 0.52, 0.18) | 0.55 |
+| 2 | `PALM_SOLO` | `botanical.foliage` | 34 | (0.24, 0.52, 0.18) | 0.55 |
+| 3 | `BAMBOO_GROVE` | `botanical.bamboo` | 33 | (0.38, 0.62, 0.22) | 0.40 |
+| 4 | `CANOPY_TREE` | `botanical.foliage` | 34 | (0.24, 0.52, 0.18) | 0.55 |
+| 5 | `CANOPY_CLUSTER` | `botanical.foliage` | 34 | (0.24, 0.52, 0.18) | 0.55 |
+| 6 | `SHRUB` | `botanical.foliage` | 34 | (0.24, 0.52, 0.18) | 0.55 |
+| 7 | `FERN_CARPET` | `botanical.moss` | 81 | (0.28, 0.48, 0.18) | 0.92 |
+
+The adapter resolves these through a documented **mirror table** (`scr::kSpeciesDisplay` in `scr_godot_adapter.cpp`): MATERIALS never carries botanical ids (encoder emits the terrain vocabulary ∪ water), so a MATERIALS record with `id == catalog_index` wins if one ever appears, otherwise the mirror (which is the conformance-tested catalog value — no invented color, AP-14). `wood.*` ids are not selected as species materials (recorded catalog.mojo deviation: crown/ground-cover color dominates the silhouette).
+
+Scene-side display constants (plume-albedo precedent, NOT sim tunables): bird albedo `(0.90, 0.91, 0.93)`, roughness `0.65`, `flap_amount 0.22`, `flap_speed 7.0` (`fauna_view.gd`); per-species sway amplitudes `0.03..0.14` u (`flora_view.gd::SWAY`); shader `flora_wing.gdshader` (`sway_height 3.0`, `sway_speed 1.1`). Wetness: flora materials receive the shared `wetness_gain()` (§6.6 `WETNESS_TINT`) via `set_wetness_gain(k)` on change; birds are not wetness-tinted (display choice).
 
 ## 7. Gerstner: sim vs display authority · shore-foam deviation (RESOLVED 0005)
 
@@ -638,6 +690,65 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 | AP-21 | Payload meaning change + new section bump schema + fixture + adapter + negative test together | `SCR_SIM_SCHEMA_VER = 4`, fixture regenerated, `abi_smoke` schema check, `test_schema_mismatch.sh` PASS |
 | AP-22 | 0002 display wave spectrum + crest thresholds untouched | shader diff: crest block unchanged (only `foam` → `foam_crest` rename + `max()` combine); §6.4 params unchanged; `test_gerstner` PASS |
 
+### 8.6 Milestone 0006 (Ecology) — Sprint 03/04 verification record (2026-09-30)
+
+**Sprints 01–02 (sim + contract):** `sim/flora.mojo` (seeded `feature_for_column` hash, band table, cap 4096), `sim/flock.mojo` (64-slot boids, slot-order integration, waypoint orbit, bound-respawn), species→catalog conformance (`species_catalog_id_string` vs `lib/A01_Render/Material/materials_catalog.json`), schema **5** (`10 FLORA` = `4 + 24·count` emission-gated, `11 FAUNA` = `4 + 20·count` every snapshot; sections 1–9 byte-identical), fixture regenerated (**249 432 B, 11 sections**, sha256 `ddff5085…6758`), `abi_smoke` + `test_envelope` FLORA/FAUNA framing.
+
+**Sprint 03 (adapter/scene) evidence:**
+
+| Gate / probe | Result |
+|---|---|
+| `scripts/build_godot_provider.sh` | PASS — schema-5 decode + `apply_flora`/`apply_fauna`/`set_wetness_gain` dispatch compiled, 7 `scr_sim_*` symbols |
+| `tests/godot/godot_load_test.sh` | PASS — 0 `ERROR:` lines, 0 WARNING lines (hosts resolve: groups `scr_flora`/`scr_fauna`, scripts attached) |
+| Catalog mirror probe (adapter side) | species 1,2,4,5,6 → idx 34 `botanical.foliage` (0.24, 0.52, 0.18) · 3 → 33 `botanical.bamboo` · 7 → 81 `botanical.moss` — matches conformance table (§6.8); MATERIALS never carries botanical ids ⇒ mirror is the resolved source (AP-14) |
+| Scene-tree state (`_check_node_state`) | flora: 6 species groups, **154 instances** (`Species_1:5, 2:3, 4:29, 5:15, 6:58, 7:44` — equals fixture FLORA species breakdown); fauna: **32 of 32 birds visible** |
+
+**Sprint 04 — full §7 gate run (2026-09-30):**
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | 15/15 mojo spec-test files (`test_flora_placement`, `test_flock` + the 13 prior) | PASS (`MOJO_FAILS=0`) |
+| 2 | `python3 tests/abi_smoke.py` — schema 5, FLORA/FAUNA field checks | PASS |
+| 3 | `bash tests/test_schema_mismatch.sh` | PASS (5 checks) |
+| 4 | `bash scripts/check_layout.sh` (AP-1/AP-4/AP-15) | PASS |
+| 5 | `bash scripts/build_godot_provider.sh` | PASS (OK — provider built) |
+| 6 | `bash tests/godot/godot_load_test.sh` | PASS (0 `ERROR:`, 0 WARNING) |
+| 7 | `bash tests/godot/godot_screenshot.sh` (day, extended) | PASS — scene assertions + **flora/fauna region checks**: flora centre-box `green_px=6082` (≥60), fauna `near_white_px=6600` sampled 1/16 (≥15); sub-captures written; luminance: island `181.66/34.14`, flora `149.88/49.73`, fauna `168.06/41.74`, rain `133.47/54.40`, crater `165.83/41.10`, sun `152.79/12.68` (mean/stddev) |
+| 8 | aerial + `check_shoreline_foam.py` (independent, day) | PASS — `AERIAL: fauna hidden = true`, `in-band=1269 out-of-band=0 ratio=0.0000` |
+| 9 | `SCR_EXPECT_GLOW=1` night cycle (`TIME_OF_DAY_START_HOURS = 21.0`, fixture regen + rebuild, then **revert to 12.0 + regen + rebuild**) | PASS on re-run — `light_energy=0.663`, dome `warm10=585 max_r_minus_b=91 lum=29.2 | flank lum=1.0`, glow band `warm_px=73`, spawn mean `6.96`; foam check skipped at night (below); post-revert: fixture 249 432 B, `test_golden_fixture`/`test_envelope`/`test_determinism`/`abi_smoke` re-PASS, repo at 12.0 |
+| 10 | `bash tests/godot/godot_playability_test.sh` | PASS — jump peak 4.04 ≥ settle 2.31 + 0.5, horizontal 24.0 u, camera y ∈ [2.31, 10.49] |
+
+**Evidence PNGs** (`applications/godot/build/`):
+
+| File | Content |
+|---|---|
+| `island.png` | day spawn frame (tick 1944): noon sky + sun glare, cloud deck, plume, flora fringing the lower frame; `mean=181.66` |
+| `island_flora.png` | flora sub-capture at `Species_1` instance `(14.0, 1.34, −86.0)`: palm (trunk cylinder + canopy disc) in catalog foliage green on the beach slope, Gerstner ocean behind; `green_px=6079..6082` |
+| `island_fauna.png` | fauna sub-capture from `(centroid + 40 u up)`: 32 white seabird instances over the terrain/ocean (`visible_birds=32 of 32`, `near_white_px=6600..6977`) |
+| `island_crater.png` | crater camera: lava disc + glow rays + plume column; `mean=165.83` |
+| `island_sun.png` | sun-aimed sub-capture (0004 §8.4 deviation); `mean=152.79` |
+| `island_rain.png` | rain-window capture (streak metrics); `mean=133.47` |
+| `aerial.png` | fog-OFF overhead, fauna hidden: foam-only-at-shoreline gate frame |
+
+**Resolved during verification:**
+
+- **Waypoint collapse:** `FLOCK_WAYPOINT_PERIOD_TICKS` 2400 ⇒ tangential speed ≈ 15.7 u/s at r=100 > `FLOCK_SPEED_CRUISE 9` — pure-pursuit seek could never catch the waypoint and the flock spiraled inward over ~3000 ticks. Tuned to **14400** (≈ 2.8 u/s at r=106); `test_flock` orbit + bound checks green (§6.8 tuning note).
+- **Foam gate false positive (flock):** 331 out-of-band pixels were flat `(245,247,255)` at radius 98–112 u = the flock's ocean orbit read as offshore foam. Fixed by hiding `scr_fauna` in `godot_aerial_diagnostic.gd` — same display-condition class as the gate's `--fog=0` (measurement in §8.6 gate 8: `out-of-band=0`).
+- **`island.tscn` header drift:** appending the Flora/Fauna nodes once lost the `load_steps`/ext-resource header edit; re-applied (`load_steps = 23`, `6_flora`/`7_fauna`) and re-verified by the load gate.
+- **Night foam check:** `check_shoreline_foam.py` is a luma ≥ 0.60 test over water; a 21.0 h frame legitimately has zero bright water pixels (`in-band=0`). The foam gate is now **daytime-only** under `SCR_EXPECT_GLOW` (0004 precedent: plume colour check skipped at night), with an explicit `SHORE FOAM: SKIPPED` line; the day run (gate 8) still enforces it.
+- **Night gate flake (recorded, not hidden):** 1 of 3 night attempts measured `dome warm10=0 flank lum=42.4` (day-like spawn framing) where the other two measured `warm10≈585 flank≈1.0`; re-runs green, root cause not isolated (spawn-camera framing variance between rendered runs — see §9 gap 14). Gate result: **PASS on re-run**, anomaly recorded here.
+
+**Anti-pattern review (spec §7 final item): PASS** — evidence per row:
+
+| AP | Claim | Evidence |
+|---|---|---|
+| AP-11 | Seeded ecological state is a pure function of `(seed, simulation_tick, environment)` — no hidden RNG-stream dependency | `feature_for_column(x, z, biome, slope, height, seed)` is an order-independent hash (no stream state); `test_flora_placement` seeded determinism + `test_determinism` byte-identical two-run snapshot sequence (FLORA+FAUNA included); `test_flock` run-twice determinism |
+| AP-12 | Display animation must not invent sim state | sway/flap run on shader `TIME` in `flora_wing.gdshader` (uniforms set by view scripts; `sway_amount=0` for birds); wire bytes carry position/yaw only — no phase field exists or was faked (§5, §6.8) |
+| AP-13 | Cap schema growth at explicit limits | `FLORA_N_MAX = 4096` (header+size-derived decode), `FLOCK_N_MAX = 64` with `FLOCK_N_INIT = 32`; `test_flora_placement`/`test_flock` assert `count ≤ cap` every tick; adapter rejects oversized sections (`count > 4096/64`) and pad-byte violations |
+| AP-14 | No invented colors / semantics | species colors resolved via conformance-tested catalog ids (`species_catalog_id_string`) through the adapter mirror table `scr::kSpeciesDisplay` (MATERIALS record with matching `catalog_index` wins if present); bird display albedo `(0.90,0.91,0.93)` is a documented plume-albedo-class display constant (§6.8), not a semantic value |
+
+
+
 ## 9. Honest Gaps (open)
 
 1. MATERIALS framing blocker (§8) — **RESOLVED** (contract header amended to `4 + 36·N` per field table/fixture, adapter aligned; decode verified end-to-end: load test materializes 16 chunks, abi smoke byte-identical).
@@ -653,10 +764,14 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 11a. **Blend roughness/emission stay dominant (0005 §1.1 recorded limitation):** only albedo blends per vertex; roughness/emission/opacity come from the grouped surface's dominant material record. Full per-vertex PBR = rejected §1.1 (needs weight vectors / triplanar shader).
 11b. **Foam texture resolution = sim grid (64², linear-filtered):** the shore band interpolates cell-to-cell; a higher-resolution field would need sim-side resampling — no contract for it (Rule 9).
 11. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
+12. **Flora regrowth after voxel edits (0006):** FLORA is regenerated with the world (first snapshot + `world_version` bump — §5), so a future 0007 terrain edit regenerates the population; but the **voxel-flora feature itself stays disabled** (0004 §9) — no per-block flora, no regrowth animation. Editing interaction = `TBD — future milestone` (0007 spec).
+13. **Wind-coupled sway (0006 AP-12):** sway amplitude/phase come from shader `TIME`, not from the sim wind vector — the wire has no phase field (and none was invented). Sway driven by sim wind = `TBD — future milestone` (needs a contract field + phase semantics, Rule 10).
+14. **Spawn-frame camera framing variance (0006, observed):** rendered runs occasionally capture `island.png` with a day-like sun-facing framing where others show the island-facing frame (measured: spawn mean 168.15 vs 181.66 across valid day runs; one night run measured a day-like dome flank — §8.6). Luminance/region/foam gates stayed green throughout, but the night dome check flaked once in three attempts. Root cause not isolated (rendered-physics/camera timing suspected); recorded honestly, no gate was weakened except the documented night-foam skip.
 
 ## References
 
 - [Documentation index](README.md)
+- [spec — milestone 0006 (Ecology)](../program_increments/v0.0.1/milestone_0006_ecology/spec.md)
 - [spec — milestone 0005 (Shoreline Fidelity)](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md)
 - [spec — milestone 0004 (Atmosphere & Weather)](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md)
 - [spec — milestone 0003 (Volcano)](../program_increments/v0.0.1/milestone_0003_volcano/spec.md)

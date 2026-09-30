@@ -75,8 +75,11 @@ def parse_heights_and_sea(path: str):
     if buf[:4] != b"SCRS":
         raise ValueError("fixture: bad magic")
     schema = struct.unpack_from("<I", buf, 4)[0]
-    if schema != 4:
-        raise ValueError(f"fixture: schema {schema} != 4")
+    # Schema 5 (milestone_0006) only ADDS sections 10 FLORA / 11 FAUNA; the
+    # TERRAIN (schema-4 blend tuples) and OCEAN layouts read here are
+    # byte-identical, so both schema 4 and 5 fixtures decode the same way.
+    if schema not in (4, 5):
+        raise ValueError(f"fixture: schema {schema} not in (4, 5)")
     section_count = struct.unpack_from("<I", buf, 8)[0]
     payload = struct.unpack_from("<I", buf, 40)[0]
     if payload != len(buf) - 48:

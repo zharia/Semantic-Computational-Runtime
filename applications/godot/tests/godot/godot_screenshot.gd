@@ -38,6 +38,10 @@
 #   C. Rain-window capture -> --png4: camera_follow restored, wait until the
 #      sim reports a tick inside the seed-1 precipitation window, capture the
 #      spawn view again and assert overcast sky + falling streaks.
+#   D. Ecology sub-captures (0006 §7, daytime only, 0003/0004 pattern) ->
+#      --png5 flora (camera aimed at a sim-emitted FLORA instance) and
+#      --png6 fauna (camera above the flock centroid, looking down at the
+#      ocean) with green-pixel / near-white-pixel content checks.
 #
 # Assertions (beyond raw luminance):
 #   * Terrain Chunk_* children, scr_meta fields, HUD text (0002 pipeline).
@@ -45,6 +49,9 @@
 #     lifetime/spread/initial velocity/turbulence from the PLUME section;
 #     scr_crater_lava transform + lava shader uniforms from VOLCANO;
 #     scr_crater_glow energy == sim glow (0 by day, > 0 with --expect-glow).
+#   * Ecology node state (0006 §7): scr_flora has >=1 MultiMeshInstance3D
+#     child with instance_count > 0 (per-species groups), scr_fauna has >= 1
+#     visible bird MeshInstance3D — asserted every run (incl. night).
 #   * Plume region check (0003 §7): non-sky pixels in the crater-above column
 #     (rows 0.02H..0.12H x cols 0.40W..0.60W) vs a per-row sky reference taken
 #     from the left/right image margins (fog makes the horizon row-dependent).
@@ -62,6 +69,8 @@ var _png_path := "res://../build/island.png"
 var _png2_path := "res://../build/island_crater.png"
 var _png3_path := "res://../build/island_sun.png"
 var _png4_path := "res://../build/island_rain.png"
+var _png5_path := "res://../build/island_flora.png"  # 0006 §7 sub-capture
+var _png6_path := "res://../build/island_fauna.png"  # 0006 §7 sub-capture
 # Seed-1 precipitation window is ticks 1801..8100 (test_weather.mojo
 # SEED1_FIRST_RAIN_TICK); 4200 sits mid-MONSOON (cover 0.97, precip 0.8).
 var _rain_tick := 4200
@@ -81,6 +90,10 @@ func _initialize() -> void:
 			_png3_path = a.trim_prefix("--png3=")
 		elif a.begins_with("--png4="):
 			_png4_path = a.trim_prefix("--png4=")
+		elif a.begins_with("--png5="):
+			_png5_path = a.trim_prefix("--png5=")
+		elif a.begins_with("--png6="):
+			_png6_path = a.trim_prefix("--png6=")
 		elif a.begins_with("--rain-tick="):
 			_rain_tick = maxi(0, int(a.trim_prefix("--rain-tick=")))
 		elif a.begins_with("--frames="):
@@ -156,6 +169,17 @@ func _run() -> void:
 	var img2: Image = await _capture_crater()
 	if img2 == null:
 		return
+	# Phase D (0006 §7): ecology sub-captures — daytime only (night runs skip
+	# the sun/rain captures for the same contrast reason, docs/04 §8.4).
+	var img5: Image = null
+	var img6: Image = null
+	if not _expect_glow:
+		img5 = await _capture_flora()
+		if img5 == null:
+			return
+		img6 = await _capture_fauna()
+		if img6 == null:
+			return
 
 	# --- phase A checks ------------------------------------------------------
 	var err := _save_png(img, _png_path)
@@ -210,6 +234,20 @@ func _run() -> void:
 		_fail(2, "save_png(%s) failed err=%d" % [_png2_path, err]); return
 	if not _check_lava_region(img2):
 		return
+
+	# --- phase D checks (0006 §7 ecology) ----------------------------------
+	if img5 != null:
+		err = _save_png(img5, _png5_path)
+		if err != OK:
+			_fail(2, "save_png(%s) failed err=%d" % [_png5_path, err]); return
+		if not _check_flora_pixels(img5):
+			return
+	if img6 != null:
+		err = _save_png(img6, _png6_path)
+		if err != OK:
+			_fail(2, "save_png(%s) failed err=%d" % [_png6_path, err]); return
+		if not _check_fauna_pixels(img6):
+			return
 
 	# --- phase C: rain-window capture (daytime only) -------------------------
 	if not _expect_glow and not await _capture_and_check_rain():
@@ -357,6 +395,45 @@ func _check_node_state() -> bool:
 		if glow.light_energy > 0.0001:
 			_fail(1, "day run: crater glow light_energy = %f, expected 0 (sim night_factor)" % glow.light_energy); return false
 	print("SCREENSHOT: crater glow light_energy=%.3f" % glow.light_energy)
+
+	# --- ecology node state (0006 §7) --------------------------------------
+	# Runs on every run (day + night): FLORA is emitted at init and cached
+	# (invariant 5), FAUNA every snapshot, so both must be materialized by
+	# the time any capture window opens.
+	var flora_n: Node = _first_in_group("scr_flora")
+	if flora_n == null:
+		_fail(1, "group scr_flora absent from island.tscn"); return false
+	var flora_groups := 0
+	var flora_total := 0
+	var flora_desc := PackedStringArray()
+	for fc in flora_n.get_children():
+		if fc is MultiMeshInstance3D:
+			var mm := (fc as MultiMeshInstance3D).multimesh
+			if mm != null and mm.instance_count > 0:
+				flora_groups += 1
+				flora_total += mm.instance_count
+				flora_desc.append("%s:%d" % [String(fc.name),
+						mm.instance_count])
+	if flora_groups < 1 or flora_total < 1:
+		_fail(1, "scr_flora has no MultiMesh with instances (FLORA not applied: groups=%d total=%d)" %
+		      [flora_groups, flora_total]); return false
+	print("SCREENSHOT: flora groups=%d total=%d (%s)" %
+	      [flora_groups, flora_total, ", ".join(flora_desc)])
+
+	var fauna_n: Node = _first_in_group("scr_fauna")
+	if fauna_n == null:
+		_fail(1, "group scr_fauna absent from island.tscn"); return false
+	var birds := 0
+	var birds_total := 0
+	for bc in fauna_n.get_children():
+		if bc is MeshInstance3D:
+			birds_total += 1
+			if (bc as MeshInstance3D).visible:
+				birds += 1
+	if birds < 1:
+		_fail(1, "scr_fauna has no visible bird nodes (FAUNA not applied: visible=%d of %d)" %
+		      [birds, birds_total]); return false
+	print("SCREENSHOT: fauna visible_birds=%d of %d nodes" % [birds, birds_total])
 	return true
 
 # Plume: non-sky pixels in the crater-above column (0003 §7 region check).
@@ -720,6 +797,126 @@ func _check_lava_region(img: Image) -> bool:
 	print("SCREENSHOT: crater view warm_px=%d around projected lava centre %s" % [warm, str(sp)])
 	if warm < 400:
 		_fail(1, "lava region check failed: %d warm px (need 400) in crater view" % warm); return false
+	return true
+
+# Phase D1 (0006 §7): flora sub-capture. Aim at instance 0 of the first
+# species group — its world transform is a sim FLORA record (adapter applied
+# it verbatim), so the frame contains plant + surrounding terrain. Camera
+# elevated + oblique (straight-down look_at with UP is degenerate); the check
+# boxes on the plant crown at frame centre.
+func _capture_flora() -> Image:
+	var island: Node = root.get_child(0)
+	var driver := island.get_node_or_null("ScrSim")
+	if driver != null and driver.has_method("set_camera_follow"):
+		driver.set("camera_follow", false)
+	var flora_n: Node = _first_in_group("scr_flora")
+	var cam := _first_in_group("scr_camera") as Camera3D
+	if flora_n == null or cam == null:
+		_fail(1, "flora sub-capture: missing scr_flora / scr_camera"); return null
+	var target := Vector3.ZERO
+	var found := false
+	for c in flora_n.get_children():
+		if c is MultiMeshInstance3D:
+			var mm := (c as MultiMeshInstance3D).multimesh
+			if mm != null and mm.instance_count > 0:
+				target = mm.get_instance_transform(0).origin
+				found = true
+				print("SCREENSHOT: flora sub-capture group=%s instance0=%s" %
+				      [String(c.name), str(target)])
+				break
+	if not found:
+		_fail(1, "flora sub-capture: no MultiMesh with instances"); return null
+	cam.global_position = target + Vector3(4.0, 6.0, 4.0)
+	cam.look_at(target + Vector3(0.0, 2.0, 0.0), Vector3.UP)
+	for i in 8:
+		await process_frame
+	return await _capture()
+
+# Flora content: green pixels near frame centre (g above both r and b) —
+# foliage albedo (catalog botanical.* greens) dominates the crown, while sand
+# (r>g), basalt (grey r≈g≈b) and water (b>g) do not qualify.
+func _check_flora_pixels(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var r0 := int(0.25 * h)
+	var r1 := int(0.75 * h)
+	var c0 := int(0.30 * w)
+	var c1 := int(0.70 * w)
+	var green := 0
+	var row := r0
+	while row < r1:
+		var col := c0
+		while col < c1:
+			var i3 := (row * w + col) * 4
+			var r := int(data[i3])
+			var g := int(data[i3 + 1])
+			var b := int(data[i3 + 2])
+			if g >= 45 and g >= r + 8 and g >= b + 15:
+				green += 1
+			col += 2
+		row += 2
+	print("SCREENSHOT: flora centre box green_px=%d (rows %d..%d cols %d..%d)" %
+	      [green, r0, r1, c0, c1])
+	if green < 60:
+		_fail(1, "flora region check failed: %d green px in centre box (need 60)" % green); return false
+	return true
+
+# Phase D2 (0006 §7): fauna sub-capture — camera 40 u above the flock
+# centroid looking straight down (up-vector must not be parallel to the view
+# axis, hence (0,0,-1)); frame = ocean below + white birds.
+func _capture_fauna() -> Image:
+	var island: Node = root.get_child(0)
+	var driver := island.get_node_or_null("ScrSim")
+	if driver != null and driver.has_method("set_camera_follow"):
+		driver.set("camera_follow", false)
+	var fauna_n: Node = _first_in_group("scr_fauna")
+	var cam := _first_in_group("scr_camera") as Camera3D
+	if fauna_n == null or cam == null:
+		_fail(1, "fauna sub-capture: missing scr_fauna / scr_camera"); return null
+	var centroid := Vector3.ZERO
+	var birds := 0
+	for c in fauna_n.get_children():
+		if c is MeshInstance3D and (c as MeshInstance3D).visible:
+			centroid += c.global_position
+			birds += 1
+	if birds < 1:
+		_fail(1, "fauna sub-capture: no visible birds"); return null
+	centroid /= float(birds)
+	cam.global_position = centroid + Vector3(0.0, 40.0, 0.0)
+	cam.look_at(centroid, Vector3(0.0, 0.0, -1.0))
+	print("SCREENSHOT: fauna sub-capture centroid=%s birds=%d cam=%s" %
+	      [str(centroid), birds, str(cam.global_position)])
+	for i in 8:
+		await process_frame
+	return await _capture()
+
+# Fauna content: near-white pixels over the frame (birds are white-grey
+# display constants; deep ocean is dark blue, so separation is large).
+# FOV geometry: 2.1 u wingspan at 40 u => ~27 px per bird, ~30 birds in
+# frame => hundreds of px expected; threshold kept conservative.
+func _check_fauna_pixels(img: Image) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := _rgba(img)
+	var white := 0
+	var row := 0
+	while row < h:
+		var col := 0
+		while col < w:
+			var i3 := (row * w + col) * 4
+			var r := int(data[i3])
+			var g := int(data[i3 + 1])
+			var b := int(data[i3 + 2])
+			var mx := maxi(r, maxi(g, b))
+			var mn := mini(r, mini(g, b))
+			if r >= 140 and g >= 140 and b >= 140 and mx - mn <= 45:
+				white += 1
+			col += 4
+		row += 4
+	print("SCREENSHOT: fauna frame near_white_px=%d (sampled 1/16)" % white)
+	if white < 15:
+		_fail(1, "fauna region check failed: %d near-white px (need 15)" % white); return false
 	return true
 
 func _rgba(img: Image) -> PackedByteArray:

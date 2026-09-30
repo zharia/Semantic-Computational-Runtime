@@ -4,7 +4,7 @@
 **Status:** Normative
 **Owner milestone:** [applications/godot v0.0.1 / milestone 0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../../../../applications/godot/program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md))
 **C ABI header:** [`adapter/scr_godot_abi.h`](adapter/scr_godot_abi.h) (single source of truth for symbol names, struct layouts, error codes)
-**Schema version:** `4` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); symbol set unchanged in all
+**Schema version:** `5` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); 4 → 5 in [milestone_0006](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) §1.1 (new sections `10 FLORA` emission-gated + `11 FAUNA` every snapshot; sections 1–9 byte-identical); symbol set unchanged in all
 
 ---
 
@@ -28,7 +28,7 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 | `scr_sim_init(seed)` | First call; initializes Mojo runtime + world; 0 = ok |
 | `scr_sim_shutdown()` | Tear down; safe after init |
 | `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (1) |
-| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (4) |
+| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (5) |
 | `scr_sim_step(dt, input*)` | Accumulate `dt`; run 0..n fixed ticks @ 60 Hz; input applied per executed tick; returns ticks run (≥0) or `SCR_ERR_*` |
 | `scr_sim_snapshot_size()` | Size of snapshot from most recent successful step |
 | `scr_sim_snapshot_write(buf, cap)` | Serialize; returns bytes written or `SCR_ERR_BUF_SMALL` etc. |
@@ -37,7 +37,7 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 
 **Adapter startup rejection:** refuse to run when `scr_sim_abi_version() != SCR_SIM_ABI_VERSION || scr_sim_schema_version() != SCR_SIM_SCHEMA_VER` (negative test required by exit criteria).
 
-## 4. Snapshot binary schema (version 4)
+## 4. Snapshot binary schema (version 5)
 
 All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit padding (all offsets documented). Offsets are bytes from snapshot start.
 
@@ -47,12 +47,14 @@ All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit pa
 
 **Schema 3 → 4 migration (milestone_0005 §3.6):** the envelope `schema_version` field is now `4`. Two coordinated changes require this bump (AP-21): **(a) new section `9 SHORE_FOAM`** — `section_count` for a full snapshot grows from `8` to `9`, emitted **every snapshot** (the shore-foam field evolves with wave phase; suppressing it would freeze the surf line); **(b) TERRAIN per-vertex payload semantic reframe** — the per-vertex record keeps its exact 4-byte stride but its meaning changes from a single `u32 material id` to the tuple `(u8 material_id, u8 blend_id, u8 blend_weight, u8 pad)` (§4.3 §3). Sections 1–2 and 4–8 are byte-identical to schema 3; the TERRAIN section is *stride-neutral* (same byte count and offsets for every other field), which is precisely why it is a **silent-if-unversioned meaning change**: schema-3 and schema-4 TERRAIN bytes differ only in tuple interpretation. Schema-1/2/3 readers MUST refuse schema-4 bytes via the startup gate (§3/§7), and the adapter decode MUST switch on schema, never guess (AP-21).
 
+**Schema 4 → 5 migration (milestone_0006 §1.1 sibling rebase):** the envelope `schema_version` field is now `5`. Two coordinated changes require this bump: **(a) new section `10 FLORA`** — `section_count` for a full snapshot grows accordingly, emitted under the **same presence rule as TERRAIN** (first snapshot after init, then whenever `world_version` increments — static population, no per-tick re-send; §4.3); **(b) new section `11 FAUNA`** — emitted **every snapshot** (the flock moves every tick; suppressing it would freeze the birds). A full snapshot therefore has `section_count = 11` (10 when TERRAIN and FLORA are both suppressed in the same non-regeneration snapshot). Sections 1–9 are byte-identical to schema 4. Symbol set unchanged. Schema-1/2/3/4 readers MUST refuse schema-5 bytes via the startup gate (§3/§7).
+
 ### 4.1 Envelope (48 bytes, always present)
 
 | Off | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x53524353` (bytes `S C R S`) |
-| 4 | u32 | `schema_version` | = 4 |
+| 4 | u32 | `schema_version` | = 5 |
 | 8 | u32 | `section_count` | number of sections that follow |
 | 12 | u32 | `world_version` | increments on world regeneration |
 | 16 | u32 | `state_generation` | increments every commit |
@@ -75,7 +77,7 @@ Sections follow the envelope consecutively. Each section:
 
 `payload_bytes = Σ (8 + section_bytes)`.
 
-Sections are emitted in id order 1,2,3,4,5,6,7,8,9. Sections 1, 2, 4, 5, 6, **7, 8, 9** are emitted **every snapshot**; section 3 (TERRAIN) follows the presence rule in §4.3.
+Sections are emitted in id order 1,2,…,11 (ascending section id). Sections 1, 2, 4, 5, 6, **7, 8, 9, 11** are emitted **every snapshot**; section 3 (TERRAIN) and section 10 (FLORA) follow the presence rule in §4.3 (identical tracker: first snapshot after init, then on `world_version` change).
 
 ### 4.3 Section payloads
 
@@ -223,6 +225,44 @@ PLUME carries **emission parameters only** — the GPU integrates particles for 
 
 Emitted **every snapshot** (foam evolves with wave phase — locked open decision, milestone_0005 §1.3.2). The field is computed sim-side, VERBATIM from the library formula `F = clamp(1 − Δy/d_foam, 0, 1)² · (0.6 + 0.4·sin(6Δy − 4t))` with `d_foam = 1.8 m` (`SCR-LIB-RENDER-WATER` §3, parameters in §6) over the terrain height field and the Gerstner authority (`src/mojo/sim/shore.mojo` is the formula's single home, AP-19). Deep water (`Δy ≥ 1.8`) and land above the max wave reach carry exactly 0. The adapter uploads the grid as an `ImageTexture`; the ocean shader **shades** this field for the shore band and never re-derives terrain-vs-water depth (AP-19). Crest whitecaps remain the disjoint 0002 display path (AP-22: `FOAM_JACOBIAN_THRESHOLD` / `FOAM_HEIGHT_THRESHOLD` in §6). Decode MUST reject: length ≠ `12 + 4·grid_n²`, `grid_n = 0` or `grid_n > 1024`, any value outside `[0, 1]` (§8 loud failure).
 
+**10 — FLORA** (`4 + 24·count` bytes; schema 5, [milestone_0006 §1.1](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) sibling rebase of section 3's presence rule)
+
+| Off (rel.) | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u32 | `count` | instance count, `0 ≤ count ≤ 4096` (`FLORA_N_MAX`) |
+| 4 | record×count | `instances` | 24 B per record, below |
+
+Per record (24 bytes, exactly):
+
+| Rel. | Type | Field |
+|---|---|---|
+| 0 | f32×3 | `position` (x,y,z); `y` = surface height at the anchor cell |
+| 12 | f32 | `yaw` (radians) |
+| 16 | f32 | `scale` (uniform, `> 0`) |
+| 20 | u32 | `species_id` (1..7 — `materials/catalog.mojo` `SPECIES_*`, single-sourced to the Synthesis §3 feature vocabulary; `0` never emitted) |
+
+Pose only: no per-instance animation phase (adapter runs display-side motion on `TIME` — AP-12). Species → display material resolves through the species → `materials_catalog.json` `id` table in `materials/catalog.mojo`; the adapter MUST NOT invent per-species colours (AP-14).
+
+Presence: FLORA sections are emitted **in the first snapshot after init and whenever `world_version` increments**, tracked exactly like TERRAIN (§4.3 §3 presence rule); in all other snapshots the section is absent ⇒ adapter keeps the existing flora MultiMesh. A decoded `count` larger than `FLORA_N_MAX`, a section byte count other than `4 + 24·count`, an out-of-range `species_id`, or a non-positive `scale` MUST fail loudly (§8).
+
+**11 — FAUNA** (`4 + 20·count` bytes; schema 5, milestone_0006 §1.1)
+
+| Off (rel.) | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u32 | `count` | active birds, `0 ≤ count ≤ 64` (`FLOCK_N_MAX`) |
+| 4 | record×count | `birds` | 20 B per record, below |
+
+Per record (20 bytes, exactly):
+
+| Rel. | Type | Field |
+|---|---|---|
+| 0 | f32×3 | `position` (x,y,z) world units |
+| 12 | f32 | `yaw` (radians, heading) |
+| 16 | u8 | `species_id` (0 = seabird) |
+| 17 | u8×3 | `pad` = 0; MUST be rejected loudly on decode |
+
+Emitted **every snapshot** (flock state is tick-dependent). Records are emitted in ascending sim slot order (deterministic). A `count` larger than `FLOCK_N_MAX`, a byte count other than `4 + 20·count`, or nonzero pad MUST fail loudly (§8).
+
 ## 5. Input uplink (`scr_input_batch`, 20 bytes packed)
 
 | Off | Type | Field |
@@ -283,6 +323,28 @@ Shore foam + boundary blending (schema 4, milestone_0005; AP-7 — single home `
 | `BLEND_DITHER_AMP` (deterministic noise dither added to the ramp before clamping; `< ramp step / 2` keeps the quantised ramp strictly monotonic) | 0.10 | × |
 | `BLEND_DITHER_FREQUENCY` (dither gradient-noise cycles per world unit; same seeded noise family as 0002 synthesis) | 0.18 | 1/u |
 
+Flora placement + seabird flock (schema 5, milestone_0006; AP-7 — single home `applications/godot/src/mojo/sim/parameters.mojo`, mirrored here):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `FLORA_N_MAX` (hard instance cap) | 4096 | instances |
+| `FLORA_HEIGHT_EPS` (window: `height ≥ SEA_LEVEL + ε`) | 0.05 | u |
+| `FLORA_BEACH_SLOPE_CAP` / `FLORA_SLOPE_CAP` (per-band max `‖∇h‖`; beach profile measures 0.52..1.02 so the cap admits the band) | 1.00 / 1.00 | u/u |
+| `FLORA_DENSITY_BEACH` / `FLORA_DENSITY_SLOPE` (P(host) per cell) | 0.10 / 0.12 | — |
+| `FLORA_WEIGHT_PALM_CLUSTER` (BEACH; remainder → PALM_SOLO) | 0.35 | — |
+| `FLORA_WEIGHT_CANOPY_TREE` / `FLORA_WEIGHT_CANOPY_CLUSTER` / `FLORA_WEIGHT_SHRUB` / `FLORA_WEIGHT_FERN_CARPET` (VOLCANIC_SLOPE; rows sum to 1) | 0.20 / 0.10 / 0.35 / 0.35 | — |
+| `FLORA_SCALE_MIN` / `FLORA_SCALE_MAX` (uniform instance scale range) | 0.80 / 1.35 | × |
+| `FLOCK_N_MAX` / `FLOCK_N_INIT` (hard cap / slots active at init) | 64 / 32 | birds |
+| `FLOCK_WAYPOINT_RADIUS` / `FLOCK_WAYPOINT_JITTER` / `FLOCK_WAYPOINT_PERIOD_TICKS` (orbit ring) | 100.0 / 6.0 / 14400.0 | u / u / ticks |
+| `FLOCK_BOUND_RADIUS` (ocean/beach bound — despawn + respawn trigger) | 110.0 | u |
+| `FLOCK_MIN_ALTITUDE` / `FLOCK_MAX_ALTITUDE` (avoidance window above surface) | 8.0 / 90.0 | u |
+| `FLOCK_SPEED_CRUISE` / `FLOCK_SPEED_MIN` / `FLOCK_SPEED_MAX` (speed clamp) | 9.0 / 4.0 / 14.0 | u/s |
+| `FLOCK_W_SEEK` / `FLOCK_W_ALIGN` / `FLOCK_W_COHERE` / `FLOCK_W_SEPARATE` / `FLOCK_W_AVOID` (rule weights) | 0.80 / 0.50 / 0.40 / 20.0 / 2.00 | — |
+| `FLOCK_ALIGN_RADIUS` / `FLOCK_COHERE_RADIUS` / `FLOCK_SEPARATE_RADIUS` | 14.0 / 18.0 / 6.0 | u |
+| `FLOCK_SEPARATION_MIN` (hard pairwise floor, test oracle) | 2.0 | u |
+
+Flora placement band table (0006 §1.1; `feature_for_column` in `sim/flora.mojo`, pure integer hash over `(seed, x, z)` — no RNG stream): `BEACH → {PALM_CLUSTER, PALM_SOLO}`; `VOLCANIC_SLOPE → {CANOPY_TREE, CANOPY_CLUSTER, SHRUB, FERN_CARPET}`; `CALDERA_RIM / CALDERA_LAKE / SHALLOW_WATER / DEEP_OCEAN → none` — each gated by the elevation window and the per-band slope cap above. Flock rules (0006 §1.1): waypoint seek, alignment, cohesion, separation, terrain/ocean avoidance from the heightfield, speed clamp; fixed slots, bound violation ⇒ despawn + deterministic respawn from `(seed, slot, respawn_count)`, `count ≤ FLOCK_N_MAX` always.
+
 Display-only crest thresholds (schema 1, unchanged by milestone_0005 — AP-22: shore foam ≠ crest foam): `FOAM_JACOBIAN_THRESHOLD = 0.65` (J < 0.65 ⇒ whitecap), `FOAM_HEIGHT_THRESHOLD = 0.7` (normalized height > 0.7).
 
 Glow derivation (milestone_0003 §3.3): `glow_intensity = emissive_intensity · night_factor(sun_elevation)`, `night_factor` a pure function of the existing `AtmosphereSubject`: 0 for elevation ≥ 0, else `min(−elevation / GLOW_NIGHT_ELEVATION_REF, GLOW_NIGHT_MAX_FACTOR)`.
@@ -319,7 +381,7 @@ Derivations (all pure functions of simulation state — AP-11/AP-15):
 - `SCR_SIM_ABI_VERSION` — symbol/semantic contract of the C functions. Mismatch ⇒ adapter refuses to start.
 - `SCR_SIM_SCHEMA_VER` — byte layout above. Mismatch ⇒ adapter refuses to start (negative test: `tests/test_schema_mismatch.sh`, stub reports `SCR_SIM_SCHEMA_VER + 1` derived from the header).
 - Additive changes require a schema bump; adapters MUST NOT guess unknown layouts.
-- **Sibling rebasing rule (milestone_0003 §3.5):** milestones 0003 / 0004 / 0005 are independent siblings under 0002. Whichever executes later MUST rebase on the then-current schema, fixture, adapter, and contract state — applying its own "+1 over then-current" bump — not on the layouts written in any one spec.
+- **Sibling rebasing rule (milestone_0003 §3.5):** milestones 0003 / 0004 / 0005 / 0006 are independent siblings under 0002. Whichever executes later MUST rebase on the then-current schema, fixture, adapter, and contract state — applying its own "+1 over then-current" bump — not on the layouts written in any one spec.
 
 ## 8. Provider conformance notes
 

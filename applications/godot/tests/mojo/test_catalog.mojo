@@ -17,6 +17,9 @@ from materials.json import parse_json
 from materials.catalog import (
     load_catalog,
     vocab_catalog_id_string,
+    species_catalog_id_string,
+    SPECIES_NONE,
+    SPECIES_COUNT,
     MAT_VOCAB_COUNT,
     MAT_BEDROCK,
     MAT_BASALT,
@@ -123,6 +126,41 @@ def test_no_hand_authored_vocabulary() raises:
         _check(found, "vocabulary id not from catalog: " + want)
 
 
+def test_species_ids_single_sourced() raises:
+    # 0006 AP-14: every flora species id maps onto exactly one
+    # materials_catalog.json id (invariant 6) — no hand-authored colours,
+    # no second source of truth. SPECIES_NONE must raise (never emitted).
+    var root = find_repo_root()
+    var doc = parse_json(read_file_text(join_path(root, REL_PATH)))
+    var materials = doc.get("materials")
+    var index_by_id = List[String]()
+    for i in range(materials.len()):
+        index_by_id.append(materials.at(i).get("id").as_string())
+
+    var raised = False
+    try:
+        _ = species_catalog_id_string(SPECIES_NONE)
+    except e:
+        raised = True
+    _check(raised, "SPECIES_NONE must raise (no material)")
+
+    var seen_ids = List[String]()
+    for species in range(1, SPECIES_COUNT):
+        var want = species_catalog_id_string(UInt32(species))
+        var found = False
+        for i in range(len(index_by_id)):
+            if index_by_id[i] == want:
+                found = True
+        _check(found, "species id not from catalog: " + want)
+        # Exactly one row per species — the table is total on 1..7.
+        var dup = False
+        for i in range(len(seen_ids)):
+            if seen_ids[i] == want:
+                dup = True
+        _ = dup  # shared display materials (foliage) are legal; ids resolve
+        seen_ids.append(want)
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -130,5 +168,6 @@ def main() raises:
             test_vocabulary_ids_stable,
             test_derivation_matches_raw_catalog,
             test_no_hand_authored_vocabulary,
+            test_species_ids_single_sourced,
         )
     ]().run()

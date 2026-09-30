@@ -44,6 +44,32 @@ def splitmix64(state: UInt64) -> UInt64:
     return x ^ (x >> 31)
 
 
+# --- Pure integer hash over (seed, x, z, salt) -------------------------------
+# Shared by sim/flora placement and sim/flock respawn (milestone_0006 §1.1:
+# "integer hash over (seed, x, z), no mutable RNG stream"). Order-independent
+# and side-effect free — same inputs, same output, forever.
+comptime _CELL_MIX_A: UInt64 = 0x9E3779B97F4A7C15
+comptime _CELL_MIX_B: UInt64 = 0xD1B54A32D192ED03
+comptime _CELL_MIX_C: UInt64 = 0x85EBCA77C2B2AE63
+comptime _TWO_POW_53: Float64 = 9007199254740992.0  # 2^53
+
+
+def hash64_cells(seed: UInt32, x: Int, z: Int, salt: UInt64) -> UInt64:
+    """Pure splitmix64 finalizer over a composed (seed, x, z, salt) state."""
+    var s = (
+        UInt64(seed) * _CELL_MIX_A
+        ^ (UInt64(UInt32(x)) + 1) * _CELL_MIX_B
+        ^ (UInt64(UInt32(z)) + 1) * _CELL_MIX_C
+        ^ salt
+    )
+    return splitmix64(s)
+
+
+def hash01_cells(seed: UInt32, x: Int, z: Int, salt: UInt64) -> Float64:
+    """Top 53 bits → u ∈ [0, 1)."""
+    return Float64(hash64_cells(seed, x, z, salt) >> 11) / _TWO_POW_53
+
+
 def _build_permutation(seed: UInt32, mut perm: List[UInt8]):
     # Fisher-Yates over 0..255 driven by splitmix64(seed) — deterministic.
     var state = UInt64(seed) * 0x9E3779B97F4A7C15 + 0x85EBCA77C2B2AE63

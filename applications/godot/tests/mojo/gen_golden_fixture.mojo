@@ -2,9 +2,10 @@
 #
 # Regenerates tests/fixtures/snapshot_seed1_tick1.bin:
 #   seed 1 → one step dt = 1/60 with the documented scripted input →
-#   snapshot with all nine sections (schema 4: 1..8 framing + 9 SHORE_FOAM;
-#   TERRAIN per-vertex payload is the 4-byte blend tuple — stride-neutral;
-#   include_terrain = True, first snapshot).
+#   snapshot with all eleven sections (schema 5: 1..9 framing from schema 4
+#   + 10 FLORA + 11 FAUNA; TERRAIN per-vertex payload is the 4-byte blend
+#   tuple — stride-neutral; include_terrain = True, include_flora = True,
+#   first snapshot).
 #
 # Run (from repo root) ONLY when an intentional contract/code change alters
 # snapshot bytes; test_golden_fixture must then be re-run and the diff

@@ -14,6 +14,10 @@
  *   - applications/godot/program_increments/v0.0.1/
  *       milestone_0005_shoreline-fidelity/spec.md §1.1 (decisions (a)/(b)),
  *       §2.1 (AP-19..AP-22), §3.2/§3.5 (schema 4, SHORE_FOAM, blend tuples)
+ *   - applications/godot/program_increments/v0.0.1/
+ *       milestone_0006_ecology/spec.md §1.1 (schema 5, FLORA/FAUNA),
+ *       §2.1 (0006 AP-11..AP-14), §5 (scene scripts own node construction),
+ *       §3.4 (groups)
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -83,6 +87,22 @@
  *                                            light_energy = glow_intensity
  *                                            (sim-computed; adapter must NOT
  *                                            re-derive "night", AP-11)
+ *   "scr_flora"    Node3D            one  -> method apply_flora(bytes,
+ *                                            materials) rebuilds one
+ *                                            MultiMeshInstance3D per species
+ *                                            from the validated §10 FLORA
+ *                                            records (called ONLY when the
+ *                                            emission-gated section is
+ *                                            present — invariant 5 keeps the
+ *                                            cached instances otherwise);
+ *                                            method set_wetness_gain(k) when
+ *                                            the wet-surface gain changes.
+ *                                            materials: Dictionary species ->
+ *                                            {albedo: Color, roughness: float}
+ *   "scr_fauna"    Node3D            one  -> method apply_fauna(bytes) —
+ *                                            repositions the bird pool from
+ *                                            the validated §11 FAUNA records
+ *                                            (every snapshot)
  * Missing groups are tolerated (presentation simply absent); present-but-
  * mistyped nodes are reported with ERR_PRINT and skipped.
  *
@@ -190,6 +210,37 @@
  *     — NO flip. The shader only shades the field: it never re-derives
  *     y_water − y_terrain (AP-19). Crest whitecaps stay the disjoint 0002
  *     display path (AP-22).
+ *
+ * ---------------------------------------------------------------------------
+ * Milestone 0006 — schema 5 adapter decisions (FLORA/FAUNA)
+ * ---------------------------------------------------------------------------
+ * Schema gate: SCR_SIM_SCHEMA_VER == 5 (scr_godot_abi.h); sections 1..11,
+ * FAUNA required in every snapshot, FLORA emission-gated (first snapshot
+ * after init + world_version bump — 104_contract §4.2/§4.3, invariant 5).
+ *
+ *   - DECODE ONLY IN C++: section 10 (4 + 24·count, count ≤ 4096, species_id
+ *     1..7, finite pose, scale > 0) and section 11 (4 + 20·count, count ≤ 64,
+ *     u8 species_id, 3 pad bytes MUST be 0, finite pose) are fully validated
+ *     here; a violation skips the frame loudly (104_contract §8).
+ *   - VIEW CONSTRUCTION STAYS IN GDSCRIPT (spec §5): the adapter hands the
+ *     validated byte spans to the host scripts — `apply_flora(bytes,
+ *     materials)` ONLY while §10 is present (absence never clears the cached
+ *     instances, invariant 5) and `apply_fauna(bytes)` every snapshot. The
+ *     scripts own MultiMesh build, pooling and node lifecycle (presentation
+ *     only); a present host without the method warns once and is skipped.
+ *   - SPECIES COLORS (0006 AP-14): MATERIALS never carries botanical ids
+ *     (encode.mojo::_encode_materials = terrain vocabulary ∪ water), so each
+ *     species resolves its catalog albedo via a MIRROR of
+ *     materials/catalog.mojo::species_catalog_id_string() keyed by the
+ *     materials_catalog.json array index (foliage 34 / bamboo 33 / moss 81) —
+ *     a MATERIALS record with that id wins if it ever appears. Colors are
+ *     catalog values, never invented; species semantics stay sim-side
+ *     (0006 AP-11) and no flap/sway phase is read from the wire (0006 AP-12).
+ *   - WETNESS: flora materials get `set_wetness_gain(k)` (same k as terrain,
+ *     wetness_gain()) only when it changes; the script multiplies its base
+ *     albedo. Birds are not wetness-tinted (thin-film display choice).
+ *   - DISPLAY-ONLY MOTION: sway/flap run on shader TIME inside
+ *     flora_wing.gdshader (docs/04 §6) — representation only.
  *
  * Conventions (normative for Sprint-04 scene work): *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
  *             (-sin yaw, -cos yaw) (src/mojo/sim/subjects.mojo), which equals
@@ -312,9 +363,22 @@ constexpr uint32_t kPlumeBytes = 32;
  * coded: sbytes MUST equal 12 + 4·grid_n² (104_contract §4.3 §9). */
 constexpr uint32_t kShoreFoamHeaderBytes = 12;
 constexpr uint32_t kShoreFoamGridMax = 1024;
+/* Schema 5 (milestone_0006 §1.1, 104_contract §4.3 §10/§11):
+ *   10 FLORA = u32 count + count·24 B (f32 x/y/z, f32 yaw, f32 scale,
+ *              u32 species_id) — emission-gated, count ≤ FLORA_N_MAX (4096).
+ *   11 FAUNA = u32 count + count·20 B (f32 x/y/z, f32 yaw, u8 species_id,
+ *              u8×3 pad = 0) — every snapshot, count ≤ FLOCK_N_MAX (64). */
+constexpr uint32_t kFloraHeaderBytes = 4;
+constexpr uint32_t kFloraRecordBytes = 24;
+constexpr uint32_t kFloraNMax = 4096;
+constexpr uint32_t kFaunaHeaderBytes = 4;
+constexpr uint32_t kFaunaRecordBytes = 20;
+constexpr uint32_t kFaunaNMax = 64;
+/* SPECIES_NONE = 0 is never emitted (mojo invariant); valid species 1..7. */
+constexpr uint32_t kFloraSpeciesMax = 7;
 /* Highest section id defined by SCR_SIM_SCHEMA_VER (used for range checks).
- * Schema 4: sections 1..9 (9 = SHORE_FOAM). */
-constexpr uint32_t kMaxSectionId = 9;
+ * Schema 5: sections 1..11 (10 = FLORA, 11 = FAUNA). */
+constexpr uint32_t kMaxSectionId = 11;
 
 inline uint32_t rd_u32(const uint8_t *p) {
     uint32_t v;
@@ -340,6 +404,33 @@ struct MatRecord {
     float roughness = 1.0f;
     float emissive[3] = { 0, 0, 0 };
     float opacity = 1.0f;
+};
+
+/* --- 0006 AP-14: species -> materials_catalog.json display mirror --------
+ * The wire never carries a botanical color: MATERIALS only holds the terrain
+ * vocabulary ∪ water (encode.mojo::_encode_materials), and FLORA/FAUNA ship
+ * species_id only. This table MIRRORS materials/catalog.mojo::
+ * species_catalog_id_string() — the single source, conformance-tested in
+ * test_catalog.mojo against lib/A01_Render/Material/materials_catalog.json —
+ * with the catalog array index as provenance (verified values: 33
+ * botanical.bamboo, 34 botanical.foliage, 81 botanical.moss). Resolution in
+ * ScrSimDriver::flora_materials(): a MATERIALS record whose material_id ==
+ * catalog_index wins (future-proof); otherwise this table (0006 AP-14: no
+ * color is ever invented). Roughness is the catalog's display_roughness. */
+struct SpeciesDisplay {
+    uint32_t catalog_index; // materials_catalog.json array index (0 = none)
+    float albedo[3];
+    float roughness;
+};
+constexpr SpeciesDisplay kSpeciesDisplay[kFloraSpeciesMax + 1] = {
+    { 0, { 0.5f, 0.5f, 0.5f }, 1.0f }, // 0 SPECIES_NONE — never emitted
+    { 34, { 0.24f, 0.52f, 0.18f }, 0.55f }, // 1 SPECIES_PALM_CLUSTER
+    { 34, { 0.24f, 0.52f, 0.18f }, 0.55f }, // 2 SPECIES_PALM_SOLO
+    { 33, { 0.38f, 0.62f, 0.22f }, 0.40f }, // 3 SPECIES_BAMBOO_GROVE
+    { 34, { 0.24f, 0.52f, 0.18f }, 0.55f }, // 4 SPECIES_CANOPY_TREE
+    { 34, { 0.24f, 0.52f, 0.18f }, 0.55f }, // 5 SPECIES_CANOPY_CLUSTER
+    { 34, { 0.24f, 0.52f, 0.18f }, 0.55f }, // 6 SPECIES_SHRUB
+    { 81, { 0.28f, 0.48f, 0.18f }, 0.92f }, // 7 SPECIES_FERN_CARPET
 };
 
 struct ChunkView {
@@ -379,6 +470,14 @@ struct SnapshotView {
     uint32_t foam_grid_n = 0;
     float foam_cell_size = 0.0f;
     float foam_sea_level = 0.0f;
+    /* 10 FLORA (schema 5): 4 + 24·count bytes, emission-gated — null when
+     * absent (absent must NOT clear the view cache, invariant 5). */
+    bool has_flora = false;
+    const uint8_t *flora = nullptr;
+    uint32_t flora_count = 0;
+    /* 11 FAUNA (schema 5): 4 + 20·count bytes, every snapshot (required). */
+    const uint8_t *fauna = nullptr;
+    uint32_t fauna_count = 0;
     std::vector<MatRecord> materials;
     std::vector<ChunkView> chunks;
 };
@@ -398,7 +497,7 @@ inline bool fail(String &err, const String &msg) {
  * required-section absence, unknown section id, or meta/terrain disagreement. */
 bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                      String &err) {
-    /* seen[0] unused; indices 1..kMaxSectionId (schema 3 = sections 1..8). */
+    /* seen[0] unused; indices 1..kMaxSectionId (schema 5 = sections 1..11). */
     bool seen[kMaxSectionId + 1] = {};
 
     if (buf == nullptr || len < kEnvelopeBytes) {
@@ -447,7 +546,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         }
         if (sid < 1u || sid > kMaxSectionId) {
             return fail(err,
-                        "section: unknown section_id (schema 4 defines 1..9)");
+                        "section: unknown section_id (schema 5 defines 1..11)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -623,6 +722,90 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 out.foam_sea_level = sea_level;
                 break;
             }
+            case SCR_SEC_FLORA: {
+                /* 10 FLORA (schema 5, 104_contract §4.3 §10): u32 count +
+                 * count·24 B, emission-gated. Size is DERIVED from count.
+                 * Range checks written so NaN fails (never coerced, §8). */
+                if (sbytes < kFloraHeaderBytes) {
+                    return fail(err, "FLORA: section shorter than count");
+                }
+                const uint32_t count = rd_u32(data);
+                if (count > kFloraNMax) {
+                    return fail(err, "FLORA: count > 4096 (FLORA_N_MAX)");
+                }
+                const uint64_t want = (uint64_t)kFloraHeaderBytes +
+                                      (uint64_t)kFloraRecordBytes * count;
+                if ((uint64_t)sbytes != want) {
+                    return fail(err, "FLORA: section_bytes != 4 + 24*count");
+                }
+                for (uint32_t i = 0; i < count; i++) {
+                    const uint8_t *rec = data + kFloraHeaderBytes +
+                                         (uint64_t)kFloraRecordBytes * i;
+                    const float x = rd_f32(rec + 0);
+                    const float y = rd_f32(rec + 4);
+                    const float z = rd_f32(rec + 8);
+                    const float yaw = rd_f32(rec + 12);
+                    const float scale = rd_f32(rec + 16);
+                    const uint32_t species = rd_u32(rec + 20);
+                    if (!(x == x) || !(y == y) || !(z == z)) {
+                        return fail(err, "FLORA: position is NaN");
+                    }
+                    if (!(yaw == yaw)) {
+                        return fail(err, "FLORA: yaw is NaN");
+                    }
+                    if (!(scale > 0.0f)) {
+                        return fail(err, "FLORA: scale <= 0");
+                    }
+                    if (species < 1u || species > kFloraSpeciesMax) {
+                        return fail(err,
+                                    "FLORA: species_id outside [1,7] "
+                                    "(SPECIES_NONE = 0 is never emitted)");
+                    }
+                }
+                out.has_flora = true;
+                out.flora = data;
+                out.flora_count = count;
+                break;
+            }
+            case SCR_SEC_FAUNA: {
+                /* 11 FAUNA (schema 5, 104_contract §4.3 §11): u32 count +
+                 * count·20 B, every snapshot (required below). Pad MUST be 0
+                 * (loud failure, §8); count ≤ FLOCK_N_MAX (0006 AP-13). */
+                if (sbytes < kFaunaHeaderBytes) {
+                    return fail(err, "FAUNA: section shorter than count");
+                }
+                const uint32_t count = rd_u32(data);
+                if (count > kFaunaNMax) {
+                    return fail(err, "FAUNA: count > 64 (FLOCK_N_MAX)");
+                }
+                const uint64_t want = (uint64_t)kFaunaHeaderBytes +
+                                      (uint64_t)kFaunaRecordBytes * count;
+                if ((uint64_t)sbytes != want) {
+                    return fail(err, "FAUNA: section_bytes != 4 + 20*count");
+                }
+                for (uint32_t i = 0; i < count; i++) {
+                    const uint8_t *rec = data + kFaunaHeaderBytes +
+                                         (uint64_t)kFaunaRecordBytes * i;
+                    const float x = rd_f32(rec + 0);
+                    const float y = rd_f32(rec + 4);
+                    const float z = rd_f32(rec + 8);
+                    const float yaw = rd_f32(rec + 12);
+                    if (!(x == x) || !(y == y) || !(z == z)) {
+                        return fail(err, "FAUNA: position is NaN");
+                    }
+                    if (!(yaw == yaw)) {
+                        return fail(err, "FAUNA: yaw is NaN");
+                    }
+                    /* rec+16 u8 species_id (0 = seabird, reserved), rec+17..19
+                     * pad — contract mandates rejection of nonzero pad. */
+                    if (rec[17] != 0 || rec[18] != 0 || rec[19] != 0) {
+                        return fail(err, "FAUNA: nonzero pad bytes");
+                    }
+                }
+                out.fauna = data;
+                out.fauna_count = count;
+                break;
+            }
             default:
                 return fail(err, "section: unhandled section_id");
         }
@@ -633,15 +816,16 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 4).
-     * TERRAIN is the only optional one (first snapshot / world_version bump). */
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 5).
+     * TERRAIN and FLORA are the only optional ones (TERRAIN: first snapshot /
+     * world_version bump; FLORA: emission-gated on the same rule). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
         !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME] ||
-        !seen[SCR_SEC_SHORE_FOAM]) {
+        !seen[SCR_SEC_SHORE_FOAM] || !seen[SCR_SEC_FAUNA]) {
         return fail(err, "snapshot: required section missing "
                          "(PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS/VOLCANO/PLUME/"
-                         "SHORE_FOAM)");
+                         "SHORE_FOAM/FAUNA)");
     }
     out.meta = meta_buf;
 
@@ -889,6 +1073,12 @@ protected:
     Ref<ImageTexture> foam_tex_;
     float cloud_cover_cache_ = -1.0f;
 
+    // --- ecology view caches (0006): warn-once + change-latched gain ----
+    bool flora_method_warned_ = false; // present group, missing method
+    bool fauna_method_warned_ = false;
+    /* set_wetness_gain latch: wetness_gain() ∈ [0.65, 1], so -1 = unset. */
+    float flora_wetness_cache_ = -1.0f;
+
     // --- helpers ------------------------------------------------------------
     Node *first_in_group(const StringName &p_group);
     void decode_and_apply(uint32_t len);
@@ -909,6 +1099,13 @@ protected:
     void apply_materials_node(const scr::SnapshotView &sv);
     void apply_volcano(const scr::SnapshotView &sv);
     void apply_plume(const scr::SnapshotView &sv);
+    /* 0006 ecology view dispatch (spec §5: view construction lives in the
+     * host scripts; the adapter only validates + forwards). */
+    void apply_flora(const scr::SnapshotView &sv);
+    void apply_fauna(const scr::SnapshotView &sv);
+    /* Dictionary species(int) -> {albedo: Color, roughness: float} resolved
+     * through the catalog mirror table (0006 AP-14, scr::kSpeciesDisplay). */
+    Dictionary flora_materials();
     void apply_hud(const scr::SnapshotView &sv);
 };
 
@@ -1130,8 +1327,25 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
     apply_weather(sv);
     apply_volcano(sv);
     apply_plume(sv);
+    apply_flora(sv);
+    apply_fauna(sv);
     apply_player(sv);
     apply_hud(sv);
+
+    /* 0006 wetness: same gain as terrain (wetness_gain()), pushed to the
+     * flora view only on change (the script multiplies its base albedo).
+     * Runs regardless of FLORA presence — cached instances keep tracking the
+     * latched SKY wetness while the section is absent. */
+    const float gk = wetness_gain();
+    if (gk != flora_wetness_cache_) {
+        flora_wetness_cache_ = gk;
+        Node *fn = first_in_group("scr_flora");
+        if (fn != nullptr && fn->has_method("set_wetness_gain")) {
+            Array args;
+            args.append(gk);
+            fn->callv("set_wetness_gain", args);
+        }
+    }
 }
 
 void ScrSimDriver::update_materials(const scr::SnapshotView &sv) {
@@ -1658,6 +1872,89 @@ void ScrSimDriver::apply_plume(const scr::SnapshotView &sv) {
      * docs/04_simulation_engine.md §8. */
     pm->set_param_min(ParticleProcessMaterial::PARAM_TURB_VEL_INFLUENCE, 0.0f);
     pm->set_param_max(ParticleProcessMaterial::PARAM_TURB_VEL_INFLUENCE, 0.0f);
+}
+
+/* --- milestone 0006: ecology view dispatch (spec §5) ---------------------
+ * The adapter owns DECODE (strict, above) and color resolution only; the
+ * MultiMesh/pool construction lives in scripts/flora_view.gd +
+ * scripts/fauna_view.gd (scene interface, file header). Missing groups are
+ * tolerated; present hosts without the method warn once and are skipped. */
+Dictionary ScrSimDriver::flora_materials() {
+    /* Species -> {albedo, roughness}: MATERIALS record with id ==
+     * catalog_index wins, else the scr::kSpeciesDisplay mirror (0006 AP-14). */
+    Dictionary d;
+    for (uint32_t s = 1; s <= scr::kFloraSpeciesMax; s++) {
+        const scr::SpeciesDisplay &sd = scr::kSpeciesDisplay[s];
+        Dictionary entry;
+        auto rec = mat_records_.find(sd.catalog_index);
+        if (rec != mat_records_.end()) {
+            entry["albedo"] = Color(rec->second.albedo[0], rec->second.albedo[1],
+                                    rec->second.albedo[2], 1.0f);
+            entry["roughness"] = rec->second.roughness;
+        } else {
+            entry["albedo"] =
+                Color(sd.albedo[0], sd.albedo[1], sd.albedo[2], 1.0f);
+            entry["roughness"] = sd.roughness;
+        }
+        d[Variant((int64_t)s)] = entry;
+    }
+    return d;
+}
+
+void ScrSimDriver::apply_flora(const scr::SnapshotView &sv) {
+    /* Emission-gated (0006 invariant 5): an absent §10 NEVER clears the
+     * cached instances — simply do not touch the view. */
+    if (!sv.has_flora || sv.flora == nullptr) {
+        return;
+    }
+    Node *n = first_in_group("scr_flora");
+    if (n == nullptr) {
+        return;
+    }
+    if (!n->has_method("apply_flora")) {
+        if (!flora_method_warned_) {
+            ERR_PRINT("SCR: group scr_flora host lacks apply_flora "
+                      "(scripts/flora_view.gd missing?) — FLORA skipped");
+            flora_method_warned_ = true;
+        }
+        return;
+    }
+    const uint64_t nbytes = (uint64_t)scr::kFloraHeaderBytes +
+                             (uint64_t)scr::kFloraRecordBytes * sv.flora_count;
+    PackedByteArray bytes;
+    bytes.resize((int64_t)nbytes);
+    memcpy(bytes.ptrw(), sv.flora, (size_t)nbytes);
+    Array args;
+    args.append(bytes);
+    args.append(flora_materials());
+    n->callv("apply_flora", args);
+}
+
+void ScrSimDriver::apply_fauna(const scr::SnapshotView &sv) {
+    /* FAUNA is REQUIRED every snapshot (decode enforces it). */
+    if (sv.fauna == nullptr) {
+        return;
+    }
+    Node *n = first_in_group("scr_fauna");
+    if (n == nullptr) {
+        return;
+    }
+    if (!n->has_method("apply_fauna")) {
+        if (!fauna_method_warned_) {
+            ERR_PRINT("SCR: group scr_fauna host lacks apply_fauna "
+                      "(scripts/fauna_view.gd missing?) — FAUNA skipped");
+            fauna_method_warned_ = true;
+        }
+        return;
+    }
+    const uint64_t nbytes = (uint64_t)scr::kFaunaHeaderBytes +
+                             (uint64_t)scr::kFaunaRecordBytes * sv.fauna_count;
+    PackedByteArray bytes;
+    bytes.resize((int64_t)nbytes);
+    memcpy(bytes.ptrw(), sv.fauna, (size_t)nbytes);
+    Array args;
+    args.append(bytes);
+    n->callv("apply_fauna", args);
 }
 
 void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {

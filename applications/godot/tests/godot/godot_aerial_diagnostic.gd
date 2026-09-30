@@ -113,6 +113,19 @@ func _run() -> void:
 		ocean_n.visible = _ocean
 		print("AERIAL: ocean visible = ", ocean_n.visible)
 
+	# 0006: hide the bird pool. The aerial capture also feeds the 0005
+	# check_shoreline_foam.py gate ("every bright pixel over open water is
+	# shoreline foam"), and white seabirds over the ocean read as OFFSHORE
+	# foam there — measured on the schema-5 fixture: 331 out-of-band px, all
+	# flat (245,247,255), radius 98..112 u = the flock's orbit ring
+	# (FLOCK waypoint r 88..108). Same display-condition class as --fog=0
+	# (docs/04 §8.6); scr_flora stays visible — land pixels are filtered and
+	# foliage never reached the bright threshold (all offenders were birds).
+	var fauna_n := _first("scr_fauna")
+	if fauna_n != null:
+		fauna_n.visible = false
+		print("AERIAL: fauna hidden = true (foam gate: birds must not read as foam)")
+
 	var cam := _first("scr_camera") as Camera3D
 	if cam == null:
 		_fail(1, "scr_camera missing"); return

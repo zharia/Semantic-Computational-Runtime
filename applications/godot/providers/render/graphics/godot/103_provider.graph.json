@@ -1,6 +1,6 @@
 {
  "id": "SCR-PROVIDER-RENDER-GODOT",
- "version": 4,
+ "version": 5,
  "derived": true,
  "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
  "nodes": [
@@ -47,6 +47,14 @@
   {
    "id": "SCR-LIB-RENDER-WATER",
    "label": "Ocean water & shore-foam contract"
+  },
+  {
+   "id": "SCR-LIB-ECOLOGY",
+   "label": "Ecology semantic domain"
+  },
+  {
+   "id": "SCR-LIB-AGENTS",
+   "label": "Agent semantic domain"
   }
  ],
  "edges": [
@@ -84,7 +92,7 @@
    "source": "SCR-PROVIDER-RENDER-GODOT",
    "target": "SCR-LIB-RENDER-PARTICLE",
    "relationship": "CONSUMED_BY",
-   "semantics": "plume emitted as GPUParticles3D per Particle contract (locked, 0003 \u00a71.1)"
+   "semantics": "plume emitted as GPUParticles3D per Particle contract (locked, 0003 §1.1)"
   },
   {
    "source": "SCR-PROVIDER-RENDER-GODOT",
@@ -109,6 +117,18 @@
    "target": "SCR-LIB-RENDER-WATER",
    "relationship": "CONSUMED_BY",
    "semantics": "adapter uploads SHORE_FOAM field to the ocean shader; sim computes the field (AP-19)"
+  },
+  {
+   "source": "SCR-PROVIDER-RENDER-GODOT",
+   "target": "SCR-LIB-ECOLOGY",
+   "relationship": "CONSUMED_BY",
+   "semantics": "adapter manifests 10 FLORA (MultiMesh instances, catalog colors) and 11 FAUNA (pooled birds); sim population/band semantics authoritative (AP-11, AP-14)"
+  },
+  {
+   "source": "SCR-PROVIDER-RENDER-GODOT",
+   "target": "SCR-LIB-AGENTS",
+   "relationship": "CONSUMED_BY",
+   "semantics": "adapter manifests flock slot positions/yaw from 11 FAUNA; boid integration sim-side (AP-11); flap/sway display-only (AP-12)"
   }
  ]
 }

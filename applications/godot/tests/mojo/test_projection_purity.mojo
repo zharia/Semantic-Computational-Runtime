@@ -3,6 +3,9 @@
 # after a full projection (encode + decode + field reads); hashes must match.
 # Milestone_0003 §7 amendment: the world fingerprint MUST include the volcano
 # subject (a projection that mutated VOLCANO/PLUME source state is caught).
+# Milestone_0006 §7 amendment: the fingerprint MUST include flora + flock
+# state (a projection that mutated section 10/11 source state is caught),
+# and the adapter-style reads consume FLORA/FAUNA too.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -31,6 +34,8 @@ from snapshot.decode import (
     read_plume,
     read_shore_foam,
     read_terrain_tuple,
+    read_flora,
+    read_fauna,
 )
 from snapshot.types import (
     SEC_PLAYER,
@@ -42,6 +47,8 @@ from snapshot.types import (
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
 )
 
 
@@ -88,6 +95,19 @@ def _drive_projection(data: List[UInt8]) raises -> Int:
     var foam = read_shore_foam(data, secs[fi])
     sum += Int(foam[0]) + Int(foam[3] * 1000.0)
     sum += Int(foam[3 + GRID_N * GRID_N - 1] * 1000.0)
+    # 10 FLORA (schema 5, may be absent by the presence rule) + 11 FAUNA
+    # (schema 5, always present): adapter-style reads, no world access.
+    var fli = find_section(secs, SEC_FLORA)
+    if fli >= 0:
+        var flora = read_flora(data, secs[fli])
+        sum += len(flora)
+        for i in range(len(flora)):
+            sum += Int(flora[i].species_id) + Int(flora[i].scale * 100.0)
+    var fai = find_section(secs, SEC_FAUNA)
+    var fauna = read_fauna(data, secs[fai])
+    sum += len(fauna)
+    for i in range(len(fauna)):
+        sum += Int(fauna[i].yaw * 100.0) + Int(fauna[i].species_id)
     var ti = find_section(secs, SEC_TERRAIN)
     if ti < 0:
         return sum  # TERRAIN absent by contract (§4.3): adapter keeps meshes
@@ -125,7 +145,7 @@ def test_purity_after_steps_and_repeated_projection() raises:
         _ = step_world(world, 1.0 / 60.0, input)
     var before = world_fingerprint(world)
     for i in range(3):
-        var snap = encode_snapshot(world, i == 0)
+        var snap = encode_snapshot(world, i == 0, i == 0)
         _ = _drive_projection(snap)
     var after = world_fingerprint(world)
     _check(before == after, "repeated projection mutated world state")
@@ -215,6 +235,64 @@ def test_world_fingerprint_includes_foam_state() raises:
     _check(world_fingerprint(world) == base, "fingerprint not restored")
 
 
+def test_world_fingerprint_includes_flora_flock_state() raises:
+    """0006 §7: the fingerprint folds flora + flock — projecting sections
+    10/11 must not mutate them, and a mutated subject field is detected."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var base = world_fingerprint(world)
+    var snap = encode_snapshot(world, True)
+    _ = _drive_projection(snap)
+    _check(
+        world_fingerprint(world) == base,
+        "FLORA/FAUNA projection mutated world (ecology fingerprint drift)",
+    )
+
+    # Flora sensitivity: instance pose + count.
+    var saved_x = world.flora.instances[0].x
+    world.flora.instances[0].x = saved_x + 1.0
+    _check(world_fingerprint(world) != base, "fingerprint misses flora x")
+    world.flora.instances[0].x = saved_x
+
+    var saved_scale = world.flora.instances[1].scale
+    world.flora.instances[1].scale = saved_scale + 0.25
+    _check(world_fingerprint(world) != base, "fingerprint misses flora scale")
+    world.flora.instances[1].scale = saved_scale
+
+    var saved_sid = world.flora.instances[2].species_id
+    world.flora.instances[2].species_id = saved_sid + 1
+    _check(world_fingerprint(world) != base, "fingerprint misses species_id")
+    world.flora.instances[2].species_id = saved_sid
+
+    var saved_count = world.flora.count
+    world.flora.count = saved_count - 1
+    _check(world_fingerprint(world) != base, "fingerprint misses flora count")
+    world.flora.count = saved_count
+
+    # Flock sensitivity: bird pose + trajectory + slot metadata.
+    var saved_bx = world.flock.birds[0].x
+    world.flock.birds[0].x = saved_bx + 1.0
+    _check(world_fingerprint(world) != base, "fingerprint misses bird x")
+    world.flock.birds[0].x = saved_bx
+
+    var saved_bvz = world.flock.birds[0].vz
+    world.flock.birds[0].vz = saved_bvz + 0.5
+    _check(world_fingerprint(world) != base, "fingerprint misses bird velocity")
+    world.flock.birds[0].vz = saved_bvz
+
+    var saved_rc = world.flock.birds[0].respawn_count
+    world.flock.birds[0].respawn_count = saved_rc + 1
+    _check(world_fingerprint(world) != base, "fingerprint misses respawn_count")
+    world.flock.birds[0].respawn_count = saved_rc
+
+    var saved_active = world.flock.birds[40].active
+    world.flock.birds[40].active = not saved_active
+    _check(world_fingerprint(world) != base, "fingerprint misses slot active")
+    world.flock.birds[40].active = saved_active
+
+    _check(world_fingerprint(world) == base, "fingerprint fully restored")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -223,5 +301,6 @@ def main() raises:
             test_projection_is_pure_and_repeatable,
             test_world_fingerprint_includes_volcano_state,
             test_world_fingerprint_includes_foam_state,
+            test_world_fingerprint_includes_flora_flock_state,
         )
     ]().run()

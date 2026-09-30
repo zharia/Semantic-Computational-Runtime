@@ -35,11 +35,106 @@ comptime SEC_MATERIALS: UInt32 = 6
 comptime SEC_VOLCANO: UInt32 = 7  # schema 2 (milestone_0003 §3.2)
 comptime SEC_PLUME: UInt32 = 8
 comptime SEC_SHORE_FOAM: UInt32 = 9  # schema 4 (milestone_0005 §3.3)
+comptime SEC_FLORA: UInt32 = 10  # schema 5 (milestone_0006 §1.1 sibling rebase)
+comptime SEC_FAUNA: UInt32 = 11  # schema 5 (milestone_0006 §1.1 sibling rebase)
+
+# §10 FLORA / §11 FAUNA framing (104_contract §4.3): u32 count header, then
+# records of 24 B (FLORA) / 20 B (FAUNA) — layouts locked by 0006 §3.2.
+comptime FLORA_HEADER_BYTES: Int = 4
+comptime FLORA_RECORD_BYTES: Int = 24  # f32×3 + f32 yaw + f32 scale + u32 id
+comptime FAUNA_HEADER_BYTES: Int = 4
+comptime FAUNA_RECORD_BYTES: Int = 20  # f32×3 + f32 yaw + u8 id + u8×3 pad
 
 # §9 SHORE_FOAM framing (104_contract §4.3): u32 grid_n + f32 cell_size
 # + f32 sea_level = 12-byte header, then grid_n² f32 foam values.
 comptime SHORE_FOAM_HEADER_BYTES: Int = 12
 comptime SHORE_FOAM_MAX_GRID: Int = 1024  # decode-side sanity bound
+
+
+struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """One §10 FLORA record (0006 §3.2 — 24 bytes exactly): world-frame
+    position (y = surface height at the anchor cell), yaw (rad), uniform
+    scale (> 0) and the sim species enum (species → catalog table in
+    materials/catalog.mojo). Pose only — no animation phase (0006 AP-12)."""
+
+    var x: Float32
+    var y: Float32
+    var z: Float32
+    var yaw: Float32
+    var scale: Float32
+    var species_id: UInt32
+
+    def __init__(out self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
+        self.yaw = 0.0
+        self.scale = 1.0
+        self.species_id = 0
+
+    def __init__(
+        out self,
+        x: Float32,
+        y: Float32,
+        z: Float32,
+        yaw: Float32,
+        scale: Float32,
+        species_id: UInt32,
+    ):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.yaw = yaw
+        self.scale = scale
+        self.species_id = species_id
+
+    def __deinit__(deinit self):
+        pass
+
+
+struct FlockBird(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """One §11 FAUNA record (0006 §3.2 — 20 bytes exactly): world-frame
+    position, heading yaw (rad), u8 species (0 = seabird) and 3 zero pad
+    bytes. Pose only — wing flap runs display-side on TIME (0006 AP-12)."""
+
+    var x: Float32
+    var y: Float32
+    var z: Float32
+    var yaw: Float32
+    var species_id: UInt8
+    var pad0: UInt8
+    var pad1: UInt8
+    var pad2: UInt8
+
+    def __init__(out self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
+        self.yaw = 0.0
+        self.species_id = 0
+        self.pad0 = 0
+        self.pad1 = 0
+        self.pad2 = 0
+
+    def __init__(
+        out self,
+        x: Float32,
+        y: Float32,
+        z: Float32,
+        yaw: Float32,
+        species_id: UInt8,
+    ):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.yaw = yaw
+        self.species_id = species_id
+        self.pad0 = 0
+        self.pad1 = 0
+        self.pad2 = 0
+
+    def __deinit__(deinit self):
+        pass
 
 
 struct VOLCANO(Copyable, Movable, Deinitable, ImplicitlyCopyable):
@@ -128,6 +223,36 @@ def put_plume(mut buf: List[UInt8], p: PLUME):
     put_f32(buf, p.spread)
     put_f32(buf, p.turbulence)
     put_f32(buf, p.lifetime)
+
+
+def put_flora(mut buf: List[UInt8], instances: List[FloraInstance]):
+    """Serialize the §10 FLORA payload: u32 count + count×24 B records
+    (f32×3 position, f32 yaw, f32 scale, u32 species_id) — 0006 §3.2."""
+    put_u32(buf, UInt32(len(instances)))
+    for i in range(len(instances)):
+        var inst = instances[i]
+        put_f32(buf, inst.x)
+        put_f32(buf, inst.y)
+        put_f32(buf, inst.z)
+        put_f32(buf, inst.yaw)
+        put_f32(buf, inst.scale)
+        put_u32(buf, inst.species_id)
+
+
+def put_fauna(mut buf: List[UInt8], birds: List[FlockBird]):
+    """Serialize the §11 FAUNA payload: u32 count + count×20 B records
+    (f32×3 position, f32 yaw, u8 species_id, u8×3 pad = 0) — 0006 §3.2."""
+    put_u32(buf, UInt32(len(birds)))
+    for i in range(len(birds)):
+        var b = birds[i]
+        put_f32(buf, b.x)
+        put_f32(buf, b.y)
+        put_f32(buf, b.z)
+        put_f32(buf, b.yaw)
+        put_u8(buf, b.species_id)
+        put_u8(buf, b.pad0)
+        put_u8(buf, b.pad1)
+        put_u8(buf, b.pad2)
 
 
 def put_u8(mut buf: List[UInt8], v: UInt8):

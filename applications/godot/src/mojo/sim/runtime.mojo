@@ -28,6 +28,7 @@ struct SimHandle(Movable, Deinitable):
     var initialized: Bool
     var stepped: Bool  # false until the first successful scr_sim_step
     var last_terrain_emitted: UInt32  # world_version of last TERRAIN send
+    var last_flora_emitted: UInt32  # world_version of last FLORA send (0006)
     var world: World
     var snapshot: List[UInt8]  # bytes from the most recent successful step
 
@@ -35,6 +36,7 @@ struct SimHandle(Movable, Deinitable):
         self.initialized = False
         self.stepped = False
         self.last_terrain_emitted = 0
+        self.last_flora_emitted = 0
         self.world = World(0)
         self.snapshot = List[UInt8]()
 
@@ -149,10 +151,12 @@ def runtime_init(seed: UInt32) -> Int32:
             h[].snapshot = List[UInt8]()
             h[].stepped = False
             h[].last_terrain_emitted = 0
+            h[].last_flora_emitted = 0
         h[].world = world_init(seed)
         h[].snapshot = List[UInt8]()
         h[].stepped = False
         h[].last_terrain_emitted = 0  # world_version == 1 ⇒ first snapshot emits
+        h[].last_flora_emitted = 0  # same tracker rule for FLORA (0006 §1.1)
         h[].initialized = True
         return 0
     except e:
@@ -172,6 +176,7 @@ def runtime_shutdown():
         h[].snapshot = List[UInt8]()
         h[].stepped = False
         h[].last_terrain_emitted = 0
+        h[].last_flora_emitted = 0
         h[].initialized = False
     # Address stays in the env var: the (now empty) handle block is reused by
     # a later init. Block freed only by process exit — see file header.
@@ -192,8 +197,11 @@ def runtime_step(frame_dt: Float64, input: InputBatch) -> Int32:
         var ticks = step_world(h[].world, frame_dt, input)
         # TERRAIN only when (re)generation happened since last sent snapshot.
         var include_terrain = h[].world.world_version != h[].last_terrain_emitted
-        h[].snapshot = encode_snapshot(h[].world, include_terrain)
+        # FLORA: identical tracker rule (0006 §1.1 schema-5 sibling of TERRAIN).
+        var include_flora = h[].world.world_version != h[].last_flora_emitted
+        h[].snapshot = encode_snapshot(h[].world, include_terrain, include_flora)
         h[].last_terrain_emitted = h[].world.world_version
+        h[].last_flora_emitted = h[].world.world_version
         h[].stepped = True
         return ticks
     except e:

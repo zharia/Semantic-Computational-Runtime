@@ -24,6 +24,8 @@ from sim.subjects import (
 )
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
 from sim.shore import compute_foam_field
+from sim.flora import FloraSubject, flora_from_island
+from sim.flock import FlockSubject, flock_from_island, flock_tick
 from weather.state import WeatherSubject, weather_tick
 from ocean.gerstner import make_ocean, OceanState
 from materials.catalog import MaterialCatalog, MaterialDef, load_catalog
@@ -46,6 +48,8 @@ struct World(Movable, Deinitable):
     var volcano: VolcanoSubject
     var catalog: MaterialCatalog
     var foam: List[Float32]  # GRID_N² shore foam (§3.3; f32, row-major)
+    var flora: FloraSubject  # milestone_0006: flora population (sim locus)
+    var flock: FlockSubject  # milestone_0006: seabird flock (sim locus)
 
     def __init__(out self, seed: UInt32):
         self.seed = seed
@@ -63,6 +67,8 @@ struct World(Movable, Deinitable):
         self.volcano = VolcanoSubject()
         self.catalog = MaterialCatalog(List[MaterialDef](), "")
         self.foam = List[Float32]()
+        self.flora = FloraSubject()
+        self.flock = FlockSubject()
 
     def __deinit__(deinit self):
         pass
@@ -101,6 +107,11 @@ def world_init(seed: UInt32) raises -> World:
     world.foam = compute_foam_field(
         world.island.heights, world.hydro.ocean, world.simulation_time
     )
+    # Ecology (milestone_0006 Sprint 01): flora scatter is a pure function of
+    # (seed, island); flock spawns from (seed, island). Construction only —
+    # no runtime mutation of these two outside flock_tick below.
+    world.flora = flora_from_island(world.island, world.seed)
+    world.flock = flock_from_island(world.island, world.seed)
     world.world_version = 1  # first generation
     world.state_generation = 0
     world.simulation_tick = 0
@@ -129,6 +140,9 @@ def tick_world(mut world: World, input: InputBatch) raises:
     world.foam = compute_foam_field(
         world.island.heights, world.hydro.ocean, world.simulation_time
     )
+    # Seabird flock: one ordered commit per fixed tick (0006 §1.1 — rules
+    # listed there; deterministic in (seed, tick, island)).
+    flock_tick(world.flock, world.island, world.simulation_tick)
 
 
 def step_world(mut world: World, frame_dt: Float64, input: InputBatch) raises -> Int32:
@@ -310,6 +324,35 @@ def world_fingerprint(world: World) -> UInt64:
     h = _fold_u64(h, UInt64(len(world.foam)))
     for i in range(len(world.foam)):
         h = _fold_f32(h, world.foam[i])
+
+    # Flora subject (milestone_0006): seed, count, every instance field —
+    # folded so a projection that mutated flora fails projection purity.
+    h = _fold_u64(h, UInt64(world.flora.seed))
+    h = _fold_u64(h, UInt64(world.flora.count))
+    for i in range(world.flora.count):
+        var fi = world.flora.instances[i]
+        h = _fold_f32(h, fi.x)
+        h = _fold_f32(h, fi.y)
+        h = _fold_f32(h, fi.z)
+        h = _fold_f32(h, fi.yaw)
+        h = _fold_f32(h, fi.scale)
+        h = _fold_u64(h, UInt64(fi.species_id))
+
+    # Flock subject (milestone_0006): seed, count, every slot's full state —
+    # folded so a projection that mutated fauna fails projection purity.
+    h = _fold_u64(h, UInt64(world.flock.seed))
+    h = _fold_u64(h, UInt64(world.flock.count))
+    for i in range(len(world.flock.birds)):
+        var fb = world.flock.birds[i]
+        h = _fold_f64(h, fb.x)
+        h = _fold_f64(h, fb.y)
+        h = _fold_f64(h, fb.z)
+        h = _fold_f64(h, fb.vx)
+        h = _fold_f64(h, fb.vy)
+        h = _fold_f64(h, fb.vz)
+        h = _fold_f64(h, fb.yaw)
+        h = _fold_u64(h, UInt64(fb.respawn_count))
+        h = _fold_byte(h, UInt8(1 if fb.active else 0))
 
     h = _fold_str(h, world.catalog.root)
     for i in range(world.catalog.count()):

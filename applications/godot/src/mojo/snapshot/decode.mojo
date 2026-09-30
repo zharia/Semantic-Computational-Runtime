@@ -4,7 +4,8 @@
 
 from std.collections import List
 
-from sim.parameters import SCHEMA_VERSION
+from sim.parameters import SCHEMA_VERSION, FLORA_N_MAX, FLOCK_N_MAX
+from materials.catalog import SPECIES_NONE, SPECIES_COUNT
 from snapshot.types import (
     ENVELOPE_BYTES,
     SECTION_HEADER_BYTES,
@@ -19,11 +20,19 @@ from snapshot.types import (
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
+    FLORA_HEADER_BYTES,
+    FLORA_RECORD_BYTES,
+    FAUNA_HEADER_BYTES,
+    FAUNA_RECORD_BYTES,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SKY_BYTES,
     VOLCANO,
     PLUME,
+    FloraInstance,
+    FlockBird,
     get_u8,
     get_u32,
     get_f32,
@@ -117,6 +126,8 @@ def _known_id(id: UInt32) -> Bool:
         or id == SEC_VOLCANO
         or id == SEC_PLUME
         or id == SEC_SHORE_FOAM
+        or id == SEC_FLORA
+        or id == SEC_FAUNA
     )
 
 
@@ -393,4 +404,74 @@ def read_shore_foam(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
                 "SHORE_FOAM value out of [0,1] at index " + String(i)
             )
         out.append(v)
+    return out^
+
+
+# --- Schema 5 (milestone_0006) readers ----------------------------------------
+
+def read_flora(data: List[UInt8], sec: SectionRef) raises -> List[FloraInstance]:
+    """10 FLORA: u32 count + count×24 B (f32×3, yaw, scale, u32 species_id).
+    Framing must be exact (4 + 24·count); count ≤ FLORA_N_MAX (AP-13);
+    species_id ∈ 1..SPECIES_COUNT-1 (SPECIES_NONE never emitted)."""
+    if sec.length < FLORA_HEADER_BYTES:
+        raise Error("FLORA section shorter than its header")
+    var count = get_u32(data, sec.offset)
+    var expect = FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * Int(count)
+    if sec.length != expect:
+        raise Error(
+            "FLORA section must be " + String(expect) + " bytes, got "
+            + String(sec.length)
+        )
+    if Int(count) > FLORA_N_MAX:
+        raise Error("FLORA count exceeds FLORA_N_MAX: " + String(count))
+    var out = List[FloraInstance]()
+    var o = sec.offset + FLORA_HEADER_BYTES
+    for _i in range(Int(count)):
+        var inst = FloraInstance()
+        inst.x = get_f32(data, o)
+        inst.y = get_f32(data, o + 4)
+        inst.z = get_f32(data, o + 8)
+        inst.yaw = get_f32(data, o + 12)
+        inst.scale = get_f32(data, o + 16)
+        inst.species_id = get_u32(data, o + 20)
+        if inst.species_id == SPECIES_NONE or inst.species_id >= UInt32(SPECIES_COUNT):
+            raise Error("FLORA species_id out of range: " + String(inst.species_id))
+        if inst.scale <= 0.0:
+            raise Error("FLORA scale must be > 0")
+        out.append(inst)
+        o += FLORA_RECORD_BYTES
+    return out^
+
+
+def read_fauna(data: List[UInt8], sec: SectionRef) raises -> List[FlockBird]:
+    """11 FAUNA: u32 count + count×20 B (f32×3, yaw, u8 species_id, u8×3 pad
+    = 0 — loud on violation, §8). Framing exact: 4 + 20·count;
+    count ≤ FLOCK_N_MAX (AP-13); species_id ≤ 255 (u8)."""
+    if sec.length < FAUNA_HEADER_BYTES:
+        raise Error("FAUNA section shorter than its header")
+    var count = get_u32(data, sec.offset)
+    var expect = FAUNA_HEADER_BYTES + FAUNA_RECORD_BYTES * Int(count)
+    if sec.length != expect:
+        raise Error(
+            "FAUNA section must be " + String(expect) + " bytes, got "
+            + String(sec.length)
+        )
+    if Int(count) > FLOCK_N_MAX:
+        raise Error("FAUNA count exceeds FLOCK_N_MAX: " + String(count))
+    var out = List[FlockBird]()
+    var o = sec.offset + FAUNA_HEADER_BYTES
+    for _i in range(Int(count)):
+        var b = FlockBird()
+        b.x = get_f32(data, o)
+        b.y = get_f32(data, o + 4)
+        b.z = get_f32(data, o + 8)
+        b.yaw = get_f32(data, o + 12)
+        b.species_id = get_u8(data, o + 16)
+        b.pad0 = get_u8(data, o + 17)
+        b.pad1 = get_u8(data, o + 18)
+        b.pad2 = get_u8(data, o + 19)
+        if b.pad0 != 0 or b.pad1 != 0 or b.pad2 != 0:
+            raise Error("FAUNA pad nonzero at offset " + String(o + 17))
+        out.append(b)
+        o += FAUNA_RECORD_BYTES
     return out^

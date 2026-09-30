@@ -12,7 +12,7 @@ The **Godot render provider** realizes SCR renderable semantic state as a Godot-
 
 ```text
 Renderable semantic state (Mojo sim, projected to RenderSnapshot)
-        │ contract: 104_contract.md (byte schema v4, C ABI v1)
+        │ contract: 104_contract.md (byte schema v5, C ABI v1)
         ▼
 Godot render provider adapter (GDExtension, godot-cpp)
         │ representation conversion only
@@ -31,7 +31,7 @@ Godot scene graph / shaders / lights  (manifestation)
 
 | Capability | Status |
 |---|---|
-| `RenderSnapshotDecode` (byte schema v4; v1→v2→v3→v4) | Implemented — milestones 0002–0005 |
+| `RenderSnapshotDecode` (byte schema v5; v1→v2→v3→v4→v5) | Implemented — milestones 0002–0006 |
 | `TerrainMeshManifestation` (chunked ArrayMesh) | Implemented — milestone 0002 |
 | `OceanSurfaceManifestation` (Gerstner shader) | Implemented — milestone 0002 |
 | `SkyManifestation` (time-of-day sun, derived dome gradient, atmosphere-derived fog) | Implemented — milestones 0002, 0004 |
@@ -39,6 +39,8 @@ Godot scene graph / shaders / lights  (manifestation)
 | `PrecipitationManifestation` (precipitation → `scr_rain`, wetness tint) | Implemented — milestone 0004 |
 | `ShoreFoamManifestation` (SHORE_FOAM field → `foam_shore` texture on `scr_ocean`) | Implemented — milestone 0005 |
 | `TerrainMaterialBlend` (per-vertex dominant/blend/weight tuples → blended vertex albedo) | Implemented — milestone 0005 |
+| `FloraManifestation` (10 FLORA → `scr_flora` MultiMeshInstance3D, species colors from catalog) | Implemented — milestone 0006 |
+| `FlockManifestation` (11 FAUNA → `scr_fauna` pooled MeshInstance3D birds, flap display) | Implemented — milestone 0006 |
 | `PlayerCameraManifestation` | Implemented — milestone 0002 |
 | `InputUplink` (scr_input_batch) | Implemented — milestone 0002 |
 

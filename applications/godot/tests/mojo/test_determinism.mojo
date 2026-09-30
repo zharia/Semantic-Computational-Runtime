@@ -14,17 +14,27 @@ from std.testing import TestSuite
 
 from sim.world import world_init, step_world, world_fingerprint
 from sim.input import InputBatch
-from sim.parameters import SCHEMA_VERSION
+from sim.parameters import SCHEMA_VERSION, FLOCK_N_MAX
 from snapshot.encode import encode_snapshot
-from snapshot.decode import decode_envelope, decode_sections, find_section
+from snapshot.decode import (
+    decode_envelope,
+    decode_sections,
+    find_section,
+    read_flora,
+    read_fauna,
+)
 from snapshot.types import (
     SEC_TERRAIN,
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SHORE_FOAM_HEADER_BYTES,
+    FLORA_HEADER_BYTES,
+    FAUNA_HEADER_BYTES,
     get_u32,
 )
 
@@ -123,26 +133,31 @@ def test_sequence_is_progressive_not_stuck() raises:
 
 
 def test_volcano_plume_sections_in_byte_identity() raises:
-    """Byte identity covers sections 7/8 and 9 SHORE_FOAM (schema 4)."""
+    """Byte identity covers sections 7/8, 9 SHORE_FOAM and (schema 5)
+    10 FLORA / 11 FAUNA."""
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(1, scripted_input())
     var snap = a[SEQ_TICKS - 1].copy()
-    # Envelope: schema 4, nine sections (1..9 with TERRAIN).
-    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
+    # Envelope: schema 5, eleven sections (1..11 with TERRAIN + FLORA).
+    _check(SCHEMA_VERSION == 5, "sim parameters SCHEMA_VERSION == 5")
     _check(
         Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
-        "envelope schema_version == 4",
+        "envelope schema_version == 5",
     )
     var env = decode_envelope(snap)
-    _check(Int(env.section_count) == 9, "section_count == 9 (schema 4)")
-    # VOLCANO / PLUME / SHORE_FOAM framing.
+    _check(Int(env.section_count) == 11, "section_count == 11 (schema 5)")
+    # VOLCANO / PLUME / SHORE_FOAM / FLORA / FAUNA framing.
     var secs = decode_sections(snap, env)
     var vi = find_section(secs, SEC_VOLCANO)
     var pi = find_section(secs, SEC_PLUME)
     var fi = find_section(secs, SEC_SHORE_FOAM)
+    var fli = find_section(secs, SEC_FLORA)
+    var fai = find_section(secs, SEC_FAUNA)
     _check(vi >= 0, "section 7 VOLCANO present")
     _check(pi >= 0, "section 8 PLUME present")
     _check(fi >= 0, "section 9 SHORE_FOAM present")
+    _check(fli >= 0, "section 10 FLORA present")
+    _check(fai >= 0, "section 11 FAUNA present")
     _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO is 32 bytes")
     _check(secs[pi].length == PLUME_BYTES, "PLUME is 32 bytes")
     _check(
@@ -171,6 +186,69 @@ def test_volcano_plume_sections_in_byte_identity() raises:
         "TERRAIN payload (vertex blend tuples) byte-identical between runs",
     )
     _check(len(ta) == len(tb), "TERRAIN stride-neutral across runs")
+    # FLORA / FAUNA byte identity across equal runs (0006 §6 exit criterion).
+    var fla = section_payload(a[SEQ_TICKS - 1], SEC_FLORA)
+    var flb = section_payload(b[SEQ_TICKS - 1], SEC_FLORA)
+    var fna = section_payload(a[SEQ_TICKS - 1], SEC_FAUNA)
+    var fnb = section_payload(b[SEQ_TICKS - 1], SEC_FAUNA)
+    _check(bytes_equal(fla, flb), "FLORA payload differs between equal runs")
+    _check(bytes_equal(fna, fnb), "FAUNA payload differs between equal runs")
+    # The flock advances: consecutive FAUNA payloads differ.
+    var fna0 = section_payload(a[0], SEC_FAUNA)
+    _check(
+        not bytes_equal(fna0, fna), "FAUNA payload must advance with the flock"
+    )
+
+
+def test_flora_species_diversity_seed1() raises:
+    """Seed 1's FLORA payload carries ≥ 2 distinct species ids
+    (0006 §7 exit criterion: distinct species rendered for seed 1)."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var data = encode_snapshot(world, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var fli = find_section(secs, SEC_FLORA)
+    _check(fli >= 0, "FLORA present")
+    var flora = read_flora(data, secs[fli])
+    _check(len(flora) > 0, "flora instances emitted for seed 1")
+    var seen_palm = False
+    var seen_slope = False
+    for i in range(len(flora)):
+        var sid = Int(flora[i].species_id)
+        if sid == 1 or sid == 2:
+            seen_palm = True
+        elif sid == 4 or sid == 5 or sid == 6 or sid == 7:
+            seen_slope = True
+    _check(seen_palm, "palm species present for seed 1 (BEACH band)")
+    _check(seen_slope, "slope species present for seed 1 (VOLCANIC_SLOPE band)")
+    # Count distinct ids directly.
+    var distinct = 0
+    for sid in range(1, 8):
+        var found = False
+        for i in range(len(flora)):
+            if Int(flora[i].species_id) == sid:
+                found = True
+        if found:
+            distinct += 1
+    _check(distinct >= 2, "≥ 2 distinct species for seed 1")
+
+
+def test_flock_present_and_capped() raises:
+    """FAUNA: count == FLOCK_N_INIT at init, always ≤ FLOCK_N_MAX, records
+    are active slots in order (0006 §1.1 / AP-13)."""
+    var world = world_init(1)
+    var data = encode_snapshot(world, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var fai = find_section(secs, SEC_FAUNA)
+    _check(fai >= 0, "FAUNA present at init")
+    var fauna = read_fauna(data, secs[fai])
+    _check(len(fauna) == world.flock.count, "count matches subject")
+    _check(world.flock.count <= FLOCK_N_MAX, "count ≤ FLOCK_N_MAX")
+    for i in range(len(fauna)):
+        _check(world.flock.birds[i].active, "slot order == wire order")
+        _check(fauna[i].y > 0.0, "bird above sea level")
 
 
 def test_world_fingerprint_tracks_step() raises:
@@ -205,5 +283,7 @@ def main() raises:
             test_volcano_plume_sections_in_byte_identity,
             test_world_fingerprint_tracks_step,
             test_fixed_timestep_accumulator,
+            test_flora_species_diversity_seed1,
+            test_flock_present_and_capped,
         )
     ]().run()

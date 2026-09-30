@@ -34,6 +34,24 @@ comptime MAT_PUMICE: UInt32 = 9
 comptime MAT_COBBLESTONE: UInt32 = 10
 comptime MAT_VOCAB_COUNT: Int = 11
 
+# --- Flora species vocabulary (milestone_0006; 0006 AP-14) ------------------
+# The FLORA section's `species_id` IS this enum; the numeric values mirror the
+# Synthesis §3 FeatureTile flora rows (`synthesis/voxel.mojo` FEATURE_* 1..7:
+# PALM_CLUSTER, PALM_SOLO, BAMBOO_GROVE, CANOPY_TREE, CANOPY_CLUSTER, SHRUB,
+# FERN_CARPET) — the normative species vocabulary of
+# lib/801_Spatial/Voxel/Synthesis §3. One catalog id per species (invariant 6);
+# display material derives from `materials_catalog.json` ONLY — no parallel
+# vocabulary, no hand-picked colours (AP-3 / AP-14).
+comptime SPECIES_NONE: UInt32 = 0  # no instance (never emitted)
+comptime SPECIES_PALM_CLUSTER: UInt32 = 1
+comptime SPECIES_PALM_SOLO: UInt32 = 2
+comptime SPECIES_BAMBOO_GROVE: UInt32 = 3
+comptime SPECIES_CANOPY_TREE: UInt32 = 4
+comptime SPECIES_CANOPY_CLUSTER: UInt32 = 5
+comptime SPECIES_SHRUB: UInt32 = 6
+comptime SPECIES_FERN_CARPET: UInt32 = 7
+comptime SPECIES_COUNT: Int = 8  # incl. SPECIES_NONE
+
 
 def vocab_catalog_id_string(code: UInt32) raises -> String:
     """Table: voxel code → catalog `id` string (index = code)."""
@@ -52,6 +70,32 @@ def vocab_catalog_id_string(code: UInt32) raises -> String:
     table.append("rock.pumice")  # 9 MAT_PUMICE
     table.append("rock.cobblestone")  # 10 MAT_COBBLESTONE (quench, 0005)
     return table[Int(code)].copy()
+
+
+def species_catalog_id_string(species: UInt32) raises -> String:
+    """Single-sourced species → catalog `id` table (0006 AP-14).
+
+    Index = species enum (SPECIES_*). SPECIES_NONE raises — an emitted
+    instance must never carry it. Exactly one catalog id per species
+    (0006 §6 invariant 6): crowns/ground cover green, bamboo its own id.
+    DEVIATION (recorded in the 0006 report): `wood.*` ids are not selected as
+    any species' display material — one material per species (per-species
+    MultiMesh) and crown colour dominates; wood ids remain available for
+    successor trunk-variant species."""
+    if Int(species) >= SPECIES_COUNT:
+        raise Error("unknown flora species " + String(Int(species)))
+    if species == SPECIES_NONE:
+        raise Error("SPECIES_NONE has no catalog material")
+    var table = List[String]()
+    table.append("")  # 0 SPECIES_NONE (unreachable, raises above)
+    table.append("botanical.foliage")  # 1 PALM_CLUSTER (crowns)
+    table.append("botanical.foliage")  # 2 PALM_SOLO (crown)
+    table.append("botanical.bamboo")  # 3 BAMBOO_GROVE
+    table.append("botanical.foliage")  # 4 CANOPY_TREE (spheroid canopy)
+    table.append("botanical.foliage")  # 5 CANOPY_CLUSTER (overlapping crowns)
+    table.append("botanical.foliage")  # 6 SHRUB (dense foliage)
+    table.append("botanical.moss")  # 7 FERN_CARPET (ground cover)
+    return table[Int(species)].copy()
 
 
 struct MaterialDef(Copyable, Movable, Deinitable):

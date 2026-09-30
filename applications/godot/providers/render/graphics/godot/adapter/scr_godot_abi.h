@@ -18,14 +18,12 @@ extern "C" {
 #endif
 
 #define SCR_SIM_ABI_VERSION  1u  /* C ABI symbol-contract version (unchanged) */
-/* Snapshot binary schema version. 3 -> 4 (milestone_0005): NEW section 9
- * SHORE_FOAM (12-byte header + grid_n^2 f32, every snapshot) and TERRAIN
- * per-vertex u32 material id re-framed as a 4-byte tuple
- * (u8 dominant catalog id, u8 blend partner catalog id, u8 weight, u8 pad 0)
- * — identical byte count, new meaning; sections 1-2 and 4-8 byte-identical.
- * Symbol set unchanged. Adapter refuses any library whose
- * scr_sim_schema_version() != this value. */
-#define SCR_SIM_SCHEMA_VER   4u
+/* Snapshot binary schema version. 4 -> 5 (milestone_0006): NEW section 10
+ * FLORA (u32 count + count * 24 B records; emission-gated like TERRAIN) and
+ * NEW section 11 FAUNA (u32 count + count * 20 B records, every snapshot);
+ * sections 1-9 byte-identical to schema 4. Symbol set unchanged. Adapter
+ * refuses any library whose scr_sim_schema_version() != this value. */
+#define SCR_SIM_SCHEMA_VER   5u
 
 /* Snapshot section identifiers (104_contract.md §4). */
 #define SCR_SEC_PLAYER       1u
@@ -37,6 +35,8 @@ extern "C" {
 #define SCR_SEC_VOLCANO      7u  /* schema 2 (milestone_0003 §3.2) */
 #define SCR_SEC_PLUME        8u
 #define SCR_SEC_SHORE_FOAM   9u  /* schema 4 (milestone_0005 §3.3) */
+#define SCR_SEC_FLORA        10u /* schema 5 (milestone_0006 §1.1) */
+#define SCR_SEC_FAUNA        11u /* schema 5 (milestone_0006 §1.1) */
 
 /* Snapshot magic: bytes 'S','C','R','S' read as little-endian u32. */
 #define SCR_SNAPSHOT_MAGIC   0x53524353u

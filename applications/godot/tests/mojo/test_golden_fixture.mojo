@@ -1,8 +1,9 @@
 # Spec test — Golden fixture (deterministic byte stream across code changes).
 # Fixture: tests/fixtures/snapshot_seed1_tick1.bin
-#   seed 1 → one step dt = 1/60 → scripted input → all nine sections
-#   (schema 4, milestone_0005: 1..8 unchanged framing, + 9 SHORE_FOAM;
-#   TERRAIN vertex payload is the 4-byte blend tuple — same byte count).
+#   seed 1 → one step dt = 1/60 → scripted input → all eleven sections
+#   (schema 5, milestone_0006: 1..9 unchanged framing from schema 4,
+#   + 10 FLORA + 11 FAUNA; TERRAIN vertex payload is the 4-byte blend
+#   tuple — same byte count).
 # Scripted input must stay identical to gen_golden_fixture.mojo and
 # tests/abi_smoke.py (all three document the same batch).
 #
@@ -26,10 +27,17 @@ from snapshot.types import (
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
     ENVELOPE_BYTES,
     SHORE_FOAM_HEADER_BYTES,
+    FLORA_HEADER_BYTES,
+    FLORA_RECORD_BYTES,
+    FAUNA_HEADER_BYTES,
+    FAUNA_RECORD_BYTES,
     get_u32,
 )
+from sim.parameters import FLORA_N_MAX, FLOCK_N_MAX
 from util.files import find_repo_root, join_path, read_file_bytes
 
 comptime FIXTURE_REL = "applications/godot/tests/fixtures/snapshot_seed1_tick1.bin"
@@ -72,9 +80,9 @@ def test_fixture_exists_and_is_well_formed() raises:
     var fixture = read_file_bytes(path)
     _check(len(fixture) > ENVELOPE_BYTES, "fixture must contain envelope")
     _check(get_u32(fixture, 0) == 0x53524353, "magic SCRS")
-    _check(SCHEMA_VERSION == 4, "sim parameters SCHEMA_VERSION == 4")
-    _check(get_u32(fixture, 4) == 4, "schema v4")
-    _check(get_u32(fixture, 8) == 9, "nine sections (first snapshot)")
+    _check(SCHEMA_VERSION == 5, "sim parameters SCHEMA_VERSION == 5")
+    _check(get_u32(fixture, 4) == 5, "schema v5")
+    _check(get_u32(fixture, 8) == 11, "eleven sections (first snapshot)")
     _check(get_u32(fixture, 20) == 1, "simulation_tick = 1")
     _check(get_u32(fixture, 28) == 1, "seed = 1")
     var env = decode_envelope(fixture)
@@ -87,6 +95,22 @@ def test_fixture_exists_and_is_well_formed() raises:
     _check(
         secs[fi].length == SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64,
         "SHORE_FOAM = 12 + 4·64² bytes",
+    )
+    var fli = find_section(secs, SEC_FLORA)
+    _check(fli >= 0, "fixture carries FLORA (10)")
+    var flora_count = Int(get_u32(fixture, secs[fli].offset))
+    _check(flora_count > 0 and flora_count <= FLORA_N_MAX, "FLORA count in cap")
+    _check(
+        secs[fli].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * flora_count,
+        "FLORA = 4 + 24·count bytes",
+    )
+    var fai = find_section(secs, SEC_FAUNA)
+    _check(fai >= 0, "fixture carries FAUNA (11)")
+    var fauna_count = Int(get_u32(fixture, secs[fai].offset))
+    _check(fauna_count > 0 and fauna_count <= FLOCK_N_MAX, "FAUNA count in cap")
+    _check(
+        secs[fai].length == FAUNA_HEADER_BYTES + FAUNA_RECORD_BYTES * fauna_count,
+        "FAUNA = 4 + 20·count bytes",
     )
     _check(
         Int(env.payload_bytes) == len(fixture) - ENVELOPE_BYTES,

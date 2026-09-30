@@ -27,6 +27,9 @@ PNG="${REPO_ROOT}/applications/godot/build/island.png"
 PNG2="${REPO_ROOT}/applications/godot/build/island_crater.png"
 PNG3="${REPO_ROOT}/applications/godot/build/island_sun.png"
 PNG4="${REPO_ROOT}/applications/godot/build/island_rain.png"
+# 0006 §7 ecology sub-captures (daytime only — see godot_screenshot.gd phase D)
+PNG5="${REPO_ROOT}/applications/godot/build/island_flora.png"
+PNG6="${REPO_ROOT}/applications/godot/build/island_fauna.png"
 RAIN_TICK="${RAIN_TICK:-4200}"   # seed-1 precipitation window 1801..8100
 GODOT_BIN="${GODOT_BIN:-godot}"
 FRAMES="${FRAMES:-60}"   # settle frames after the tick-wait (see .gd header)
@@ -71,6 +74,7 @@ timeout 300 "${WRAP[@]}" "${GODOT_BIN}" --path "${PROJ}" \
     -s "${REPO_ROOT}/applications/godot/tests/godot/godot_screenshot.gd" \
     -- "--frames=${FRAMES}" "--tick-min=${TICK_MIN}" "--png=${PNG}" \
     "--png2=${PNG2}" "--png3=${PNG3}" "--png4=${PNG4}" \
+    "--png5=${PNG5}" "--png6=${PNG6}" \
     "--rain-tick=${RAIN_TICK}" "${EXTRA_ARGS[@]}" >"${LOG}" 2>&1
 rc=$?
 
@@ -88,6 +92,17 @@ fi
 # Rain-window evidence (0004 §7): independently decoded whenever it exists.
 if [[ ${rc} -eq 0 || ${rc} -eq 1 && -f "${PNG4}" ]]; then
     python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG4}" || exit $?
+fi
+# Ecology evidence (0006 §7): flora/fauna sub-captures exist only after a
+# daytime run (phase D is skipped with SCR_EXPECT_GLOW — a stale pair from a
+# previous day run must not be re-asserted during the night gate).
+if [[ -z "${SCR_EXPECT_GLOW:-}" && ( ${rc} -eq 0 || ${rc} -eq 1 ) ]]; then
+    if [[ -f "${PNG5}" ]]; then
+        python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG5}" || exit $?
+    fi
+    if [[ -f "${PNG6}" ]]; then
+        python3 "${SCRIPT_DIR}/check_luminance.py" "${PNG6}" || exit $?
+    fi
 fi
 
 case ${rc} in
@@ -115,7 +130,15 @@ if [[ ${arc} -ne 0 ]]; then
     tail -20 "${LOG}.aerial" >&2
     exit 2
 fi
-python3 "${SCRIPT_DIR}/check_shoreline_foam.py" "${AERIAL}" || exit $?
+# Foam detection is a luma >= 0.60 test over water: a night frame (21.0 h)
+# legitimately contains no bright water pixels, so the gate is a daytime-only
+# assertion (0004 precedent: plume colour check skipped at night). The night
+# gate still runs the aerial capture itself (non-zero exit still fails).
+if [[ -n "${SCR_EXPECT_GLOW:-}" ]]; then
+    echo "SHORE FOAM: SKIPPED (night frame — luma-based foam gate is daytime-only, enforced by the day run)"
+else
+    python3 "${SCRIPT_DIR}/check_shoreline_foam.py" "${AERIAL}" || exit $?
+fi
 
 echo "godot_screenshot: PASS (${PNG})"
 exit 0

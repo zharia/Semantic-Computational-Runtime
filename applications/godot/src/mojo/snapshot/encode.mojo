@@ -6,6 +6,7 @@ from std.collections import List
 from std.math import floor
 
 from sim.world import World
+from sim.flock import flock_wire
 from sim.parameters import (
     GRID_N,
     CELL_SIZE,
@@ -27,6 +28,8 @@ from snapshot.types import (
     SEC_VOLCANO,
     SEC_PLUME,
     SEC_SHORE_FOAM,
+    SEC_FLORA,
+    SEC_FAUNA,
     VOLCANO,
     PLUME,
     put_u32,
@@ -35,6 +38,8 @@ from snapshot.types import (
     put_f64,
     put_volcano,
     put_plume,
+    put_flora,
+    put_fauna,
 )
 
 comptime TWO_PI: Float64 = 6.283185307179586
@@ -256,10 +261,37 @@ def _encode_shore_foam(world: World) raises -> List[UInt8]:
     return b^
 
 
-def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
+def _encode_flora(world: World) raises -> List[UInt8]:
+    """10 FLORA (schema 5, 104_contract §4.3): u32 count + count×24 B
+    records — f32×3 position, f32 yaw, f32 scale, u32 species_id
+    (milestone_0006 §3.2). count ≤ FLORA_N_MAX (AP-13)."""
+    if world.flora.count > len(world.flora.instances):
+        raise Error("FLORA count exceeds instance list")
+    if world.flora.count != len(world.flora.instances):
+        raise Error("FLORA count drift from instance list")
+    var b = List[UInt8]()
+    put_flora(b, world.flora.instances)
+    return b^
+
+
+def _encode_fauna(world: World) -> List[UInt8]:
+    """11 FAUNA (schema 5, 104_contract §4.3): u32 count + count×20 B
+    records — f32×3 position, f32 yaw, u8 species_id, u8×3 pad = 0
+    (milestone_0006 §3.2). Active flock slots in ascending slot order."""
+    var b = List[UInt8]()
+    put_fauna(b, flock_wire(world.flock))
+    return b^
+
+
+def encode_snapshot(
+    world: World, include_terrain: Bool, include_flora: Bool = True
+) raises -> List[UInt8]:
     """Serialize the world projection (104_contract §4).
     include_terrain: TERRAIN emitted only when terrain (re)generation
-    occurred since the adapter's last consumed snapshot (§4.3)."""
+    occurred since the adapter's last consumed snapshot (§4.3).
+    include_flora: FLORA emitted under the same tracker rule (0006 §1.1 —
+    schema 5 sibling of TERRAIN: first snapshot after init, then only on
+    world_version change). FAUNA is emitted EVERY snapshot (§4.3)."""
     var payload = List[UInt8]()
     var section_count: UInt32 = 0
 
@@ -300,6 +332,17 @@ def encode_snapshot(world: World, include_terrain: Bool) raises -> List[UInt8]:
     # Section 9: shore foam field — EVERY snapshot (0005 §3.3, schema 4).
     var foam = _encode_shore_foam(world)
     _append_section(payload, SEC_SHORE_FOAM, foam^)
+    section_count += 1
+
+    # Section 10: flora — emission-gated like TERRAIN (0006 §1.1, schema 5).
+    if include_flora:
+        var flora = _encode_flora(world)
+        _append_section(payload, SEC_FLORA, flora^)
+        section_count += 1
+
+    # Section 11: seabird flock — EVERY snapshot (0006 §1.1, schema 5).
+    var fauna = _encode_fauna(world)
+    _append_section(payload, SEC_FAUNA, fauna^)
     section_count += 1
 
     # Envelope (48 bytes) + payload.

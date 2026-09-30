@@ -45,10 +45,16 @@ SCR_SEC_MATERIALS = 6
 SCR_SEC_VOLCANO = 7  # schema 2 (milestone_0003 §3.2)
 SCR_SEC_PLUME = 8
 SCR_SEC_SHORE_FOAM = 9  # schema 4 (milestone_0005 §3.3)
+SCR_SEC_FLORA = 10  # schema 5 (milestone_0006 §3.2)
+SCR_SEC_FAUNA = 11  # schema 5 (milestone_0006 §3.2)
 
-SCHEMA_VERSION = 4  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
+SCHEMA_VERSION = 5  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
 SHORE_FOAM_BYTES = 12 + 4 * 64 * 64  # u32 grid_n + f32 cell_size + f32 sea_level + 64² f32
 TERRAIN_BYTES_SEED1 = 228100  # schema-3 size: the 4-byte vertex tuple is stride-neutral
+FLORA_N_MAX = 4096  # parameters.mojo FLORA_N_MAX (AP-13 cap)
+FLOCK_N_MAX = 64  # parameters.mojo FLOCK_N_MAX (AP-13 cap)
+FLORA_RECORD_BYTES = 24  # §10: 3xf32 pos + f32 yaw + f32 scale + u32 species_id
+FAUNA_RECORD_BYTES = 20  # §11: 3xf32 pos + f32 yaw + u8 species + 3 pad
 
 FIXED_DT = 1.0 / 60.0
 
@@ -185,16 +191,16 @@ def main() -> int:
     check(snapshot == fixture, "FFI snapshot byte-identical to golden fixture")
     check(snapshot[:4] == b"SCRS", "magic bytes 'SCRS'")
     check(
-        snapshot[4:8] == b"\x04\x00\x00\x00",
-        "schema_version == 4 (LE)",
+        snapshot[4:8] == b"\x05\x00\x00\x00",
+        "schema_version == 5 (LE)",
     )
 
-    # Section framing walk (§4.2), schema 4: sections 1..9.
+    # Section framing walk (§4.2), schema 5: sections 1..11.
     import struct as _st
 
     section_count = _st.unpack_from("<I", snapshot, 8)[0]
     payload_bytes = _st.unpack_from("<I", snapshot, 40)[0]
-    check(section_count == 9, f"section_count == 9 (got {section_count})")
+    check(section_count == 11, f"section_count == 11 (got {section_count})")
     check(
         payload_bytes == len(snapshot) - 48,
         f"payload_bytes {payload_bytes} == len-48",
@@ -208,7 +214,7 @@ def main() -> int:
         spans[sid] = (off + 8, slen)
         off += 8 + slen
     check(
-        ids == [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        ids == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
         f"section ids in contract order (got {ids})",
     )
     check(off == len(snapshot), "framing consumes the payload exactly")
@@ -217,6 +223,8 @@ def main() -> int:
         "sections 7 VOLCANO and 8 PLUME present",
     )
     check(SCR_SEC_SHORE_FOAM in spans, "section 9 SHORE_FOAM present")
+    check(SCR_SEC_FLORA in spans, "section 10 FLORA present")
+    check(SCR_SEC_FAUNA in spans, "section 11 FAUNA present")
 
     print("\n[3a] SKY field sanity (schema 3, 104_contract §4.3 §5)")
     k_off, k_len = spans[SCR_SEC_SKY]
@@ -329,6 +337,64 @@ def main() -> int:
         f"seed-1 terrain carries blended boundary vertices ({blended_count})",
     )
 
+    print("\n[3e] FLORA + FAUNA framing (104_contract §4.3 §10/§11, schema 5)")
+    f_off, f_len = spans[SCR_SEC_FLORA]
+    check(f_len >= 4, f"FLORA header present (got {f_len} bytes)")
+    flora_count = _st.unpack_from("<I", snapshot, f_off)[0]
+    check(
+        1 <= flora_count <= FLORA_N_MAX,
+        f"FLORA count in [1, {FLORA_N_MAX}] (got {flora_count})",
+    )
+    check(
+        f_len == 4 + FLORA_RECORD_BYTES * flora_count,
+        f"FLORA strict length 4 + 24*count "
+        f"({4 + FLORA_RECORD_BYTES * flora_count}, got {f_len})",
+    )
+    flora_species = set()
+    for i in range(flora_count):
+        rec = _st.unpack_from("<5fI", snapshot, f_off + 4 + FLORA_RECORD_BYTES * i)
+        sid = rec[5]
+        flora_species.add(sid)
+        if not (1 <= sid <= 7):
+            check(False, f"FLORA[{i}].species_id in 1..7 (got {sid})")
+            break
+        if not (0.8 <= rec[4] <= 1.35):  # FLORA_SCALE_MIN/MAX
+            check(False, f"FLORA[{i}].scale in [0.8, 1.35] (got {rec[4]})")
+            break
+    else:
+        check(True, f"FLORA records well-formed ({flora_count} instances)")
+    check(
+        len(flora_species) >= 2,
+        f"≥2 distinct species in seed-1 FLORA (got {sorted(flora_species)})",
+    )
+
+    a_off, a_len = spans[SCR_SEC_FAUNA]
+    check(a_len >= 4, f"FAUNA header present (got {a_len} bytes)")
+    fauna_count = _st.unpack_from("<I", snapshot, a_off)[0]
+    check(
+        1 <= fauna_count <= FLOCK_N_MAX,
+        f"FAUNA count in [1, {FLOCK_N_MAX}] (got {fauna_count})",
+    )
+    check(
+        a_len == 4 + FAUNA_RECORD_BYTES * fauna_count,
+        f"FAUNA strict length 4 + 20*count "
+        f"({4 + FAUNA_RECORD_BYTES * fauna_count}, got {a_len})",
+    )
+    fauna_ok = True
+    for i in range(fauna_count):
+        rec = _st.unpack_from("<4f4B", snapshot, a_off + 4 + FAUNA_RECORD_BYTES * i)
+        species, p0, p1, p2 = rec[4], rec[5], rec[6], rec[7]
+        if species != 0 or (p0, p1, p2) != (0, 0, 0):
+            check(
+                False,
+                f"FAUNA[{i}] species==0 and pad==0 "
+                f"(got species={species}, pad={(p0, p1, p2)})",
+            )
+            fauna_ok = False
+            break
+    if fauna_ok:
+        check(True, f"FAUNA records well-formed ({fauna_count} birds)")
+
     print("\n[3b] VOLCANO + PLUME field sanity (104_contract §4.3 §7/§8)")
     v_off, v_len = spans[SCR_SEC_VOLCANO]
     check(v_len == 32, f"VOLCANO section is 32 bytes (got {v_len})")
@@ -389,8 +455,9 @@ def main() -> int:
         ids2.append(sid2)
         off2 += 8 + slen2
     check(
-        ids2 == [1, 2, 4, 5, 6, 7, 8, 9],
-        f"VOLCANO/PLUME/SHORE_FOAM emitted on every snapshot (got {ids2})",
+        ids2 == [1, 2, 4, 5, 6, 7, 8, 9, 11],
+        f"TERRAIN/FLORA suppressed, VOLCANO/PLUME/SHORE_FOAM/FAUNA every "
+        f"snapshot (got {ids2})",
     )
 
     print("\n[5] null input = idle batch")

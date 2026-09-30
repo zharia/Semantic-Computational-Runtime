@@ -4,7 +4,7 @@
 **Milestone:** 0006 — Ecology (Flora + Fauna)
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract (schema bump + new FLORA/FAUNA sections) + in-process GDExtension adapter (transport untouched)
@@ -252,17 +252,17 @@ providers/render/graphics/godot/
 
 All commands run from repo root; `M=.venv/bin/mojo`.
 
-- [ ] **Flora band test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_placement.mojo` — asserts every instance on a valid band (count/band oracle), `0 < count ≤ 4096`, seeded determinism, species→catalog resolution.
-- [ ] **Flock coherence + bound test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flock.mojo` — over ≥ 600 ticks: `count ≤ 64`, all birds within the ocean/beach bound, separation floor holds, respawn rule respects cap, run-twice determinism.
-- [ ] **Determinism with 2 species (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_determinism.mojo` — seed 1 produces ≥ 2 distinct flora species and byte-identical snapshot sequence across two runs (FLORA+FAUNA included).
-- [ ] **Projection purity (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_projection_purity.mojo`.
-- [ ] **Contract framing (automated):** `test_envelope.mojo` round-trips FLORA/FAUNA (incl. malformed `section_bytes` rejection); `gen_golden_fixture.mojo` re-run; `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_golden_fixture.mojo` passes against the regenerated fixture.
-- [ ] **Schema gate (automated):** `bash applications/godot/tests/test_schema_mismatch.sh` — loader accepts new schema, refuses old/newer mismatch; `python3 applications/godot/tests/abi_smoke.py` PASS.
-- [ ] **Build + layout gates (automated):** `bash applications/godot/scripts/build_godot_provider.sh`, `bash applications/godot/scripts/check_layout.sh` (AP-1/AP-4 clean).
-- [ ] **Scene gates (automated):** `bash applications/godot/tests/godot/godot_load_test.sh` (0 `ERROR:` lines with new groups); `bash applications/godot/tests/godot/godot_playability_test.sh` PASS (player unaffected).
-- [ ] **Flora + birds visibly render (automated screenshot w/ documented manual fallback):** `bash applications/godot/tests/godot/godot_screenshot.sh` with content assertions extended to `scr_flora` (≥1 MultiMesh with instance count > 0) and `scr_fauna` (node count > 0); PNG + luminance result recorded in `docs/04` §8-style evidence table. Manual fallback procedure = same script's documented display-probe path.
-- [ ] **All milestone 0002 gates green (automated):** the seven §8 procedures of `docs/04_simulation_engine.md` re-run PASS after the schema bump.
-- [ ] **Review pass:** §2.1 (AP-1..10) and §2.2 (AP-11..14) checked item-by-item; results table appended to `docs/04`.
+- [x] **Flora band test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_placement.mojo` — asserts every instance on a valid band (count/band oracle), `0 < count ≤ 4096`, seeded determinism, species→catalog resolution.
+- [x] **Flock coherence + bound test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flock.mojo` — over ≥ 600 ticks: `count ≤ 64`, all birds within the ocean/beach bound, separation floor holds, respawn rule respects cap, run-twice determinism.
+- [x] **Determinism with 2 species (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_determinism.mojo` — seed 1 produces ≥ 2 distinct flora species and byte-identical snapshot sequence across two runs (FLORA+FAUNA included).
+- [x] **Projection purity (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_projection_purity.mojo`.
+- [x] **Contract framing (automated):** `test_envelope.mojo` round-trips FLORA/FAUNA (incl. malformed `section_bytes` rejection); `gen_golden_fixture.mojo` re-run; `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_golden_fixture.mojo` passes against the regenerated fixture.
+- [x] **Schema gate (automated):** `bash applications/godot/tests/test_schema_mismatch.sh` — loader accepts new schema, refuses old/newer mismatch; `python3 applications/godot/tests/abi_smoke.py` PASS.
+- [x] **Build + layout gates (automated):** `bash applications/godot/scripts/build_godot_provider.sh`, `bash applications/godot/scripts/check_layout.sh` (AP-1/AP-4 clean).
+- [x] **Scene gates (automated):** `bash applications/godot/tests/godot/godot_load_test.sh` (0 `ERROR:` lines with new groups); `bash applications/godot/tests/godot/godot_playability_test.sh` PASS (player unaffected).
+- [x] **Flora + birds visibly render (automated screenshot w/ documented manual fallback):** `bash applications/godot/tests/godot/godot_screenshot.sh` with content assertions extended to `scr_flora` (≥1 MultiMesh with instance count > 0) and `scr_fauna` (node count > 0); PNG + luminance result recorded in `docs/04` §8-style evidence table. Manual fallback procedure = same script's documented display-probe path.
+- [x] **All milestone 0002 gates green (automated):** the seven §8 procedures of `docs/04_simulation_engine.md` re-run PASS after the schema bump.
+- [x] **Review pass:** §2.1 (AP-1..10) and §2.2 (AP-11..14) checked item-by-item; results table appended to `docs/04`.
 
 ---
 

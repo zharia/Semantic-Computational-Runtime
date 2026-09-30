@@ -256,12 +256,72 @@ comptime FEATHER_WIDTH_CELLS: Int = 4
 comptime BLEND_DITHER_AMP: Float64 = 0.10
 comptime BLEND_DITHER_FREQUENCY: Float64 = 0.18
 
+# --- Flora placement (milestone_0006 §1.1/§5; AP-7 / 0006 AP-13/AP-14) -----
+# Band table (test oracle, §6 invariant 2 — enforced in sim/flora.mojo):
+#   BIOME_BEACH          → palm (PALM_CLUSTER / PALM_SOLO),   density below
+#   BIOME_VOLCANIC_SLOPE → canopy / shrub / fern above sea + slope cap
+#   BIOME_CALDERA_RIM / BIOME_CALDERA_LAKE / BIOME_SHALLOW_WATER /
+#   BIOME_DEEP_OCEAN (+ every other code) → NO flora
+# Elevation window: height ≥ SEA_LEVEL + FLORA_HEIGHT_EPS; slope caps are
+# per-band; densities are per-band host probabilities, weights per-species
+# conditional on the band (weights sum to 1 within each band).
+comptime FLORA_N_MAX: Int = 4096  # hard cap (0006 AP-13; §6 invariant 3)
+comptime FLORA_HEIGHT_EPS: Float64 = 0.05  # ε: y ≥ SEA_LEVEL + ε
+comptime FLORA_SLOPE_CAP: Float64 = 1.00  # VOLCANIC_SLOPE max |∇h| (u/u)
+# Beach profile gradient runs 0.52..1.02 (u/u) for seed 1 — the cap must
+# admit the whole band, so it sits at the VOLCANIC_SLOPE value.
+comptime FLORA_BEACH_SLOPE_CAP: Float64 = 1.00  # BEACH max |∇h| (u/u)
+comptime FLORA_DENSITY_BEACH: Float64 = 0.10  # P(host | BEACH cell)
+comptime FLORA_DENSITY_SLOPE: Float64 = 0.12  # P(host | VOLCANIC_SLOPE cell)
+# Per-species weights (conditional on band; each row sums to 1.0).
+comptime FLORA_WEIGHT_PALM_CLUSTER: Float64 = 0.35  # BEACH: rest → PALM_SOLO
+comptime FLORA_WEIGHT_CANOPY_TREE: Float64 = 0.20  # SLOPE
+comptime FLORA_WEIGHT_CANOPY_CLUSTER: Float64 = 0.10  # SLOPE
+comptime FLORA_WEIGHT_SHRUB: Float64 = 0.35  # SLOPE
+comptime FLORA_WEIGHT_FERN_CARPET: Float64 = 0.35  # SLOPE (remainder)
+comptime FLORA_SCALE_MIN: Float64 = 0.80  # uniform instance scale range
+comptime FLORA_SCALE_MAX: Float64 = 1.35
+
+# --- Seabird flock (milestone_0006 §1.1/§5; AP-7 / 0006 AP-13) --------------
+# Slots are fixed (0..FLOCK_N_MAX-1); the first FLOCK_N_INIT are active at
+# init. A bound violation despawns the slot and respawns it from
+# (seed, slot, respawn_count) — count never grows past the cap.
+comptime FLOCK_N_MAX: Int = 64  # hard cap (0006 AP-13; §6 invariant 3)
+comptime FLOCK_N_INIT: Int = 32
+comptime FLOCK_SEABIRD_SPECIES: Int = 0  # FAUNA species_id (0 = seabird)
+comptime FLOCK_WAYPOINT_RADIUS: Float64 = 100.0  # u, ocean-ring orbit radius
+comptime FLOCK_WAYPOINT_JITTER: Float64 = 6.0  # u, per-slot radius jitter
+# Orbit period must keep waypoint tangential speed (2πr/period) well below
+# FLOCK_SPEED_CRUISE, else pure-pursuit seek can never catch the waypoint and
+# the flock spirals inward (observed collapse with 2400 ticks ≈ 15.7 u/s at
+# r=100 vs cruise 9 u/s). 14400 ticks ≈ 2.8 u/s at r=106.
+comptime FLOCK_WAYPOINT_PERIOD_TICKS: Float64 = 14400.0  # 240 s per orbit
+comptime FLOCK_BOUND_RADIUS: Float64 = 110.0  # u, ocean/beach bound (horizontal)
+comptime FLOCK_MIN_ALTITUDE: Float64 = 8.0  # u above local surface/ocean
+comptime FLOCK_MAX_ALTITUDE: Float64 = 90.0  # u above sea level
+comptime FLOCK_SPEED_CRUISE: Float64 = 9.0  # u/s seek target speed
+comptime FLOCK_SPEED_MIN: Float64 = 4.0  # u/s speed-clamp floor
+comptime FLOCK_SPEED_MAX: Float64 = 14.0  # u/s speed-clamp ceiling
+# Boid rule weights (acceleration contributions, §3.1 of the 0006 spec).
+comptime FLOCK_W_SEEK: Float64 = 0.80
+comptime FLOCK_W_ALIGN: Float64 = 0.50
+comptime FLOCK_W_COHERE: Float64 = 0.40
+comptime FLOCK_W_SEPARATE: Float64 = 20.0
+comptime FLOCK_W_AVOID: Float64 = 2.00
+comptime FLOCK_ALIGN_RADIUS: Float64 = 14.0  # u
+comptime FLOCK_COHERE_RADIUS: Float64 = 18.0  # u
+comptime FLOCK_SEPARATE_RADIUS: Float64 = 6.0  # u
+comptime FLOCK_SEPARATION_MIN: Float64 = 2.0  # u hard floor (test oracle)
+
 # --- Snapshot contract constants (104_contract §4) -------------------------
 comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
 # 3 → 4 (milestone_0005 §3.6): NEW section 9 SHORE_FOAM (every snapshot) and
 # TERRAIN vertex payload re-framed u32 material id → (u8, u8, u8, u8) blend
 # tuple (identical byte count, new meaning — AP-21).
-comptime SCHEMA_VERSION: UInt32 = 4
+# 4 → 5 (milestone_0006 §1.1 sibling rebase): NEW sections 10 FLORA
+# (emission-gated like TERRAIN) and 11 FAUNA (every snapshot); sections 1..9
+# byte-identical to schema 4; symbol set unchanged.
+comptime SCHEMA_VERSION: UInt32 = 5
 comptime ABI_VERSION: UInt32 = 1
 
 # --- Error codes (scr_godot_abi.h) ----------------------------------------

@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0005 Sprint 04)
+**Status:** Active (updated by milestone 0006 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -17,6 +17,7 @@
 | v0.0.1 | 0003 — Volcano (lava lake, plume, glow) | Complete — all §7 exit criteria verified (schema 2, 8/8 mojo suites 47/47, 9 gates incl. night-glow procedure); see [spec](../program_increments/v0.0.1/milestone_0003_volcano/spec.md) + [04 §8.3](04_simulation_engine.md) |
 | v0.0.1 | 0004 — Atmosphere & Weather (diurnal sky, clouds, rain, wind) | Complete — 9 gates PASS (schema 3, 10 mojo suites, sun sub-capture + rain window, night re-derivation); see [spec](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) + [04 §8.4](04_simulation_engine.md) |
 | v0.0.1 | 0005 — Shoreline Fidelity (shore foam, crater material blending, quench evaluator) | Complete — all §7 exit criteria verified (schema 4, 13 mojo suites, foam-only-at-shoreline gate, crater-rim capture); see [spec](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) + [04 §8.5](04_simulation_engine.md) |
+| v0.0.1 | 0006 — Ecology (flora scatter, seabird flock) | Complete — all §7 exit criteria verified (schema 5, 15 mojo suites, flora/fauna region checks, foam gate kept green); see [spec](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) + [04 §8.6](04_simulation_engine.md) |
 
 ### Milestone 0004 status detail (verified)
 
@@ -29,6 +30,18 @@ Resolved during verification: static skybox → dome derived from SKY each frame
 Honest gaps: sun disc not in the *spawn* view (recorded deviation), cloud pattern/scale display-only, no volumetric scattering — [04 §9](04_simulation_engine.md).
 
 Anti-pattern review (spec §7 final item): **PASS** — AP-15..AP-18 checked item-by-item, evidence in [04 §8.4](04_simulation_engine.md).
+
+### Milestone 0006 status detail (verified)
+
+Sprints 01–04 delivered: sim-side `flora.mojo` (seeded band placement, species from `catalog.mojo`, cap 4096) + `flock.mojo` (64-slot boids, deterministic slot-order integration, waypoint orbit, bound-respawn), schema **5** (`10 FLORA` = `4 + 24·count` emission-gated, `11 FAUNA` = `4 + 20·count` every snapshot; fixture 249432 B, 11 sections), adapter decode/validate/dispatch (`apply_flora`/`apply_fauna`/`set_wetness_gain` latch, catalog mirror `scr::kSpeciesDisplay`), `island.tscn` hosts + `flora_view.gd`/`fauna_view.gd` + `flora_wing.gdshader` (display-only sway/flap), extended gates (flora/fauna region checks + sub-captures `island_flora.png`/`island_fauna.png`).
+
+Final gates: 15/15 mojo spec-test files PASS (incl. `test_flora_placement`, `test_flock`), abi_smoke (schema 5) PASS, schema-mismatch PASS, layout PASS, build OK, load PASS (0 `ERROR:` lines), screenshot day PASS (flora/fauna assertions + green/near-white px), aerial + shoreline-foam PASS (`in-band=1269 out-of-band=0`, fauna hidden from foam frame — birds read as offshore foam), night-glow PASS, playability PASS.
+
+Resolved during verification: waypoint period collapse (tangential speed 15.7 u/s > cruise 9 → flock spiraled inward; `FLOCK_WAYPOINT_PERIOD_TICKS` 2400 → 14400 ⇒ ≈2.8 u/s), foam gate false-positive (flock orbit r=98–112 u rendered as foam-colored pixels → hide `scr_fauna` in aerial diagnostic), scene header `load_steps` drift after node append.
+
+Honest gaps: flora regrowth after 0007 voxel edits `TBD` (voxel-flora still disabled); wind sway tie-in `TBD`; species semantics stay sim-side (bird species_id 0 = seabird, only emitted id) — [04 §9](04_simulation_engine.md).
+
+Anti-pattern review (spec §7 final item): **PASS** — AP-11..AP-14 checked item-by-item, evidence in [04 §8.6](04_simulation_engine.md).
 
 ### Milestone 0005 status detail (verified)
 
@@ -72,13 +85,12 @@ Future increments build on the stabilized snapshot contract. Each has a normativ
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| 0006 | [Ecology](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) | Flora scatter + seabird flocking | `705_Ecology`, `601_Agent` (flocking: parent def — child absent, noted) |
 | 0007 | [Editing, hotbar, physics](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) | Voxel dig/place, catalog hotbar, minimal rigid bodies | `501_Physics`, `A01_Render/Material` |
 | 0008 | [IPC transport](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) | Out-of-process sim over socket, byte-identical semantics | `804_Application`, `503_Simulation/Snapshot` |
 
-Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006–0008 remain Planned.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007–0008 remain Planned.
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0006–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0007–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 
