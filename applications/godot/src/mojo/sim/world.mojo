@@ -25,6 +25,9 @@ from sim.subjects import (
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
 from sim.shore import compute_foam_field
 from sim.flora import FloraSubject, flora_from_island
+from sim.edit import EditQueue, edit_queue_init, consume_one_edit
+from sim.hotbar import HotbarSubject, hotbar_init
+from sim.props import PhysicsSubject, props_from_island, props_tick
 from sim.flock import FlockSubject, flock_from_island, flock_tick
 from weather.state import WeatherSubject, weather_tick
 from ocean.gerstner import make_ocean, OceanState
@@ -50,6 +53,10 @@ struct World(Movable, Deinitable):
     var foam: List[Float32]  # GRID_N² shore foam (§3.3; f32, row-major)
     var flora: FloraSubject  # milestone_0006: flora population (sim locus)
     var flock: FlockSubject  # milestone_0006: seabird flock (sim locus)
+    # milestone_0007: sim-owned edit authority + display state.
+    var edit_queue: EditQueue  # scr_edit_submit FIFO (one op per tick)
+    var hotbar: HotbarSubject  # selection = sim state (AP-13)
+    var props: PhysicsSubject  # rigid props (≤ PROP_N_MAX)
 
     def __init__(out self, seed: UInt32):
         self.seed = seed
@@ -69,6 +76,9 @@ struct World(Movable, Deinitable):
         self.foam = List[Float32]()
         self.flora = FloraSubject()
         self.flock = FlockSubject()
+        self.edit_queue = edit_queue_init()
+        self.hotbar = HotbarSubject()
+        self.props = PhysicsSubject()
 
     def __deinit__(deinit self):
         pass
@@ -112,6 +122,12 @@ def world_init(seed: UInt32) raises -> World:
     # no runtime mutation of these two outside flock_tick below.
     world.flora = flora_from_island(world.island, world.seed)
     world.flock = flock_from_island(world.island, world.seed)
+    # milestone_0007: hotbar slot table resolved against the catalog (loud
+    # if any id fails — invariant 5), rigid props at deterministic beach
+    # anchors, empty edit FIFO.
+    world.hotbar = hotbar_init(world.catalog)
+    world.props = props_from_island(world.island, world.catalog)
+    world.edit_queue = edit_queue_init()
     world.world_version = 1  # first generation
     world.state_generation = 0
     world.simulation_tick = 0
@@ -123,6 +139,25 @@ def world_init(seed: UInt32) raises -> World:
 def tick_world(mut world: World, input: InputBatch) raises:
     """Execute exactly one fixed tick (dt = 1/60)."""
     player_tick(world.player, input, world.island, world.hydro, world.simulation_time)
+    # Edit FIFO: pop at most ONE op per fixed tick against this tick's pose
+    # (0007 §3.2). Applied ⇒ world_version bump + flora recompute so every
+    # downstream projection sees a consistent generation (AP-8 one-way).
+    var edit_out = consume_one_edit(
+        world.island,
+        world.edit_queue,
+        world.hotbar,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    if edit_out.applied:
+        world.world_version += 1
+        world.flora = flora_from_island(world.island, world.seed)
+    # Rigid props: gravity + ground contact, ascending slot order (§3.5).
+    props_tick(world.props, world.island, FIXED_DT)
     world.simulation_tick += 1
     world.simulation_time = Float64(world.simulation_tick) * FIXED_DT
     world.state_generation += 1
@@ -353,6 +388,36 @@ def world_fingerprint(world: World) -> UInt64:
         h = _fold_f64(h, fb.yaw)
         h = _fold_u64(h, UInt64(fb.respawn_count))
         h = _fold_byte(h, UInt8(1 if fb.active else 0))
+
+    # Edit FIFO (0007): pending count + every pending op — folded so a
+    # projection that consumed/queued edits fails projection purity.
+    # (The head cursor is representation state, not semantics: two queues
+    # with the same pending ops are the same queue.)
+    h = _fold_u64(h, UInt64(world.edit_queue.pending()))
+    for i in range(world.edit_queue.head, len(world.edit_queue.entries)):
+        h = _fold_byte(h, world.edit_queue.entries[i].op)
+
+    # Hotbar (0007 AP-13): selection + both slot tables (ids on the wire,
+    # codes as the place material).
+    h = _fold_u64(h, UInt64(world.hotbar.selected_index))
+    h = _fold_u64(h, UInt64(len(world.hotbar.slot_ids)))
+    for i in range(len(world.hotbar.slot_ids)):
+        h = _fold_u64(h, UInt64(world.hotbar.slot_ids[i]))
+        h = _fold_u64(h, UInt64(world.hotbar.slot_codes[i]))
+
+    # Rigid props (0007 §3.5): count + every body field.
+    h = _fold_u64(h, UInt64(world.props.count))
+    for i in range(world.props.count):
+        var pb = world.props.bodies[i]
+        h = _fold_f64(h, pb.x)
+        h = _fold_f64(h, pb.y)
+        h = _fold_f64(h, pb.z)
+        h = _fold_f64(h, pb.vx)
+        h = _fold_f64(h, pb.vy)
+        h = _fold_f64(h, pb.vz)
+        h = _fold_u64(h, UInt64(pb.shape))
+        h = _fold_f64(h, pb.size)
+        h = _fold_u64(h, UInt64(pb.material_id))
 
     h = _fold_str(h, world.catalog.root)
     for i in range(world.catalog.count()):

@@ -92,11 +92,36 @@ def compute_blends(
     materials/biomes are GRID_N² row-major (iz · GRID_N + ix). Returns a
     GRID_N² tuple grid. Pure function of its inputs + the seeded noise
     context (Synthesis §4 invariant 1)."""
+    var mask = List[UInt8]()
+    for _i in range(GRID_N * GRID_N):
+        mask.append(0)
+    return compute_blends_masked(materials, biomes, ctx, mask)
+
+
+def compute_blends_masked(
+    materials: List[UInt32],
+    biomes: List[Int],
+    ctx: NoiseContext,
+    unblendable: List[UInt8],
+) raises -> List[BlendTuple]:
+    """compute_blends with cells marked unblendable (0007 edit path).
+
+    An EDITED column carries an identity tuple and never seeds, receives or
+    propagates a blend edge: the placed material may sit outside the biome's
+    §2 row (0007 §3.2 hotbar place), so the §6.4 pair invariant is preserved
+    by keeping feathering off edited columns entirely — the edge is simply
+    never born, never checked, never weighted. Non-edited cells behave
+    exactly like compute_blends (all-zero mask ⇒ identical bytes)."""
     var n = GRID_N
     if len(materials) != n * n or len(biomes) != n * n:
         raise Error(
             "compute_blends expects " + String(n * n) + " cells, got "
             + String(len(materials)) + "/" + String(len(biomes))
+        )
+    if len(unblendable) != n * n:
+        raise Error(
+            "compute_blends_masked expects " + String(n * n) + " mask cells, got "
+            + String(len(unblendable))
         )
 
     # Identity tuples: no blend unless a boundary band reaches the cell.
@@ -119,6 +144,8 @@ def compute_blends(
     for iz in range(n):
         for ix in range(n):
             var i = iz * n + ix
+            if unblendable[i] != 0:
+                continue  # edited column: identity tuple, edges never born
             var m = materials[i]
             if m == MAT_LAVA:
                 continue  # lava columns never blend (§3.6)
@@ -129,6 +156,8 @@ def compute_blends(
                 if nx < 0 or nx >= n or nz < 0 or nz >= n:
                     continue
                 var j = nz * n + nx
+                if unblendable[j] != 0:
+                    continue  # never feather across an edited column
                 var mn = materials[j]
                 if mn == m:
                     continue
@@ -143,8 +172,8 @@ def compute_blends(
                 queue.append(i)
 
     # --- BFS: distance-to-boundary + partner carried inside the material --
-    # region (a partner only propagates across cells of the SAME material, so
-    # it can never leak in from an unrelated boundary).
+    # (a partner only propagates across cells of the SAME material, so it
+    # can never leak in from an unrelated boundary).
     var head = 0
     while head < len(queue):
         var c = queue[head]
@@ -158,6 +187,8 @@ def compute_blends(
             if nx < 0 or nx >= n or nz < 0 or nz >= n:
                 continue
             var j = nz * n + nx
+            if unblendable[j] != 0:
+                continue  # edited columns stay unfeathered
             if dist[j] >= 0:
                 continue  # already seeded/visited
             if materials[j] != materials[c]:
@@ -172,6 +203,8 @@ def compute_blends(
     for iz in range(n):
         for ix in range(n):
             var i = iz * n + ix
+            if unblendable[i] != 0:
+                continue  # identity tuple (material, material, 0)
             var d = dist[i]
             if d < 0 or d >= FEATHER_WIDTH_CELLS:
                 continue

@@ -22,6 +22,15 @@ from snapshot.types import (
     SEC_SHORE_FOAM,
     SEC_FLORA,
     SEC_FAUNA,
+    SEC_HOTBAR,
+    SEC_TARGET,
+    SEC_RIGID_BODIES,
+    HOTBAR_BYTES,
+    HOTBAR_SLOT_WIRE,
+    TARGET_BYTES,
+    RIGID_HEADER_BYTES,
+    RIGID_RECORD_BYTES,
+    RIGID_BODIES_MAX,
     FLORA_HEADER_BYTES,
     FLORA_RECORD_BYTES,
     FAUNA_HEADER_BYTES,
@@ -31,6 +40,8 @@ from snapshot.types import (
     SKY_BYTES,
     VOLCANO,
     PLUME,
+    TARGET,
+    RigidBodyRecord,
     FloraInstance,
     FlockBird,
     get_u8,
@@ -128,6 +139,9 @@ def _known_id(id: UInt32) -> Bool:
         or id == SEC_SHORE_FOAM
         or id == SEC_FLORA
         or id == SEC_FAUNA
+        or id == SEC_HOTBAR
+        or id == SEC_TARGET
+        or id == SEC_RIGID_BODIES
     )
 
 
@@ -474,4 +488,114 @@ def read_fauna(data: List[UInt8], sec: SectionRef) raises -> List[FlockBird]:
             raise Error("FAUNA pad nonzero at offset " + String(o + 17))
         out.append(b)
         o += FAUNA_RECORD_BYTES
+    return out^
+
+
+# --- Schema 6 (milestone_0007) readers ----------------------------------------
+
+
+struct HotbarView(Copyable, Movable, Deinitable):
+    """Decoded 12 HOTBAR: u32 count (= 9), u32 selected_index (0-based),
+    9×u32 stable catalog ids (0007 §3.3)."""
+
+    var count: UInt32
+    var selected_index: UInt32
+    var slot_ids: List[UInt32]
+
+    def __init__(out self):
+        self.count = 0
+        self.selected_index = 0
+        self.slot_ids = List[UInt32]()
+
+    def __deinit__(deinit self):
+        pass
+
+
+def read_hotbar(data: List[UInt8], sec: SectionRef) raises -> HotbarView:
+    """12 HOTBAR: 44-byte fixed section — count must be 9 and the selected
+    index must address a slot (loud, §8)."""
+    if sec.length != HOTBAR_BYTES:
+        raise Error(
+            "HOTBAR section must be " + String(HOTBAR_BYTES)
+            + " bytes, got " + String(sec.length)
+        )
+    var o = sec.offset
+    var out = HotbarView()
+    out.count = get_u32(data, o)
+    if Int(out.count) != HOTBAR_SLOT_WIRE:
+        raise Error("HOTBAR count must be " + String(HOTBAR_SLOT_WIRE) + ", got " + String(out.count))
+    out.selected_index = get_u32(data, o + 4)
+    if out.selected_index >= out.count:
+        raise Error("HOTBAR selected_index out of range: " + String(out.selected_index))
+    for i in range(Int(out.count)):
+        out.slot_ids.append(get_u32(data, o + 8 + 4 * i))
+    return out^
+
+
+def read_target(data: List[UInt8], sec: SectionRef) raises -> TARGET:
+    """13 TARGET: 32-byte fixed section — pad bytes MUST be 0 and a miss
+    (hit == 0) must carry all-zero fields (loud, §8)."""
+    if sec.length != TARGET_BYTES:
+        raise Error(
+            "TARGET section must be " + String(TARGET_BYTES)
+            + " bytes, got " + String(sec.length)
+        )
+    var o = sec.offset
+    var t = TARGET()
+    t.hit = get_u8(data, o)
+    if t.hit > 1:
+        raise Error("TARGET hit must be 0 or 1, got " + String(t.hit))
+    if get_u8(data, o + 1) != 0 or get_u8(data, o + 2) != 0 or get_u8(data, o + 3) != 0:
+        raise Error("TARGET pad nonzero at bytes 1..3")
+    t.material_id = get_u32(data, o + 4)
+    t.hit_x = get_f32(data, o + 8)
+    t.hit_y = get_f32(data, o + 12)
+    t.hit_z = get_f32(data, o + 16)
+    t.cell_x = get_u32(data, o + 20)
+    t.cell_lattice_y = get_u32(data, o + 24)
+    t.cell_z = get_u32(data, o + 28)
+    if t.hit == 0 and (
+        t.material_id != 0
+        or t.hit_x != 0.0
+        or t.hit_y != 0.0
+        or t.hit_z != 0.0
+        or t.cell_x != 0
+        or t.cell_lattice_y != 0
+        or t.cell_z != 0
+    ):
+        raise Error("TARGET miss must carry all-zero fields")
+    return t
+
+
+def read_rigid_bodies(data: List[UInt8], sec: SectionRef) raises -> List[RigidBodyRecord]:
+    """14 RIGID_BODIES: u32 count (≤ 16) + count×36 B records; framing must
+    be exact (0007 §3.3, §8 loud)."""
+    if sec.length < RIGID_HEADER_BYTES:
+        raise Error("RIGID_BODIES section shorter than its header")
+    var count = get_u32(data, sec.offset)
+    if Int(count) > RIGID_BODIES_MAX:
+        raise Error("RIGID_BODIES count exceeds " + String(RIGID_BODIES_MAX) + ": " + String(count))
+    var expect = RIGID_HEADER_BYTES + RIGID_RECORD_BYTES * Int(count)
+    if sec.length != expect:
+        raise Error(
+            "RIGID_BODIES section must be " + String(expect)
+            + " bytes, got " + String(sec.length)
+        )
+    var out = List[RigidBodyRecord]()
+    var o = sec.offset + RIGID_HEADER_BYTES
+    for _i in range(Int(count)):
+        var r = RigidBodyRecord()
+        r.x = get_f32(data, o)
+        r.y = get_f32(data, o + 4)
+        r.z = get_f32(data, o + 8)
+        r.euler_x = get_f32(data, o + 12)
+        r.euler_y = get_f32(data, o + 16)
+        r.euler_z = get_f32(data, o + 20)
+        r.shape = get_u32(data, o + 24)
+        r.size = get_f32(data, o + 28)
+        r.material_id = get_u32(data, o + 32)
+        if r.shape > 1:
+            raise Error("RIGID_BODIES shape must be 0 or 1, got " + String(r.shape))
+        out.append(r)
+        o += RIGID_RECORD_BYTES
     return out^

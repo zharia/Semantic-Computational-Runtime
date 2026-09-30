@@ -11,12 +11,16 @@ from std.collections import List
 from std.testing import TestSuite
 from std.math import abs, sqrt
 
-from sim.world import world_init
+from sim.world import world_init, World
 from sim.island import build_island
+from sim.edit import consume_one_edit, edit_apply_batch
+from sim.raycast import raycast_look
+from sim.parameters import EDIT_OP_DIG, EDIT_OP_PLACE
 from synthesis.noise import NoiseContext
 from synthesis.heightfield import height_at_cell, bilinear_sample
 from synthesis.voxel import (
     voxel_synthesis_pipeline,
+    resynthesize_column,
     classify_biome,
     biome_surface_materials,
     biome_subsurface_material,
@@ -302,6 +306,173 @@ def test_crater_rim_seams_are_feathered() raises:
             )
 
 
+def _aim_straight_down(mut world: World) raises -> Int:
+    """Pose the player to look straight down at their own column (yaw = π
+    drifts the ray +z so world_to_cell keeps the target column — see test
+    conventions). Returns the cell index under the feet; raises if the ray
+    misses (would indicate a raycast regression, not an edit issue)."""
+    world.player.yaw = 3.141592653589793
+    world.player.pitch = -1.45
+    var hit = raycast_look(
+        world.island,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    if not hit.hit:
+        raise Error("downward aim must hit the spawn column")
+    return hit.cell_z * PARAM_GRID_N + hit.cell_x
+
+
+def test_dig_column_recompute_invariants() raises:
+    """0007 AP-11 (edited column pipeline re-run) + AP-14 (only the edited
+    chunk rebuilds) + masked-blend invariant: after an applied DIG the edited
+    cell follows the pipeline's row material for the new height, every other
+    cell (height/surface/blend) is untouched, and the edited cell carries an
+    identity blend tuple (never seeds/receives a feather)."""
+    var world = world_init(1)
+    var cell = _aim_straight_down(world)
+    var ix = cell % PARAM_GRID_N
+    var iz = cell // PARAM_GRID_N
+
+    var h0 = world.island.heights[cell]
+    var surf0 = world.island.surface_materials[cell]
+    var heights0 = world.island.heights.copy()
+    var surf0_all = world.island.surface_materials.copy()
+    var blends0 = world.island.blends.copy()
+
+    _check(
+        edit_apply_batch(world.edit_queue, world.hotbar, EDIT_OP_DIG, 1),
+        "DIG batch accepted",
+    )
+    var out = consume_one_edit(
+        world.island,
+        world.edit_queue,
+        world.hotbar,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    _check(out.consumed and out.applied, "dig consumed and applied")
+    _check(out.cell_ix == ix and out.cell_iz == iz, "outcome cell == aim cell")
+
+    # Height step is exactly −1 u (EDIT_CELL_STEP_U).
+    _check(
+        world.island.heights[cell] == h0 - 1.0,
+        "dig lowers the surface by 1 u",
+    )
+    # Pipeline re-run: the row material for the new height governs the cell.
+    var ctx = NoiseContext(world.island.seed)
+    var res = resynthesize_column(ix, iz, h0 - 1.0, ctx)
+    var surf_y = Int(h0 - 1.0 + LATTICE_Y_OFFSET + 0.5)
+    if surf_y < 1:
+        surf_y = 1
+    _check(
+        world.island.surface_materials[cell]
+        == res.column.material_at(surf_y),
+        "dig cell carries the pipeline row material for the new height",
+    )
+    _check(
+        Int(h0 - 1.0 + LATTICE_Y_OFFSET + 0.5) >= 1,
+        "bedrock guard: surface stays above the bedrock row",
+    )
+    # AP-14: only the edited cell's height/surface changed.
+    for i in range(PARAM_GRID_N * PARAM_GRID_N):
+        if i == cell:
+            continue
+        _check(
+            world.island.heights[i] == heights0[i],
+            "off-target height changed at " + String(i),
+        )
+        _check(
+            world.island.surface_materials[i] == surf0_all[i],
+            "off-target surface changed at " + String(i),
+        )
+    # Masked blend: edited cell is identity, receives no feather.
+    var t = world.island.blends[cell]
+    _check(t.weight == 0, "edited cell never receives a blend weight")
+    _check(
+        t.blend == t.material and t.material == world.island.surface_materials[cell],
+        "edited cell blend tuple is identity",
+    )
+    # The mask removes the edited cell from the feather graph, so NEIGHBOUR
+    # partner/weight values may legitimately shift (they no longer feather
+    # against it) — but every tuple must still satisfy the generation
+    # invariants: dominant == assigned surface, identity iff unblended,
+    # partner differs when blended, lava never in a tuple.
+    for i in range(PARAM_GRID_N * PARAM_GRID_N):
+        var t = world.island.blends[i]
+        _check(
+            t.material == world.island.surface_materials[i],
+            "tuple dominant == assigned surface at " + String(i),
+        )
+        if t.weight == 0:
+            _check(t.blend == t.material, "unblended tuple identity at " + String(i))
+        else:
+            _check(t.blend != t.material, "blended partner differs at " + String(i))
+            _check(
+                t.material != MAT_LAVA and t.blend != MAT_LAVA,
+                "lava in tuple at " + String(i),
+            )
+    # Dominant materials off-target never changed (mask is read-only there).
+    for i in range(PARAM_GRID_N * PARAM_GRID_N):
+        if i == cell:
+            continue
+        _check(
+            world.island.blends[i].material == blends0[i].material,
+            "off-target tuple dominant changed at " + String(i),
+        )
+    _ = surf0  # pre-edit surface may equal the row material (either is valid)
+
+
+def test_place_overrides_surface_with_hotbar_material() raises:
+    """0007 §3.2 + inv.5: PLACE raises the surface by 1 u, then overrides the
+    cell with the SELECTED hotbar voxel code (sim-owned material — AP-12),
+    with an identity (and for lava: never-blended) tuple."""
+    var world = world_init(1)
+    var cell = _aim_straight_down(world)
+    var ix = cell % PARAM_GRID_N
+    var iz = cell // PARAM_GRID_N
+    var h0 = world.island.heights[cell]
+
+    # Slot 6 = fluid.lava (spec-locked table) → voxel code MAT_LAVA.
+    _check(
+        edit_apply_batch(world.edit_queue, world.hotbar, EDIT_OP_PLACE, 6),
+        "PLACE batch accepted",
+    )
+    var out = consume_one_edit(
+        world.island,
+        world.edit_queue,
+        world.hotbar,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    _check(out.consumed and out.applied, "place consumed and applied")
+    _check(out.cell_ix == ix and out.cell_iz == iz, "outcome cell == aim cell")
+    _check(
+        world.island.heights[cell] == h0 + 1.0,
+        "place raises the surface by 1 u",
+    )
+    _check(
+        world.island.surface_materials[cell] == MAT_LAVA,
+        "place overrides the cell with the selected hotbar voxel code",
+    )
+    var t = world.island.blends[cell]
+    _check(t.material == MAT_LAVA, "tuple dominant == placed material")
+    _check(t.weight == 0, "lava column is never feathered (0005 §3.6)")
+    _check(t.blend == t.material, "identity tuple after place")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -315,5 +486,7 @@ def main() raises:
             test_spawn_is_on_the_island_beach,
             test_blend_tuples_inside_pipeline_invariants,
             test_crater_rim_seams_are_feathered,
+            test_dig_column_recompute_invariants,
+            test_place_overrides_surface_with_hotbar_material,
         )
     ]().run()

@@ -17,6 +17,14 @@ comptime ACT_PRIMARY: Int = 4
 comptime ACT_SECONDARY: Int = 5
 comptime ACT_COUNT: Int = 6
 
+# --- Edit dispatch rows (0007 AP-5: table, not if/else) -------------------
+# The edit verb class rides scr_edit_batch (input batch UNCHANGED, 0007 §1.1
+# binding row): exactly two fixed-order rows per submit — select first
+# (applies immediately at submit), then the op (queued to the edit FIFO).
+comptime ACT_EDIT_SELECT: Int = 0
+comptime ACT_EDIT_OP: Int = 1
+comptime ACT_EDIT_COUNT: Int = 2
+
 struct InputBatch(Copyable, Movable, Deinitable, ImplicitlyCopyable):
     var move_x: Float32
     var move_y: Float32
@@ -77,3 +85,32 @@ def build_input_table(batch: InputBatch) -> List[InputEvent]:
 
 def table_size() -> Int:
     return ACT_COUNT
+
+
+struct EditEvent(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """One edit dispatch row: action slot + payload from scr_edit_batch."""
+
+    var action: Int
+    var op: UInt8
+    var select_slot: UInt8
+
+    def __init__(out self, action: Int, op: UInt8, select_slot: UInt8):
+        self.action = action
+        self.op = op
+        self.select_slot = select_slot
+
+    def __deinit__(deinit self):
+        pass
+
+
+def build_edit_table(op: UInt8, select_slot: UInt8) -> List[EditEvent]:
+    """Fixed-order edit dispatch (0007 AP-5): select row first, op row
+    second — the applier is the only branch (table, never if/else soup)."""
+    var table = List[EditEvent]()
+    table.append(EditEvent(ACT_EDIT_SELECT, 0, select_slot))
+    table.append(EditEvent(ACT_EDIT_OP, op, 0))
+    return table^
+
+
+def edit_table_size() -> Int:
+    return ACT_EDIT_COUNT

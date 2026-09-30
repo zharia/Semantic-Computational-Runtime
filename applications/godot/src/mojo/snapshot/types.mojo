@@ -37,6 +37,19 @@ comptime SEC_PLUME: UInt32 = 8
 comptime SEC_SHORE_FOAM: UInt32 = 9  # schema 4 (milestone_0005 §3.3)
 comptime SEC_FLORA: UInt32 = 10  # schema 5 (milestone_0006 §1.1 sibling rebase)
 comptime SEC_FAUNA: UInt32 = 11  # schema 5 (milestone_0006 §1.1 sibling rebase)
+comptime SEC_HOTBAR: UInt32 = 12  # schema 6 (milestone_0007 §1.1 rebased id)
+comptime SEC_TARGET: UInt32 = 13  # schema 6 (milestone_0007 §3.3)
+comptime SEC_RIGID_BODIES: UInt32 = 14  # schema 6 (milestone_0007 §3.3)
+
+# §12 HOTBAR / §13 TARGET / §14 RIGID_BODIES framing (104_contract §4.3,
+# 0007 §3.3 layouts): HOTBAR is a fixed 44 B, TARGET a fixed 32 B,
+# RIGID_BODIES = 4 B count + 36 B per body (count ≤ 16).
+comptime HOTBAR_BYTES: Int = 44  # u32 count + u32 selected_index + 9×u32 ids
+comptime HOTBAR_SLOT_WIRE: Int = 9  # fixed slot count on the wire
+comptime TARGET_BYTES: Int = 32  # u8 hit + 3 pad + u32 mat + f32×3 + 3×u32
+comptime RIGID_HEADER_BYTES: Int = 4  # u32 count
+comptime RIGID_RECORD_BYTES: Int = 36  # f32×3 pos + f32×3 euler + u32 + f32 + u32
+comptime RIGID_BODIES_MAX: Int = 16  # 0007 §1.1 LOCK (inv.7)
 
 # §10 FLORA / §11 FAUNA framing (104_contract §4.3): u32 count header, then
 # records of 24 B (FLORA) / 20 B (FAUNA) — layouts locked by 0006 §3.2.
@@ -253,6 +266,106 @@ def put_fauna(mut buf: List[UInt8], birds: List[FlockBird]):
         put_u8(buf, b.pad0)
         put_u8(buf, b.pad1)
         put_u8(buf, b.pad2)
+
+
+struct TARGET(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """Section 13 payload (0007 §3.3 — 32 bytes exactly): u8 hit, u8×3 pad,
+    u32 material catalog id, f32×3 world hit position, u32 cell_x,
+    u32 cell_lattice_y, u32 cell_z. Miss ⇒ hit 0 and all fields 0."""
+
+    var hit: UInt8
+    var material_id: UInt32
+    var hit_x: Float32
+    var hit_y: Float32
+    var hit_z: Float32
+    var cell_x: UInt32
+    var cell_lattice_y: UInt32
+    var cell_z: UInt32
+
+    def __init__(out self):
+        self.hit = 0
+        self.material_id = 0
+        self.hit_x = 0.0
+        self.hit_y = 0.0
+        self.hit_z = 0.0
+        self.cell_x = 0
+        self.cell_lattice_y = 0
+        self.cell_z = 0
+
+    def __deinit__(deinit self):
+        pass
+
+
+struct RigidBodyRecord(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """One §14 RIGID_BODIES record (0007 §3.3 — 36 bytes): f32×3 position,
+    f32×3 euler (0 — no angular dynamics), u32 shape, f32 size,
+    u32 material catalog id."""
+
+    var x: Float32
+    var y: Float32
+    var z: Float32
+    var euler_x: Float32
+    var euler_y: Float32
+    var euler_z: Float32
+    var shape: UInt32
+    var size: Float32
+    var material_id: UInt32
+
+    def __init__(out self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
+        self.euler_x = 0.0
+        self.euler_y = 0.0
+        self.euler_z = 0.0
+        self.shape = 0
+        self.size = 0.0
+        self.material_id = 0
+
+    def __deinit__(deinit self):
+        pass
+
+
+def put_hotbar(mut buf: List[UInt8], selected_index: UInt32, slot_ids: List[UInt32]):
+    """Serialize the §12 HOTBAR payload: u32 count (= 9), u32
+    selected_index (0-based), 9×u32 stable catalog ids (0007 §3.3)."""
+    put_u32(buf, UInt32(len(slot_ids)))
+    put_u32(buf, selected_index)
+    for i in range(len(slot_ids)):
+        put_u32(buf, slot_ids[i])
+
+
+def put_target(mut buf: List[UInt8], t: TARGET):
+    """Serialize the §13 TARGET payload: u8 hit + u8×3 pad, u32 material id,
+    f32×3 hit position, u32 cell_x, cell_lattice_y, cell_z (0007 §3.3)."""
+    put_u8(buf, t.hit)
+    put_u8(buf, 0)
+    put_u8(buf, 0)
+    put_u8(buf, 0)
+    put_u32(buf, t.material_id)
+    put_f32(buf, t.hit_x)
+    put_f32(buf, t.hit_y)
+    put_f32(buf, t.hit_z)
+    put_u32(buf, t.cell_x)
+    put_u32(buf, t.cell_lattice_y)
+    put_u32(buf, t.cell_z)
+
+
+def put_rigid_bodies(mut buf: List[UInt8], bodies: List[RigidBodyRecord]):
+    """Serialize the §14 RIGID_BODIES payload: u32 count (≤ 16) + count×36 B
+    records (0007 §3.3)."""
+    put_u32(buf, UInt32(len(bodies)))
+    for i in range(len(bodies)):
+        var r = bodies[i]
+        put_f32(buf, r.x)
+        put_f32(buf, r.y)
+        put_f32(buf, r.z)
+        put_f32(buf, r.euler_x)
+        put_f32(buf, r.euler_y)
+        put_f32(buf, r.euler_z)
+        put_u32(buf, r.shape)
+        put_f32(buf, r.size)
+        put_u32(buf, r.material_id)
 
 
 def put_u8(mut buf: List[UInt8], v: UInt8):

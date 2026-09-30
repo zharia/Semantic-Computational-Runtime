@@ -6,6 +6,10 @@
 # Milestone_0006 §7 amendment: the fingerprint MUST include flora + flock
 # state (a projection that mutated section 10/11 source state is caught),
 # and the adapter-style reads consume FLORA/FAUNA too.
+# Milestone_0007 §7 amendment: the fingerprint MUST include hotbar + edit
+# queue + rigid prop state (a projection that mutated section 12/13/14
+# source state is caught), and adapter-style reads consume HOTBAR / TARGET /
+# RIGID_BODIES too.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -15,7 +19,8 @@ from std.testing import TestSuite
 
 from sim.world import world_init, step_world, world_fingerprint
 from sim.input import InputBatch
-from sim.parameters import GRID_N
+from sim.parameters import GRID_N, EDIT_OP_DIG
+from sim.edit import edit_apply_batch, edit_pop
 from snapshot.encode import encode_snapshot
 from snapshot.decode import (
     decode_envelope,
@@ -36,6 +41,9 @@ from snapshot.decode import (
     read_terrain_tuple,
     read_flora,
     read_fauna,
+    read_hotbar,
+    read_target,
+    read_rigid_bodies,
 )
 from snapshot.types import (
     SEC_PLAYER,
@@ -49,6 +57,9 @@ from snapshot.types import (
     SEC_SHORE_FOAM,
     SEC_FLORA,
     SEC_FAUNA,
+    SEC_HOTBAR,
+    SEC_TARGET,
+    SEC_RIGID_BODIES,
 )
 
 
@@ -108,6 +119,21 @@ def _drive_projection(data: List[UInt8]) raises -> Int:
     sum += len(fauna)
     for i in range(len(fauna)):
         sum += Int(fauna[i].yaw * 100.0) + Int(fauna[i].species_id)
+    # 12 HOTBAR / 13 TARGET / 14 RIGID_BODIES (schema 6): adapter-style
+    # reads, no world access — the raycast TARGET is computed at encode time.
+    var hi = find_section(secs, SEC_HOTBAR)
+    var hb = read_hotbar(data, secs[hi])
+    sum += Int(hb.count) + Int(hb.selected_index)
+    for i in range(len(hb.slot_ids)):
+        sum += Int(hb.slot_ids[i])
+    var tgti = find_section(secs, SEC_TARGET)
+    var tgt = read_target(data, secs[tgti])
+    sum += Int(tgt.hit) + Int(tgt.material_id) + Int(tgt.cell_lattice_y)
+    var rgi = find_section(secs, SEC_RIGID_BODIES)
+    var bodies = read_rigid_bodies(data, secs[rgi])
+    sum += len(bodies)
+    for i in range(len(bodies)):
+        sum += Int(bodies[i].y * 100.0) + Int(bodies[i].material_id)
     var ti = find_section(secs, SEC_TERRAIN)
     if ti < 0:
         return sum  # TERRAIN absent by contract (§4.3): adapter keeps meshes
@@ -293,6 +319,65 @@ def test_world_fingerprint_includes_flora_flock_state() raises:
     _check(world_fingerprint(world) == base, "fingerprint fully restored")
 
 
+def test_world_fingerprint_includes_hotbar_queue_props() raises:
+    """0007 §7: the fingerprint folds hotbar + edit FIFO + rigid prop state —
+    projecting sections 12/13/14 must not mutate them, and a mutated subject
+    field is detected."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var base = world_fingerprint(world)
+    var snap = encode_snapshot(world, True)
+    _ = _drive_projection(snap)
+    _check(
+        world_fingerprint(world) == base,
+        "HOTBAR/TARGET/RIGID projection mutated world (fingerprint drift)",
+    )
+
+    # Hotbar sensitivity: selection + slot table.
+    var saved_sel = world.hotbar.selected_index
+    world.hotbar.selected_index = 4 if saved_sel != 4 else 5
+    _check(world_fingerprint(world) != base, "fingerprint misses selection")
+    world.hotbar.selected_index = saved_sel
+
+    var saved_slot = world.hotbar.slot_ids[3]
+    world.hotbar.slot_ids[3] = 90 if saved_slot != 90 else 91
+    _check(world_fingerprint(world) != base, "fingerprint misses slot ids")
+    world.hotbar.slot_ids[3] = saved_slot
+
+    # Edit FIFO sensitivity: pending op count + head.
+    _check(
+        edit_apply_batch(world.edit_queue, world.hotbar, EDIT_OP_DIG, 1),
+        "queue accepts a batch for the sensitivity probe",
+    )
+    _check(world_fingerprint(world) != base, "fingerprint misses pending op")
+    var saved_head = world.edit_queue.head
+    world.edit_queue.head = saved_head  # restore no-op; pop instead
+    var popped = edit_pop(world.edit_queue)
+    _ = popped
+    _check(
+        world_fingerprint(world) == base,
+        "fingerprint not restored after draining the queue",
+    )
+
+    # Rigid prop sensitivity: pose + material + count.
+    var saved_px = world.props.bodies[0].x
+    world.props.bodies[0].x = saved_px + 1.0
+    _check(world_fingerprint(world) != base, "fingerprint misses body x")
+    world.props.bodies[0].x = saved_px
+
+    var saved_pm = world.props.bodies[0].material_id
+    world.props.bodies[0].material_id = saved_pm + 1
+    _check(world_fingerprint(world) != base, "fingerprint misses body material")
+    world.props.bodies[0].material_id = saved_pm
+
+    var saved_pc = world.props.count
+    world.props.count = saved_pc - 1
+    _check(world_fingerprint(world) != base, "fingerprint misses prop count")
+    world.props.count = saved_pc
+
+    _check(world_fingerprint(world) == base, "fingerprint fully restored")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -302,5 +387,6 @@ def main() raises:
             test_world_fingerprint_includes_volcano_state,
             test_world_fingerprint_includes_foam_state,
             test_world_fingerprint_includes_flora_flock_state,
+            test_world_fingerprint_includes_hotbar_queue_props,
         )
     ]().run()

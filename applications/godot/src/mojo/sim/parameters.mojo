@@ -5,6 +5,8 @@
 # Scene-generation values are milestone_0002 spec parameters (Sprint 01).
 # Nothing outside this file may hard-code a tunable.
 
+from std.collections import List
+
 # --- Timestep (104_contract §6 / §3) ---------------------------------------
 comptime TICK_RATE_HZ: Int = 60
 comptime FIXED_DT: Float64 = 1.0 / 60.0
@@ -313,6 +315,53 @@ comptime FLOCK_COHERE_RADIUS: Float64 = 18.0  # u
 comptime FLOCK_SEPARATE_RADIUS: Float64 = 6.0  # u
 comptime FLOCK_SEPARATION_MIN: Float64 = 2.0  # u hard floor (test oracle)
 
+# --- Editing, hotbar, raycast, minimal physics (milestone_0007; AP-7) -------
+# Edit granularity (0007 §1.1): one column per op, vertical step 1 u.
+# EDIT_QUEUE_MAX: FIFO bound — scr_edit_submit returns SCR_ERR_QUEUE_FULL past
+#   this depth (0007 §3.2; one op consumed per fixed tick keeps it draining).
+# RAY_RANGE: sim-owned ray-march range (0007 §1.1). RAY_STEP: march
+#   resolution over the height field; RAY_REFINE_ITERS: bisection refinements
+#   inside the last (outside, inside] bracket so the hit position sits on the
+#   surface, not at the bracket's outer sample.
+# Hotbar: 9 catalog-id slots (0007 §1.1 table) — the vocabulary table itself
+#   lives in hotbar_slot_catalog_ids() below (AP-13: one sim-side list).
+# PROP_*: minimal rigid-prop model (0007 §3.5) — N ≤ 16, gravity (GRAVITY),
+#   semi-implicit Euler, ground contact only, no inter-body collision.
+comptime EDIT_QUEUE_MAX: Int = 16
+comptime EDIT_OP_NONE: UInt8 = 0  # scr_edit_batch.op: no edit this entry
+comptime EDIT_OP_DIG: UInt8 = 1
+comptime EDIT_OP_PLACE: UInt8 = 2
+comptime EDIT_CELL_STEP_U: Float64 = 1.0  # dig/place vertical step (u)
+comptime HOTBAR_SLOT_COUNT: Int = 9
+comptime HOTBAR_SLOT_MIN: Int = 1  # select_slot range 1..9 (0 = no change)
+comptime RAY_RANGE: Float64 = 32.0  # u (0007 §1.1)
+comptime RAY_STEP: Float64 = 0.25  # u, march resolution
+comptime RAY_REFINE_ITERS: Int = 8  # bisection refinements on the hit bracket
+comptime PROP_N_MAX: Int = 16  # 0007 §6 invariant 7 hard cap
+comptime PROP_N_INIT: Int = 4  # deterministic beach anchors at init
+comptime PROP_BOX_HALF_U: Float64 = 0.5  # box uniform half-extent (u)
+comptime PROP_SHAPE_BOX: UInt32 = 0  # RIGID_BODIES shape enum (0007 §3.3)
+comptime PROP_SHAPE_SPHERE: UInt32 = 1
+comptime PROP_TANGENTIAL_DAMPING: Float64 = 0.90  # × per contact (§3.5)
+
+
+def hotbar_slot_catalog_ids() raises -> List[String]:
+    """0007 §1.1 locked default hotbar: 9 ids, all inside the slice's MAT
+    vocabulary (verified against materials_catalog.json). Slot order = wire
+    order (HOTBAR material_id array, selected_index 0-based)."""
+    var ids = List[String]()
+    ids.append("rock.basalt")  # slot 1
+    ids.append("soil.sand")  # slot 2
+    ids.append("rock.obsidian")  # slot 3
+    ids.append("mineral.sulfur")  # slot 4
+    ids.append("mineral.ash")  # slot 5
+    ids.append("fluid.lava")  # slot 6
+    ids.append("fluid.water")  # slot 7
+    ids.append("soil.dirt")  # slot 8
+    ids.append("rock.pumice")  # slot 9
+    return ids^
+
+
 # --- Snapshot contract constants (104_contract §4) -------------------------
 comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
 # 3 → 4 (milestone_0005 §3.6): NEW section 9 SHORE_FOAM (every snapshot) and
@@ -321,11 +370,15 @@ comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
 # 4 → 5 (milestone_0006 §1.1 sibling rebase): NEW sections 10 FLORA
 # (emission-gated like TERRAIN) and 11 FAUNA (every snapshot); sections 1..9
 # byte-identical to schema 4; symbol set unchanged.
-comptime SCHEMA_VERSION: UInt32 = 5
-comptime ABI_VERSION: UInt32 = 1
+# 5 → 6 (milestone_0007 §1.1 sibling rebasing): NEW sections 12 HOTBAR,
+# 13 TARGET, 14 RIGID_BODIES (every snapshot); sections 1..11 byte-identical
+# to schema 5; ABI 1 → 2 (new scr_edit_submit + 4-byte scr_edit_batch).
+comptime SCHEMA_VERSION: UInt32 = 6
+comptime ABI_VERSION: UInt32 = 2
 
 # --- Error codes (scr_godot_abi.h) ----------------------------------------
 comptime SCR_ERR_NOT_INIT: Int32 = -1
 comptime SCR_ERR_ABI_MISMATCH: Int32 = -2
 comptime SCR_ERR_BUF_SMALL: Int32 = -3
 comptime SCR_ERR_BAD_STATE: Int32 = -4
+comptime SCR_ERR_QUEUE_FULL: Int32 = -5  # scr_edit_submit past EDIT_QUEUE_MAX

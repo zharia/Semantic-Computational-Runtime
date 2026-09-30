@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/player_input.gd" id="1_player"]
 [ext_resource type="Shader" path="res://shaders/ocean.gdshader" id="2_ocean"]
@@ -7,6 +7,8 @@
 [ext_resource type="Shader" path="res://shaders/clouds.gdshader" id="5_clouds"]
 [ext_resource type="Script" path="res://scripts/flora_view.gd" id="6_flora"]
 [ext_resource type="Script" path="res://scripts/fauna_view.gd" id="7_fauna"]
+[ext_resource type="Script" path="res://scripts/hotbar_hud.gd" id="8_hotbar"]
+[ext_resource type="Script" path="res://scripts/props_view.gd" id="9_props"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ocean"]
 size = Vector2(768, 768)
@@ -233,3 +235,38 @@ script = ExtResource("6_flora")
 
 [node name="Fauna" type="Node3D" parent="." groups=["scr_fauna"]]
 script = ExtResource("7_fauna")
+
+[node name="Hotbar" type="HBoxContainer" parent="." groups=["scr_hotbar"]]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -330.0
+offset_top = -76.0
+offset_right = 330.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 6
+script = ExtResource("8_hotbar")
+
+[node name="Target" type="Label" parent="." groups=["scr_target"]]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = 36.0
+offset_right = 240.0
+offset_bottom = 68.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "SKY / AIR"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 16
+
+[node name="Props" type="Node3D" parent="." groups=["scr_props"]]
+script = ExtResource("9_props")

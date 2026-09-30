@@ -52,6 +52,10 @@
 #   * Ecology node state (0006 §7): scr_flora has >=1 MultiMeshInstance3D
 #     child with instance_count > 0 (per-species groups), scr_fauna has >= 1
 #     visible bird MeshInstance3D — asserted every run (incl. night).
+#   * Editing HUD state (0007 §7): scr_hotbar renders 9 named slots with
+#     albedo swatches and exactly 1 selected flag, scr_target readout
+#     non-empty (hit text or "SKY / AIR"), scr_props pool visible
+#     (RIGID_BODIES applied).
 #   * Plume region check (0003 §7): non-sky pixels in the crater-above column
 #     (rows 0.02H..0.12H x cols 0.40W..0.60W) vs a per-row sky reference taken
 #     from the left/right image margins (fog makes the horizon row-dependent).
@@ -434,6 +438,55 @@ func _check_node_state() -> bool:
 		_fail(1, "scr_fauna has no visible bird nodes (FAUNA not applied: visible=%d of %d)" %
 		      [birds, birds_total]); return false
 	print("SCREENSHOT: fauna visible_birds=%d of %d nodes" % [birds, birds_total])
+
+	# --- editing HUD state (0007 §7) ---------------------------------------
+	# Hotbar: 9 slots rendered from section 12 (count name, albedo swatch,
+	# selected flag); target readout set (hit text or "SKY / AIR"); prop
+	# pool materialized from section 14 (PROP_N_INIT=4).
+	var hotbar_n: Node = _first_in_group("scr_hotbar")
+	if hotbar_n == null:
+		_fail(1, "group scr_hotbar absent from island.tscn"); return false
+	if hotbar_n.get_child_count() != 9:
+		_fail(1, "scr_hotbar has %d slots, expected 9 (HOTBAR count)" %
+		      hotbar_n.get_child_count()); return false
+	var selected_slots := 0
+	var named_slots := 0
+	var swatch_slots := 0
+	for panel in hotbar_n.get_children():
+		if panel.has_meta("selected") and bool(panel.get_meta("selected")):
+			selected_slots += 1
+		for c in panel.get_children():
+			if c is Label and not String(c.text).strip_edges().is_empty():
+				named_slots += 1
+			elif c is ColorRect:
+				swatch_slots += 1
+	if selected_slots != 1:
+		_fail(1, "scr_hotbar selected flags = %d, expected exactly 1" % selected_slots); return false
+	if named_slots != 9 or swatch_slots != 9:
+		_fail(1, "scr_hotbar rendered %d named / %d swatch slots, expected 9/9" %
+		      [named_slots, swatch_slots]); return false
+	print("SCREENSHOT: hotbar slots=9 selected=%d named=%d swatches=%d" %
+	      [selected_slots, named_slots, swatch_slots])
+
+	var target_n: Node = _first_in_group("scr_target")
+	if target_n == null or not (target_n is Label):
+		_fail(1, "group scr_target missing or not a Label"); return false
+	var target_text := String((target_n as Label).text).strip_edges()
+	if target_text.is_empty():
+		_fail(1, "scr_target readout empty (TARGET section not applied)"); return false
+	print("SCREENSHOT: target readout = ", target_text)
+
+	var props_n: Node = _first_in_group("scr_props")
+	if props_n == null:
+		_fail(1, "group scr_props absent from island.tscn"); return false
+	var props_meshes := 0
+	for pc in props_n.get_children():
+		if pc is MeshInstance3D and (pc as MeshInstance3D).visible \
+				and (pc as MeshInstance3D).mesh != null:
+			props_meshes += 1
+	if props_meshes < 1:
+		_fail(1, "scr_props has no visible mesh children (RIGID_BODIES not applied)"); return false
+	print("SCREENSHOT: props visible meshes = ", props_meshes)
 	return true
 
 # Plume: non-sky pixels in the crater-above column (0003 §7 region check).

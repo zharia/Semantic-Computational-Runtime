@@ -28,6 +28,9 @@
 #      whole run (no fall-through; bounds read from scr_meta, not hardcoded).
 #   D. jump raised camera y ≥ 0.5 above the settled baseline.
 #   E. turn changed camera yaw by > 0.1 rad (mouse-look path works).
+#   F. editing leg (0007): submit_edit uplink rc, HOTBAR slot selection
+#      mirrored to HUD, terrain mesh content changed by dig and by place,
+#      TARGET readout left "SKY / AIR", prop pool materialized.
 extends SceneTree
 
 var island: Node = null
@@ -62,6 +65,27 @@ func _frames(n: int) -> void:
 	for i in n:
 		await physics_frame
 		_sample_y()
+
+# Content hash of every terrain chunk mesh — detects sim-driven rebuilds
+# (0007 edit -> world_version bump -> TERRAIN resend -> chunk rebuild).
+func _terrain_hash() -> int:
+	var terrain: Node = _first("scr_terrain")
+	if terrain == null:
+		return 0
+	var h := 17
+	for c in terrain.get_children():
+		if not String(c.name).begins_with("Chunk_"):
+			continue
+		var mi := c as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var am := mi.mesh as ArrayMesh
+		if am == null:
+			continue
+		for s in am.get_surface_count():
+			var arrays := am.surface_get_arrays(s)
+			h = hash(h * 31 + hash(arrays[Mesh.ARRAY_VERTEX]))
+	return h
 
 func _run() -> void:
 	var ps: PackedScene = load("res://scenes/island.tscn")
@@ -146,6 +170,71 @@ func _run() -> void:
 	await _frames(30)
 	var pos0 := cam.global_position
 	var y_settle := cam.global_position.y
+
+	# --- F. editing leg (milestone_0007 §7): uplink + dig + place ----------
+	# Runs at spawn (dry land) BEFORE the movement legs: the dig ray is
+	# aimed straight down, so it deterministically hits the column the
+	# player stands on (sim-owned raycast, 0007 AP-12). Assertions: edit
+	# uplink rc, HOTBAR selection mirrored into the HUD, terrain mesh
+	# content actually changed after dig and again after place
+	# (chunk-local rebuild), TARGET readout left "SKY / AIR", prop pool up.
+	_check(sim.has_method("submit_edit") and sim.has_method("get_hotbar_selected_slot"),
+	       "F1 ScrSim.submit_edit + get_hotbar_selected_slot available")
+	var hotbar := _first("scr_hotbar")
+	_check(hotbar != null and hotbar.has_method("apply_hotbar"),
+	       "F2 scr_hotbar host present with apply_hotbar")
+	var target_lbl := _first("scr_target") as Label
+	_check(target_lbl != null, "F3 scr_target Label present")
+	var props_n := _first("scr_props")
+	_check(props_n != null and props_n.has_method("apply_props")
+	       and props_n.get_child_count() >= 1,
+	       "F4 scr_props pool materialized (%d node(s))"
+	       % (props_n.get_child_count() if props_n != null else 0))
+
+	# Select slot 3 (intent only — sim validates, 0007 AP-13).
+	var rc_sel: int = sim.submit_edit(0, 3)
+	await _frames(2)
+	var slot_mirror: int = sim.get_hotbar_selected_slot()
+	_check(rc_sel == 0 and slot_mirror == 3,
+	       "F5 select_slot=3 accepted (rc=%d, mirror=%d)" % [rc_sel, slot_mirror])
+	if hotbar != null and hotbar.get_child_count() >= 3:
+		var sel_flag: bool = hotbar.get_child(2).get_meta("selected", false)
+		_check(sel_flag, "F6 HUD shows slot 3 selected (scr_hotbar panel meta)")
+		var names_ok := false
+		for panel in hotbar.get_children():
+			for c in panel.get_children():
+				if c is Label and String(c.text).contains("Obsidian"):
+					names_ok = true
+		_check(names_ok, "F7 HUD slot 3 label carries catalog name (Obsidian)")
+
+	# Aim straight down (look_dy > 0 = mouse down, sim pitch -= look_dy),
+	# then capture the terrain mesh content, dig, place.
+	for i in 50:
+		sim.submit_input(0.0, 0.0, 0.0, 60.0, false, false, false, false)
+		await physics_frame
+	await _frames(4)
+	if target_lbl != null:
+		_check(String(target_lbl.text) != "SKY / AIR"
+		       and String(target_lbl.text).contains("#"),
+		       "F8 TARGET readout shows a hit after aiming down (%s)"
+		       % target_lbl.text)
+	var hash0 := _terrain_hash()
+	var rc_dig: int = sim.submit_edit(1, 0) # dig
+	_check(rc_dig == 0, "F9 dig submit accepted (rc=%d)" % rc_dig)
+	await _frames(15)
+	var hash1 := _terrain_hash()
+	_check(hash1 != hash0, "F10 dig changed terrain mesh content (chunk-local rebuild)")
+
+	var rc_sel2: int = sim.submit_edit(0, 2) # place with slot 2 material
+	var rc_place: int = sim.submit_edit(2, 0)
+	await _frames(2)
+	_check(rc_sel2 == 0 and int(sim.get_hotbar_selected_slot()) == 2,
+	       "F11 select_slot=2 accepted (rc=%d, mirror=%d)"
+	       % [rc_sel2, int(sim.get_hotbar_selected_slot())])
+	_check(rc_place == 0, "F12 place submit accepted (rc=%d)" % rc_place)
+	await _frames(15)
+	var hash2 := _terrain_hash()
+	_check(hash2 != hash1, "F13 place changed terrain mesh content again")
 
 	# --- D. jump (at spawn, on land) ---------------------------------------
 	# Jump must be measured on land: the sim applies SWIM_JUMP_FACTOR (0.5)

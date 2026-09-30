@@ -49,15 +49,18 @@ Normative basis:
 3. Provider limitations MUST NOT weaken semantic contracts — escalate instead (AGENTS.md "When to Escalate").
 4. No shadow IR: Rust/JSON/YAML/Godot resources are handles/metadata only, not parallel IRs (MLIR-first policy).
 
-## 5. Current State (v0.0.1 / milestone 0002)
+## 5. Current State (v0.0.1 / milestone 0007)
 
-Binding protocol implemented as the normative **[`104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema v1 + C ABI + input uplink). Summary (full spec there; flow detail in [04 §4.3/§5](04_simulation_engine.md)):
+Binding protocol implemented as the normative **[`104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v6**, C ABI **v2**, input + edit uplink). Summary (full spec there; flow detail in [04 §4.3/§5/§5.1](04_simulation_engine.md)):
 
-- **Transport:** in-process `dlopen` of `build/libscr_sim.so` by the GDExtension adapter (`providers/.../adapter/scr_sim_loader.h`), negotiated via `scr_sim_abi_version()` (=1) and `scr_sim_schema_version()` (=1). Schema mismatch is refused loudly (`tests/test_schema_mismatch.sh`). IPC transport swap deferred (stabilized contract = trigger, §6).
-- **Downlink (sim → provider):** `RenderSnapshot` — 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN, 4 OCEAN, 5 SKY, 6 MATERIALS`. Provider validates strictly and skips invalid frames; it never coerces or invents values (Rule 6).
-- **Uplink (provider → sim):** `scr_input_batch` — raw input intent only (20 bytes). The adapter clamps movement to the unit circle and accumulates look deltas; **the sim integrates all motion** (AP-8, Rule 1: `ScrSim` never moves nodes itself beyond applying the decoded snapshot).
-- **Presentation application:** adapter maps snapshot sections onto group nodes (`scr_terrain, scr_meta, scr_ocean, scr_sun, scr_env, scr_camera, scr_hud, scr_materials`) per [04 §5](04_simulation_engine.md). Absent groups ⇒ presentation absent; provider code may not redefine what a section *means* (Rules 2, 6).
-- **Status:** implemented and gated (Sprint 03/04); decode path currently blocked by the MATERIALS framing inconsistency documented in [04 §8](04_simulation_engine.md) — escalated, not worked around here.
+- **Transport:** in-process `dlopen` of `build/libscr_sim.so` by the GDExtension adapter (`providers/.../adapter/scr_sim_loader.h`), negotiated via `scr_sim_abi_version()` (=2) and `scr_sim_schema_version()` (=6). ABI/schema mismatch is refused loudly (`tests/test_schema_mismatch.sh` — negative tests for both). IPC transport swap deferred (stabilized contract = trigger, §6).
+- **Downlink (sim → provider):** `RenderSnapshot` — 48-byte envelope + framed sections `1 PLAYER … 11 FAUNA, 12 HOTBAR, 13 TARGET, 14 RIGID_BODIES`. Provider validates strictly and skips invalid frames; it never coerces or invents values (Rule 6).
+- **Uplink (provider → sim), symbol list:**
+  - `scr_input_batch` (20 bytes) — raw motion/look/action intent; adapter clamps movement to the unit circle and accumulates look deltas; **the sim integrates all motion** (AP-8, Rule 1).
+  - `scr_edit_batch` (4 bytes: `u8 op, u8 select_slot, u16 reserved`) via **`scr_edit_submit`** (ABI 2) — edit intent only: client never names materials or cells; ray/hit/material resolution is sim semantics (0007 AP-12). Bound by the adapter directly (`dlsym` after `scr_sim_load`; not part of the 7-symbol loader set), refused loudly if missing.
+  - Exported symbols (8): `scr_sim_init`, `scr_sim_shutdown`, `scr_sim_abi_version`, `scr_sim_schema_version`, `scr_sim_step`, `scr_sim_snapshot_size`, `scr_sim_snapshot_write`, `scr_edit_submit` (all ABI-smoke tested).
+- **Presentation application:** adapter maps snapshot sections onto group nodes (`scr_terrain, scr_meta, scr_ocean, scr_sun, scr_env, scr_camera, scr_hud, scr_materials, scr_crater_lava, scr_crater_glow, scr_plume, scr_clouds, scr_rain, scr_flora, scr_fauna, scr_hotbar, scr_target, scr_props`) per [04 §5](04_simulation_engine.md). Absent groups ⇒ presentation absent; provider code may not redefine what a section *means* (Rules 2, 6).
+- **Status:** implemented and gated through milestone 0007 (schema 6 / ABI 2, §8.7 evidence in [04](04_simulation_engine.md)).
 
 ## References
 

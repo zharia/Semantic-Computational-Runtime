@@ -12,9 +12,9 @@
  * Load policy (all failures are loud — never silently coerced):
  *   1. path must dlopen               -> SCR_LOAD_ERR_DLOPEN
  *   2. all 7 contract symbols resolve -> SCR_LOAD_ERR_SYMBOL
- *   3. scr_sim_abi_version()   == SCR_SIM_ABI_VERSION  (1)
+ *   3. scr_sim_abi_version()   == SCR_SIM_ABI_VERSION  (from header)
  *                                           -> SCR_LOAD_ERR_ABI
- *   4. scr_sim_schema_version()== SCR_SIM_SCHEMA_VER  (1)
+ *   4. scr_sim_schema_version()== SCR_SIM_SCHEMA_VER  (from header)
  *                                           -> SCR_LOAD_ERR_SCHEMA
  * On any failure the API struct is zeroed (handle closed) and `err` carries a
  * human-readable message for ERR_PRINT.
@@ -65,7 +65,9 @@ typedef struct scr_sim_api {
 static SCR_SIM_UNUSED void scr_sim_set_err(char *err, size_t err_len,
                                             const char *fmt, ...);
 
-/* Load `path`, bind all 7 contract symbols, enforce abi/schema versions.
+/* Load `path`, bind the core contract symbols (ABI 1 set; scr_edit_submit
+ * is bound by the adapter itself when it wires the edit uplink), enforce
+ * abi/schema versions.
  * Returns SCR_LOAD_OK or SCR_LOAD_ERR_*. */
 static SCR_SIM_UNUSED int scr_sim_load(scr_sim_api *api, const char *path,
                                 char *err, size_t err_len) {

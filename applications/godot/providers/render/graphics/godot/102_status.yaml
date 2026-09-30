@@ -2,12 +2,12 @@ id: SCR-PROVIDER-RENDER-GODOT
 name: Godot Render Provider
 domain: render
 technology: godot
-version: 0.5.0
+version: 0.6.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
-schema_version: 5
-abi_version: 1
+schema_version: 6
+abi_version: 2
 
 purpose: >
   Realize SCR renderable semantic state as a Godot 4.7.2 presentation via a
@@ -60,6 +60,18 @@ capabilities:
   - id: CAP-GODOT-BOID-FOCK
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0006
+  - id: CAP-GODOT-EDIT-UPLINK
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0007
+  - id: CAP-GODOT-HOTBAR-HUD
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0007
+  - id: CAP-GODOT-TARGET-READOUT
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0007
+  - id: CAP-GODOT-RIGID-PROPS
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0007
 
 depends_on:
   - SCR-LIB-RENDER
@@ -78,3 +90,5 @@ limitations:
   - Sun disc is not in the default spawn frame (arc elevation 68.75° vs FOV half-angle 35°); verified via a sun-aimed sub-capture — recorded deviation, docs/04 §8.4
   - Cloud/rain pattern, scale and drift are display-only (cloud_cover/precipitation are the wire contract)
   - Engine exponential fog disabled in the cloud shader with shader-local fades (deck was fully fogged out) — docs/04 §8.4
+  - Hotbar/target/props HUD are read-only projections; edit intent is the only uplink (op + select_slot — client never names cells/materials, 0007 AP-12)
+  - Props model is minimal (gravity + ground contact, no inter-body collision, N ≤ 16) — advanced physics = future milestone (0007 §3.5)

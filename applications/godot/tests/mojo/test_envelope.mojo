@@ -9,8 +9,11 @@
 # tuples (u8 material, u8 partner, u8 weight, u8 pad), schema ∈ {1,2,3,5}
 # rejected, TERRAIN section keeps its schema-3 byte count (228100).
 # Milestone_0006 §7 additions: schema == 5, sections 10 FLORA / 11 FAUNA
-# framing + payload validation (malformed refused), schema ∈ {1,2,3,4,6}
-# rejected, FLORA gated like TERRAIN / FAUNA every snapshot.
+# framing + payload validation (malformed refused), FLORA gated like
+# TERRAIN / FAUNA every snapshot.
+# Milestone_0007 §7 additions: schema == 6, sections 12 HOTBAR / 13 TARGET /
+# 14 RIGID_BODIES framing + payload validation (malformed refused),
+# schema ∈ {1,2,3,4,5,7} rejected, sections present every snapshot.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -54,6 +57,9 @@ from snapshot.decode import (
     read_terrain_tuple,
     read_flora,
     read_fauna,
+    read_hotbar,
+    read_target,
+    read_rigid_bodies,
 )
 from snapshot.types import (
     ENVELOPE_BYTES,
@@ -69,6 +75,15 @@ from snapshot.types import (
     SEC_SHORE_FOAM,
     SEC_FLORA,
     SEC_FAUNA,
+    SEC_HOTBAR,
+    SEC_TARGET,
+    SEC_RIGID_BODIES,
+    HOTBAR_BYTES,
+    HOTBAR_SLOT_WIRE,
+    TARGET_BYTES,
+    RIGID_HEADER_BYTES,
+    RIGID_RECORD_BYTES,
+    RIGID_BODIES_MAX,
     FLORA_HEADER_BYTES,
     FLORA_RECORD_BYTES,
     FAUNA_HEADER_BYTES,
@@ -82,8 +97,10 @@ from snapshot.types import (
 )
 from ocean.gerstner import wave_height
 from sim.shore import FOAM_DEPTH_M, MAX_WAVE_REACH
+from sim.raycast import raycast_look
+from sim.parameters import HOTBAR_SLOT_COUNT
 
-comptime SECTIONS_AT_TICK1: Int = 11  # schema 5: 1..11 (0006 §1.1)
+comptime SECTIONS_AT_TICK1: Int = 14  # schema 6: 1..14 (0007 §1.1)
 comptime TERRAIN_BYTES_SEED1: Int = 228100  # schema-3 size, stride-neutral
 comptime SHORE_FOAM_BYTES: Int = SHORE_FOAM_HEADER_BYTES + 4 * 64 * 64
 
@@ -128,6 +145,12 @@ def _expect_read_error(data: List[UInt8], sid: UInt32) raises -> Bool:
             _ = read_flora(data, secs[i])
         elif sid == SEC_FAUNA:
             _ = read_fauna(data, secs[i])
+        elif sid == SEC_HOTBAR:
+            _ = read_hotbar(data, secs[i])
+        elif sid == SEC_TARGET:
+            _ = read_target(data, secs[i])
+        elif sid == SEC_RIGID_BODIES:
+            _ = read_rigid_bodies(data, secs[i])
         else:
             return False
         return False
@@ -140,12 +163,12 @@ def test_envelope_layout() raises:
     _check(len(data) >= ENVELOPE_BYTES, "envelope present")
     # Documented offsets (§4.1), little-endian, explicit.
     _check(get_u32(data, 0) == 0x53524353, "magic 'SCRS'")
-    _check(SCHEMA_VERSION == 5, "sim parameters SCHEMA_VERSION == 5")
-    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 5")
+    _check(SCHEMA_VERSION == 6, "sim parameters SCHEMA_VERSION == 6")
+    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 6")
     var env = decode_envelope(data)
     _check(
         Int(env.section_count) == SECTIONS_AT_TICK1,
-        "tick1 carries all eleven sections",
+        "tick1 carries all fourteen sections",
     )
     _check(env.world_version == 1, "world_version == 1")
     _check(env.state_generation == 1, "state_generation == 1")
@@ -175,6 +198,9 @@ def test_section_framing_and_sizes() raises:
     var fi = find_section(secs, SEC_SHORE_FOAM)
     var fli = find_section(secs, SEC_FLORA)
     var fai = find_section(secs, SEC_FAUNA)
+    var hi = find_section(secs, SEC_HOTBAR)
+    var tgti = find_section(secs, SEC_TARGET)
+    var rgi = find_section(secs, SEC_RIGID_BODIES)
     _check(
         pi >= 0 and mi >= 0 and oi >= 0 and ki >= 0 and ti >= 0 and mdi >= 0,
         "sections 1..6 present",
@@ -183,6 +209,21 @@ def test_section_framing_and_sizes() raises:
     _check(fi >= 0, "section 9 SHORE_FOAM present")
     _check(fli >= 0, "section 10 FLORA present (first snapshot)")
     _check(fai >= 0, "section 11 FAUNA present")
+    _check(hi >= 0, "section 12 HOTBAR present (every snapshot)")
+    _check(tgti >= 0, "section 13 TARGET present (every snapshot)")
+    _check(rgi >= 0, "section 14 RIGID_BODIES present (every snapshot)")
+    _check(secs[hi].length == HOTBAR_BYTES, "HOTBAR = 44 bytes (§4.3 §12)")
+    _check(secs[tgti].length == TARGET_BYTES, "TARGET = 32 bytes (§4.3 §13)")
+    var rigid_count = Int(get_u32(data, secs[rgi].offset))
+    _check(
+        rigid_count > 0 and rigid_count <= RIGID_BODIES_MAX,
+        "RIGID_BODIES count in cap",
+    )
+    _check(
+        secs[rgi].length
+        == RIGID_HEADER_BYTES + RIGID_RECORD_BYTES * rigid_count,
+        "RIGID_BODIES section = 4 + 36·count",
+    )
     _check(secs[pi].length == 44, "PLAYER section = 44 bytes (§4.3 header)")
     _check(secs[mi].length == 32, "TERRAIN_META = 32 bytes")
     _check(secs[oi].length == 32, "OCEAN = 32 bytes")
@@ -208,7 +249,7 @@ def test_section_framing_and_sizes() raises:
         secs[fai].length == FAUNA_HEADER_BYTES + FAUNA_RECORD_BYTES * fauna_count,
         "FAUNA section = 4 + 20·count",
     )
-    # Section ids in contract order 1..11.
+    # Section ids in contract order 1..14.
     for k in range(Int(env.section_count)):
         var hdr = secs[k].offset - 8
         _check(get_u32(data, hdr) == UInt32(k + 1), "section id order at " + String(k))
@@ -395,23 +436,18 @@ def test_bad_inputs_fail_loudly() raises:
     for i in range(ENVELOPE_BYTES - 1):
         trunc.append(data[i])
     _check(_expect_error(trunc), "truncation must raise")
-    # Unsupported schemas: 1, 2, 3, 4 (all previous) and 6 (future) must be
-    # refused — only SCHEMA_VERSION (5) is accepted (0006 §1.1 sibling rebase).
-    var schema1 = data.copy()
-    schema1[4] = 1
-    _check(_expect_error(schema1), "schema 1 must be refused (expected 5)")
-    var schema2 = data.copy()
-    schema2[4] = 2
-    _check(_expect_error(schema2), "schema 2 must be refused (expected 5)")
-    var schema3 = data.copy()
-    schema3[4] = 3
-    _check(_expect_error(schema3), "schema 3 must be refused (expected 5)")
-    var schema4 = data.copy()
-    schema4[4] = 4
-    _check(_expect_error(schema4), "schema 4 must be refused (expected 5)")
-    var schema6 = data.copy()
-    schema6[4] = 6
-    _check(_expect_error(schema6), "schema 6 must be refused (expected 5)")
+    # Unsupported schemas: 1..5 (all previous) and 7 (future) must be
+    # refused — only SCHEMA_VERSION (6) is accepted (0007 §1.1 sibling rebase).
+    for prev in range(1, 6):
+        var old_schema = data.copy()
+        old_schema[4] = UInt8(prev)
+        _check(
+            _expect_error(old_schema),
+            "schema " + String(prev) + " must be refused (expected 6)",
+        )
+    var schema7 = data.copy()
+    schema7[4] = 7
+    _check(_expect_error(schema7), "schema 7 must be refused (expected 6)")
     # payload_bytes inconsistent with buffer length.
     var wrong_len = data.copy()
     wrong_len[40] = wrong_len[40] + 1
@@ -706,6 +742,145 @@ def test_flora_fauna_payloads() raises:
     _check(_expect_read_error(bad_alen, SEC_FAUNA), "FAUNA length drift raises")
 
 
+def test_hotbar_target_rigid_payloads() raises:
+    """§4.3 §12/§13/§14 round-trip: HOTBAR against the sim slot table,
+    TARGET against the sim-owned raycast of this tick's pose, RIGID_BODIES
+    against PhysicsSubject state (every snapshot, schema 6)."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var data = encode_snapshot(world, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+
+    # 12 HOTBAR: count = 9, 0-based selection, slot ids == sim table.
+    var h = read_hotbar(data, secs[find_section(secs, SEC_HOTBAR)])
+    _check(Int(h.count) == HOTBAR_SLOT_COUNT, "HOTBAR count == 9")
+    _check(
+        len(h.slot_ids) == HOTBAR_SLOT_COUNT,
+        "HOTBAR carries 9 slot ids",
+    )
+    _check(
+        Int(h.selected_index) == world.hotbar.selected_index,
+        "selected_index round-trip",
+    )
+    for i in range(HOTBAR_SLOT_COUNT):
+        _check(
+            h.slot_ids[i] == world.hotbar.slot_ids[i],
+            "slot " + String(i) + " catalog id round-trip",
+        )
+
+    # 13 TARGET: sim-owned raycast of the CURRENT pose, decoded fields match.
+    var hit = raycast_look(
+        world.island,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    var t = read_target(data, secs[find_section(secs, SEC_TARGET)])
+    _check(
+        Bool(t.hit == 1) == hit.hit,
+        "TARGET.hit == sim raycast hit (" + String(t.hit) + ")",
+    )
+    if hit.hit:
+        _check(t.material_id == hit.material_id, "TARGET material id round-trip")
+        _check(abs(t.hit_x - Float32(hit.hit_x)) < 1e-5, "TARGET hit_x")
+        _check(abs(t.hit_y - Float32(hit.hit_y)) < 1e-5, "TARGET hit_y")
+        _check(abs(t.hit_z - Float32(hit.hit_z)) < 1e-5, "TARGET hit_z")
+        _check(Int(t.cell_x) == hit.cell_x, "TARGET cell_x")
+        _check(Int(t.cell_z) == hit.cell_z, "TARGET cell_z")
+        _check(
+            Int(t.cell_lattice_y) == hit.cell_lattice_y,
+            "TARGET cell_lattice_y",
+        )
+
+    # 14 RIGID_BODIES: count + every body field against PhysicsSubject.
+    var bodies = read_rigid_bodies(
+        data, secs[find_section(secs, SEC_RIGID_BODIES)]
+    )
+    _check(Int(len(bodies)) == world.props.count, "body count round-trip")
+    _check(world.props.count <= RIGID_BODIES_MAX, "count <= PROP_N_MAX")
+    for i in range(world.props.count):
+        var src = world.props.bodies[i]
+        var b = bodies[i]
+        _check(abs(b.x - Float32(src.x)) < 1e-5, "body x round-trip")
+        _check(abs(b.y - Float32(src.y)) < 1e-5, "body y round-trip")
+        _check(abs(b.z - Float32(src.z)) < 1e-5, "body z round-trip")
+        _check(b.euler_x == 0.0 and b.euler_y == 0.0, "euler zero (no angular dynamics)")
+        _check(b.euler_z == 0.0, "euler z zero")
+        _check(b.shape == src.shape, "shape round-trip")
+        _check(abs(b.size - Float32(src.size)) < 1e-6, "size round-trip")
+        _check(b.material_id == src.material_id, "material id round-trip")
+
+
+def test_malformed_hotbar_target_rigid_fail_loudly() raises:
+    """§8 loud refusals for schema-6 sections: HOTBAR count != 9 /
+    selected_index out of range, TARGET hit > 1 / nonzero pad / nonzero miss
+    fields, RIGID_BODIES count > 16 / shape > 1 / length drift."""
+    var data = _snapshot_at_tick1()
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var hi = find_section(secs, SEC_HOTBAR)
+    var tgti = find_section(secs, SEC_TARGET)
+    var rgi = find_section(secs, SEC_RIGID_BODIES)
+    _check(hi >= 0 and tgti >= 0 and rgi >= 0, "sections 12/13/14 present")
+    _check(not _expect_read_error(data, SEC_HOTBAR), "pristine HOTBAR decodes")
+    _check(not _expect_read_error(data, SEC_TARGET), "pristine TARGET decodes")
+    _check(
+        not _expect_read_error(data, SEC_RIGID_BODIES),
+        "pristine RIGID_BODIES decodes",
+    )
+
+    var h_off = secs[hi].offset
+    # count = 8 (wire must be 9).
+    var bad_count = data.copy()
+    bad_count[h_off] = 8
+    _check(_expect_read_error(bad_count, SEC_HOTBAR), "HOTBAR count != 9 raises")
+    # selected_index = 9 (out of range for count 9).
+    var bad_sel = data.copy()
+    bad_sel[h_off + 4] = 9
+    _check(_expect_read_error(bad_sel, SEC_HOTBAR), "selected_index >= count raises")
+
+    var t_off = secs[tgti].offset
+    # hit = 2 (must be 0/1).
+    var bad_hit = data.copy()
+    bad_hit[t_off] = 2
+    _check(_expect_read_error(bad_hit, SEC_TARGET), "TARGET hit > 1 raises")
+    # Nonzero pad byte 1.
+    var bad_pad = data.copy()
+    bad_pad[t_off + 1] = 1
+    _check(_expect_read_error(bad_pad, SEC_TARGET), "TARGET pad raises")
+    var r_off = secs[rgi].offset
+    # count = 17 (> PROP_N_MAX).
+    var bad_rcount = data.copy()
+    bad_rcount[r_off] = 17
+    _check(
+        _expect_read_error(bad_rcount, SEC_RIGID_BODIES),
+        "RIGID_BODIES count > 16 raises",
+    )
+    # shape = 2 on record 0.
+    var bad_shape = data.copy()
+    bad_shape[r_off + RIGID_HEADER_BYTES + 24] = 2
+    _check(
+        _expect_read_error(bad_shape, SEC_RIGID_BODIES),
+        "shape > 1 raises",
+    )
+    # Declared length drift (4 + 36·count − 4).
+    var bad_rlen = data.copy()
+    var wrong = secs[rgi].length - 4
+    var r0 = r_off - 4
+    bad_rlen[r0] = UInt8(wrong & 0xFF)
+    bad_rlen[r0 + 1] = UInt8((wrong >> 8) & 0xFF)
+    bad_rlen[r0 + 2] = UInt8((wrong >> 16) & 0xFF)
+    bad_rlen[r0 + 3] = UInt8((wrong >> 24) & 0xFF)
+    _check(
+        _expect_read_error(bad_rlen, SEC_RIGID_BODIES),
+        "RIGID_BODIES length drift raises",
+    )
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -721,5 +896,7 @@ def main() raises:
             test_malformed_shore_foam_fails_loudly,
             test_terrain_blend_tuples,
             test_flora_fauna_payloads,
+            test_hotbar_target_rigid_payloads,
+            test_malformed_hotbar_target_rigid_fail_loudly,
         )
     ]().run()

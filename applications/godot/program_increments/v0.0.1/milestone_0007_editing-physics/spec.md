@@ -4,7 +4,7 @@
 **Milestone:** 0007 — Editing, Hotbar & Physics
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** RenderSnapshot contract (schema bump + HOTBAR/TARGET/RIGID_BODIES sections) + new `scr_edit_batch` uplink (ABI bump) + in-process GDExtension adapter
@@ -270,16 +270,16 @@ providers/render/graphics/godot/
 
 All commands from repo root; `M=.venv/bin/mojo`.
 
-- [ ] **Dig/place visibly changes terrain + regeneration correctness (automated ABI test):** `python3 applications/godot/tests/test_terrain_resend.py` — one edit ⇒ `world_version` +1 and TERRAIN present in **exactly the next** snapshot and absent in all following (until next edit); no-edit run ⇒ zero TERRAIN resends.
-- [ ] **Bedrock + sea-level invariants (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_edit_ops.mojo` — dig rejected at bedrock guard; submerged dig ⇒ water fill + biome reclass; `world_version` bookkeeping.
-- [ ] **Determinism after scripted edit sequence (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_determinism.mojo` — seed 1 + scripted N edits + inputs ⇒ byte-identical snapshot sequence (2 runs).
-- [ ] **Raycast correctness (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_raycast.mojo` — known-geometry hit/miss, cell + material ids, range cap, miss ⇒ zeros.
-- [ ] **Hotbar ids resolve from catalog (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_hotbar.mojo` — all 9 slot ids ∈ `materials_catalog.json`; selection transitions; invalid slot rejected.
-- [ ] **Props bounded + grounded (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_props.mojo` — count ≤ 16, no fall-through, deterministic across runs.
-- [ ] **Contract/ABI gates (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_envelope.mojo` (new sections round-trip), fixture regen + `test_golden_fixture.mojo`, `python3 applications/godot/tests/abi_smoke.py` (incl. `scr_edit_submit`, 4-byte layout, ABI=2), `bash applications/godot/tests/test_schema_mismatch.sh` (ABI/schema refusal), `bash applications/godot/scripts/build_godot_provider.sh`.
-- [ ] **Dig/place visible in game (precisely documented manual procedure):** (1) `bash applications/godot/tests/godot/godot_screenshot.sh` → baseline `build/island.png`; (2) interactive run `godot --path applications/godot/godot` (scene `res://scenes/island.tscn`), capture mouse, LMB = dig once on terrain ahead, keys `2`/`3` then place once, verify visibly changed contour + hotbar selection moved; (3) re-run step (1) → `build/island.png`; (4) record both captures + terrain-chunk content assertion in the `docs/04_simulation_engine.md` evidence table. Automated companion: `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines) after edits are exercised in a scripted run (playability script extended with one dig/place leg).
-- [ ] **All milestone 0002 gates green (automated):** the seven §8 procedures of `docs/04_simulation_engine.md` PASS (incl. `check_layout.sh` AP-1/AP-4, `godot_load_test.sh`, `godot_playability_test.sh` — player must still walk on re-generated terrain without fall-through).
-- [ ] **Review pass:** §2.1 (AP-1..10) + §2.2 (AP-11..14) checked item-by-item; results appended to `docs/04`.
+- [x] **Dig/place visibly changes terrain + regeneration correctness (automated ABI test):** `python3 applications/godot/tests/test_terrain_resend.py` — one edit ⇒ `world_version` +1 and TERRAIN present in **exactly the next** snapshot and absent in all following (until next edit); no-edit run ⇒ zero TERRAIN resends.
+- [x] **Bedrock + sea-level invariants (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_edit_ops.mojo` — dig rejected at bedrock guard; submerged dig ⇒ water fill + biome reclass; `world_version` bookkeeping.
+- [x] **Determinism after scripted edit sequence (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_determinism.mojo` — seed 1 + scripted N edits + inputs ⇒ byte-identical snapshot sequence (2 runs).
+- [x] **Raycast correctness (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_raycast.mojo` — known-geometry hit/miss, cell + material ids, range cap, miss ⇒ zeros.
+- [x] **Hotbar ids resolve from catalog (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_hotbar.mojo` — all 9 slot ids ∈ `materials_catalog.json`; selection transitions; invalid slot rejected.
+- [x] **Props bounded + grounded (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_props.mojo` — count ≤ 16, no fall-through, deterministic across runs.
+- [x] **Contract/ABI gates (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_envelope.mojo` (new sections round-trip), fixture regen + `test_golden_fixture.mojo`, `python3 applications/godot/tests/abi_smoke.py` (incl. `scr_edit_submit`, 4-byte layout, ABI=2), `bash applications/godot/tests/test_schema_mismatch.sh` (ABI/schema refusal), `bash applications/godot/scripts/build_godot_provider.sh`.
+- [x] **Dig/place visible in game (precisely documented manual procedure):** (1) `bash applications/godot/tests/godot/godot_screenshot.sh` → baseline `build/island.png`; (2) interactive run `godot --path applications/godot/godot` (scene `res://scenes/island.tscn`), capture mouse, LMB = dig once on terrain ahead, keys `2`/`3` then place once, verify visibly changed contour + hotbar selection moved; (3) re-run step (1) → `build/island.png`; (4) record both captures + terrain-chunk content assertion in the `docs/04_simulation_engine.md` evidence table. Automated companion: `bash applications/godot/tests/godot/godot_load_test.sh` PASS (0 `ERROR:` lines) after edits are exercised in a scripted run (playability script extended with one dig/place leg).
+- [x] **All milestone 0002 gates green (automated):** the seven §8 procedures of `docs/04_simulation_engine.md` PASS (incl. `check_layout.sh` AP-1/AP-4, `godot_load_test.sh`, `godot_playability_test.sh` — player must still walk on re-generated terrain without fall-through).
+- [x] **Review pass:** §2.1 (AP-1..10) + §2.2 (AP-11..14) checked item-by-item; results appended to `docs/04`.
 
 ---
 

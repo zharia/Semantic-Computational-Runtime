@@ -22,9 +22,11 @@ Method (all display-verification constants, AP-7 scope — no gameplay values):
   4. Camera model matches godot_aerial_diagnostic.gd defaults: position
      (0, alt, 0), rotation (-90,0,0) deg, Camera3D default fov 75, perspective
      projection; the y=0 plane intersection gives world xz per pixel.
-  5. Candidate pixels: Rec.601 luma >= --luma (default 0.60) AND the pixel is
-     over water (bilinear y_terrain < sea_level) AND below the HUD overlay
-     (top --hud-rows rows carry the tick label, which is bright and white).
+ 5. Candidate pixels: Rec.601 luma >= --luma (default 0.60) AND the pixel is
+    over water (bilinear y_terrain < sea_level) AND outside the HUD
+    overlays (top --hud-rows rows carry the tick label; bottom
+    --bottom-hud-rows rows carry the 0007 hotbar/target panels — both are
+    bright presentation, not scene pixels).
   6. Each candidate's distance to the contour point cloud (spatial hash) decides
      in-band vs out-of-band.
 
@@ -63,7 +65,13 @@ CAM_FOV_DEG = 75.0  # Camera3D default; the diagnostic never overrides it
 # Gate defaults (display-verification constants).
 FOAM_BAND_M = 6.0
 LUMA_MIN = 0.60
-HUD_ROWS = 72  # tick/HUD label strip (bright white text)
+HUD_ROWS = 72  # top tick/HUD label strip (bright white text)
+# Bottom overlay strip (0007): the scr_hotbar slot panels + target readout
+# anchor to the bottom of the viewport (island.tscn) and are bright — they
+# are presentation, not scene pixels. Same display-condition class as the
+# top HUD_ROWS mask and the --fog=0 aerial condition: the foam assertion
+# itself (bright scene water within the contour band) is unchanged.
+BOTTOM_HUD_ROWS = 96
 MIN_IN_BAND = 200  # refuse a vacuous pass when no foam is visible at all
 MAX_OUT_RATIO = 0.02
 
@@ -77,9 +85,10 @@ def parse_heights_and_sea(path: str):
     schema = struct.unpack_from("<I", buf, 4)[0]
     # Schema 5 (milestone_0006) only ADDS sections 10 FLORA / 11 FAUNA; the
     # TERRAIN (schema-4 blend tuples) and OCEAN layouts read here are
-    # byte-identical, so both schema 4 and 5 fixtures decode the same way.
-    if schema not in (4, 5):
-        raise ValueError(f"fixture: schema {schema} not in (4, 5)")
+    # byte-identical, so schema 4/5/6 fixtures decode the same way (schema
+    # 6 adds sections 12–14; sections 1–11 are byte-identical to schema 5).
+    if schema not in (4, 5, 6):
+        raise ValueError(f"fixture: schema {schema} not in (4, 5, 6)")
     section_count = struct.unpack_from("<I", buf, 8)[0]
     payload = struct.unpack_from("<I", buf, 40)[0]
     if payload != len(buf) - 48:
@@ -208,6 +217,7 @@ def main(argv) -> int:
         return 2
     png = argv[1]
     band, luma_min, hud_rows = FOAM_BAND_M, LUMA_MIN, HUD_ROWS
+    bottom_hud_rows = BOTTOM_HUD_ROWS
     i = 2
     while i < len(argv) - 1:
         if argv[i] == "--band":
@@ -216,6 +226,8 @@ def main(argv) -> int:
             luma_min = float(argv[i + 1]); i += 2
         elif argv[i] == "--hud-rows":
             hud_rows = int(argv[i + 1]); i += 2
+        elif argv[i] == "--bottom-hud-rows":
+            bottom_hud_rows = int(argv[i + 1]); i += 2
         else:
             i += 1
 
@@ -238,7 +250,7 @@ def main(argv) -> int:
     in_band = 0
     out_band = 0
     out_samples = []
-    for row in range(hud_rows, h):
+    for row in range(hud_rows, h - bottom_hud_rows):
         ndc_y = 1.0 - (row + 0.5) * 2.0 / h
         z_row = -ndc_y * tan_half * CAM_ALT  # camera forward = -Y, up = -Z
         base = row * w * ch

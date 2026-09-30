@@ -4,7 +4,8 @@
 **Status:** Normative
 **Owner milestone:** [applications/godot v0.0.1 / milestone 0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../../../../applications/godot/program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md))
 **C ABI header:** [`adapter/scr_godot_abi.h`](adapter/scr_godot_abi.h) (single source of truth for symbol names, struct layouts, error codes)
-**Schema version:** `5` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); 4 → 5 in [milestone_0006](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) §1.1 (new sections `10 FLORA` emission-gated + `11 FAUNA` every snapshot; sections 1–9 byte-identical); symbol set unchanged in all
+**Schema version:** `6` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); 4 → 5 in [milestone_0006](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) §1.1 (new sections `10 FLORA` emission-gated + `11 FAUNA` every snapshot; sections 1–9 byte-identical); 5 → 6 in [milestone_0007](../../../../applications/godot/program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) §1.1 (new sections `12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`, all every snapshot; sections 1–11 byte-identical; **C ABI 1 → 2** — new symbol `scr_edit_submit`)
+**C ABI version:** `SCR_SIM_ABI_VERSION = 2` (1 → 2 in milestone_0007: symbol set grows by `scr_edit_submit`; the eight v1 semantics unchanged)
 
 ---
 
@@ -14,6 +15,7 @@ Define the only state channels between the Mojo simulation core (semantic consum
 
 - **Downlink:** `RenderSnapshot` — immutable projection of world state, serialized to a byte buffer.
 - **Uplink:** `scr_input_batch` — raw player intent; the sim integrates it.
+- **Uplink:** `scr_edit_batch` via `scr_edit_submit` — edit/hotbar intent only (`{op, select_slot}`); the sim resolves cell and material (milestone_0007 §3.2).
 
 Invariant: projection MUST NOT mutate world state; the adapter MUST NOT make semantic decisions (`milestone_0002` spec §6).
 
@@ -27,17 +29,18 @@ In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared lib
 |---|---|
 | `scr_sim_init(seed)` | First call; initializes Mojo runtime + world; 0 = ok |
 | `scr_sim_shutdown()` | Tear down; safe after init |
-| `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (1) |
-| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (5) |
+| `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (2) |
+| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (6) |
 | `scr_sim_step(dt, input*)` | Accumulate `dt`; run 0..n fixed ticks @ 60 Hz; input applied per executed tick; returns ticks run (≥0) or `SCR_ERR_*` |
 | `scr_sim_snapshot_size()` | Size of snapshot from most recent successful step |
 | `scr_sim_snapshot_write(buf, cap)` | Serialize; returns bytes written or `SCR_ERR_BUF_SMALL` etc. |
+| `scr_edit_submit(batch*)` | Queue one `scr_edit_batch` (ABI 2); select applies immediately, op enqueued (≤ 1 consumed per fixed tick); returns 0 / `SCR_ERR_NOT_INIT` / `SCR_ERR_BAD_STATE` / `SCR_ERR_QUEUE_FULL` |
 
 **Fixed tick:** `1/60 s`. **Determinism:** seed + input sequence + `dt = 1/60` per call ⇒ byte-identical snapshot sequence.
 
 **Adapter startup rejection:** refuse to run when `scr_sim_abi_version() != SCR_SIM_ABI_VERSION || scr_sim_schema_version() != SCR_SIM_SCHEMA_VER` (negative test required by exit criteria).
 
-## 4. Snapshot binary schema (version 5)
+## 4. Snapshot binary schema (version 6)
 
 All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit padding (all offsets documented). Offsets are bytes from snapshot start.
 
@@ -49,12 +52,14 @@ All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit pa
 
 **Schema 4 → 5 migration (milestone_0006 §1.1 sibling rebase):** the envelope `schema_version` field is now `5`. Two coordinated changes require this bump: **(a) new section `10 FLORA`** — `section_count` for a full snapshot grows accordingly, emitted under the **same presence rule as TERRAIN** (first snapshot after init, then whenever `world_version` increments — static population, no per-tick re-send; §4.3); **(b) new section `11 FAUNA`** — emitted **every snapshot** (the flock moves every tick; suppressing it would freeze the birds). A full snapshot therefore has `section_count = 11` (10 when TERRAIN and FLORA are both suppressed in the same non-regeneration snapshot). Sections 1–9 are byte-identical to schema 4. Symbol set unchanged. Schema-1/2/3/4 readers MUST refuse schema-5 bytes via the startup gate (§3/§7).
 
+**Schema 5 → 6 migration (milestone_0007 §1.1):** the envelope `schema_version` field is now `6`. Two coordinated changes require this bump: **(a) new section `12 HOTBAR`** (44 B fixed) and **new section `14 RIGID_BODIES`** (`4 + 36·count` B) — both emitted **every snapshot**; **(b) new section `13 TARGET`** (32 B fixed) — emitted **every snapshot** (the sim-owned raycast is recomputed per snapshot from the current player pose). A full snapshot therefore has `section_count = 14` (12 when TERRAIN and FLORA are both suppressed in the same non-regeneration snapshot). Sections 1–11 are byte-identical to schema 5. **C ABI bumps 1 → 2** (§3): new symbol `scr_edit_submit` + new 4-byte uplink struct `scr_edit_batch` (§5.1); the eight v1 symbols keep their signatures. Schema-1..5 readers MUST refuse schema-6 bytes via the startup gate (§3/§7).
+
 ### 4.1 Envelope (48 bytes, always present)
 
 | Off | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x53524353` (bytes `S C R S`) |
-| 4 | u32 | `schema_version` | = 5 |
+| 4 | u32 | `schema_version` | = 6 |
 | 8 | u32 | `section_count` | number of sections that follow |
 | 12 | u32 | `world_version` | increments on world regeneration |
 | 16 | u32 | `state_generation` | increments every commit |
@@ -77,7 +82,7 @@ Sections follow the envelope consecutively. Each section:
 
 `payload_bytes = Σ (8 + section_bytes)`.
 
-Sections are emitted in id order 1,2,…,11 (ascending section id). Sections 1, 2, 4, 5, 6, **7, 8, 9, 11** are emitted **every snapshot**; section 3 (TERRAIN) and section 10 (FLORA) follow the presence rule in §4.3 (identical tracker: first snapshot after init, then on `world_version` change).
+Sections are emitted in id order 1,2,…,14 (ascending section id). Sections 1, 2, 4, 5, 6, **7, 8, 9, 11, 12, 13, 14** are emitted **every snapshot**; section 3 (TERRAIN) and section 10 (FLORA) follow the presence rule in §4.3 (identical tracker: first snapshot after init, then on `world_version` change).
 
 ### 4.3 Section payloads
 
@@ -263,6 +268,49 @@ Per record (20 bytes, exactly):
 
 Emitted **every snapshot** (flock state is tick-dependent). Records are emitted in ascending sim slot order (deterministic). A `count` larger than `FLOCK_N_MAX`, a byte count other than `4 + 20·count`, or nonzero pad MUST fail loudly (§8).
 
+**12 — HOTBAR** (44 bytes fixed; schema 6, [milestone_0007 §3.3](../../../../applications/godot/program_increments/v0.0.1/milestone_0007_editing-physics/spec.md))
+
+| Off | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u32 | `count` | slot count, always `9` (`HOTBAR_SLOT_COUNT`) |
+| 4 | u32 | `selected_index` | 0-based selected slot; `< count` |
+| 8 | u32×9 | `material_ids[i]` | stable catalog id per slot (`materials_catalog.json` `catalog_index`; §6 vocabulary) |
+
+Emitted **every snapshot**. The slot table is the sim's resolved parameter table (hotbar.mojo) — the client selects by slot only (§5.1); material identity reaches the client only through this section (AP-13). A `count ≠ 9`, a `selected_index ≥ count`, or a section byte count other than `44` MUST fail loudly (§8).
+
+**13 — TARGET** (32 bytes fixed; schema 6, milestone_0007 §3.3)
+
+| Off | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u8 | `hit` | 1 = terrain hit, 0 = miss (all remaining fields MUST be 0) |
+| 1 | u8×3 | `pad` = 0 | MUST be rejected loudly on decode |
+| 4 | u32 | `material_id` | stable catalog id of the hit surface (0 on miss) |
+| 8 | f32×3 | `hit_position` | world-frame ray hit point |
+| 20 | u32 | `cell_x` | targeted column, grid x |
+| 24 | u32 | `cell_lattice_y` | targeted column surface cell, lattice y |
+| 28 | u32 | `cell_z` | targeted column, grid z |
+
+The ray is owned by the sim: eye = player position + `EYE_HEIGHT`, direction from `(yaw, pitch)` (yaw 0 faces −Z), marched `RAY_RANGE = 32` u at `RAY_STEP = 0.25` u with 8 bisection refinements, against the height field (§6). Emitted **every snapshot** (recomputed from the current pose — pure projection, no stored ray). A miss drives the HUD "SKY / AIR" readout (`SCR-LIB-RENDER-HUD` §2.2). Decode MUST reject: length ≠ 32, `hit > 1`, nonzero pad, or any nonzero field on a miss (§8).
+
+**14 — RIGID_BODIES** (`4 + 36·count` bytes; schema 6, milestone_0007 §3.3/§3.5)
+
+| Off (rel.) | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u32 | `count` | rigid props, `0 ≤ count ≤ 16` (`PROP_N_MAX`) |
+| 4 | record×count | `bodies` | 36 B per record, below |
+
+Per record (36 bytes, exactly):
+
+| Rel. | Type | Field | Notes |
+|---|---|---|---|
+| 0 | f32×3 | `position` (x,y,z) | world frame |
+| 12 | f32×3 | `euler` (rx,ry,rz) | always 0 — minimal model has no angular dynamics (0007 §3.5) |
+| 24 | u32 | `shape` | 0 = box, 1 = sphere |
+| 28 | f32 | `size` | box: uniform half-extent; sphere: radius |
+| 32 | u32 | `material_id` | stable catalog id (§6) |
+
+Emitted **every snapshot** (props integrate every tick). Records in ascending sim slot order (deterministic — 0007 §3.5). Terrain is the static body: contact is resolved sim-side (penetration ⇒ clamp + zero restitution). Decode MUST reject: `count > 16`, a byte count other than `4 + 36·count`, or `shape > 1` (§8).
+
 ## 5. Input uplink (`scr_input_batch`, 20 bytes packed)
 
 | Off | Type | Field |
@@ -276,7 +324,17 @@ Emitted **every snapshot** (flock state is tick-dependent). Records are emitted 
 | 18 | u8 | `action_primary` |
 | 19 | u8 | `action_secondary` |
 
-Semantics: Godot accumulates look deltas per rendered frame and resets them; booleans are level-triggered for the frame. The sim applies the batch to every fixed tick executed within the `scr_sim_step` call that carries it.
+Semantics: Godot accumulates look deltas per rendered frame and resets them; booleans are level-triggered for the frame. The sim applies the batch to every fixed tick executed within the `scr_sim_step` call that carries it. The input batch carries **locomotion intent only** — edits ride `scr_edit_batch` (§5.1).
+
+### 5.1 Edit uplink (`scr_edit_batch`, 4 bytes packed; ABI 2, milestone_0007 §3.2)
+
+| Off | Type | Field | Notes |
+|---|---|---|---|
+| 0 | u8 | `op` | 0 = none, 1 = dig, 2 = place |
+| 1 | u8 | `select_slot` | 0 = no change, 1..9 = select hotbar slot (applied immediately); other values rejected |
+| 2 | u16 | `reserved` | = 0; nonzero ⇒ `SCR_ERR_BAD_STATE` |
+
+The client NEVER names materials or cells: `op=place` uses the currently selected slot's material, and the edited cell comes from the sim-owned raycast of the consuming tick's player pose (§4.3 §13, AP-12). Ops append to a FIFO (≤ `EDIT_QUEUE_MAX = 16` pending) and are consumed **at most one per fixed tick** in submit order; `scr_edit_submit` returns `SCR_ERR_QUEUE_FULL (−5)` — atomically, so a rejected batch applies neither its select nor its op. Determinism: identical `(seed, input, edit)` sequences ⇒ identical world (0007 invariant 4).
 
 ## 6. Locomotion parameter table (normative defaults)
 
@@ -345,6 +403,20 @@ Flora placement + seabird flock (schema 5, milestone_0006; AP-7 — single home 
 
 Flora placement band table (0006 §1.1; `feature_for_column` in `sim/flora.mojo`, pure integer hash over `(seed, x, z)` — no RNG stream): `BEACH → {PALM_CLUSTER, PALM_SOLO}`; `VOLCANIC_SLOPE → {CANOPY_TREE, CANOPY_CLUSTER, SHRUB, FERN_CARPET}`; `CALDERA_RIM / CALDERA_LAKE / SHALLOW_WATER / DEEP_OCEAN → none` — each gated by the elevation window and the per-band slope cap above. Flock rules (0006 §1.1): waypoint seek, alignment, cohesion, separation, terrain/ocean avoidance from the heightfield, speed clamp; fixed slots, bound violation ⇒ despawn + deterministic respawn from `(seed, slot, respawn_count)`, `count ≤ FLOCK_N_MAX` always.
 
+Editing, raycast + rigid props (schema 6, milestone_0007; AP-7 — single home `applications/godot/src/mojo/sim/parameters.mojo`, mirrored here):
+
+| Parameter | Value | Unit |
+|---|---|---|
+| `EDIT_QUEUE_MAX` (edit FIFO capacity; `SCR_ERR_QUEUE_FULL` when exceeded) | 16 | ops |
+| `EDIT_CELL_STEP_U` (dig/place vertical step) | 1.0 | u |
+| `HOTBAR_SLOT_COUNT` / `HOTBAR_SLOT_MIN` (wire `count` / `select_slot` range) | 9 / 1 | — |
+| `RAY_RANGE` (sim ray-march range; TARGET §4.3 §13) | 32.0 | u |
+| `RAY_STEP` (march resolution) | 0.25 | u |
+| `RAY_REFINE_ITERS` (bisection refinements in the hit bracket) | 8 | — |
+| `PROP_N_MAX` / `PROP_N_INIT` (hard cap / deterministic beach anchors) | 16 / 4 | bodies |
+| `PROP_BOX_HALF_U` (box half-extent; spawn size) | 0.5 | u |
+| `PROP_TANGENTIAL_DAMPING` (ground-contact tangential velocity factor) | 0.90 | × |
+
 Display-only crest thresholds (schema 1, unchanged by milestone_0005 — AP-22: shore foam ≠ crest foam): `FOAM_JACOBIAN_THRESHOLD = 0.65` (J < 0.65 ⇒ whitecap), `FOAM_HEIGHT_THRESHOLD = 0.7` (normalized height > 0.7).
 
 Glow derivation (milestone_0003 §3.3): `glow_intensity = emissive_intensity · night_factor(sun_elevation)`, `night_factor` a pure function of the existing `AtmosphereSubject`: 0 for elevation ≥ 0, else `min(−elevation / GLOW_NIGHT_ELEVATION_REF, GLOW_NIGHT_MAX_FACTOR)`.
@@ -378,7 +450,7 @@ Derivations (all pure functions of simulation state — AP-11/AP-15):
 
 ## 7. Versioning & compatibility
 
-- `SCR_SIM_ABI_VERSION` — symbol/semantic contract of the C functions. Mismatch ⇒ adapter refuses to start.
+- `SCR_SIM_ABI_VERSION` — symbol/semantic contract of the C functions (now `2`: `scr_edit_submit` added, milestone_0007). Mismatch ⇒ adapter refuses to start.
 - `SCR_SIM_SCHEMA_VER` — byte layout above. Mismatch ⇒ adapter refuses to start (negative test: `tests/test_schema_mismatch.sh`, stub reports `SCR_SIM_SCHEMA_VER + 1` derived from the header).
 - Additive changes require a schema bump; adapters MUST NOT guess unknown layouts.
 - **Sibling rebasing rule (milestone_0003 §3.5):** milestones 0003 / 0004 / 0005 / 0006 are independent siblings under 0002. Whichever executes later MUST rebase on the then-current schema, fixture, adapter, and contract state — applying its own "+1 over then-current" bump — not on the layouts written in any one spec.

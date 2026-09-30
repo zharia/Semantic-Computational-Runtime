@@ -11,14 +11,38 @@ from std.ffi import c_int, c_char
 from std.runtime import initialize_runtime
 
 from sim.input import InputBatch, idle_input
-from sim.parameters import ABI_VERSION, SCHEMA_VERSION, SCR_ERR_NOT_INIT
+from sim.parameters import (
+    ABI_VERSION,
+    SCHEMA_VERSION,
+    SCR_ERR_NOT_INIT,
+    SCR_ERR_BAD_STATE,
+    SCR_ERR_QUEUE_FULL,
+)
 from sim.runtime import (
     runtime_init,
     runtime_shutdown,
     runtime_step,
     runtime_snapshot_size,
     runtime_snapshot_write,
+    runtime_edit_submit,
 )
+
+
+struct EditBatch(Copyable, Movable, Deinitable, ImplicitlyCopyable):
+    """Mirror of adapter/scr_edit_batch (0007 §3.2): u8 op, u8 select_slot,
+    u16 reserved — 4 bytes packed, natural alignment 2 ⇒ size 4."""
+
+    var op: UInt8
+    var select_slot: UInt8
+    var reserved: UInt16
+
+    def __init__(out self):
+        self.op = 0
+        self.select_slot = 0
+        self.reserved = 0
+
+    def __deinit__(deinit self):
+        pass
 
 
 @export("scr_sim_init")
@@ -77,3 +101,19 @@ def scr_sim_snapshot_write(
         return c_int(-4)  # SCR_ERR_BAD_STATE (null destination)
     var written = runtime_snapshot_write(buf, Int(cap))
     return c_int(Int(written))
+
+
+@export("scr_edit_submit")
+def scr_edit_submit(
+    batch: Pointer[mut=False, EditBatch, ImmUntrackedOrigin]
+) abi("C") -> c_int:
+    """Queue one scr_edit_batch (ABI 2, 0007 §3.2): select applies
+    immediately, op is appended to the FIFO. Returns 0 / SCR_ERR_NOT_INIT /
+    SCR_ERR_BAD_STATE (NULL or reserved != 0) / SCR_ERR_QUEUE_FULL."""
+    initialize_runtime()
+    if Int(batch) == 0:
+        return c_int(Int(SCR_ERR_BAD_STATE))
+    var b = batch[]
+    if b.reserved != 0:
+        return c_int(Int(SCR_ERR_BAD_STATE))
+    return c_int(Int(runtime_edit_submit(b.op, b.select_slot)))

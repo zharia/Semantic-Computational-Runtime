@@ -117,7 +117,6 @@ def build_island(seed: UInt32) raises -> IslandSubject:
     var ctx = NoiseContext(seed)
 
     # --- grids: height, biome, surface material ---------------------------
-    var n_cells = GRID_N * GRID_N
     var peak = -1.0e9
     for iz in range(GRID_N):
         for ix in range(GRID_N):
@@ -197,119 +196,177 @@ def build_island(seed: UInt32) raises -> IslandSubject:
     var chunk_cells = TERRAIN_CHUNK_CELLS
     var chunks_per_side = GRID_N // chunk_cells
     # Corner heights for normals: (N+1)² bilinear samples at corner coords.
+    var corners = compute_corner_heights(island.heights)
+
+    var chunks = List[TerrainChunk]()
+    for cz in range(chunks_per_side):
+        for cx in range(chunks_per_side):
+            chunks.append(
+                build_chunk(island, cx * chunk_cells, cz * chunk_cells, corners)
+                ^
+            )
+    island.chunks = chunks^
+    island.chunk_count = len(island.chunks)
+
+    # --- material vocabulary present ---------------------------------------
+    island.used_materials = present_materials(island)
+    return island^
+
+
+# ---------------------------------------------------------------------------
+# Chunk rebuild path (shared by generation and the 0007 edit pipeline —
+# AP-14: the edit path reuses THIS code, never a second mesh builder)
+# ---------------------------------------------------------------------------
+
+def compute_corner_heights(heights: List[Float64]) raises -> List[Float64]:
+    """(GRID_N+1)² corner samples for normals/vertices (cell-corner coords):
+    corner (i, j) sits at ((i − N/2)·CELL, (j − N/2)·CELL)."""
     var corner_n = GRID_N + 1
     var corners = List[Float64]()
     for j in range(corner_n):
         for i in range(corner_n):
             var cx = (Float64(i) - Float64(GRID_N) / 2.0) * CELL_SIZE
             var cz = (Float64(j) - Float64(GRID_N) / 2.0) * CELL_SIZE
-            corners.append(bilinear_sample(island.heights, cx, cz))
+            corners.append(bilinear_sample(heights, cx, cz))
+    return corners^
 
-    var chunks = List[TerrainChunk]()
-    for cz in range(chunks_per_side):
-        for cx in range(chunks_per_side):
-            var base_ix = cx * chunk_cells
-            var base_iz = cz * chunk_cells
-            var origin_x = (Float64(base_ix) - Float64(GRID_N) / 2.0) * CELL_SIZE
-            var origin_z = (Float64(base_iz) - Float64(GRID_N) / 2.0) * CELL_SIZE
-            var chunk = TerrainChunk(origin_x, 0.0, origin_z)
-            # Vertices: (chunk_cells+1)² grid of corner samples.
-            var vn = chunk_cells + 1
-            for j in range(vn):
-                for i in range(vn):
-                    var gi = base_ix + i
-                    var gj = base_iz + j
-                    var wx = (Float64(gi) - Float64(GRID_N) / 2.0) * CELL_SIZE
-                    var wz = (Float64(gj) - Float64(GRID_N) / 2.0) * CELL_SIZE
-                    var hy = corners[gj * corner_n + gi]
-                    chunk.vertices.append(Float32(wx))
-                    chunk.vertices.append(Float32(hy))
-                    chunk.vertices.append(Float32(wz))
-                    # Normal from central differences over corner heights
-                    # (one-sided at the map edges): n = normalize(-dx, 1, -dz).
-                    var il = gi - 1
-                    if il < 0:
-                        il = 0
-                    var ir = gi + 1
-                    if ir > corner_n - 1:
-                        ir = corner_n - 1
-                    var jd = gj - 1
-                    if jd < 0:
-                        jd = 0
-                    var ju = gj + 1
-                    if ju > corner_n - 1:
-                        ju = corner_n - 1
-                    var span_x_l = Float64(gi - il)
-                    if span_x_l == 0.0:
-                        span_x_l = 1.0
-                    var span_x_r = Float64(ir - gi)
-                    if span_x_r == 0.0:
-                        span_x_r = 1.0
-                    var span_z_d = Float64(gj - jd)
-                    if span_z_d == 0.0:
-                        span_z_d = 1.0
-                    var span_z_u = Float64(ju - gj)
-                    if span_z_u == 0.0:
-                        span_z_u = 1.0
-                    var here = corners[gj * corner_n + gi]
-                    var ddx_l = (here - corners[gj * corner_n + il]) / (CELL_SIZE * span_x_l)
-                    var ddx_r = (corners[gj * corner_n + ir] - here) / (CELL_SIZE * span_x_r)
-                    var ddx = (ddx_l + ddx_r) * 0.5
-                    var ddz_d = (here - corners[jd * corner_n + gi]) / (CELL_SIZE * span_z_d)
-                    var ddz_u = (corners[ju * corner_n + gi] - here) / (CELL_SIZE * span_z_u)
-                    var ddz = (ddz_d + ddz_u) * 0.5
-                    var nx = -ddx
-                    var ny = 1.0
-                    var nz = -ddz
-                    var len_n = sqrt(nx * nx + ny * ny + nz * nz)
-                    chunk.normals.append(Float32(nx / len_n))
-                    chunk.normals.append(Float32(ny / len_n))
-                    chunk.normals.append(Float32(nz / len_n))
-                    # Per-vertex material: surface material of the owning cell
-                    # (encoder maps the voxel code to the catalog id).
-                    var cell_ix = gi
-                    if cell_ix > GRID_N - 1:
-                        cell_ix = GRID_N - 1
-                    var cell_iz = gj
-                    if cell_iz > GRID_N - 1:
-                        cell_iz = GRID_N - 1
-                    chunk.material_ids.append(
-                        island.surface_materials[cell_iz * GRID_N + cell_ix]
-                    )
-                    chunk.blends.append(
-                        island.blends[cell_iz * GRID_N + cell_ix]
-                    )
-            # Indices: two CCW triangles per cell quad (+y front faces):
-            # (a, c, b) and (b, c, d) with a=(i,j), b=(i+1,j), c=(i,j+1).
-            for j in range(chunk_cells):
-                for i in range(chunk_cells):
-                    var a = UInt32(j * vn + i)
-                    var b = a + 1
-                    var c = a + UInt32(vn)
-                    var d = c + 1
-                    chunk.indices.append(a)
-                    chunk.indices.append(c)
-                    chunk.indices.append(b)
-                    chunk.indices.append(b)
-                    chunk.indices.append(c)
-                    chunk.indices.append(d)
-            chunks.append(chunk^)
-    island.chunks = chunks^
-    island.chunk_count = len(island.chunks)
 
-    # --- material vocabulary present ---------------------------------------
+def build_chunk(
+    island: IslandSubject, base_ix: Int, base_iz: Int, corners: List[Float64]
+) -> TerrainChunk:
+    """Indexed mesh for the chunk whose origin cell is (base_ix, base_iz).
+    Single source for both build_island and edit-time rebuilds: identical
+    arithmetic ⇒ identical bytes for identical inputs."""
+    var chunk_cells = TERRAIN_CHUNK_CELLS
+    var corner_n = GRID_N + 1
+    var origin_x = (Float64(base_ix) - Float64(GRID_N) / 2.0) * CELL_SIZE
+    var origin_z = (Float64(base_iz) - Float64(GRID_N) / 2.0) * CELL_SIZE
+    var chunk = TerrainChunk(origin_x, 0.0, origin_z)
+    # Vertices: (chunk_cells+1)² grid of corner samples.
+    var vn = chunk_cells + 1
+    for j in range(vn):
+        for i in range(vn):
+            var gi = base_ix + i
+            var gj = base_iz + j
+            var wx = (Float64(gi) - Float64(GRID_N) / 2.0) * CELL_SIZE
+            var wz = (Float64(gj) - Float64(GRID_N) / 2.0) * CELL_SIZE
+            var hy = corners[gj * corner_n + gi]
+            chunk.vertices.append(Float32(wx))
+            chunk.vertices.append(Float32(hy))
+            chunk.vertices.append(Float32(wz))
+            # Normal from central differences over corner heights
+            # (one-sided at the map edges): n = normalize(-dx, 1, -dz).
+            var il = gi - 1
+            if il < 0:
+                il = 0
+            var ir = gi + 1
+            if ir > corner_n - 1:
+                ir = corner_n - 1
+            var jd = gj - 1
+            if jd < 0:
+                jd = 0
+            var ju = gj + 1
+            if ju > corner_n - 1:
+                ju = corner_n - 1
+            var span_x_l = Float64(gi - il)
+            if span_x_l == 0.0:
+                span_x_l = 1.0
+            var span_x_r = Float64(ir - gi)
+            if span_x_r == 0.0:
+                span_x_r = 1.0
+            var span_z_d = Float64(gj - jd)
+            if span_z_d == 0.0:
+                span_z_d = 1.0
+            var span_z_u = Float64(ju - gj)
+            if span_z_u == 0.0:
+                span_z_u = 1.0
+            var here = corners[gj * corner_n + gi]
+            var ddx_l = (here - corners[gj * corner_n + il]) / (CELL_SIZE * span_x_l)
+            var ddx_r = (corners[gj * corner_n + ir] - here) / (CELL_SIZE * span_x_r)
+            var ddx = (ddx_l + ddx_r) * 0.5
+            var ddz_d = (here - corners[jd * corner_n + gi]) / (CELL_SIZE * span_z_d)
+            var ddz_u = (corners[ju * corner_n + gi] - here) / (CELL_SIZE * span_z_u)
+            var ddz = (ddz_d + ddz_u) * 0.5
+            var nx = -ddx
+            var ny = 1.0
+            var nz = -ddz
+            var len_n = sqrt(nx * nx + ny * ny + nz * nz)
+            chunk.normals.append(Float32(nx / len_n))
+            chunk.normals.append(Float32(ny / len_n))
+            chunk.normals.append(Float32(nz / len_n))
+            # Per-vertex material: surface material of the owning cell
+            # (encoder maps the voxel code to the catalog id).
+            var cell_ix = gi
+            if cell_ix > GRID_N - 1:
+                cell_ix = GRID_N - 1
+            var cell_iz = gj
+            if cell_iz > GRID_N - 1:
+                cell_iz = GRID_N - 1
+            chunk.material_ids.append(
+                island.surface_materials[cell_iz * GRID_N + cell_ix]
+            )
+            chunk.blends.append(island.blends[cell_iz * GRID_N + cell_ix])
+    # Indices: two CCW triangles per cell quad (+y front faces):
+    # (a, c, b) and (b, c, d) with a=(i,j), b=(i+1,j), c=(i,j+1).
+    for j in range(chunk_cells):
+        for i in range(chunk_cells):
+            var a = UInt32(j * vn + i)
+            var b = a + 1
+            var c = a + UInt32(vn)
+            var d = c + 1
+            chunk.indices.append(a)
+            chunk.indices.append(c)
+            chunk.indices.append(b)
+            chunk.indices.append(b)
+            chunk.indices.append(c)
+            chunk.indices.append(d)
+    return chunk^
+
+
+def rebuild_chunk_containing(mut island: IslandSubject, ix: Int, iz: Int) raises:
+    """AP-14: rebuild ONLY the chunk containing cell (ix, iz) — never the
+    other chunks, never the whole island."""
+    var chunk_cells = TERRAIN_CHUNK_CELLS
+    var per_side = GRID_N // chunk_cells
+    if ix < 0 or ix >= GRID_N or iz < 0 or iz >= GRID_N:
+        raise Error(
+            "rebuild_chunk_containing: cell out of grid ("
+            + String(ix) + ", " + String(iz) + ")"
+        )
+    var cx = ix // chunk_cells
+    var cz = iz // chunk_cells
+    var corners = compute_corner_heights(island.heights)
+    island.chunks[cz * per_side + cx] = build_chunk(
+        island, cx * chunk_cells, cz * chunk_cells, corners
+    )
+
+
+def present_materials(island: IslandSubject) -> List[UInt32]:
+    """Distinct voxel codes present (MATERIALS section source): bedrock ∪
+    surface grid ∪ water when any column is submerged — the generation rule,
+    re-run after edits so an edited-in material is emitted (0007 inv.5)."""
     var present = List[UInt32]()
     present.append(MAT_BEDROCK)
     var has_water = False
-    for i in range(n_cells):
-        var code = island.surface_materials[i]
-        _insert_distinct(present, code)
+    for i in range(GRID_N * GRID_N):
+        _insert_distinct(present, island.surface_materials[i])
         if island.heights[i] < SEA_LEVEL:
             has_water = True
     if has_water:
         _insert_distinct(present, MAT_WATER)
-    island.used_materials = present^
-    return island^
+    return present^
+
+
+def refresh_peak_and_materials(mut island: IslandSubject) raises:
+    """Re-derive generation-owned scalars after an edit: peak height feeds
+    TERRAIN_META, used_materials feeds MATERIALS."""
+    var peak = -1.0e9
+    for i in range(GRID_N * GRID_N):
+        var h = island.heights[i]
+        if h > peak:
+            peak = h
+    island.peak_height = peak
+    island.used_materials = present_materials(island)
 
 
 def _catalog_id_for_vertex(code: UInt32) -> UInt32:

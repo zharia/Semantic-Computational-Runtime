@@ -20,7 +20,9 @@
 #     not in the core-slice catalog vocabulary (honesty invariant 9).
 
 from std.collections import List
+from std.math import sqrt
 from synthesis.noise import NoiseContext, gradient_noise
+from synthesis.heightfield import cell_center_x, cell_center_z
 from sim.parameters import (
     SEA_LEVEL,
     LATTICE_Y_OFFSET,
@@ -306,3 +308,35 @@ def classify_biome(
     if height >= SL - SHALLOW_WATER_DEPTH:
         return BIOME_SHALLOW_WATER
     return BIOME_DEEP_OCEAN
+
+
+struct ColumnResynthesis(Copyable, Movable, Deinitable):
+    """Result of the single-column re-synthesis entry (0007 §5 Sprint 01):
+    the reclassified biome plus the pipeline column for the edited height."""
+
+    var biome: Int
+    var column: MaterialColumn
+
+    def __init__(out self, biome: Int, var column: MaterialColumn):
+        self.biome = biome
+        self.column = column^
+
+    def __deinit__(deinit self):
+        pass
+
+
+def resynthesize_column(
+    x: Int, z: Int, height: Float64, ctx: NoiseContext
+) raises -> ColumnResynthesis:
+    """Re-run the NORMATIVE pipeline for one edited column (0007 AP-11).
+
+    Same authority and same argument derivation as build_island's grid pass
+    (sim/island.mojo): cell-centre world coordinates → radius →
+    classify_biome → voxel_synthesis_pipeline with FEATURE_NONE. Never a
+    direct grid poke — callers only copy the returned biome/surface out."""
+    var wx = cell_center_x(x)
+    var wz = cell_center_z(z)
+    var r = sqrt(wx * wx + wz * wz)
+    var biome = classify_biome(wx, wz, height, r)
+    var col = voxel_synthesis_pipeline(x, z, biome, FEATURE_NONE, height, ctx)
+    return ColumnResynthesis(biome, col^)

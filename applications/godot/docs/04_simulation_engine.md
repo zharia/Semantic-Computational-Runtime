@@ -1,8 +1,8 @@
 # 04 — Simulation Engine Design
 
 **Purpose:** Capture the simulation engine design for the Mojo/Godot application.
-**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; extended for milestone 0005 Shoreline Fidelity — Sprint 01..04; extended for milestone 0006 Ecology — Sprint 01..04; honest gaps marked `TBD — future milestone`)
-**Owner milestone:** [v0.0.1 / milestone 0006 — Ecology](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) (baseline: [milestone 0005](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md), [milestone 0004](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md), [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
+**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; extended for milestone 0005 Shoreline Fidelity — Sprint 01..04; extended for milestone 0006 Ecology — Sprint 01..04; extended for milestone 0007 Editing/Hotbar/Physics — Sprint 01..04; honest gaps marked `TBD — future milestone`)
+**Owner milestone:** [v0.0.1 / milestone 0007 — Editing, Hotbar & Physics](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) (baseline: [milestone 0006](../program_increments/v0.0.1/milestone_0006_ecology/spec.md), [milestone 0005](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md), [milestone 0004](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md), [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
 
 ---
 
@@ -21,12 +21,12 @@
 | Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0006)
+## 2. Current Implementation (v0.0.1 / milestone 0007)
 
-- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **flock**), `synthesis/` (noise + height field + voxel synthesis), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI), `main.mojo` (CLI headless entry).
-- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**), `scripts/player_input.gd` (input uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap)**.
-- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 5**: sections 1–11 incl. `10 FLORA` emission-gated + `11 FAUNA` every snapshot).
-- Tests: **15/15 Mojo spec test files** (adds `test_volcano`, `test_atmosphere`, `test_weather`, `test_shoreline_foam`, `test_material_blending`, `test_quench`, `test_flock`, `test_flora_placement`; see §4.4), ABI smoke, schema-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow + sun + rain + **flora/fauna region checks**), playability gate (see §8).
+- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **flock**, **edit**, **raycast**, **hotbar**, **props**), `synthesis/` (noise + height field + voxel synthesis, single-column re-synthesis entry), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI incl. `scr_edit_submit`), `main.mojo` (CLI headless entry).
+- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**, **`scr_hotbar` + `scr_target` + `scr_props` hosts (0007)**), `scripts/player_input.gd` (input + edit intent uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, **`scripts/hotbar_hud.gd` + `scripts/props_view.gd` (0007 presentation)**, `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap)**.
+- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 6 / ABI 2**: sections 1–14 incl. `10 FLORA` emission-gated, `11 FAUNA` every snapshot, **`12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`**; uplink `scr_input_batch` + **`scr_edit_batch`/`scr_edit_submit`**).
+- Tests: **19/19 Mojo spec test files** (adds `test_edit_ops`, `test_raycast`, `test_hotbar`, `test_props`; see §4.4), ABI smoke, **terrain-resend test (`test_terrain_resend.py`)**, schema/ABI-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow + sun + rain + flora/fauna region checks + **editing HUD state**), playability gate (**with scripted dig/place leg**, see §8.7).
 
 ## 3. Constraints Carried Forward (normative, from governing docs)
 
@@ -51,6 +51,10 @@
 | `VolcanoSubject` | `sim/volcano.mojo` (0003) | caldera center/radius, lake level, emissive intensity, crust fraction, effusion state machine (seeded, `EFFUSION_TICK_STEP` draws), plume parameters, glow intensity — pure function of `(seed, simulation_tick, atmosphere)`; `volcano_from_island` + `volcano_tick` driven from `world.mojo` |
 | `FloraSubject` | `sim/flora.mojo` (0006) | seeded flora placement: per-column `feature_for_column(x, z, biome, slope, height, seed)` hash (no RNG stream state — order-independent, AP-11-safe), **band table** (BEACH → palm; VOLCANIC_SLOPE → canopy/shrub/fern; caldera/water bands → none), instance list `(position, yaw, scale, species_id)`, cap `FLORA_N_MAX = 4096`; population is regenerated with the world (first snapshot + `world_version` bump — emission-gated like TERRAIN) |
 | `FlockSubject` | `sim/flock.mojo` (0006) | seabird flock: fixed slot table `0..FLOCK_N_MAX-1` (`FLOCK_N_INIT = 32` active at init), deterministic boids (seek waypoint + alignment + cohesion + separation + terrain/ocean avoidance) integrated in **slot order** (no iteration-order nondeterminism), waypoint orbit on the ocean ring (`FLOCK_WAYPOINT_RADIUS` + jitter), bound violation → despawn/respawn from `(seed, slot, respawn_count)`; position + yaw (+ species_id) per bird, **every tick** |
+| `HotbarSubject` | `sim/hotbar.mojo` (0007) | the 9-slot **catalog-id table** (`hotbar_slot_catalog_ids()` in `parameters.mojo` — ids all resolve from `materials_catalog.json`, no parallel list anywhere, AP-13) + `selected_index` (0-based); `hotbar_select(slot_1based)` rejects out-of-range slots; selection changes **only** via the edit uplink |
+| `PhysicsSubject` | `sim/props.mojo` (0007) | rigid props: fixed slot table `0..PROP_N_MAX-1` (`PROP_N_INIT = 4` active at init), gravity + ground contact + tangential damping, integrated in **slot order** (deterministic); box/sphere shapes from `PROP_SHAPE_*`; emitted as `14 RIGID_BODIES` every snapshot |
+
+Edit state on `World` (0007): `edit_queue` (`EditQueue` FIFO, `EDIT_QUEUE_MAX = 16`, one op consumed per tick) + raycast state feeding `13 TARGET`. The edit pipeline (raycast → dig/place → single-column re-synthesis → chunk-local rebuild → `world_version` bump) is documented in §5.1.
 
 Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps on regeneration), `state_generation` (every tick), `simulation_tick`, `simulation_time`.
 
@@ -65,30 +69,31 @@ Commit metadata on `World`: `seed`, `determinism_epoch`, `world_version` (bumps 
 
 ### 4.3 Provider Interface Contract (Mojo outputs → Godot inputs)
 
-Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v5**, C ABI, input batch, parameter table). Summary:
+Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v6**, C ABI **v2**, input + edit uplink, parameter table). Summary:
 
-- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (=1), `scr_sim_schema_version()` (**=5**), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — 7 symbols, ABI-smoke tested (`tests/abi_smoke.py`).
-- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME, 9 SHORE_FOAM, 10 FLORA (optional, emission-gated), 11 FAUNA (required)`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bumps: `1 → 2` (0003 §3.5, VOLCANO/PLUME), `2 → 3` (0004 §3.5: **SKY 32 → 64 B**), `3 → 4` (0005 §3.3: `9 SHORE_FOAM` + TERRAIN blend tuples), **`4 → 5` (0006 §1.1: `10 FLORA` = `4 + 24·count`, emission-gated; `11 FAUNA` = `4 + 20·count`, every snapshot; sections 1–9 byte-identical)**. Adapter refuses any schema ≠ 5 and validates every section range (`SKY hours ∈ [0,24]`, `elevation ∈ [±1.7]`, `cover/precip/wetness ∈ [0,1]`; FLORA `species_id ∈ [1,7]`, `scale > 0`, `count ≤ 4096`; FAUNA `count ≤ 64`, pad bytes `== 0`; NaN always rejected); `test_schema_mismatch.sh` stub reports `SCR_SIM_SCHEMA_VER + 1`.
-- **Uplink:** `scr_input_batch` (20 bytes) — raw intent only; the sim integrates.
+- **C ABI** (`src/mojo/export/abi.mojo`, header `adapter/scr_godot_abi.h`): `scr_sim_init(seed)`, `scr_sim_shutdown()`, `scr_sim_abi_version()` (**=2**, 0007), `scr_sim_schema_version()` (**=6**, 0007), `scr_sim_step(dt, input*)`, `scr_sim_snapshot_size()`, `scr_sim_snapshot_write(buf, cap)` — the 7 loader-bound symbols — plus **`scr_edit_submit(batch)`** (0007: queue one `scr_edit_batch`; bound directly by the adapter after `scr_sim_load`, 8 exported symbols total), ABI-smoke tested (`tests/abi_smoke.py`).
+- **Downlink:** `RenderSnapshot` = 48-byte envelope + framed sections `1 PLAYER, 2 TERRAIN_META, 3 TERRAIN (optional), 4 OCEAN, 5 SKY, 6 MATERIALS, 7 VOLCANO, 8 PLUME, 9 SHORE_FOAM, 10 FLORA (optional, emission-gated), 11 FAUNA (required), 12 HOTBAR, 13 TARGET, 14 RIGID_BODIES`, little-endian, validated strictly by the adapter (loud `ERR_PRINT`, frame skipped — never coerced). Schema bumps: `1 → 2` (0003 §3.5, VOLCANO/PLUME), `2 → 3` (0004 §3.5: **SKY 32 → 64 B**), `3 → 4` (0005 §3.3: `9 SHORE_FOAM` + TERRAIN blend tuples), `4 → 5` (0006 §1.1: `10 FLORA` = `4 + 24·count`, emission-gated; `11 FAUNA` = `4 + 20·count`, every snapshot; sections 1–9 byte-identical), **`5 → 6` (0007 §1.1: `12 HOTBAR` = 44 B / 9 slots, `13 TARGET` = 32 B, `14 RIGID_BODIES` = `4 + 36·count` ≤ 16; sections 1–11 byte-identical)**. Adapter refuses any schema ≠ 6 / ABI ≠ 2 and validates every section range (`SKY hours ∈ [0,24]`, `elevation ∈ [±1.7]`, `cover/precip/wetness ∈ [0,1]`; FLORA `species_id ∈ [1,7]`, `scale > 0`, `count ≤ 4096`; FAUNA `count ≤ 64`, pad bytes `== 0`; **HOTBAR `bytes == 44`, `count == 9`, `selected_index < 9`; TARGET `bytes == 32`, `hit ≤ 1`, pad `== 0`, all fields zero on miss; RIGID `count ≤ 16`, `bytes == 4 + 36·count`, `shape ≤ 1`**; NaN always rejected); `test_schema_mismatch.sh` stubs report `SCR_SIM_SCHEMA_VER + 1` **and** `SCR_SIM_ABI_VERSION + 1`.
+- **Uplink:** `scr_input_batch` (20 bytes) + **`scr_edit_batch` (4 bytes: `u8 op, u8 select_slot, u16 reserved`)** — raw intent only; the sim integrates motion and resolves ray/hit/material (AP-12).
 - **Transport:** in-process (`dlopen` of `build/libscr_sim.so`); contract is transport-agnostic (IPC swap deferred, spec §9).
 
 ### 4.4 Testing Strategy
 
 | Layer | Test | What it proves |
 |---|---|---|
-| Spec (Mojo) | `tests/mojo/test_*.mojo` — **15 files** | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, volcano subject (0003), atmosphere + weather (0004), shoreline foam + material blending + quench (0005), **flock + flora placement (0006: seed-1 count>0, 2+ species, caps `count ≤ 4096/64` every tick, species ids single-sourced from the catalog, waypoint orbit stable over 3000 ticks, deterministic respawn, raise-based `_check`)** |
-| Binding | `tests/abi_smoke.py` | C ABI symbols, 20-byte input layout, error paths, FFI snapshot == fixture, **schema 5 + FLORA/FAUNA field checks** |
-| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 5 loudly (stub reports `SCR_SIM_SCHEMA_VER + 1`); accepts real lib |
+| Spec (Mojo) | `tests/mojo/test_*.mojo` — **19 files** | determinism, projection purity, envelope/framing, synthesis conformance, Gerstner ranges, catalog derivability, golden fixture, volcano subject (0003), atmosphere + weather (0004), shoreline foam + material blending + quench (0005), flock + flora placement (0006), **edit ops + raycast + hotbar + props (0007: bedrock guard, sea-level fill, biome reclass, `world_version` bookkeeping, hit/miss/range raycast, catalog slot resolution, invalid-slot rejection, prop cap/ground contact, deterministic sequences)** |
+| Binding | `tests/abi_smoke.py` | C ABI symbols (**incl. `scr_edit_submit` + 4-byte `scr_edit_batch` layout**), 20-byte input layout, error paths, FFI snapshot == fixture, **schema 6 + ABI 2 + field checks** |
+| Binding negative | `tests/test_schema_mismatch.sh` | loader refuses schema ≠ 6 **and ABI ≠ 2** loudly (two stubs: `SCR_SIM_SCHEMA_VER + 1`, `SCR_SIM_ABI_VERSION + 1`); accepts real lib |
+| Contract behavior | `tests/test_terrain_resend.py` | one edit ⇒ `world_version` +1 and TERRAIN present in **exactly the next** snapshot, absent after; miss ⇒ no resend |
 | Integration | `tests/godot/godot_load_test.sh` | headless main-scene load, extension registration, zero `ERROR:` lines |
-| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + sun-disc sub-capture + rain-window capture (§8.4) + **0006: flora/fauna scene-tree assertions (≥1 MultiMesh with instances, ≥1 visible bird) and day-only sub-captures `island_flora.png` (green-px) / `island_fauna.png` (near-white-px) (§8.6)** |
-| Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through |
+| Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + sun-disc sub-capture + rain-window capture (§8.4) + flora/fauna scene-tree assertions and sub-captures (§8.6) + **0007: editing HUD state — 9 named hotbar slots with swatches and exactly 1 selected flag, non-empty target readout, visible prop pool (§8.7)** |
+| Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through, **+ F leg (0007): `submit_edit` select/dig/place uplink rc, HUD slot mirror, terrain mesh content changed by dig and again by place, target readout left "SKY / AIR"** |
 | Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) + **AP-15 (no wall-clock tokens in weather/atmosphere sim sources)** |
 
 All Mojo checks are **raise-based** (`_check(cond, msg)` → `raise Error`): this toolchain compiles `assert` to a no-op (verified in `test_volcano.mojo`), so the 0003 sprint converted every `assert` in `test_synthesis_conformance`, `test_gerstner`, `test_catalog` to `_check` — which immediately exposed three latent test-vs-spec bugs (§8.3).
 
 ### 4.5 Successor Specification Reference
 
-Milestone 0006 (Ecology) is **complete** (§8.6). Exact successor sequencing for 0007+: `TBD — future milestone` (spec §10 table; Rule 10).
+Milestone 0007 (Editing, Hotbar & Physics) is **complete** (§8.7). Exact successor sequencing for 0008+: `TBD — future milestone` (spec §10 table; Rule 10).
 
 ## 5. Scene ↔ State Mapping (the ADAPTER CONTRACT)
 
@@ -112,12 +117,52 @@ Group discovery is by Godot node group; absent groups are tolerated (presentatio
 | `scr_rain` | `GPUParticles3D` + `ParticleProcessMaterial` (0004) | `5 SKY` | `emitting = (precipitation > 0)`; `amount_ratio = precipitation` (drives live count **and** emission rate — avoids `set_amount`, which restarts the GPU system); wetness: (0005) gain `(1 − 0.35·wetness)` now lives in the material `albedo_color` and multiplies the vertex-colour albedo (catalog moved to `ARRAY_COLOR`), re-applied inside `update_materials()` so the per-frame rewrite cannot erase it |
 | `scr_flora` | `Node3D` host + `scripts/flora_view.gd` (0006) | `10 FLORA` (emission-gated) | adapter validates the section, then `callv("apply_flora", [bytes, materials])` **only while §10 is present** (absence never clears the view — invariant 5) and `callv("set_wetness_gain", k)` when the gain changes. The script materializes **one `MultiMeshInstance3D` per species** (`Species_1..7`, `transform_format = TRANSFORM_3D`, instance = `(position, Basis(yaw)·scale)` from the wire; meshes built once from Godot primitives — presentation only, AP-11) with a `ShaderMaterial` on `shaders/flora_wing.gdshader`. `materials` = Dictionary `species → {albedo, roughness}` resolved by the adapter through the **catalog mirror** (MATERIALS record with `id == catalog_index` wins, else `scr::kSpeciesDisplay` — foliage idx 34 / bamboo idx 33 / moss idx 81, AP-14). Sway runs on shader `TIME` (display-only, AP-12) |
 | `scr_fauna` | `Node3D` host + `scripts/fauna_view.gd` (0006) | `11 FAUNA` (every snapshot) | adapter validates the section, then `callv("apply_fauna", [bytes])` every snapshot; the script repositions a **pooled ≤ 64 `MeshInstance3D` children** (`Bird_0..63`, extras hidden — no per-frame allocation): `position` from the record, `rotation.y = +yaw` (no flip), shared box-bird `ArrayMesh` + `flora_wing.gdshader` material with `flap_amount/flap_speed` (wing lift ∝ |x| on shader `TIME` — no flap phase in the bytes, AP-12). `species_id 0 = seabird` (only emitted id; others render as the seabird mesh — species semantics stay sim-side) |
+| `scr_hotbar` | `HBoxContainer` host + `scripts/hotbar_hud.gd` (0007) | `12 HOTBAR` (every snapshot) | adapter validates the section (44 B, count 9, `selected_index < 9`), then `callv("apply_hotbar", [selected_index, ids, names, colors])` **change-latched** (only when `selected_index`/`first_id` change — the section carries no animation state). The script builds **9 `PanelContainer` slots** in `_ready` (number `Label` + catalog name `Label` + `ColorRect` swatch) and renders: selection highlight via `StyleBoxFlat` override + read-only `selected` meta flag, name from the adapter's **catalog mirror** (`vocab_name_of`: MATERIALS record with matching id wins, else `scr::kVocabDisplay`, else `#<id>` — AP-13: no GDScript vocabulary), swatch `ColorRect.color` from the same resolution (`vocab_albedo_of`, grey 0.5 fallback). Display-only; selection reaches the sim only as edit intent (§5 uplink) |
+| `scr_target` | `Label` (no script) | `13 TARGET` (every snapshot) | adapter validates the section (32 B, `hit ≤ 1`, pad 0, **all fields zero on miss**) then sets `text` directly, change-latched: miss ⇒ `"SKY / AIR"` (per `lib/A01_Render/HUD` §2.2), hit ⇒ `"<name> #<id>"` through the same catalog mirror. No script: the readout is pure adapter projection |
+| `scr_props` | `Node3D` host + `scripts/props_view.gd` (0007) | `14 RIGID_BODIES` (every snapshot) | adapter validates the section (`count ≤ 16`, `bytes == 4 + 36·count`, `shape ≤ 1`), then `callv("apply_props", [bytes, colors])` where `colors` maps referenced material ids → albedo (same catalog mirror). The script keeps a **pool ≤ 16 `MeshInstance3D` children** (`Prop_0..15`, extras hidden): position from the record, shape/size-latched mesh rebuild (`BoxMesh` 2·`half_extent` / `SphereMesh` radius — mesh rebuilt only when shape/size change), albedo via `StandardMaterial3D.albedo_color` (dict lookup, grey fallback). Display-only |
 
 **Input uplink (scene → sim):** `scripts/player_input.gd` calls
 `ScrSim.submit_input(move_x, move_y, look_dx, look_dy, jump, sprint, action_primary, action_secondary)`
 every physics frame (parent-before-child order guarantees the adapter consumes the same frame). Look deltas accumulate per frame and reset after batching (adapter); movement is clamped to the unit circle (adapter); booleans are level-triggered per frame. The script contains **zero gameplay logic** (AP-8): no node movement, no world writes. Look deltas are passed through as **raw device deltas**; the device→world sign mapping (yaw positive = left per contract §6, so mouse-right must *decrease* yaw) is applied exactly once, in the sim input decode `sim/subjects.mojo::collect_intent` — the script stays a pure passthrough and the sim stays the semantic authority for input meaning.
 
+**Edit uplink (scene → sim, 0007):** `scripts/player_input.gd` also maps input to **edit intent only** and calls `ScrSim.submit_edit(op, select_slot)`:
+
+| Input (mouse captured) | Intent | Notes |
+|---|---|---|
+| LMB (captured) | `submit_edit(1, 0)` — dig | sim raycasts, resolves cell/material |
+| LMB (uncaptured) | capture mouse | no edit submitted |
+| RMB (captured) | `submit_edit(2, 0)` — place | uses current sim hotbar selection |
+| Keys `1`–`9` (physical) | `submit_edit(0, d)` — select slot `d` | `0` op = selection-only entry |
+| Wheel up / down (captured) | `submit_edit(0, wrapi(slot ± 1, 1, 10))` — wraps 1..9 | cycling reads `get_hotbar_selected_slot()` (adapter read-only display mirror of `12 HOTBAR`) |
+| `Esc` | release mouse | no edit submitted |
+
+`submit_edit(op, select_slot)` is a bound method on `ScrSim`: it validates only that the integers fit `u8` (else `SCR_ERR_BAD_STATE`), then forwards the verbatim 4-byte `scr_edit_batch` to `scr_edit_submit` (dlsym'd in `_ready` after `scr_sim_load`; refused → `ERR_PRINT`, edit path disabled, motion unaffected). The sim validates op range, slot range, ray and material semantics — the client never names materials or cells (AP-12). Intent-only: no node movement, no world writes (AP-8).
+
 **Ocean node contract:** transform kept identity (position 0,0,0) so the shader's local space equals the world frame (documented in `shaders/ocean.gdshader` header).
+
+### 5.1 Edit pipeline (0007)
+
+```text
+input (LMB/RMB/keys/wheel)
+  → player_input.gd: intent only        {op ∈ 0/1/2, select_slot ∈ 0..9}
+  → ScrSim.submit_edit → scr_edit_submit → World.edit_queue (FIFO ≤ 16)
+  → each tick: consume ONE batch
+        select_slot ≠ 0 → hotbar_select()            (sim state)
+        op = dig/place → sim raycast (RAY_RANGE/RAY_STEP/RAY_REFINE_ITERS)
+             hit? → target cell + material from sim hotbar selection
+                  → dig/place guard (bedrock y=0, sea-level fill)
+                  → classify_biome + voxel_synthesis_pipeline for the column
+                  → heightfield + surface material update
+                  → rebuild ONLY the containing chunk mesh (16×16 cells)
+                  → world_version += 1
+             miss → consumed, no mutation (target = "SKY / AIR")
+  → runtime: encode 12/13/14 + (if world_version changed) TERRAIN
+  → adapter: TERRAIN rides the existing emission path (chunk-local rebuild
+             visible in-game) · apply_hotbar / apply_target / apply_props
+  → HUD: hotbar slots, target readout, prop transforms (display-only)
+```
+
+Invariants (spec §6): pipeline authority (no direct grid pokes — AP-11), bedrock `y = 0` never overwritten, submerged dig ⇒ water fill to `SEA_LEVEL`, hit authority (ray + hotbar are sim state — AP-12), catalog vocabulary only (AP-13), `world_version` +1 per applied edit ⇒ TERRAIN in exactly the next snapshot (emission invariant), chunk-local rebuild only (AP-14), `rigid_body_count ≤ 16`, byte-identical snapshot sequence for identical edit sequences.
 
 ## 6. Parameter Table (AP-7)
 
@@ -320,6 +365,37 @@ The adapter resolves these through a documented **mirror table** (`scr::kSpecies
 
 Scene-side display constants (plume-albedo precedent, NOT sim tunables): bird albedo `(0.90, 0.91, 0.93)`, roughness `0.65`, `flap_amount 0.22`, `flap_speed 7.0` (`fauna_view.gd`); per-species sway amplitudes `0.03..0.14` u (`flora_view.gd::SWAY`); shader `flora_wing.gdshader` (`sway_height 3.0`, `sway_speed 1.1`). Wetness: flora materials receive the shared `wetness_gain()` (§6.6 `WETNESS_TINT`) via `set_wetness_gain(k)` on change; birds are not wetness-tinted (display choice).
 
+### 6.9 Editing, hotbar, raycast & minimal physics (0007, `parameters.mojo` + scene display)
+
+Source of truth: `src/mojo/sim/parameters.mojo` (§6 preamble). Normative defaults:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `EDIT_QUEUE_MAX` | `16` | `scr_edit_submit` FIFO bound; past depth ⇒ `SCR_ERR_QUEUE_FULL (-5)`; one op consumed per fixed tick |
+| `EDIT_OP_NONE/DIG/PLACE` | `0 / 1 / 2` | `scr_edit_batch.op` enum |
+| `EDIT_CELL_STEP_U` | `1.0` u | dig/place vertical step (one column per op) |
+| `HOTBAR_SLOT_COUNT` / `HOTBAR_SLOT_MIN` | `9` / `1` | wire `count`; `select_slot` range 1..9 (0 = no change) |
+| `RAY_RANGE` | `32.0` u | sim-owned ray-march range (0007 §1.1) |
+| `RAY_STEP` | `0.25` u | march resolution over the height field |
+| `RAY_REFINE_ITERS` | `8` | bisection refinements inside the last hit bracket |
+| `PROP_N_MAX` / `PROP_N_INIT` | `16` / `4` | hard cap (invariant 7) / active props at init (deterministic beach anchors) |
+| `PROP_BOX_HALF_U` | `0.5` u | box uniform half-extent (wire half-extents) |
+| `PROP_SHAPE_BOX` / `PROP_SHAPE_SPHERE` | `0` / `1` | RIGID_BODIES shape enum (`shape > 1` rejected) |
+| `PROP_TANGENTIAL_DAMPING` | `0.90` × | per-contact tangential damping (§3.5) |
+| `SCHEMA_VERSION` / `ABI_VERSION` | `6` / `2` | 5 → 6 adds sections 12/13/14 (1–11 byte-identical); ABI 1 → 2 adds `scr_edit_submit` + 4-byte `scr_edit_batch` |
+
+**Hotbar default slots (test oracle, `parameters.mojo::hotbar_slot_catalog_ids()` — AP-13: one sim-side list):**
+
+| Slot | Catalog id | Slot | Catalog id | Slot | Catalog id |
+|---|---|---|---|---|---|
+| 1 | `rock.basalt` | 4 | `mineral.sulfur` | 7 | `fluid.water` |
+| 2 | `soil.sand` | 5 | `mineral.ash` | 8 | `soil.dirt` |
+| 3 | `rock.obsidian` | 6 | `fluid.lava` | 9 | `rock.pumice` |
+
+All 9 ids resolve from `lib/A01_Render/Material/materials_catalog.json` (conformance-tested in `test_hotbar.mojo`). Names/`base_color_srgb` reach the HUD through the adapter's **catalog mirror** (`scr::kVocabDisplay` in `scr_godot_adapter.cpp`; MATERIALS record with matching id wins, else mirror, else `#<id>` / grey 0.5 — same pattern as `scr::kSpeciesDisplay`, 0006 AP-14 → 0007 AP-13). Hotbar/target/props HUD styling (panel sizes, selection `StyleBoxFlat`, swatch layout) is display-only.
+
+**Chunk-rebuild perf note (AP-14, recorded not benchmarked):** a dig/place touches **1 column + 1 chunk mesh** (≤ 17×17 verts, `TERRAIN_CHUNK_CELLS = 16`) instead of the 64×64 heightfield; `world_version` bumps once per applied op so the adapter receives exactly one TERRAIN resend (§5.1, `test_terrain_resend.py`). Full perf budgets remain `TBD — future milestone` (0002 §9 carried forward).
+
 ## 7. Gerstner: sim vs display authority · shore-foam deviation (RESOLVED 0005)
 
 - **Sim is authoritative.** `ocean/gerstner.mojo` computes `y(x,z,t) = sea + A·cos θ` (grounding: `player.in_water`, shoreline), Jacobian `J = 1 − Q·k·A·cos θ`, foam thresholds, all per `SCR-LIB-MATH-GERSTNER`.
@@ -341,9 +417,11 @@ bash applications/godot/scripts/build_godot_provider.sh     # build
 bash applications/godot/scripts/check_layout.sh             # layout + AP-1 + AP-4
 bash applications/godot/tests/godot/godot_load_test.sh            # headless load, no errors
 bash applications/godot/tests/godot/godot_screenshot.sh           # rendered capture + luminance (needs display)
-bash applications/godot/tests/godot/godot_playability_test.sh     # scripted input (headless)
-python3 applications/godot/tests/abi_smoke.py               # C ABI
-bash applications/godot/tests/test_schema_mismatch.sh       # negative: schema refusal
+bash applications/godot/tests/godot/godot_playability_test.sh     # scripted input incl. dig/place leg (headless)
+python3 applications/godot/tests/abi_smoke.py               # C ABI (incl. scr_edit_submit, ABI 2)
+bash applications/godot/tests/test_schema_mismatch.sh       # negative: schema + ABI refusal
+python3 applications/godot/tests/test_terrain_resend.py     # negative/positive: edit ⇒ exactly-one TERRAIN resend
+for t in applications/godot/tests/mojo/test_*.mojo; do .venv/bin/mojo run -I applications/godot/src/mojo "$t"; done   # 19 spec-test files
 ```
 
 **Sprint-04 results (2026-09-26):**
@@ -749,7 +827,52 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 
 
 
+### 8.7 Milestone 0007 (Editing, Hotbar & Physics) — Sprint 03/04 verification record (2026-09-30)
+
+**Sprints 01–02 (sim + contract):** `sim/edit.mojo` (edit FIFO, dig/place guards, single-column re-synthesis, chunk-local rebuild, `world_version` +1), `sim/raycast.mojo` (sim-owned ray-march + bisection refine), `sim/hotbar.mojo` (9-slot catalog table + selection), `sim/props.mojo` (`PhysicsSubject`, N ≤ 16, gravity + ground contact, slot-order), `scr_edit_submit` in `export/abi.mojo`, schema **6** (`12 HOTBAR` 44 B, `13 TARGET` 32 B, `14 RIGID_BODIES` `4+36·count` ≤ 16; sections 1–11 byte-identical), ABI **2**, fixture regenerated (**249 680 B, 14 sections**), `test_edit_ops` / `test_raycast` / `test_hotbar` / `test_props` new + `test_determinism` / `test_synthesis_conformance` / `test_envelope` extended, `abi_smoke` + `test_terrain_resend` extensions.
+
+**Sprint 03 (adapter/scene) evidence:**
+
+| Gate / probe | Result |
+|---|---|
+| `scripts/build_godot_provider.sh` | PASS — schema-6 decode (HOTBAR/TARGET/RIGID_BODIES MUST-reject validation), `scr_edit_submit` dlsym binding, `apply_hotbar`/`apply_target`/`apply_props` dispatch compiled, 7 loader symbols |
+| `tests/godot/godot_load_test.sh` | PASS — 0 `ERROR:` lines, 0 WARNING lines (hosts resolve: groups `scr_hotbar`/`scr_target`/`scr_props`, scripts attached) |
+| Catalog mirror probe (adapter side) | slot 3 → `rock.obsidian` name `Obsidian` / `#11` (MATERIALS record or `scr::kVocabDisplay`; observed live in playability F7 + screenshot HUD assertions) |
+| Scene-tree state (`_check_node_state`) | hotbar **9/9 named + 9/9 swatches + exactly 1 selected**, target readout `Sand #3` (hit path), props **4 visible meshes** (`PROP_N_INIT`) |
+
+**Sprint 04 — full §7 gate run (2026-09-30):**
+
+| # | Gate | Result |
+|---|---|---|
+| 1 | 19/19 mojo spec-test files (`test_edit_ops`, `test_raycast`, `test_hotbar`, `test_props` + the 15 prior) | PASS (0 failures) |
+| 2 | `python3 tests/abi_smoke.py` — schema 6, ABI 2, `scr_edit_submit` + 4-byte layout | PASS |
+| 3 | `python3 tests/test_terrain_resend.py` | PASS — dig ⇒ TERRAIN in exactly the next snapshot + `world_version 1→2`; idle suppressed; miss ⇒ no bump |
+| 4 | `bash tests/test_schema_mismatch.sh` | PASS — **8 checks**: schema stub ⇒ `-103`, ABI stub ⇒ `-102` (invariant 9), both refuse without retaining handle, real lib accepted (control) |
+| 5 | `bash scripts/check_layout.sh` (AP-1/AP-4/AP-15) | PASS |
+| 6 | `bash scripts/build_godot_provider.sh` | PASS (OK — provider built) |
+| 7 | `bash tests/godot/godot_load_test.sh` | PASS (0 `ERROR:`, 0 WARNING) |
+| 8 | `bash tests/godot/godot_playability_test.sh` | PASS — A–E unchanged (horizontal 24.00 u, jump gain 1.73 u, y ∈ [2.31, 10.49], yaw −0.750) + **F leg F1–F13**: select/dig/place rc 0, HUD slot mirror + `selected` meta, terrain mesh content changed by dig **and** again by place, target left `SKY / AIR`, props pool 4 |
+| 9 | `bash tests/godot/godot_screenshot.sh` (day) | PASS — scene assertions + **editing HUD state** (9/9/1 hotbar, non-empty target, props ≥ 1); luminance island `176.51/40.87`, rain `132.91/57.04`, flora `145.85/51.91`, fauna `165.25/45.59`; plume `rows=66/72 deviating=1236`; aerial + `check_shoreline_foam.py` **PASS** `in-band=1246 out-of-band=0` (foam gate extended: schema 6 whitelist + bottom-HUD mask, see resolved list) |
+
+**Evidence PNGs** (`applications/godot/build/`): `island.png` (day spawn, tick 1955), `island_crater.png`, `island_sun.png`, `island_rain.png`, `island_flora.png`, `island_fauna.png`, `aerial.png` (fog OFF, foam-gate frame — hotbar/target overlays visible at the frame edges, masked by the gate).
+
+**Resolved during verification:**
+
+- **Foam gate schema whitelist:** `check_shoreline_foam.py` refused the schema-6 fixture (`not in (4, 5)`); sections 1–11 it reads are byte-identical to schema 5 ⇒ whitelist extended to `(4, 5, 6)` with the byte-identity justification in-place (no assertion weakened).
+- **Foam gate counted the new HUD as offshore foam:** the aerial frame now carries the bottom-anchored hotbar panels + target readout (bright presentation pixels over water) ⇒ `out-of-band=15381`, `dist=inf` samples at the panel columns. Fixed by extending the gate's existing top-HUD mask with a **bottom `--bottom-hud-rows` (default 96)** mask — same display-condition class as `HUD_ROWS=72` and the `--fog=0` aerial condition; scene-pixel assertion unchanged. Recheck: `in-band=1246 out-of-band=0 ratio=0.0000`.
+- **Edit uplink binding:** `scr_edit_submit` is not in the 7-symbol loader set — bound by the adapter via `dlsym` after `scr_sim_load` (`_ready`), nulled in `_exit_tree`; missing symbol ⇒ `ERR_PRINT` + edit path disabled, motion unaffected (load/playability gates prove the happy path; documented in §5).
+
+**Anti-pattern review (spec §7 final item): PASS** — evidence per row (0007 §2.2; §2.1 AP-1..10 re-run via `check_layout.sh` + load/playability gates):
+
+| AP | Claim | Evidence |
+|---|---|---|
+| AP-11 | No raw terrain poke — edits re-run `classify_biome` + `voxel_synthesis_pipeline` | `test_edit_ops` (bedrock guard, sea-level fill + biome reclass, `world_version` bookkeeping) + `test_synthesis_conformance` edited-column cases; pipeline path is the only mutation route (§5.1) |
+| AP-12 | No client-side hit authority — client submits `{op, select_slot}` only | `scr_edit_batch` is 4 bytes with no cell/material fields; `submit_edit` validates only `u8` fit and forwards verbatim; playability F9–F13 prove sim-side hit resolution end-to-end (mesh content changed); identical-scripted-edits determinism in `test_determinism` |
+| AP-13 | No parallel hotbar vocabulary | slots are `hotbar_slot_catalog_ids()` (one sim-side list, all ids conformance-tested against `materials_catalog.json` in `test_hotbar`); HUD names/colors arrive from `12 HOTBAR` through the adapter catalog mirror (MATERIALS wins, else `kVocabDisplay`); zero vocabulary in GDScript (grep: `hotbar_hud.gd` renders only received strings) |
+| AP-14 | No full-world rebuild per edit | chunk-local rebuild only (`TERRAIN_CHUNK_CELLS = 16`, ≤ 17×17 verts per edit), one `world_version` bump per op (perf note §6.9); `test_terrain_resend` proves exactly-one TERRAIN resend; playability F10/F13 show mesh-content changes landing through the normal decode path |
+
 ## 9. Honest Gaps (open)
+
 
 1. MATERIALS framing blocker (§8) — **RESOLVED** (contract header amended to `4 + 36·N` per field table/fixture, adapter aligned; decode verified end-to-end: load test materializes 16 chunks, abi smoke byte-identical).
 2. Godot-cpp from-scratch bootstrap recipe not re-run clean-room ([02 §1.1](02_development_environment.md)).
@@ -764,13 +887,17 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 11a. **Blend roughness/emission stay dominant (0005 §1.1 recorded limitation):** only albedo blends per vertex; roughness/emission/opacity come from the grouped surface's dominant material record. Full per-vertex PBR = rejected §1.1 (needs weight vectors / triplanar shader).
 11b. **Foam texture resolution = sim grid (64², linear-filtered):** the shore band interpolates cell-to-cell; a higher-resolution field would need sim-side resampling — no contract for it (Rule 9).
 11. **Glow light geometry is a display hack (0003 §6.5):** `GLOW_DISPLAY_LIFT_U = 60` + `omni_range 90` exist because a light physically inside the crater bowl cannot light the visible outer slopes (`NdotL < 0`); energy stays the sim contract value. If 0004/0005 add a real crater-interior camera default or volumetric scattering, the lift should be revisited.
-12. **Flora regrowth after voxel edits (0006):** FLORA is regenerated with the world (first snapshot + `world_version` bump — §5), so a future 0007 terrain edit regenerates the population; but the **voxel-flora feature itself stays disabled** (0004 §9) — no per-block flora, no regrowth animation. Editing interaction = `TBD — future milestone` (0007 spec).
+12. **Flora regrowth after voxel edits (0006, narrowed by 0007):** FLORA is regenerated with the world (first snapshot + `world_version` bump — §5), so a 0007 terrain edit **does** regenerate the population on the resend snapshot; but the **voxel-flora feature itself stays disabled** (0004 §9) — no per-block flora, no regrowth animation.
 13. **Wind-coupled sway (0006 AP-12):** sway amplitude/phase come from shader `TIME`, not from the sim wind vector — the wire has no phase field (and none was invented). Sway driven by sim wind = `TBD — future milestone` (needs a contract field + phase semantics, Rule 10).
 14. **Spawn-frame camera framing variance (0006, observed):** rendered runs occasionally capture `island.png` with a day-like sun-facing framing where others show the island-facing frame (measured: spawn mean 168.15 vs 181.66 across valid day runs; one night run measured a day-like dome flank — §8.6). Luminance/region/foam gates stayed green throughout, but the night dome check flaked once in three attempts. Root cause not isolated (rendered-physics/camera timing suspected); recorded honestly, no gate was weakened except the documented night-foam skip.
+15. **Interactive manual dig/place session (0007 §7) not executed this sprint:** the spec's manual procedure (interactive run, LMB dig, keys 2/3 + place, before/after captures) needs a human-driven session. Recorded evidence is the automated companion: playability F leg (select/dig/place uplink + mesh-content assertions, §8.7 gate 8) and screenshot HUD/state assertions (gate 9). The manual procedure stays documented in spec §7 for a user-run confirmation.
+16. **Deferred 0007 scope:** Material Inspector fields (spec §1.2), inter-body collision / advanced prop physics (`props.mojo` = gravity + ground contact only, §6.9), edit undo/history — all `TBD — future milestone` (spec §1.2/§9, invariant 11).
+17. **Day screenshot gate content-assertion flake (0007, observed during independent verification):** 1 of 6 consecutive day `godot_screenshot.sh` runs exited 1 at the scene/content-assertion phase; the failing run's stdout was not retained, so the specific assertion could not be isolated (all `exit 1` paths print a `SCREENSHOT: FAIL —` line — `godot_screenshot.gd:_fail`). The 5 other runs passed with full assertions (hotbar 9/9 named + 1 selected, target non-empty, props visible, plume/lava/sun/rain/flora/fauna regions). Same class as gap 14 (rendered-timing variance); no gate weakened; root cause `TBD — future milestone` if it recurs.
 
 ## References
 
 - [Documentation index](README.md)
+- [spec — milestone 0007 (Editing, Hotbar & Physics)](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md)
 - [spec — milestone 0006 (Ecology)](../program_increments/v0.0.1/milestone_0006_ecology/spec.md)
 - [spec — milestone 0005 (Shoreline Fidelity)](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md)
 - [spec — milestone 0004 (Atmosphere & Weather)](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md)

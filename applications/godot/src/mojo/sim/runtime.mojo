@@ -20,7 +20,12 @@ from std.ffi import external_call, c_int, c_char
 from sim.world import World, world_init, step_world
 from sim.input import InputBatch, idle_input
 from snapshot.encode import encode_snapshot
-from sim.parameters import SCR_ERR_NOT_INIT, SCR_ERR_BAD_STATE
+from sim.edit import edit_apply_batch
+from sim.parameters import (
+    SCR_ERR_NOT_INIT,
+    SCR_ERR_BAD_STATE,
+    SCR_ERR_QUEUE_FULL,
+)
 
 comptime HANDLE_ENV: String = "SCR_SIM_HANDLE"
 
@@ -204,6 +209,28 @@ def runtime_step(frame_dt: Float64, input: InputBatch) -> Int32:
         h[].last_flora_emitted = h[].world.world_version
         h[].stepped = True
         return ticks
+    except e:
+        return SCR_ERR_BAD_STATE
+
+
+def runtime_edit_submit(op: UInt8, select_slot: UInt8) -> Int32:
+    """Apply one scr_edit_batch (0007 section 3.2): select applies
+    immediately, op queues in the FIFO. Returns 0, SCR_ERR_NOT_INIT,
+    SCR_ERR_QUEUE_FULL or SCR_ERR_BAD_STATE. tick_world consumes one op per
+    fixed tick."""
+    var addr = _read_handle_addr()
+    if addr == 0:
+        return SCR_ERR_NOT_INIT
+    var h = Pointer[mut=True, SimHandle, MutUntrackedOrigin](
+        unsafe_from_address=Int(addr)
+    )
+    if not h[].initialized:
+        return SCR_ERR_NOT_INIT
+    try:
+        var ok = edit_apply_batch(h[].world.edit_queue, h[].world.hotbar, op, select_slot)
+        if not ok:
+            return SCR_ERR_QUEUE_FULL
+        return 0
     except e:
         return SCR_ERR_BAD_STATE
 

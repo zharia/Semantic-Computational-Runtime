@@ -3,6 +3,9 @@
 # Milestone_0003 §7 amendment: byte identity MUST cover sections 7 VOLCANO
 # and 8 PLUME. Milestone_0005: byte identity MUST also cover section 9
 # SHORE_FOAM (schema 4, section_count == 9 with TERRAIN).
+# Milestone_0007: byte identity MUST also cover sections 12 HOTBAR /
+# 13 TARGET / 14 RIGID_BODIES (schema 6), and a scripted edit sequence
+# (select + DIG/PLACE each tick) must be byte-identical between equal runs.
 # Headless: runs without Godot.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
@@ -14,7 +17,14 @@ from std.testing import TestSuite
 
 from sim.world import world_init, step_world, world_fingerprint
 from sim.input import InputBatch
-from sim.parameters import SCHEMA_VERSION, FLOCK_N_MAX
+from sim.parameters import (
+    SCHEMA_VERSION,
+    FLOCK_N_MAX,
+    EDIT_OP_DIG,
+    EDIT_OP_PLACE,
+    HOTBAR_SLOT_COUNT,
+)
+from sim.edit import edit_apply_batch
 from snapshot.encode import encode_snapshot
 from snapshot.decode import (
     decode_envelope,
@@ -30,11 +40,18 @@ from snapshot.types import (
     SEC_SHORE_FOAM,
     SEC_FLORA,
     SEC_FAUNA,
+    SEC_HOTBAR,
+    SEC_TARGET,
+    SEC_RIGID_BODIES,
     VOLCANO_BYTES,
     PLUME_BYTES,
     SHORE_FOAM_HEADER_BYTES,
     FLORA_HEADER_BYTES,
     FAUNA_HEADER_BYTES,
+    HOTBAR_BYTES,
+    TARGET_BYTES,
+    RIGID_HEADER_BYTES,
+    RIGID_RECORD_BYTES,
     get_u32,
 )
 
@@ -70,6 +87,27 @@ def run_sequence(seed: UInt32, input: InputBatch) raises -> List[List[UInt8]]:
     var world = world_init(seed)
     var out = List[List[UInt8]]()
     for _ in range(SEQ_TICKS):
+        var ran = step_world(world, 1.0 / 60.0, input)
+        _check(ran == 1, "dt=1/60 must run exactly one tick")
+        out.append(encode_snapshot(world, True))
+    return out^
+
+
+def run_sequence_with_edits(seed: UInt32, input: InputBatch) raises -> List[List[UInt8]]:
+    """Like run_sequence, but before every tick the scripted edit batch is
+    submitted (cycling hotbar selection; DIG early, PLACE at the last tick).
+    Determinism must survive the edit pipeline's column recompute."""
+    var world = world_init(seed)
+    var out = List[List[UInt8]]()
+    for i in range(SEQ_TICKS):
+        var select = UInt8(i % HOTBAR_SLOT_COUNT + 1)
+        var op = EDIT_OP_DIG
+        if i == SEQ_TICKS - 1:
+            op = EDIT_OP_PLACE
+        _check(
+            edit_apply_batch(world.edit_queue, world.hotbar, op, select),
+            "scripted batch accepted at tick " + String(i),
+        )
         var ran = step_world(world, 1.0 / 60.0, input)
         _check(ran == 1, "dt=1/60 must run exactly one tick")
         out.append(encode_snapshot(world, True))
@@ -133,31 +171,44 @@ def test_sequence_is_progressive_not_stuck() raises:
 
 
 def test_volcano_plume_sections_in_byte_identity() raises:
-    """Byte identity covers sections 7/8, 9 SHORE_FOAM and (schema 5)
-    10 FLORA / 11 FAUNA."""
+    """Byte identity covers sections 7/8, 9 SHORE_FOAM, 10 FLORA / 11 FAUNA
+    and (schema 6) 12 HOTBAR / 13 TARGET / 14 RIGID_BODIES."""
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(1, scripted_input())
     var snap = a[SEQ_TICKS - 1].copy()
-    # Envelope: schema 5, eleven sections (1..11 with TERRAIN + FLORA).
-    _check(SCHEMA_VERSION == 5, "sim parameters SCHEMA_VERSION == 5")
+    # Envelope: schema 6, fourteen sections (1..14 with TERRAIN + FLORA).
+    _check(SCHEMA_VERSION == 6, "sim parameters SCHEMA_VERSION == 6")
     _check(
         Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
-        "envelope schema_version == 5",
+        "envelope schema_version == 6",
     )
     var env = decode_envelope(snap)
-    _check(Int(env.section_count) == 11, "section_count == 11 (schema 5)")
-    # VOLCANO / PLUME / SHORE_FOAM / FLORA / FAUNA framing.
+    _check(Int(env.section_count) == 14, "section_count == 14 (schema 6)")
+    # VOLCANO / PLUME / SHORE_FOAM / FLORA / FAUNA / HOTBAR / TARGET /
+    # RIGID_BODIES framing.
     var secs = decode_sections(snap, env)
     var vi = find_section(secs, SEC_VOLCANO)
     var pi = find_section(secs, SEC_PLUME)
     var fi = find_section(secs, SEC_SHORE_FOAM)
     var fli = find_section(secs, SEC_FLORA)
     var fai = find_section(secs, SEC_FAUNA)
+    var hi = find_section(secs, SEC_HOTBAR)
+    var tgti = find_section(secs, SEC_TARGET)
+    var rgi = find_section(secs, SEC_RIGID_BODIES)
     _check(vi >= 0, "section 7 VOLCANO present")
     _check(pi >= 0, "section 8 PLUME present")
     _check(fi >= 0, "section 9 SHORE_FOAM present")
     _check(fli >= 0, "section 10 FLORA present")
     _check(fai >= 0, "section 11 FAUNA present")
+    _check(hi >= 0, "section 12 HOTBAR present")
+    _check(tgti >= 0, "section 13 TARGET present")
+    _check(rgi >= 0, "section 14 RIGID_BODIES present")
+    _check(secs[hi].length == HOTBAR_BYTES, "HOTBAR is 44 bytes")
+    _check(secs[tgti].length == TARGET_BYTES, "TARGET is 32 bytes")
+    _check(
+        secs[rgi].length >= RIGID_HEADER_BYTES + RIGID_RECORD_BYTES,
+        "RIGID_BODIES framing ≥ header + one record",
+    )
     _check(secs[vi].length == VOLCANO_BYTES, "VOLCANO is 32 bytes")
     _check(secs[pi].length == PLUME_BYTES, "PLUME is 32 bytes")
     _check(
@@ -197,6 +248,38 @@ def test_volcano_plume_sections_in_byte_identity() raises:
     var fna0 = section_payload(a[0], SEC_FAUNA)
     _check(
         not bytes_equal(fna0, fna), "FAUNA payload must advance with the flock"
+    )
+    # HOTBAR / TARGET / RIGID_BODIES byte identity (0007 §6 exit criterion).
+    var ha = section_payload(a[SEQ_TICKS - 1], SEC_HOTBAR)
+    var hb = section_payload(b[SEQ_TICKS - 1], SEC_HOTBAR)
+    var tga = section_payload(a[SEQ_TICKS - 1], SEC_TARGET)
+    var tgb = section_payload(b[SEQ_TICKS - 1], SEC_TARGET)
+    var ra = section_payload(a[SEQ_TICKS - 1], SEC_RIGID_BODIES)
+    var rb = section_payload(b[SEQ_TICKS - 1], SEC_RIGID_BODIES)
+    _check(bytes_equal(ha, hb), "HOTBAR payload differs between equal runs")
+    _check(bytes_equal(tga, tgb), "TARGET payload differs between equal runs")
+    _check(bytes_equal(ra, rb), "RIGID_BODIES payload differs between equal runs")
+    _check(len(ha) == HOTBAR_BYTES, "HOTBAR payload size 44")
+    _check(len(tga) == TARGET_BYTES, "TARGET payload size 32")
+
+
+def test_scripted_edits_are_byte_deterministic() raises:
+    """Same seed + same scripted edit batches ⇒ byte-identical snapshot
+    sequences (edit pipeline included: column recompute, blends, chunks)."""
+    var a = run_sequence_with_edits(1, scripted_input())
+    var b = run_sequence_with_edits(1, scripted_input())
+    _check(len(a) == SEQ_TICKS and len(b) == SEQ_TICKS, "sequence length")
+    for i in range(SEQ_TICKS):
+        _check(
+            bytes_equal(a[i], b[i]),
+            "edit-run snapshot " + String(i) + " differs",
+        )
+    # The edit script must be distinguishable from the idle script: at least
+    # one snapshot differs (selection/queue state changes every tick).
+    var idle = run_sequence(1, scripted_input())
+    _check(
+        not bytes_equal(a[0], idle[0]),
+        "edit script changes tick-0 snapshot (hotbar selection + queue)",
     )
 
 
@@ -285,5 +368,6 @@ def main() raises:
             test_fixed_timestep_accumulator,
             test_flora_species_diversity_seed1,
             test_flock_present_and_capped,
+            test_scripted_edits_are_byte_deterministic,
         )
     ]().run()

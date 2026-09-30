@@ -7,6 +7,7 @@ from std.math import floor
 
 from sim.world import World
 from sim.flock import flock_wire
+from sim.raycast import raycast_look
 from sim.parameters import (
     GRID_N,
     CELL_SIZE,
@@ -30,7 +31,20 @@ from snapshot.types import (
     SEC_SHORE_FOAM,
     SEC_FLORA,
     SEC_FAUNA,
+    SEC_HOTBAR,
+    SEC_TARGET,
+    SEC_RIGID_BODIES,
+    HOTBAR_BYTES,
+    TARGET_BYTES,
+    RIGID_HEADER_BYTES,
+    RIGID_RECORD_BYTES,
+    RIGID_BODIES_MAX,
     VOLCANO,
+    TARGET,
+    RigidBodyRecord,
+    put_hotbar,
+    put_target,
+    put_rigid_bodies,
     PLUME,
     put_u32,
     put_u8,
@@ -283,6 +297,89 @@ def _encode_fauna(world: World) -> List[UInt8]:
     return b^
 
 
+def _encode_hotbar(world: World) raises -> List[UInt8]:
+    """12 HOTBAR (schema 6, 104_contract §4.3): u32 count (= 9), u32
+    selected_index, 9×u32 stable catalog ids — 44 B (0007 §3.3)."""
+    var b = List[UInt8]()
+    put_hotbar(b, UInt32(world.hotbar.selected_index), world.hotbar.slot_ids)
+    if len(b) != HOTBAR_BYTES:
+        raise Error(
+            "HOTBAR section size drift: " + String(len(b)) + " != "
+            + String(HOTBAR_BYTES)
+        )
+    return b^
+
+
+def _encode_target(world: World) raises -> List[UInt8]:
+    """13 TARGET (schema 6, 104_contract §4.3): sim-owned raycast of this
+    tick's player pose — 32 B (0007 §3.3). Emitted EVERY snapshot; a miss
+    yields all-zero fields (HUD reads SKY / AIR)."""
+    var hit = raycast_look(
+        world.island,
+        world.catalog,
+        world.player.x,
+        world.player.y,
+        world.player.z,
+        world.player.yaw,
+        world.player.pitch,
+    )
+    var t = TARGET()
+    if hit.hit:
+        t.hit = 1
+        t.material_id = hit.material_id
+        t.hit_x = Float32(hit.hit_x)
+        t.hit_y = Float32(hit.hit_y)
+        t.hit_z = Float32(hit.hit_z)
+        t.cell_x = UInt32(hit.cell_x)
+        t.cell_lattice_y = UInt32(hit.cell_lattice_y)
+        t.cell_z = UInt32(hit.cell_z)
+    var b = List[UInt8]()
+    put_target(b, t)
+    if len(b) != TARGET_BYTES:
+        raise Error(
+            "TARGET section size drift: " + String(len(b)) + " != "
+            + String(TARGET_BYTES)
+        )
+    return b^
+
+
+def _encode_rigid_bodies(world: World) raises -> List[UInt8]:
+    """14 RIGID_BODIES (schema 6, 104_contract §4.3): u32 count (≤ 16) +
+    count×36 B records — f32×3 position, f32×3 euler (0 — no angular
+    dynamics), u32 shape, f32 size, u32 material id (0007 §3.5)."""
+    if world.props.count > RIGID_BODIES_MAX:
+        raise Error(
+            "rigid_body_count " + String(world.props.count) + " exceeds "
+            + String(RIGID_BODIES_MAX)
+        )
+    if world.props.count > len(world.props.bodies):
+        raise Error("RIGID_BODIES count exceeds body list")
+    var recs = List[RigidBodyRecord]()
+    for i in range(world.props.count):
+        var src = world.props.bodies[i]
+        var r = RigidBodyRecord()
+        r.x = Float32(src.x)
+        r.y = Float32(src.y)
+        r.z = Float32(src.z)
+        # Euler stays 0: minimal model has no angular dynamics (0007 §3.5).
+        r.euler_x = 0.0
+        r.euler_y = 0.0
+        r.euler_z = 0.0
+        r.shape = src.shape
+        r.size = Float32(src.size)
+        r.material_id = src.material_id
+        recs.append(r)
+    var b = List[UInt8]()
+    put_rigid_bodies(b, recs)
+    var expect = RIGID_HEADER_BYTES + RIGID_RECORD_BYTES * world.props.count
+    if len(b) != expect:
+        raise Error(
+            "RIGID_BODIES section size drift: " + String(len(b)) + " != "
+            + String(expect)
+        )
+    return b^
+
+
 def encode_snapshot(
     world: World, include_terrain: Bool, include_flora: Bool = True
 ) raises -> List[UInt8]:
@@ -343,6 +440,22 @@ def encode_snapshot(
     # Section 11: seabird flock — EVERY snapshot (0006 §1.1, schema 5).
     var fauna = _encode_fauna(world)
     _append_section(payload, SEC_FAUNA, fauna^)
+    section_count += 1
+
+    # Section 12: hotbar (selection + 9 slot catalog ids) — EVERY snapshot
+    # (0007 §1.1 rebased id, schema 6).
+    var hotbar = _encode_hotbar(world)
+    _append_section(payload, SEC_HOTBAR, hotbar^)
+    section_count += 1
+
+    # Section 13: sim-owned raycast target — EVERY snapshot (0007 §3.3).
+    var target = _encode_target(world)
+    _append_section(payload, SEC_TARGET, target^)
+    section_count += 1
+
+    # Section 14: rigid props — EVERY snapshot (0007 §3.5).
+    var rigid = _encode_rigid_bodies(world)
+    _append_section(payload, SEC_RIGID_BODIES, rigid^)
     section_count += 1
 
     # Envelope (48 bytes) + payload.

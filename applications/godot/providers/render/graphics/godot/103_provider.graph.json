@@ -1,8 +1,8 @@
-{
- "id": "SCR-PROVIDER-RENDER-GODOT",
- "version": 5,
- "derived": true,
- "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
+ {
+  "id": "SCR-PROVIDER-RENDER-GODOT",
+  "version": 6,
+  "derived": true,
+  "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
  "nodes": [
   {
    "id": "SCR-PROVIDER-RENDER-GODOT",
@@ -51,6 +51,18 @@
   {
    "id": "SCR-LIB-ECOLOGY",
    "label": "Ecology semantic domain"
+  },
+  {
+   "id": "SCR-LIB-PHYSICS",
+   "label": "Physics semantic domain (rigid bodies, contact, raycast)"
+  },
+  {
+   "id": "SCR-LIB-RENDER-MATERIAL",
+   "label": "Material catalog semantic domain"
+  },
+  {
+   "id": "SCR-LIB-RENDER-HUD",
+   "label": "HUD render semantic domain"
   },
   {
    "id": "SCR-LIB-AGENTS",
@@ -129,6 +141,24 @@
    "target": "SCR-LIB-AGENTS",
    "relationship": "CONSUMED_BY",
    "semantics": "adapter manifests flock slot positions/yaw from 11 FAUNA; boid integration sim-side (AP-11); flap/sway display-only (AP-12)"
+  },
+  {
+   "source": "SCR-PROVIDER-RENDER-GODOT",
+   "target": "SCR-LIB-PHYSICS",
+   "relationship": "CONSUMED_BY",
+   "semantics": "adapter manifests 14 RIGID_BODIES (pooled meshes) and forwards edit intent via scr_edit_submit; ray/hit/contact semantics sim-side (0007 AP-12)"
+  },
+  {
+   "source": "SCR-PROVIDER-RENDER-GODOT",
+   "target": "SCR-LIB-RENDER-MATERIAL",
+   "relationship": "CONSUMED_BY",
+   "semantics": "hotbar names/albedo resolved through MATERIALS section or the adapter catalog mirror; slot vocabulary is sim-side (0007 AP-13)"
+  },
+  {
+   "source": "SCR-PROVIDER-RENDER-GODOT",
+   "target": "SCR-LIB-RENDER-HUD",
+   "relationship": "CONSUMED_BY",
+   "semantics": "scr_hotbar/scr_target are read-only projections of 12 HOTBAR/13 TARGET; selection reaches sim only as intent (0007 invariant 10)"
   }
  ]
 }

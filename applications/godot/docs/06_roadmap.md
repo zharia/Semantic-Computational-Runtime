@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0006 Sprint 04)
+**Status:** Active (updated by milestone 0007 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -18,6 +18,19 @@
 | v0.0.1 | 0004 — Atmosphere & Weather (diurnal sky, clouds, rain, wind) | Complete — 9 gates PASS (schema 3, 10 mojo suites, sun sub-capture + rain window, night re-derivation); see [spec](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) + [04 §8.4](04_simulation_engine.md) |
 | v0.0.1 | 0005 — Shoreline Fidelity (shore foam, crater material blending, quench evaluator) | Complete — all §7 exit criteria verified (schema 4, 13 mojo suites, foam-only-at-shoreline gate, crater-rim capture); see [spec](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) + [04 §8.5](04_simulation_engine.md) |
 | v0.0.1 | 0006 — Ecology (flora scatter, seabird flock) | Complete — all §7 exit criteria verified (schema 5, 15 mojo suites, flora/fauna region checks, foam gate kept green); see [spec](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) + [04 §8.6](04_simulation_engine.md) |
+| v0.0.1 | 0007 — Editing, Hotbar & Physics (dig/place, hotbar, rigid props) | Complete — all §7 exit criteria verified (schema 6 / ABI 2, 19 mojo suites, terrain-resend + ABI/schema negative tests, dig/place playability leg, editing-HUD screenshot assertions); see [spec](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) + [04 §8.7](04_simulation_engine.md) |
+
+### Milestone 0007 status detail (verified)
+
+Sprints 01–04 delivered: sim-side `edit.mojo` (FIFO ≤ 16, dig/place guards, single-column re-synthesis via `classify_biome` + `voxel_synthesis_pipeline`, chunk-local rebuild, `world_version` +1), `raycast.mojo` (sim-owned ray-march + bisection refine), `hotbar.mojo` (9-slot catalog table + selection), `props.mojo` (`PhysicsSubject`, N ≤ 16, gravity + ground contact, slot-order), schema **6** (`12 HOTBAR` 44 B, `13 TARGET` 32 B, `14 RIGID_BODIES` `4+36·count` ≤ 16; sections 1–11 byte-identical; fixture 249680 B, 14 sections), ABI **2** (`scr_edit_submit` + 4-byte `scr_edit_batch`), adapter decode/validate/dispatch (`apply_hotbar`/`apply_target`/`apply_props`, catalog mirror `scr::kVocabDisplay`, edit-intent uplink), `island.tscn` hosts + `hotbar_hud.gd`/`props_view.gd` + full edit mapping in `player_input.gd`, extended gates (terrain-resend test, ABI/schema dual-negative, playability dig/place leg F1–F13, screenshot editing-HUD assertions).
+
+Final gates: 19/19 mojo spec-test files PASS (incl. `test_edit_ops`, `test_raycast`, `test_hotbar`, `test_props`), abi_smoke (schema 6, ABI 2, `scr_edit_submit`) PASS, `test_terrain_resend` PASS (exactly-one TERRAIN resend per edit), schema+ABI mismatch PASS (8 checks), layout PASS, build OK, load PASS (0 `ERROR:`, 0 WARNING), playability PASS (incl. dig/place mesh-content assertions), screenshot day PASS (hotbar 9/9/1, target `Sand #3`, props 4) + aerial/foam PASS (`in-band=1246 out-of-band=0`).
+
+Resolved during verification: foam gate schema whitelist for schema 6 (byte-identity justified), foam gate counting the new bottom hotbar/target HUD as offshore foam (bottom `--bottom-hud-rows` mask, same class as the existing top HUD mask), `scr_edit_submit` outside the loader set (adapter `dlsym` binding documented).
+
+Honest gaps: interactive manual dig/place session not executed (automated companion recorded — [04 §9.15](04_simulation_engine.md)); Material Inspector / advanced prop physics / edit undo `TBD` — [04 §9](04_simulation_engine.md).
+
+Anti-pattern review (spec §7 final item): **PASS** — AP-1..10 re-run via layout/load/playability gates, AP-11..14 checked item-by-item, evidence in [04 §8.7](04_simulation_engine.md).
 
 ### Milestone 0004 status detail (verified)
 
@@ -85,12 +98,11 @@ Future increments build on the stabilized snapshot contract. Each has a normativ
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| 0007 | [Editing, hotbar, physics](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) | Voxel dig/place, catalog hotbar, minimal rigid bodies | `501_Physics`, `A01_Render/Material` |
 | 0008 | [IPC transport](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) | Out-of-process sim over socket, byte-identical semantics | `804_Application`, `503_Simulation/Snapshot` |
 
-Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007–0008 remain Planned.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007 completed 2026-09-30; 0008 remains Planned.
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0007–0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 

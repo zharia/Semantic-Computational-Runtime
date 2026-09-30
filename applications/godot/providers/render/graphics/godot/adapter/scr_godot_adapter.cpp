@@ -18,6 +18,10 @@
  *       milestone_0006_ecology/spec.md §1.1 (schema 5, FLORA/FAUNA),
  *       §2.1 (0006 AP-11..AP-14), §5 (scene scripts own node construction),
  *       §3.4 (groups)
+ *   - applications/godot/program_increments/v0.0.1/
+ *       milestone_0007_editing-physics/spec.md §1.1 (schema 6, HOTBAR/TARGET/
+ *       RIGID_BODIES, ABI 2), §2.2 (0007 AP-11..AP-14), §3.2 (edit uplink),
+ *       §5 (scene scripts own node construction), §5 Sprint-03 adapter work
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -103,6 +107,27 @@
  *                                            repositions the bird pool from
  *                                            the validated §11 FAUNA records
  *                                            (every snapshot)
+ *   "scr_hotbar"   HBoxContainer-ish one  -> method apply_hotbar(
+ *                                            selected_index, ids, names,
+ *                                            colors) renders the 9-slot HUD
+ *                                            from the validated §12 HOTBAR
+ *                                            fields (every snapshot);
+ *                                            ids: PackedInt32Array (9
+ *                                            catalog ids), names/colors
+ *                                            resolved by the adapter through
+ *                                            the vocab mirror below
+ *   "scr_target"   Label             one  -> crosshair readout text set by
+ *                                            the adapter every snapshot:
+ *                                            "SKY / AIR" on a §13 miss, or
+ *                                            "<name> #<id>" on a hit
+ *                                            (A01_Render/HUD §2.2)
+ *   "scr_props"    Node3D            one  -> method apply_props(bytes,
+ *                                            colors) pools the ≤ 16
+ *                                            MeshInstance3D prop nodes from
+ *                                            the validated §14 RIGID_BODIES
+ *                                            records (every snapshot);
+ *                                            colors: Dictionary catalog id
+ *                                            -> Color
  * Missing groups are tolerated (presentation simply absent); present-but-
  * mistyped nodes are reported with ERR_PRINT and skipped.
  *
@@ -242,6 +267,55 @@
  *   - DISPLAY-ONLY MOTION: sway/flap run on shader TIME inside
  *     flora_wing.gdshader (docs/04 §6) — representation only.
  *
+ * ---------------------------------------------------------------------------
+ * Milestone 0007 — schema 6 adapter decisions (HOTBAR/TARGET/RIGID_BODIES
+ * + edit uplink, ABI 2)
+ * ---------------------------------------------------------------------------
+ * Schema gate: SCR_SIM_SCHEMA_VER == 6 (scr_godot_abi.h); sections 1..14,
+ * HOTBAR/TARGET/RIGID_BODIES required in every snapshot (104_contract
+ * §4.2/§4.3). ABI gate: SCR_SIM_ABI_VERSION == 2, enforced by the shared
+ * loader (scr_sim_loader.h) before _ready() continues.
+ *
+ *   - EDIT UPLINK: `scr_edit_submit` is the ninth contract symbol and is
+ *     NOT bound by the shared loader (its 7-symbol list is ABI-1 vintage,
+ *     kept stable for the C negative test) — the adapter dlsyms it from the
+ *     loaded handle right after scr_sim_load() and refuses loudly (ERR_PRINT,
+ *     sim stays inert) if the symbol is missing. GDScript calls the bound
+ *     method `submit_edit(op, select_slot)`; the adapter only range-checks
+ *     the integers so they fit the u8 wire fields (argument validation, the
+ *     same class as the ABI's own NULL/reserved check — never truncating an
+ *     out-of-range intent into a different op), then forwards verbatim.
+ *     Every semantic choice (cell, material, queue policy) stays sim-side
+ *     (0007 AP-12/AP-13); returns the sim's rc (0 / SCR_ERR_NOT_INIT /
+ *     SCR_ERR_BAD_STATE / SCR_ERR_QUEUE_FULL).
+ *   - DECODE ONLY IN C++: section 12 (44 B, count == 9, selected_index <
+ *     count), section 13 (32 B, hit ≤ 1, pad = 0, miss ⇒ all fields 0) and
+ *     section 14 (4 + 36·count, count ≤ 16, shape ≤ 1) are fully validated
+ *     here; a violation skips the frame loudly (104_contract §8). Float
+ *     guards follow the file's standing rule: comparisons written so NaN
+ *     fails (never coerced).
+ *   - VIEW CONSTRUCTION STAYS IN GDSCRIPT (spec §5): apply_hotbar hands the
+ *     validated §12 fields + resolved labels to scripts/hotbar_hud.gd;
+ *     apply_props hands the validated §14 byte span + per-id colors to
+ *     scripts/props_view.gd (pooled nodes, presentation only). scr_target
+ *     is a plain Label the adapter writes directly (same pattern as
+ *     scr_hud): "SKY / AIR" on a miss (A01_Render/HUD §2.2), else
+ *     "<name> #<id>" — the readout carries no cell/material authority.
+ *   - HOTBAR LABELS (0007 AP-13 / spec §1.2): material identity reaches the
+ *     client only through the HOTBAR section (u32 catalog ids — the client
+ *     never names materials in the uplink). The display name + swatch
+ *     albedo resolve through scr::kVocabDisplay — a MIRROR of
+ *     materials/catalog.mojo::vocab_catalog_id_string() with the catalog
+ *     array index as provenance (same accepted pattern as 0006 AP-14's
+ *     kSpeciesDisplay; verified values below). A MATERIALS record with the
+ *     same catalog id wins for the swatch colour (future-proof); an id the
+ *     mirror does not know renders as "#<id>" with the MATERIALS/grey
+ *     fallback — no name or colour is ever invented.
+ *   - WHEEL/KEY SELECTION: selection is intent (0007 AP-12). The scene
+ *     computes the next slot from get_hotbar_selected_slot() (a display
+ *     mirror of the last decoded §12 field, bound read-only) and submits
+ *     select_slot — the sim still validates and applies (AP-13).
+ *
  * Conventions (normative for Sprint-04 scene work): *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
  *             (-sin yaw, -cos yaw) (src/mojo/sim/subjects.mojo), which equals
  *             Godot's -Z axis rotated by +yaw. No sign flip.
@@ -326,6 +400,7 @@
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -376,9 +451,24 @@ constexpr uint32_t kFaunaRecordBytes = 20;
 constexpr uint32_t kFaunaNMax = 64;
 /* SPECIES_NONE = 0 is never emitted (mojo invariant); valid species 1..7. */
 constexpr uint32_t kFloraSpeciesMax = 7;
+/* Schema 6 (milestone_0007 §1.1, 104_contract §4.3 §12/§13/§14):
+ *   12 HOTBAR       = 44 B fixed (u32 count = 9, u32 selected_index,
+ *                      u32 material_ids[9]) — every snapshot.
+ *   13 TARGET       = 32 B fixed (u8 hit, u8×3 pad, u32 material_id,
+ *                      f32×3 hit_position, u32 cell_x/cell_lattice_y/
+ *                      cell_z) — every snapshot (sim-owned raycast).
+ *   14 RIGID_BODIES = u32 count + count·36 B (f32×3 position, f32×3 euler,
+ *                      u32 shape, f32 size, u32 material_id) — every
+ *                      snapshot, count ≤ PROP_N_MAX (16). */
+constexpr uint32_t kHotbarBytes = 44;
+constexpr uint32_t kHotbarSlotCount = 9;
+constexpr uint32_t kTargetBytes = 32;
+constexpr uint32_t kRigidHeaderBytes = 4;
+constexpr uint32_t kRigidRecordBytes = 36;
+constexpr uint32_t kPropNMax = 16;
 /* Highest section id defined by SCR_SIM_SCHEMA_VER (used for range checks).
- * Schema 5: sections 1..11 (10 = FLORA, 11 = FAUNA). */
-constexpr uint32_t kMaxSectionId = 11;
+ * Schema 6: sections 1..14 (12 = HOTBAR, 13 = TARGET, 14 = RIGID_BODIES). */
+constexpr uint32_t kMaxSectionId = 14;
 
 inline uint32_t rd_u32(const uint8_t *p) {
     uint32_t v;
@@ -433,6 +523,37 @@ constexpr SpeciesDisplay kSpeciesDisplay[kFloraSpeciesMax + 1] = {
     { 81, { 0.28f, 0.48f, 0.18f }, 0.92f }, // 7 SPECIES_FERN_CARPET
 };
 
+/* --- 0007 AP-13: vocabulary -> materials_catalog.json display mirror ------
+ * The wire carries only u32 catalog ids (HOTBAR material_ids, TARGET
+ * material_id, RIGID_BODIES material_id). Display names and swatch albedos
+ * therefore resolve through this table, which MIRRORS
+ * materials/catalog.mojo::vocab_catalog_id_string() — the single source —
+ * with the materials_catalog.json array index as provenance. Verified
+ * values (name | optical.base_color_srgb): the 10 distinct ids of the
+ * 11-code MAT vocabulary (MAT_BEDROCK shares rock.basalt with MAT_BASALT,
+ * catalog.mojo §DEVIATION). A MATERIALS record with the same id wins for
+ * the swatch colour (future-proof, same rule as kSpeciesDisplay); an
+ * unknown id renders as "#<id>" — no name or colour is ever invented. */
+struct VocabDisplay {
+    uint32_t catalog_index; // materials_catalog.json array index
+    const char *name;       // materials_catalog.json "name" field
+    float albedo[3];        // optical.base_color_srgb
+};
+constexpr VocabDisplay kVocabDisplay[] = {
+    { 0, "Dirt / Loam", { 0.34f, 0.23f, 0.15f } },
+    { 3, "Sand", { 0.86f, 0.78f, 0.56f } },
+    { 6, "Cobblestone / Fractured Lithic", { 0.42f, 0.42f, 0.42f } },
+    { 10, "Basalt", { 0.25f, 0.25f, 0.27f } },
+    { 11, "Obsidian", { 0.08f, 0.06f, 0.12f } },
+    { 37, "Water", { 0.82f, 0.90f, 0.95f } },
+    { 38, "Lava / Magma", { 1.00f, 0.40f, 0.05f } },
+    { 54, "Vesicular Pumice", { 0.70f, 0.68f, 0.64f } },
+    { 58, "Sulfur / Brimstone", { 0.92f, 0.82f, 0.15f } },
+    { 60, "Combustion / Volcanic Ash", { 0.35f, 0.35f, 0.35f } },
+};
+constexpr uint32_t kVocabDisplayCount =
+    (uint32_t)(sizeof(kVocabDisplay) / sizeof(kVocabDisplay[0]));
+
 struct ChunkView {
     float origin[3] = { 0, 0, 0 };
     uint32_t vcount = 0;
@@ -478,6 +599,14 @@ struct SnapshotView {
     /* 11 FAUNA (schema 5): 4 + 20·count bytes, every snapshot (required). */
     const uint8_t *fauna = nullptr;
     uint32_t fauna_count = 0;
+    /* 12 HOTBAR (schema 6): 44 bytes, every snapshot (required). */
+    const uint8_t *hotbar = nullptr;
+    /* 13 TARGET (schema 6): 32 bytes, every snapshot (required). */
+    const uint8_t *target = nullptr;
+    /* 14 RIGID_BODIES (schema 6): 4 + 36·count bytes, every snapshot
+     * (required). */
+    const uint8_t *rigid = nullptr;
+    uint32_t rigid_count = 0;
     std::vector<MatRecord> materials;
     std::vector<ChunkView> chunks;
 };
@@ -497,7 +626,7 @@ inline bool fail(String &err, const String &msg) {
  * required-section absence, unknown section id, or meta/terrain disagreement. */
 bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                      String &err) {
-    /* seen[0] unused; indices 1..kMaxSectionId (schema 5 = sections 1..11). */
+    /* seen[0] unused; indices 1..kMaxSectionId (schema 6 = sections 1..14). */
     bool seen[kMaxSectionId + 1] = {};
 
     if (buf == nullptr || len < kEnvelopeBytes) {
@@ -546,7 +675,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         }
         if (sid < 1u || sid > kMaxSectionId) {
             return fail(err,
-                        "section: unknown section_id (schema 5 defines 1..11)");
+                        "section: unknown section_id (schema 6 defines 1..14)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -806,6 +935,98 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 out.fauna_count = count;
                 break;
             }
+            case SCR_SEC_HOTBAR: {
+                /* 12 HOTBAR (schema 6, 104_contract §4.3 §12): 44 bytes
+                 * fixed, every snapshot (required below). MUST-reject list
+                 * (§8): byte count ≠ 44, count ≠ 9, selected_index ≥
+                 * count. */
+                if (sbytes != kHotbarBytes) {
+                    return fail(err, "HOTBAR: section must be exactly 44 bytes");
+                }
+                const uint32_t count = rd_u32(data + 0);
+                const uint32_t selected = rd_u32(data + 4);
+                if (count != kHotbarSlotCount) {
+                    return fail(err, "HOTBAR: count != 9 (HOTBAR_SLOT_COUNT)");
+                }
+                if (selected >= count) {
+                    return fail(err, "HOTBAR: selected_index >= count");
+                }
+                out.hotbar = data;
+                break;
+            }
+            case SCR_SEC_TARGET: {
+                /* 13 TARGET (schema 6, 104_contract §4.3 §13): 32 bytes
+                 * fixed, every snapshot (required below). MUST-reject list
+                 * (§8): byte count ≠ 32, hit > 1, nonzero pad, or any
+                 * nonzero field on a miss (miss ⇒ material_id 0, position
+                 * and cells all zero). */
+                if (sbytes != kTargetBytes) {
+                    return fail(err, "TARGET: section must be exactly 32 bytes");
+                }
+                const uint8_t hit = data[0];
+                if (hit > 1u) {
+                    return fail(err, "TARGET: hit > 1");
+                }
+                if (data[1] != 0 || data[2] != 0 || data[3] != 0) {
+                    return fail(err, "TARGET: nonzero pad bytes");
+                }
+                const float px = rd_f32(data + 8);
+                const float py = rd_f32(data + 12);
+                const float pz = rd_f32(data + 16);
+                if (hit == 0u) {
+                    if (rd_u32(data + 4) != 0u || px != 0.0f || py != 0.0f ||
+                        pz != 0.0f || rd_u32(data + 20) != 0u ||
+                        rd_u32(data + 24) != 0u || rd_u32(data + 28) != 0u) {
+                        return fail(err, "TARGET: nonzero field on a miss");
+                    }
+                } else {
+                    /* Hit: NaN guard (never coerced, §8 — same rule as the
+                     * other float-bearing sections). */
+                    if (!(px == px) || !(py == py) || !(pz == pz)) {
+                        return fail(err, "TARGET: hit_position is NaN");
+                    }
+                }
+                out.target = data;
+                break;
+            }
+            case SCR_SEC_RIGID_BODIES: {
+                /* 14 RIGID_BODIES (schema 6, 104_contract §4.3 §14): u32
+                 * count + count·36 B, every snapshot (required below).
+                 * MUST-reject list (§8): count > 16, byte count ≠
+                 * 4 + 36·count, shape > 1. Plus the standing NaN/positivity
+                 * guards for the float fields (never coerced). */
+                if (sbytes < kRigidHeaderBytes) {
+                    return fail(err, "RIGID_BODIES: section shorter than count");
+                }
+                const uint32_t count = rd_u32(data);
+                if (count > kPropNMax) {
+                    return fail(err, "RIGID_BODIES: count > 16 (PROP_N_MAX)");
+                }
+                const uint64_t want = (uint64_t)kRigidHeaderBytes +
+                                      (uint64_t)kRigidRecordBytes * count;
+                if ((uint64_t)sbytes != want) {
+                    return fail(err, "RIGID_BODIES: section_bytes != 4 + 36*count");
+                }
+                for (uint32_t i = 0; i < count; i++) {
+                    const uint8_t *rec = data + kRigidHeaderBytes +
+                                         (uint64_t)kRigidRecordBytes * i;
+                    const float px = rd_f32(rec + 0);
+                    const float py = rd_f32(rec + 4);
+                    const float pz = rd_f32(rec + 8);
+                    if (!(px == px) || !(py == py) || !(pz == pz)) {
+                        return fail(err, "RIGID_BODIES: position is NaN");
+                    }
+                    if (!(rd_f32(rec + 28) > 0.0f)) {
+                        return fail(err, "RIGID_BODIES: size <= 0");
+                    }
+                    if (rd_u32(rec + 24) > 1u) {
+                        return fail(err, "RIGID_BODIES: shape > 1");
+                    }
+                }
+                out.rigid = data;
+                out.rigid_count = count;
+                break;
+            }
             default:
                 return fail(err, "section: unhandled section_id");
         }
@@ -816,16 +1037,18 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 5).
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 6).
      * TERRAIN and FLORA are the only optional ones (TERRAIN: first snapshot /
      * world_version bump; FLORA: emission-gated on the same rule). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
         !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME] ||
-        !seen[SCR_SEC_SHORE_FOAM] || !seen[SCR_SEC_FAUNA]) {
+        !seen[SCR_SEC_SHORE_FOAM] || !seen[SCR_SEC_FAUNA] ||
+        !seen[SCR_SEC_HOTBAR] || !seen[SCR_SEC_TARGET] ||
+        !seen[SCR_SEC_RIGID_BODIES]) {
         return fail(err, "snapshot: required section missing "
                          "(PLAYER/TERRAIN_META/OCEAN/SKY/MATERIALS/VOLCANO/PLUME/"
-                         "SHORE_FOAM/FAUNA)");
+                         "SHORE_FOAM/FAUNA/HOTBAR/TARGET/RIGID_BODIES)");
     }
     out.meta = meta_buf;
 
@@ -1027,6 +1250,16 @@ public:
                       bool jump, bool sprint, bool action_primary,
                       bool action_secondary);
 
+    /* 0007 edit uplink entry point (bound below): forwards {op,
+     * select_slot} verbatim to scr_edit_submit after an integer-range
+     * argument check (file header "EDIT UPLINK"). Returns the sim rc. */
+    int64_t submit_edit(int64_t op, int64_t select_slot);
+
+    /* Display mirror of the last decoded §12 selected_index, 1-based
+     * (bound read-only): the scene computes wheel/next-slot intents from
+     * it; the sim stays the authority (0007 AP-12/AP-13). */
+    int64_t get_hotbar_selected_slot() const { return hotbar_selected_slot_; }
+
     void _ready() override;
     void _physics_process(double delta) override;
     void _exit_tree() override;
@@ -1038,6 +1271,11 @@ protected:
     scr_sim_api api_ = {};
     bool loaded_ = false;        // symbols bound + versions accepted
     bool inited_ = false;        // scr_sim_init succeeded
+    /* Ninth contract symbol (ABI 2): bound by the adapter itself right
+     * after scr_sim_load() — the shared loader's 7-symbol list stays
+     * ABI-1 vintage for the C negative test (file header "EDIT UPLINK").
+     * NULL when missing (sim refused to start loudly in that case). */
+    int32_t (*edit_submit_)(const scr_edit_batch *batch) = nullptr;
 
     // --- input state --------------------------------------------------------
     int64_t world_seed = 1;
@@ -1079,6 +1317,16 @@ protected:
     /* set_wetness_gain latch: wetness_gain() ∈ [0.65, 1], so -1 = unset. */
     float flora_wetness_cache_ = -1.0f;
 
+    // --- editing display caches (0007): warn-once + change latches --------
+    bool hotbar_method_warned_ = false; // present group, missing method
+    bool props_method_warned_ = false;
+    /* 1-based mirror of §12 selected_index (init slot 1 = selected 0). */
+    int64_t hotbar_selected_slot_ = 1;
+    /* apply_hotbar skips the script call while selection + ids unchanged. */
+    bool hotbar_latched_ = false;
+    int64_t hotbar_latched_index_ = -1;
+    uint32_t hotbar_latched_first_id_ = 0;
+
     // --- helpers ------------------------------------------------------------
     Node *first_in_group(const StringName &p_group);
     void decode_and_apply(uint32_t len);
@@ -1106,6 +1354,17 @@ protected:
     /* Dictionary species(int) -> {albedo: Color, roughness: float} resolved
      * through the catalog mirror table (0006 AP-14, scr::kSpeciesDisplay). */
     Dictionary flora_materials();
+    /* 0007 editing view dispatch (spec §5 Sprint-03): validate + resolve
+     * labels/colors here, construct nodes in the host scripts. */
+    void apply_hotbar(const scr::SnapshotView &sv);
+    void apply_target(const scr::SnapshotView &sv);
+    void apply_props(const scr::SnapshotView &sv);
+    /* Catalog display name for a u32 id (0007 AP-13 mirror; unknown id
+     * renders as "#<id>", never an invented name). */
+    String vocab_name_of(uint32_t id) const;
+    /* Swatch colour: MATERIALS record wins, else the vocab mirror, else
+     * neutral grey (0007 AP-13 — no colour is ever invented). */
+    Color vocab_albedo_of(uint32_t id) const;
     void apply_hud(const scr::SnapshotView &sv);
 };
 
@@ -1134,6 +1393,11 @@ void ScrSimDriver::_bind_methods() {
         D_METHOD("submit_input", "move_x", "move_y", "look_dx", "look_dy",
                  "jump", "sprint", "action_primary", "action_secondary"),
         &ScrSimDriver::submit_input);
+
+    ClassDB::bind_method(D_METHOD("submit_edit", "op", "select_slot"),
+                         &ScrSimDriver::submit_edit);
+    ClassDB::bind_method(D_METHOD("get_hotbar_selected_slot"),
+                         &ScrSimDriver::get_hotbar_selected_slot);
 }
 
 // ---------------------------------------------------------------------------
@@ -1162,6 +1426,25 @@ void ScrSimDriver::submit_input(float move_x, float move_y, float look_dx,
     in_sprint = sprint;
     in_action_primary = action_primary;
     in_action_secondary = action_secondary;
+}
+
+int64_t ScrSimDriver::submit_edit(int64_t op, int64_t select_slot) {
+    /* Argument validation only (same class as the ABI's NULL/reserved
+     * check): the integers must FIT the u8 wire fields — an out-of-range
+     * intent is refused instead of truncated into a different op. Every
+     * semantic decision (op validity, slot validity, cell, material) stays
+     * sim-side (0007 AP-12/AP-13); the sim's rc passes through verbatim. */
+    if (op < 0 || op > 255 || select_slot < 0 || select_slot > 255) {
+        return SCR_ERR_BAD_STATE;
+    }
+    if (!loaded_ || !inited_ || edit_submit_ == nullptr) {
+        return SCR_ERR_NOT_INIT;
+    }
+    scr_edit_batch batch;
+    batch.op = static_cast<uint8_t>(op);
+    batch.select_slot = static_cast<uint8_t>(select_slot);
+    batch.reserved = 0;
+    return edit_submit_(&batch);
 }
 
 // ---------------------------------------------------------------------------
@@ -1206,6 +1489,22 @@ void ScrSimDriver::_ready() {
         String("SCR: sim loaded (abi ") +
         String::num_uint64(api_.abi_version()) + ", schema " +
         String::num_uint64(api_.schema_version()) + ")");
+
+    /* Ninth contract symbol (ABI 2): not part of the shared loader's
+     * 7-symbol list (scr_sim_loader.h header note) — bind it here and
+     * refuse loudly if a library claiming ABI 2 does not export it. */
+    {
+        (void)dlerror();
+        void *sym = dlsym(api_.handle, "scr_edit_submit");
+        if (sym == nullptr || dlerror() != nullptr) {
+            ERR_PRINT(
+                "SCR: missing symbol scr_edit_submit on an ABI-2 library — "
+                "refusing to run (edit uplink unavailable)");
+            scr_sim_unload(&api_);
+            return;
+        }
+        memcpy(&edit_submit_, &sym, sizeof(sym));
+    }
 
     const uint32_t seed = static_cast<uint32_t>(static_cast<uint64_t>(world_seed));
     const int32_t irc = api_.init(seed);
@@ -1284,6 +1583,7 @@ void ScrSimDriver::_exit_tree() {
         scr_sim_unload(&api_);
         loaded_ = false;
     }
+    edit_submit_ = nullptr; /* dlclosed with the handle — never call stale */
     set_physics_process(false);
 }
 
@@ -1329,6 +1629,9 @@ void ScrSimDriver::decode_and_apply(uint32_t len) {
     apply_plume(sv);
     apply_flora(sv);
     apply_fauna(sv);
+    apply_hotbar(sv);
+    apply_target(sv);
+    apply_props(sv);
     apply_player(sv);
     apply_hud(sv);
 
@@ -1955,6 +2258,157 @@ void ScrSimDriver::apply_fauna(const scr::SnapshotView &sv) {
     Array args;
     args.append(bytes);
     n->callv("apply_fauna", args);
+}
+
+/* --- milestone 0007: editing view dispatch (spec §5 Sprint-03) -----------
+ * The adapter owns DECODE (strict, above) and label/color resolution only;
+ * the hotbar panel and prop node construction live in scripts/hotbar_hud.gd
+ * + scripts/props_view.gd (scene interface, file header). The scr_target
+ * Label is written directly (scr_hud pattern). Missing groups are
+ * tolerated; present hosts without the method warn once and are skipped. */
+
+String ScrSimDriver::vocab_name_of(uint32_t id) const {
+    for (uint32_t i = 0; i < scr::kVocabDisplayCount; i++) {
+        if (scr::kVocabDisplay[i].catalog_index == id) {
+            return String(scr::kVocabDisplay[i].name);
+        }
+    }
+    return "#" + String::num_uint64(id); /* unknown id: honest, never invented */
+}
+
+Color ScrSimDriver::vocab_albedo_of(uint32_t id) const {
+    /* MATERIALS record wins (same catalogue, future-proof), else the vocab
+     * mirror, else neutral grey — no colour is ever invented (0007 AP-13). */
+    auto rec = mat_records_.find(id);
+    if (rec != mat_records_.end()) {
+        return Color(rec->second.albedo[0], rec->second.albedo[1],
+                     rec->second.albedo[2], 1.0f);
+    }
+    for (uint32_t i = 0; i < scr::kVocabDisplayCount; i++) {
+        if (scr::kVocabDisplay[i].catalog_index == id) {
+            const float *a = scr::kVocabDisplay[i].albedo;
+            return Color(a[0], a[1], a[2], 1.0f);
+        }
+    }
+    return Color(0.5f, 0.5f, 0.5f, 1.0f);
+}
+
+void ScrSimDriver::apply_hotbar(const scr::SnapshotView &sv) {
+    /* HOTBAR is REQUIRED every snapshot (decode enforces it). */
+    if (sv.hotbar == nullptr) {
+        return;
+    }
+    const int64_t selected = (int64_t)scr::rd_u32(sv.hotbar + 4);
+    const uint32_t first_id = scr::rd_u32(sv.hotbar + 8);
+    hotbar_selected_slot_ = selected + 1; /* 1-based display mirror */
+
+    /* Selection + slot table are the only wire inputs; skip the script
+     * call while both are unchanged (slot table is a sim parameter). */
+    if (hotbar_latched_ && selected == hotbar_latched_index_ &&
+        first_id == hotbar_latched_first_id_) {
+        return;
+    }
+
+    Node *n = first_in_group("scr_hotbar");
+    if (n == nullptr) {
+        return;
+    }
+    if (!n->has_method("apply_hotbar")) {
+        if (!hotbar_method_warned_) {
+            ERR_PRINT("SCR: group scr_hotbar host lacks apply_hotbar "
+                      "(scripts/hotbar_hud.gd missing?) — HOTBAR skipped");
+            hotbar_method_warned_ = true;
+        }
+        return;
+    }
+
+    PackedInt32Array ids;
+    PackedStringArray names;
+    PackedColorArray colors;
+    for (uint32_t i = 0; i < scr::kHotbarSlotCount; i++) {
+        const uint32_t id = scr::rd_u32(sv.hotbar + 8u + 4u * i);
+        ids.append((int64_t)id);
+        names.append(vocab_name_of(id));
+        colors.append(vocab_albedo_of(id));
+    }
+    Array args;
+    args.append(selected);
+    args.append(ids);
+    args.append(names);
+    args.append(colors);
+    n->callv("apply_hotbar", args);
+
+    hotbar_latched_ = true;
+    hotbar_latched_index_ = selected;
+    hotbar_latched_first_id_ = first_id;
+}
+
+void ScrSimDriver::apply_target(const scr::SnapshotView &sv) {
+    /* TARGET is REQUIRED every snapshot (decode enforces it). A plain
+     * Label the adapter writes directly (scr_hud pattern): readout only —
+     * the crosshair carries no cell/material authority (0007 AP-12). */
+    if (sv.target == nullptr) {
+        return;
+    }
+    Node *n = first_in_group("scr_target");
+    if (n == nullptr) {
+        return;
+    }
+    Label *label = Object::cast_to<Label>(n);
+    if (label == nullptr) {
+        ERR_PRINT("SCR: group scr_target must contain a Label — skipped");
+        return;
+    }
+    String txt;
+    if (sv.target[0] == 0u) {
+        txt = "SKY / AIR"; /* A01_Render/HUD §2.2 on a miss */
+    } else {
+        const uint32_t id = scr::rd_u32(sv.target + 4);
+        txt = vformat("%s #%d", vocab_name_of(id), (int64_t)id);
+    }
+    if (label->get_text() != txt) {
+        label->set_text(txt);
+    }
+}
+
+void ScrSimDriver::apply_props(const scr::SnapshotView &sv) {
+    /* RIGID_BODIES is REQUIRED every snapshot (decode enforces it). */
+    if (sv.rigid == nullptr) {
+        return;
+    }
+    Node *n = first_in_group("scr_props");
+    if (n == nullptr) {
+        return;
+    }
+    if (!n->has_method("apply_props")) {
+        if (!props_method_warned_) {
+            ERR_PRINT("SCR: group scr_props host lacks apply_props "
+                      "(scripts/props_view.gd missing?) — RIGID_BODIES skipped");
+            props_method_warned_ = true;
+        }
+        return;
+    }
+    /* Colors for the ids actually referenced (MATERIALS wins, mirror
+     * next, grey otherwise — resolution identical to vocab_albedo_of). */
+    Dictionary colors;
+    for (uint32_t i = 0; i < sv.rigid_count; i++) {
+        const uint8_t *rec = sv.rigid + scr::kRigidHeaderBytes +
+                             (uint64_t)scr::kRigidRecordBytes * i;
+        const uint32_t id = scr::rd_u32(rec + 32);
+        const Variant key((int64_t)id);
+        if (!colors.has(key)) {
+            colors[key] = vocab_albedo_of(id);
+        }
+    }
+    const uint64_t nbytes = (uint64_t)scr::kRigidHeaderBytes +
+                             (uint64_t)scr::kRigidRecordBytes * sv.rigid_count;
+    PackedByteArray bytes;
+    bytes.resize((int64_t)nbytes);
+    memcpy(bytes.ptrw(), sv.rigid, (size_t)nbytes);
+    Array args;
+    args.append(bytes);
+    args.append(colors);
+    n->callv("apply_props", args);
 }
 
 void ScrSimDriver::apply_terrain(const scr::SnapshotView &sv) {
