@@ -24,7 +24,7 @@ from sim.subjects import (
 )
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
 from sim.shore import compute_foam_field
-from sim.flora import FloraSubject, flora_from_island
+from sim.flora import FloraSubject, flora_from_island, flora_re_evaluate, flora_tick
 from sim.edit import EditQueue, edit_queue_init, consume_one_edit
 from sim.hotbar import HotbarSubject, hotbar_init
 from sim.props import PhysicsSubject, props_from_island, props_tick
@@ -155,7 +155,14 @@ def tick_world(mut world: World, input: InputBatch) raises:
     )
     if edit_out.applied:
         world.world_version += 1
-        world.flora = flora_from_island(world.island, world.seed)
+        # Field re-evaluation (0009 R1): survivors keep age + grown scale,
+        # new establishments enter at a0/s0, dead drop same pass. Strategy =
+        # FULL row-major re-scan (0009 R5 allows affected columns or full —
+        # measure + document choice): measured ~70–130 µs/call on the 64×64
+        # grid at pop 154 (test_flora_growth perf probe) vs an affected-
+        # column bookkeeping structure — full rescan wins on simplicity at
+        # this grid size (≤1 edit tick ⇒ ≤130 µs/tick of 16.6 ms budget).
+        world.flora = flora_re_evaluate(world.island, world.flora, world.seed)
     # Rigid props: gravity + ground contact, ascending slot order (§3.5).
     props_tick(world.props, world.island, FIXED_DT)
     world.simulation_tick += 1
@@ -178,6 +185,10 @@ def tick_world(mut world: World, input: InputBatch) raises:
     # Seabird flock: one ordered commit per fixed tick (0006 §1.1 — rules
     # listed there; deterministic in (seed, tick, island)).
     flock_tick(world.flock, world.island, world.simulation_tick)
+    # Flora growth (0009 R2/R3): +1 age/instance, ε-quantized scale snap —
+    # tick phase ONLY (projection purity: the §10 projection reads state
+    # read-only after this commit).
+    flora_tick(world.flora)
 
 
 def step_world(mut world: World, frame_dt: Float64, input: InputBatch) raises -> Int32:
@@ -362,6 +373,8 @@ def world_fingerprint(world: World) -> UInt64:
 
     # Flora subject (milestone_0006): seed, count, every instance field —
     # folded so a projection that mutated flora fails projection purity.
+    # Ages (0009 R2, SIM-side only) fold too: a projection that ticked
+    # growth must fail the same way.
     h = _fold_u64(h, UInt64(world.flora.seed))
     h = _fold_u64(h, UInt64(world.flora.count))
     for i in range(world.flora.count):
@@ -372,6 +385,8 @@ def world_fingerprint(world: World) -> UInt64:
         h = _fold_f32(h, fi.yaw)
         h = _fold_f32(h, fi.scale)
         h = _fold_u64(h, UInt64(fi.species_id))
+        if i < len(world.flora.ages):
+            h = _fold_u64(h, UInt64(world.flora.ages[i]))
 
     # Flock subject (milestone_0006): seed, count, every slot's full state —
     # folded so a projection that mutated fauna fails projection purity.

@@ -378,6 +378,37 @@ def test_world_fingerprint_includes_hotbar_queue_props() raises:
     _check(world_fingerprint(world) == base, "fingerprint fully restored")
 
 
+def test_flora_age_fingerprint_and_growth_purity() raises:
+    """0009 R9: the fingerprint covers flora AGE state (sim-side only), and
+    projecting a grown population must not mutate age/scale — growth happens
+    in the tick phase only (invariant 7)."""
+    var world = world_init(1)
+    # Grow: several ticks of aging before the projection check.
+    for _ in range(60):
+        _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var aged = False
+    for i in range(world.flora.count):
+        if world.flora.ages[i] > 0:
+            aged = True
+    _check(aged, "population actually aged in the tick phase")
+    var base = world_fingerprint(world)
+    var snap = encode_snapshot(world, True)
+    _ = _drive_projection(snap)
+    _check(
+        world_fingerprint(world) == base,
+        "projection mutated flora age/scale state (growth purity drift)",
+    )
+    # Sensitivity: one tick of age must be visible to the fingerprint.
+    var saved_age = world.flora.ages[0]
+    world.flora.ages[0] = saved_age + 1
+    _check(
+        world_fingerprint(world) != base,
+        "fingerprint misses flora age (sim-side state)",
+    )
+    world.flora.ages[0] = saved_age
+    _check(world_fingerprint(world) == base, "fingerprint fully restored")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -388,5 +419,6 @@ def main() raises:
             test_world_fingerprint_includes_foam_state,
             test_world_fingerprint_includes_flora_flock_state,
             test_world_fingerprint_includes_hotbar_queue_props,
+            test_flora_age_fingerprint_and_growth_purity,
         )
     ]().run()

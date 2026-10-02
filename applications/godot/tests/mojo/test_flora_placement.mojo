@@ -15,6 +15,7 @@ from sim.flora import (
     cell_slope,
     feature_for_column,
     instance_for_column,
+    establishment_suitability,
     FloraSubject,
 )
 from sim.parameters import (
@@ -27,6 +28,9 @@ from sim.parameters import (
     FLORA_BEACH_SLOPE_CAP,
     FLORA_SCALE_MIN,
     FLORA_SCALE_MAX,
+    FLORA_SUITABILITY_THRESHOLD,
+    FLORA_WETNESS_NEUTRAL,
+    FLORA_CRATER_STRESS_NEUTRAL,
 )
 from materials.catalog import (
     SPECIES_NONE,
@@ -37,6 +41,7 @@ from materials.catalog import (
     SPECIES_CANOPY_CLUSTER,
     SPECIES_SHRUB,
     SPECIES_FERN_CARPET,
+    species_catalog_id_string,
 )
 from synthesis.voxel import (
     BIOME_BEACH,
@@ -227,6 +232,69 @@ def test_species_enum_total_and_bounded() raises:
     _check(checked, "seed 1 has at least one host column")
 
 
+def test_field_suitability_oracle_seed1() raises:
+    """0009 R1/§5 (Sprint 01 gate): every establishment implies the band
+    preconditions AND `establishment_suitability ≥ FLORA_SUITABILITY_THRESHOLD`;
+    suitability ∈ [0, 1] everywhere; emitted species resolve through
+    species_catalog_id_string (0006 AP-14 catalog resolution retained)."""
+    var island = build_island(1)
+    var checked = False
+    for iz in range(GRID_N):
+        for ix in range(GRID_N):
+            var ci = iz * GRID_N + ix
+            var slope = cell_slope(island.heights, ix, iz)
+            var height = island.heights[ci]
+            var suit = establishment_suitability(
+                ix,
+                iz,
+                island.biomes[ci],
+                slope,
+                height,
+                FLORA_WETNESS_NEUTRAL,
+                FLORA_CRATER_STRESS_NEUTRAL,
+                1,
+            )
+            _check(suit >= 0.0 and suit <= 1.0, "suitability ∈ [0, 1]")
+            var species = feature_for_column(
+                ix, iz, island.biomes[ci], slope, height, 1
+            )
+            if species == SPECIES_NONE:
+                continue
+            # Establishment ⇒ band + suit ≥ threshold.
+            _check(
+                height >= SEA_LEVEL + FLORA_HEIGHT_EPS,
+                "establishment implies height band",
+            )
+            if island.biomes[ci] == BIOME_BEACH:
+                _check(slope <= FLORA_BEACH_SLOPE_CAP, "beach slope ≤ cap")
+                _check(
+                    species == SPECIES_PALM_CLUSTER
+                    or species == SPECIES_PALM_SOLO,
+                    "beach band hosts palms only",
+                )
+            elif island.biomes[ci] == BIOME_VOLCANIC_SLOPE:
+                _check(slope <= FLORA_SLOPE_CAP, "slope ≤ cap")
+                _check(
+                    species == SPECIES_CANOPY_TREE
+                    or species == SPECIES_CANOPY_CLUSTER
+                    or species == SPECIES_SHRUB
+                    or species == SPECIES_FERN_CARPET,
+                    "slope band hosts canopy/shrub/fern only",
+                )
+            else:
+                _check(False, "establishment on banned biome")
+            _check(
+                suit >= FLORA_SUITABILITY_THRESHOLD,
+                "establishment implies suitability ≥ threshold",
+            )
+            # Catalog resolution retained (0006 AP-14): species → catalog id
+            # must yield exactly one non-empty id, no raise for 1..7.
+            var cid = species_catalog_id_string(species)
+            _check(cid.byte_length() > 0, "species resolves to a catalog id")
+            checked = True
+    _check(checked, "seed 1 has at least one establishment to oracle")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -235,5 +303,6 @@ def main() raises:
             test_flora_construction_is_deterministic,
             test_different_seed_changes_population,
             test_species_enum_total_and_bounded,
+            test_field_suitability_oracle_seed1,
         )
     ]().run()

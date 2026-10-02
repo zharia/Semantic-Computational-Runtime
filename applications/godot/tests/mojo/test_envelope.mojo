@@ -23,7 +23,7 @@ from std.collections import List
 from std.testing import TestSuite
 from std.math import abs, sin
 
-from sim.world import world_init, step_world
+from sim.world import World, world_init, step_world
 from sim.input import InputBatch
 from sim.parameters import (
     GRID_N,
@@ -881,6 +881,80 @@ def test_malformed_hotbar_target_rigid_fail_loudly() raises:
     )
 
 
+def _flora_frame(world: World) raises -> List[UInt8]:
+    """Encode (terrain off) and return the raw FLORA section bytes."""
+    var data = encode_snapshot(world, False, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var i = find_section(secs, SEC_FLORA)
+    _check(i >= 0, "FLORA present")
+    var out = List[UInt8]()
+    for k in range(secs[i].length):
+        out.append(data[secs[i].offset + k])
+    return out^
+
+
+def _frames_equal(a: List[UInt8], b: List[UInt8]) -> Bool:
+    if len(a) != len(b):
+        return False
+    for k in range(len(a)):
+        if a[k] != b[k]:
+            return False
+    return True
+
+
+def test_flora_change_driven_growth_framing() raises:
+    """0009 §3.2 / R7 (framing level): FLORA section bytes stay identical
+    while no stored scale crosses FLORA_EMIT_EPS (ε-quantized growth ⇒
+    byte-stable frames), then change once growth crosses ε; count/species
+    stay fixed (no edits), and gating still drops exactly section 10."""
+    var world = world_init(1)
+    _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var f0 = _flora_frame(world)
+    var species0 = List[UInt32]()
+    for i in range(world.flora.count):
+        species0.append(world.flora.instances[i].species_id)
+
+    # Sub-ε window: 5 ticks is below the provable first-crossing bound
+    # (≥ ~10.6 ticks for any parameter combination in parameters.mojo).
+    for _ in range(5):
+        _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var f1 = _flora_frame(world)
+    _check(
+        _frames_equal(f0, f1),
+        "FLORA bytes stable while no ε crossing (change-driven §3.2)",
+    )
+
+    # Growth window: 400 ticks guarantees ≥ 1 stored-scale ε crossing for
+    # seed 1 (maturity ≤ 2400, curve slope bounds in flora.mojo).
+    for _ in range(400):
+        _ = step_world(world, 1.0 / 60.0, InputBatch())
+    var f2 = _flora_frame(world)
+    _check(
+        not _frames_equal(f0, f2),
+        "FLORA bytes changed once growth crossed ε",
+    )
+    _check(
+        len(f0) == len(f2),
+        "FLORA frame length stable (count unchanged without edits)",
+    )
+    # Count / species unchanged: only scale bytes may differ.
+    _check(
+        Int(len(f2)) == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * world.flora.count,
+        "frame length == header + 24 * count",
+    )
+    for i in range(world.flora.count):
+        _check(
+            world.flora.instances[i].species_id == species0[i],
+            "no species drift without edits",
+        )
+    # Gating still holds on the grown world.
+    var gated = encode_snapshot(world, True, False)
+    var genv = decode_envelope(gated)
+    var gsecs = decode_sections(gated, genv)
+    _check(find_section(gsecs, SEC_FLORA) < 0, "FLORA suppressed when gated")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -898,5 +972,6 @@ def main() raises:
             test_flora_fauna_payloads,
             test_hotbar_target_rigid_payloads,
             test_malformed_hotbar_target_rigid_fail_loudly,
+            test_flora_change_driven_growth_framing,
         )
     ]().run()

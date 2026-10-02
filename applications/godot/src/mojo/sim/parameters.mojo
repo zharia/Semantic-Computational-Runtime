@@ -284,6 +284,52 @@ comptime FLORA_WEIGHT_FERN_CARPET: Float64 = 0.35  # SLOPE (remainder)
 comptime FLORA_SCALE_MIN: Float64 = 0.80  # uniform instance scale range
 comptime FLORA_SCALE_MAX: Float64 = 1.35
 
+# --- Flora field + growth (milestone_0009 Sprint 01; AP-7 / AP-22) ----------
+# Establishment field (lib/705_Ecology/Flora §1.2): establishment_suitability
+#   samples ∈ [0, 1]; a candidate cell establishes only where the hard band
+#   preconditions pass AND suitability ≥ FLORA_SUITABILITY_THRESHOLD
+#   (threshold is part of the field semantics, not an implementation knob).
+#   Sprint 01 placeholder environmental inputs (Sprint 02 owns the real
+#   stress model — weather wetness + crater-distance ash, milestone §1.2):
+#     FLORA_WETNESS_NEUTRAL / FLORA_CRATER_STRESS_NEUTRAL are the neutral
+#     values fed at establishment until that wiring lands; neutral ⇒ no
+#     drought/stress penalty ⇒ the 0006 density band decides as before.
+# Growth (lib/705_Ecology/Flora §1.3 / 0009 §5 Sprint 01): scale =
+#   f_species(age), monotone non-decreasing to maturity, constant after:
+#     FLORA_GROWTH_SHAPE: 0 = linear-in-age, 1 = smoothstep to maturity.
+#     FLORA_MATURITY_<SPECIES>: ticks of age at which the curve saturates.
+#     FLORA_TARGET_SCALE_<SPECIES>: mature scale target; every target stays
+#       within [FLORA_SCALE_MIN, FLORA_SCALE_MAX] (AP-22 bound).
+#   Initial ages come from a pure hash of (seed, x, z) over [0, maturity]
+#   (AP-20: no mutable RNG stream) so the seed-1 population starts mixed.
+# FLORA_EMIT_EPS (0009 §3.2 / AP-22): relative scale delta ≥ ε marks the
+#   FLORA section emission-dirty; the stored scale is ε-quantized by the
+#   same rule so the section stays byte-stable between crossings.
+comptime FLORA_SUITABILITY_THRESHOLD: Float64 = 0.25  # suit ≥ thr ⇒ establishes
+comptime FLORA_WETNESS_NEUTRAL: Float64 = 0.5  # Sprint 01 placeholder (Sprint 02)
+comptime FLORA_CRATER_STRESS_NEUTRAL: Float64 = 0.0  # Sprint 01 placeholder
+comptime FLORA_EMIT_EPS: Float64 = 0.01  # relative scale δ (emission dirty)
+comptime FLORA_GROWTH_SHAPE: Int = 1  # 0 = linear-in-age, 1 = smoothstep
+# Per-species maturity (ticks) — enum order: PALM_CLUSTER, PALM_SOLO,
+# BAMBOO_GROVE, CANOPY_TREE, CANOPY_CLUSTER, SHRUB, FERN_CARPET
+# (materials/catalog.mojo SPECIES_* = 1..7; lookup lives in sim/flora.mojo
+# so this file stays dependency-free).
+comptime FLORA_MATURITY_PALM_CLUSTER: Int = 1500  # 25 s @ 60 Hz
+comptime FLORA_MATURITY_PALM_SOLO: Int = 1200  # 20 s
+comptime FLORA_MATURITY_BAMBOO_GROVE: Int = 1200  # unused by band table
+comptime FLORA_MATURITY_CANOPY_TREE: Int = 2400  # 40 s
+comptime FLORA_MATURITY_CANOPY_CLUSTER: Int = 1800  # 30 s
+comptime FLORA_MATURITY_SHRUB: Int = 900  # 15 s
+comptime FLORA_MATURITY_FERN_CARPET: Int = 600  # 10 s
+# Per-species mature scale targets ∈ [FLORA_SCALE_MIN, FLORA_SCALE_MAX].
+comptime FLORA_TARGET_SCALE_PALM_CLUSTER: Float64 = 1.25
+comptime FLORA_TARGET_SCALE_PALM_SOLO: Float64 = 1.15
+comptime FLORA_TARGET_SCALE_BAMBOO_GROVE: Float64 = 1.10  # unused by band table
+comptime FLORA_TARGET_SCALE_CANOPY_TREE: Float64 = 1.35
+comptime FLORA_TARGET_SCALE_CANOPY_CLUSTER: Float64 = 1.20
+comptime FLORA_TARGET_SCALE_SHRUB: Float64 = 1.00
+comptime FLORA_TARGET_SCALE_FERN_CARPET: Float64 = 0.90
+
 # --- Seabird flock (milestone_0006 §1.1/§5; AP-7 / 0006 AP-13) --------------
 # Slots are fixed (0..FLOCK_N_MAX-1); the first FLOCK_N_INIT are active at
 # init. A bound violation despawns the slot and respawns it from

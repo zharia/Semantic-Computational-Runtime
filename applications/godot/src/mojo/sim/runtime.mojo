@@ -19,7 +19,9 @@ from std.ffi import external_call, c_int, c_char
 
 from sim.world import World, world_init, step_world
 from sim.input import InputBatch, idle_input
+from sim.flora import flora_emission_dirty
 from snapshot.encode import encode_snapshot
+from snapshot.types import FloraInstance
 from sim.edit import edit_apply_batch
 from sim.parameters import (
     SCR_ERR_NOT_INIT,
@@ -33,7 +35,13 @@ struct SimHandle(Movable, Deinitable):
     var initialized: Bool
     var stepped: Bool  # false until the first successful scr_sim_step
     var last_terrain_emitted: UInt32  # world_version of last TERRAIN send
-    var last_flora_emitted: UInt32  # world_version of last FLORA send (0006)
+    # FLORA emission (0009 §3.2 / AP-22) is CHANGE-DRIVEN, not
+    # world_version-driven: emitted whenever population/pose/yaw differ from
+    # the last send, or any stored scale crossed FLORA_EMIT_EPS relative to
+    # the last sent scale (flora_emission_dirty — the stored scale is
+    # ε-quantized by flora_tick, so dirty ⇔ a stored scale changed).
+    var flora_emitted_once: Bool
+    var last_flora: List[FloraInstance]  # copy of the last sent FLORA section
     var world: World
     var snapshot: List[UInt8]  # bytes from the most recent successful step
 
@@ -41,12 +49,36 @@ struct SimHandle(Movable, Deinitable):
         self.initialized = False
         self.stepped = False
         self.last_terrain_emitted = 0
-        self.last_flora_emitted = 0
+        self.flora_emitted_once = False
+        self.last_flora = List[FloraInstance]()
         self.world = World(0)
         self.snapshot = List[UInt8]()
 
     def __deinit__(deinit self):
         pass
+
+
+def _flora_dirty(world: World, last: List[FloraInstance], once: Bool) -> Bool:
+    """0009 §3.2 emission predicate: first send after init always includes
+    FLORA; afterwards dirty ⇔ population structure (count / species / pos /
+    yaw) differs from the last send, or any instance's stored scale moved by
+    ≥ FLORA_EMIT_EPS relative to its last-sent scale."""
+    if not once:
+        return True
+    if world.flora.count != len(last):
+        return True
+    for i in range(world.flora.count):
+        var cur = world.flora.instances[i]
+        var prev = last[i]
+        if cur.species_id != prev.species_id:
+            return True
+        if cur.x != prev.x or cur.y != prev.y or cur.z != prev.z:
+            return True
+        if cur.yaw != prev.yaw:
+            return True
+        if flora_emission_dirty(Float64(prev.scale), Float64(cur.scale)):
+            return True
+    return False
 
 
 # --- Env-var address plumbing ----------------------------------------------
@@ -156,12 +188,15 @@ def runtime_init(seed: UInt32) -> Int32:
             h[].snapshot = List[UInt8]()
             h[].stepped = False
             h[].last_terrain_emitted = 0
-            h[].last_flora_emitted = 0
+            h[].flora_emitted_once = False
+            h[].last_flora = List[FloraInstance]()
         h[].world = world_init(seed)
         h[].snapshot = List[UInt8]()
         h[].stepped = False
         h[].last_terrain_emitted = 0  # world_version == 1 ⇒ first snapshot emits
-        h[].last_flora_emitted = 0  # same tracker rule for FLORA (0006 §1.1)
+        # FLORA change-driven tracker reset (0009 §3.2): first send dirty.
+        h[].flora_emitted_once = False
+        h[].last_flora = List[FloraInstance]()
         h[].initialized = True
         return 0
     except e:
@@ -181,7 +216,8 @@ def runtime_shutdown():
         h[].snapshot = List[UInt8]()
         h[].stepped = False
         h[].last_terrain_emitted = 0
-        h[].last_flora_emitted = 0
+        h[].flora_emitted_once = False
+        h[].last_flora = List[FloraInstance]()
         h[].initialized = False
     # Address stays in the env var: the (now empty) handle block is reused by
     # a later init. Block freed only by process exit — see file header.
@@ -202,11 +238,19 @@ def runtime_step(frame_dt: Float64, input: InputBatch) -> Int32:
         var ticks = step_world(h[].world, frame_dt, input)
         # TERRAIN only when (re)generation happened since last sent snapshot.
         var include_terrain = h[].world.world_version != h[].last_terrain_emitted
-        # FLORA: identical tracker rule (0006 §1.1 schema-5 sibling of TERRAIN).
-        var include_flora = h[].world.world_version != h[].last_flora_emitted
+        # FLORA: change-driven (0009 §3.2 / AP-22) — population/pose/yaw
+        # delta or any stored scale crossing FLORA_EMIT_EPS vs last send.
+        var include_flora = _flora_dirty(
+            h[].world, h[].last_flora, h[].flora_emitted_once
+        )
         h[].snapshot = encode_snapshot(h[].world, include_terrain, include_flora)
         h[].last_terrain_emitted = h[].world.world_version
-        h[].last_flora_emitted = h[].world.world_version
+        if include_flora:
+            var sent = List[FloraInstance]()
+            for i in range(h[].world.flora.count):
+                sent.append(h[].world.flora.instances[i])
+            h[].last_flora = sent^
+            h[].flora_emitted_once = True
         h[].stepped = True
         return ticks
     except e:

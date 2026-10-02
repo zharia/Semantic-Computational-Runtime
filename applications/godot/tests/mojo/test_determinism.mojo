@@ -357,6 +357,64 @@ def test_fixed_timestep_accumulator() raises:
     _check(step_world(world, 10.0, idle) == 3, "frame clamp caps at 3 ticks")
 
 
+def test_growth_age_scale_sequence_byte_identical() raises:
+    """0009 R8: same seed + same (empty) input sequence ⇒ identical
+    (age, scale) sequences across runs — growth is pure-hash + tick driven,
+    no mutable RNG stream (AP-20). Also: FLORA wire bytes stay identical
+    between the two runs at every sampled tick, and growth actually moves
+    both age and (eventually) scale."""
+    var w1 = world_init(1)
+    var w2 = world_init(1)
+    _check(w1.flora.count == w2.flora.count, "same population at init")
+    _check(w1.flora.count > 0, "seed 1 population non-empty")
+    var saw_scale_move = False
+    var init_scales = List[Float64]()
+    for i in range(w1.flora.count):
+        init_scales.append(Float64(w1.flora.instances[i].scale))
+    for k in range(420):
+        _ = step_world(w1, 1.0 / 60.0, InputBatch())
+        _ = step_world(w2, 1.0 / 60.0, InputBatch())
+        _check(
+            w1.flora.count == w2.flora.count,
+            "identical population count through growth",
+        )
+        for i in range(w1.flora.count):
+            _check(
+                w1.flora.ages[i] == w2.flora.ages[i],
+                "identical age sequence (R8) at tick " + String(k),
+            )
+            _check(
+                w1.flora.instances[i].scale == w2.flora.instances[i].scale,
+                "identical scale sequence (R8) at tick " + String(k),
+            )
+            if Float64(w1.flora.instances[i].scale) != init_scales[i]:
+                saw_scale_move = True
+        # FLORA wire bytes identical between runs at this tick (terrain off —
+        # we only need section 10 framing here).
+        var d1 = encode_snapshot(w1, False, True)
+        var d2 = encode_snapshot(w2, False, True)
+        var e1 = decode_envelope(d1)
+        var e2 = decode_envelope(d2)
+        var s1 = decode_sections(d1, e1)
+        var s2 = decode_sections(d2, e2)
+        var f1 = find_section(s1, SEC_FLORA)
+        var f2 = find_section(s2, SEC_FLORA)
+        _check(f1 >= 0 and f2 >= 0, "FLORA present both runs")
+        _check(s1[f1].length == s2[f2].length, "FLORA frame length equal")
+        for b in range(s1[f1].length):
+            _check(
+                d1[s1[f1].offset + b] == d2[s2[f2].offset + b],
+                "FLORA wire bytes identical (R8) at tick " + String(k),
+            )
+    _check(saw_scale_move, "growth moved at least one stored scale in 420 ticks")
+    # Ages really advanced past their mixed initial values.
+    var advanced = 0
+    for i in range(w1.flora.count):
+        if w1.flora.ages[i] > 0:
+            advanced += 1
+    _check(advanced == w1.flora.count, "every instance aged past 0")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -369,5 +427,6 @@ def main() raises:
             test_flora_species_diversity_seed1,
             test_flock_present_and_capped,
             test_scripted_edits_are_byte_deterministic,
+            test_growth_age_scale_sequence_byte_identical,
         )
     ]().run()
