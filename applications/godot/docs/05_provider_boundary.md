@@ -2,7 +2,7 @@
 
 **Purpose:** State the contract boundary between Godot (provider/manifestation surface) and SCR/Mojo (semantic authority) for this application.
 **Status:** Active
-**Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md) (§5 specified by milestone 0002 Sprint 03/04)
+**Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md) (§5 specified by milestone 0002 Sprint 03/04; §6 transport boundary added by milestone 0008 Sprint 04)
 
 ---
 
@@ -53,14 +53,28 @@ Normative basis:
 
 Binding protocol implemented as the normative **[`104_contract.md`](../../providers/render/graphics/godot/104_contract.md)** (byte schema **v6**, C ABI **v2**, input + edit uplink). Summary (full spec there; flow detail in [04 §4.3/§5/§5.1](04_simulation_engine.md)):
 
-- **Transport:** in-process `dlopen` of `build/libscr_sim.so` by the GDExtension adapter (`providers/.../adapter/scr_sim_loader.h`), negotiated via `scr_sim_abi_version()` (=2) and `scr_sim_schema_version()` (=6). ABI/schema mismatch is refused loudly (`tests/test_schema_mismatch.sh` — negative tests for both). IPC transport swap deferred (stabilized contract = trigger, §6).
+- **Transport:** behind the `ITransport` interface (`providers/.../adapter/scr_transport.h`) — **in-process `dlopen` of `build/libscr_sim.so` (default)** or **Unix-domain-socket client (opt-in `SCR_SIM_TRANSPORT=socket`, milestone 0008)**, both feeding one decode path. Version gate identical either way: `scr_sim_abi_version()` (=2) / `scr_sim_schema_version()` (=6) in-process, `HELLO{proto,abi,schema}` over the wire for the socket — mismatch refused loudly (`tests/test_schema_mismatch.sh`, `tests/ipc/test_ipc_version_refusal.sh`). IPC swap executed under 0008 with byte-identical semantics (§6, `104_contract.md` §2).
 - **Downlink (sim → provider):** `RenderSnapshot` — 48-byte envelope + framed sections `1 PLAYER … 11 FAUNA, 12 HOTBAR, 13 TARGET, 14 RIGID_BODIES`. Provider validates strictly and skips invalid frames; it never coerces or invents values (Rule 6).
 - **Uplink (provider → sim), symbol list:**
   - `scr_input_batch` (20 bytes) — raw motion/look/action intent; adapter clamps movement to the unit circle and accumulates look deltas; **the sim integrates all motion** (AP-8, Rule 1).
   - `scr_edit_batch` (4 bytes: `u8 op, u8 select_slot, u16 reserved`) via **`scr_edit_submit`** (ABI 2) — edit intent only: client never names materials or cells; ray/hit/material resolution is sim semantics (0007 AP-12). Bound by the adapter directly (`dlsym` after `scr_sim_load`; not part of the 7-symbol loader set), refused loudly if missing.
   - Exported symbols (8): `scr_sim_init`, `scr_sim_shutdown`, `scr_sim_abi_version`, `scr_sim_schema_version`, `scr_sim_step`, `scr_sim_snapshot_size`, `scr_sim_snapshot_write`, `scr_edit_submit` (all ABI-smoke tested).
 - **Presentation application:** adapter maps snapshot sections onto group nodes (`scr_terrain, scr_meta, scr_ocean, scr_sun, scr_env, scr_camera, scr_hud, scr_materials, scr_crater_lava, scr_crater_glow, scr_plume, scr_clouds, scr_rain, scr_flora, scr_fauna, scr_hotbar, scr_target, scr_props`) per [04 §5](04_simulation_engine.md). Absent groups ⇒ presentation absent; provider code may not redefine what a section *means* (Rules 2, 6).
-- **Status:** implemented and gated through milestone 0007 (schema 6 / ABI 2, §8.7 evidence in [04](04_simulation_engine.md)).
+- **Status:** implemented and gated through milestone 0008 (schema 6 / ABI 2 / proto 1, §8.7–§8.8 evidence in [04](04_simulation_engine.md)).
+
+## 6. Port vs Transport (APP-PRT-002, milestone 0008)
+
+> **Ports MUST NOT reference socket formats or IPC mechanisms** (`lib/804_Application/Port` `APP-PRT-002`); replacing an Adapter must not modify Port semantics (`APP-ADP-002`).
+
+How 0008 satisfies it:
+
+| Rule | Where the boundary sits | Evidence |
+|---|---|---|
+| Port content unchanged | `104_contract.md` §4/§5 byte tables are the same before/after 0008 (no field, no schema bump, no fixture regen) | layout-neutrality review, [04 §8.8](04_simulation_engine.md) gate 7 |
+| IPC mechanisms only behind the Adapter | `SCRT` framing, UDS endpoint, `posix_spawn`, backoff/restart live **only** in `adapter/transport_socket.cpp`; `scr_godot_adapter.cpp` frame path has zero socket syscalls; `src/mojo/` server speaks the wire but never imports Godot | grep gate in `tests/godot/godot_render_stall_test.sh` (AP-15) |
+| Technology neutrality of the Port | `docs/04` §5 (scene ↔ state mapping) describes *sections and groups*, not transports; in-process and socket runs pass the same load/screenshot/playability gates | [04 §8.8](04_simulation_engine.md) gates 5, 8 |
+| Substitutability | same `ITransport` consumers, same `decode_and_apply`, same notices/HUD path; selection = env (`$SCR_SIM_TRANSPORT` > project setting) | `godot_load_test.sh` asserts `InprocTransport`, `godot_ipc_smoke.sh` asserts `SocketTransport` |
+| Server subordination | the spawned `scr_sim_server` is a runtime behind the contract: it owns pacing/ticks, never scene or provider semantics | `104_contract.md` §2.1/§2.3 |
 
 ## References
 

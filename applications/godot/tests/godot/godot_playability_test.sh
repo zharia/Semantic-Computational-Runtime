@@ -22,6 +22,19 @@ GODOT_BIN="${GODOT_BIN:-godot}"
 LOG="$(mktemp)"
 trap 'rm -f "${LOG}"' EXIT
 
+# Socket leg: the F-leg edit checks read the snapshot mirror only 2 physics
+# frames after submit_edit. Under the server's default wall 60 Hz clock a
+# headless run burns those frames in <16 ms — before the server's next wall
+# tick returns the edited snapshot — so the mirror reads stale (F5/F6/F13
+# flake). Client-paced mode (SCR_SIM_IPC_PACE=manual, 104_contract.md §2)
+# makes every physics frame issue CMD_TICK, i.e. request/response per frame,
+# matching the in-process leg the checks were written against. Same default
+# as godot_screenshot.sh: only when the caller did not choose a pace
+# explicitly (deliberate wall runs pass SCR_SIM_IPC_PACE=wall).
+if [[ "${SCR_SIM_TRANSPORT:-}" == "socket" && -z "${SCR_SIM_IPC_PACE+x}" ]]; then
+    export SCR_SIM_IPC_PACE=manual
+fi
+
 cd "${REPO_ROOT}"
 timeout 300 "${GODOT_BIN}" --headless --path "${PROJ}" \
     -s "${SCRIPT_DIR}/godot_playability_test.gd" >"${LOG}" 2>&1

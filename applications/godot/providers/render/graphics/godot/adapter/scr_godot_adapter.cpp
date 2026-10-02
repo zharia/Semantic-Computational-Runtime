@@ -368,6 +368,7 @@
  */
 
 #include "scr_sim_loader.h"
+#include "scr_transport.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/camera3d.hpp>
@@ -382,6 +383,7 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/omni_light3d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/particle_process_material.hpp>
 #include <godot_cpp/classes/procedural_sky_material.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
@@ -408,6 +410,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -1267,15 +1271,13 @@ public:
     static void _bind_methods();
 
 protected:
-    // --- sim lifecycle ------------------------------------------------------
-    scr_sim_api api_ = {};
-    bool loaded_ = false;        // symbols bound + versions accepted
-    bool inited_ = false;        // scr_sim_init succeeded
-    /* Ninth contract symbol (ABI 2): bound by the adapter itself right
-     * after scr_sim_load() — the shared loader's 7-symbol list stays
-     * ABI-1 vintage for the C negative test (file header "EDIT UPLINK").
-     * NULL when missing (sim refused to start loudly in that case). */
-    int32_t (*edit_submit_)(const scr_edit_batch *batch) = nullptr;
+    // --- sim transport (0008 §1.1: ITransport = in-process | socket) ------
+    /* One abstraction replaces {scr_sim_api api_, edit_submit_, loaded_,
+     * inited_}: the adapter holds the selected transport after a successful
+     * init() and nullptr otherwise (inert, exactly like the pre-0008
+     * failure paths). Selection: $SCR_SIM_TRANSPORT > project setting
+     * scr/transport > in-process (safety default, 0008 §6.7). */
+    std::unique_ptr<ITransport> transport_;
 
     // --- input state --------------------------------------------------------
     int64_t world_seed = 1;
@@ -1437,14 +1439,14 @@ int64_t ScrSimDriver::submit_edit(int64_t op, int64_t select_slot) {
     if (op < 0 || op > 255 || select_slot < 0 || select_slot > 255) {
         return SCR_ERR_BAD_STATE;
     }
-    if (!loaded_ || !inited_ || edit_submit_ == nullptr) {
+    if (!transport_ || !transport_->ready()) {
         return SCR_ERR_NOT_INIT;
     }
     scr_edit_batch batch;
     batch.op = static_cast<uint8_t>(op);
     batch.select_slot = static_cast<uint8_t>(select_slot);
     batch.reserved = 0;
-    return edit_submit_(&batch);
+    return transport_->edit_submit(&batch);
 }
 
 // ---------------------------------------------------------------------------
@@ -1452,76 +1454,161 @@ int64_t ScrSimDriver::submit_edit(int64_t op, int64_t select_slot) {
 // ---------------------------------------------------------------------------
 
 void ScrSimDriver::_ready() {
-    if (loaded_) {
+    if (transport_) {
         return;
     }
 
-    /* 1) repo-relative dev path (AP-4: res:// + ProjectSettings only) */
-    String path = ProjectSettings::get_singleton()->globalize_path(
-        "res://../build/libscr_sim.so");
-    bool have = FileAccess::file_exists(path);
-
-    /* 2) explicit override for tests/CI */
-    if (!have) {
-        const char *env = std::getenv("SCR_SIM_LIB");
-        if (env != nullptr && env[0] != '\0') {
-            path = String(env);
-            have = true;
+    /* Transport selection (0008 §1.1): $SCR_SIM_TRANSPORT overrides the
+     * project setting `scr/transport`; anything other than "socket" means
+     * the in-process transport (safety default, §6.7). */
+    bool want_socket = false;
+    {
+        const char *sel = std::getenv("SCR_SIM_TRANSPORT");
+        if (sel != nullptr && sel[0] != '\0') {
+            want_socket = (String(sel) == "socket");
+        } else if (ProjectSettings::get_singleton()->has_setting(
+                       "scr/transport")) {
+            want_socket = (String(ProjectSettings::get_singleton()
+                                      ->get_setting("scr/transport")) ==
+                           "socket");
         }
     }
 
-    if (!have) {
-        ERR_PRINT(
-            "SCR: sim library not found (tried res://../build/libscr_sim.so, "
-            "then $SCR_SIM_LIB) — ScrSim staying inert");
-        return;
-    }
+    const uint32_t seed =
+        static_cast<uint32_t>(static_cast<uint64_t>(world_seed));
 
-    char err[512];
-    CharString cs = path.utf8();
-    const int rc = scr_sim_load(&api_, cs.get_data(), err, sizeof(err));
-    if (rc != SCR_LOAD_OK) {
-        ERR_PRINT(String("SCR: ") + String(err) + " [" + path + "]");
-        return;
-    }
+    if (want_socket) {
+        /* Endpoint + ownership (0008 §1.1 supervision row), resolved at
+         * runtime only — AP-4 forbids filesystem literals in sources.
+         *
+         *   socket: $SCR_SIM_SOCKET wins (an external owner names it, so the
+         *           adapter must not spawn); otherwise the adapter resolves a
+         *           path under Godot's user:// data dir and OWNS the session.
+         *   server: $SCR_SIM_SERVER_BIN overrides the binary; without it the
+         *           adapter-owned default is the app build output
+         *           res://../build/scr_sim_server.
+         *
+         * Spawning starts when no external endpoint was given, or when a
+         * server binary was named explicitly (tests and CI). */
+        const char *sock_env = std::getenv("SCR_SIM_SOCKET");
+        const bool external_endpoint =
+            (sock_env != nullptr && sock_env[0] != '\0');
+        std::string sock_path;
+        if (external_endpoint) {
+            sock_path = sock_env;
+        } else {
+            const String dir =
+                OS::get_singleton()->get_user_data_dir();
+            const CharString cs = dir.path_join("scr_sim.sock").utf8();
+            sock_path = cs.get_data();
+        }
 
-    UtilityFunctions::print(
-        String("SCR: sim loaded (abi ") +
-        String::num_uint64(api_.abi_version()) + ", schema " +
-        String::num_uint64(api_.schema_version()) + ")");
+        const char *bin_env = std::getenv("SCR_SIM_SERVER_BIN");
+        std::string server_bin;
+        const bool spawn =
+            (bin_env != nullptr && bin_env[0] != '\0') || !external_endpoint;
+        if (bin_env != nullptr && bin_env[0] != '\0') {
+            server_bin = bin_env;
+        } else if (spawn) {
+            const CharString cs = ProjectSettings::get_singleton()
+                                      ->globalize_path(
+                                          "res://../build/scr_sim_server")
+                                      .utf8();
+            server_bin = cs.get_data();
+        }
 
-    /* Ninth contract symbol (ABI 2): not part of the shared loader's
-     * 7-symbol list (scr_sim_loader.h header note) — bind it here and
-     * refuse loudly if a library claiming ABI 2 does not export it. */
-    {
-        (void)dlerror();
-        void *sym = dlsym(api_.handle, "scr_edit_submit");
-        if (sym == nullptr || dlerror() != nullptr) {
+        if (spawn && !FileAccess::file_exists(String(server_bin.c_str()))) {
             ERR_PRINT(
-                "SCR: missing symbol scr_edit_submit on an ABI-2 library — "
-                "refusing to run (edit uplink unavailable)");
-            scr_sim_unload(&api_);
+                "SCR: sim server binary not found (" +
+                String(server_bin.c_str()) +
+                ") — set SCR_SIM_SERVER_BIN or build it with "
+                "scripts/build_sim_server.sh, ScrSim staying inert");
             return;
         }
-        memcpy(&edit_submit_, &sym, sizeof(sym));
+
+        /* Repo root for the child's catalog lookup (the server validates the
+         * marker itself and refuses to start without it). res:// is the Godot
+         * project directory, i.e. <repo>/applications/godot/godot. */
+        const CharString rc =
+            ProjectSettings::get_singleton()
+                ->globalize_path("res://../../..")
+                .utf8();
+
+        transport_.reset(scr_create_socket_transport(
+            sock_path.c_str(), spawn ? server_bin.c_str() : nullptr,
+            rc.get_data()));
+    } else {
+        /* 1) repo-relative dev path (AP-4: res:// + ProjectSettings only) */
+        String path = ProjectSettings::get_singleton()->globalize_path(
+            "res://../build/libscr_sim.so");
+        bool have = FileAccess::file_exists(path);
+
+        /* 2) explicit override for tests/CI */
+        if (!have) {
+            const char *env = std::getenv("SCR_SIM_LIB");
+            if (env != nullptr && env[0] != '\0') {
+                path = String(env);
+                have = true;
+            }
+        }
+
+        if (!have) {
+            ERR_PRINT(
+                "SCR: sim library not found (tried res://../build/"
+                "libscr_sim.so, then $SCR_SIM_LIB) — ScrSim staying inert");
+            return;
+        }
+
+        CharString cs = path.utf8();
+        transport_.reset(scr_create_inproc_transport(cs.get_data()));
     }
 
-    const uint32_t seed = static_cast<uint32_t>(static_cast<uint64_t>(world_seed));
-    const int32_t irc = api_.init(seed);
-    if (irc != 0) {
-        ERR_PRINT(String("SCR: scr_sim_init failed with code ") +
-                  String::num_int64(irc));
-        scr_sim_unload(&api_);
+    const int rc = transport_->init(seed);
+    if (rc != 0) {
+        ERR_PRINT(String("SCR: ") + String(transport_->last_error()) +
+                  " (transport init failed with code " +
+                  String::num_int64(rc) + ")");
+        transport_.reset();
         return;
     }
 
-    inited_ = true;
-    loaded_ = true;
+    uint32_t proto = 0;
+    uint32_t abi = 0;
+    uint32_t schema = 0;
+    transport_->get_versions(proto, abi, schema);
+    UtilityFunctions::print(
+        String("SCR: sim loaded (abi ") + String::num_uint64(abi) +
+        ", schema " + String::num_uint64(schema) + ")");
+
+    if (want_socket) {
+        UtilityFunctions::print(
+            String("SCR: transport=SocketTransport handshake OK (proto ") +
+            String::num_uint64(proto) + ", abi " + String::num_uint64(abi) +
+            ", schema " + String::num_uint64(schema) + ")");
+    } else {
+        UtilityFunctions::print("SCR: transport=InprocTransport");
+    }
+
     set_physics_process(true);
 }
 
 void ScrSimDriver::_physics_process(double delta) {
-    if (!loaded_ || !inited_) {
+    /* Async notices first (AP-17), BEFORE the readiness gate: a fatal
+     * restart-cap stop flips ready() false, and the reason must still be
+     * printed loudly — "stop stepping" must never mean "stop reporting". */
+    if (transport_) {
+        std::string info;
+        std::string error;
+        transport_->poll_notices(info, error);
+        if (!info.empty()) {
+            UtilityFunctions::print(String(info.c_str()));
+        }
+        if (!error.empty()) {
+            ERR_PRINT(String(error.c_str()));
+        }
+    }
+
+    if (!transport_ || !transport_->ready()) {
         return;
     }
 
@@ -1546,24 +1633,39 @@ void ScrSimDriver::_physics_process(double delta) {
     in_action_primary = false;
     in_action_secondary = false;
 
-    /* delta passes through: the sim owns the frame-dt clamp (104_contract §6). */
-    const int32_t ticks = api_.step(delta, &batch);
+    /* delta passes through: the sim owns the frame-dt clamp (104_contract §6).
+     * Socket path returns 0 ticks: pacing is the server's wall clock, or —
+     * with SCR_SIM_IPC_PACE=manual — the CMD_TICK this step queued behind
+     * its input batch (client-paced, one fixed tick per physics frame). */
+    const int32_t ticks = transport_->step(delta, &batch);
     if (ticks < 0) {
-        ERR_PRINT(String("SCR: scr_sim_step failed with code ") +
+        ERR_PRINT(String("SCR: transport step failed with code ") +
                   String::num_int64(ticks));
         return;
     }
 
-    const uint32_t need = api_.snapshot_size();
+    uint32_t need = transport_->snapshot_size();
     if (need == 0) {
-        return;
+        return; /* socket: first snapshot not published yet */
     }
     if (snap_buf_.size() < need) {
         snap_buf_.resize(need);
     }
-    const int32_t got = api_.snapshot_write(snap_buf_.data(), need);
+    int32_t got = transport_->snapshot_write(snap_buf_.data(), need);
+    if (got == SCR_ERR_BUF_SMALL) {
+        /* A newer snapshot landed between size() and write() — re-size and
+         * retry once (socket path only; in-process cannot race here). */
+        need = transport_->snapshot_size();
+        if (need == 0) {
+            return;
+        }
+        if (snap_buf_.size() < need) {
+            snap_buf_.resize(need);
+        }
+        got = transport_->snapshot_write(snap_buf_.data(), need);
+    }
     if (got < 0) {
-        ERR_PRINT(String("SCR: scr_sim_snapshot_write failed with code ") +
+        ERR_PRINT(String("SCR: transport snapshot_write failed with code ") +
                   String::num_int64(got));
         return;
     }
@@ -1575,15 +1677,10 @@ void ScrSimDriver::_physics_process(double delta) {
 }
 
 void ScrSimDriver::_exit_tree() {
-    if (inited_) {
-        api_.shutdown();
-        inited_ = false;
+    if (transport_) {
+        transport_->shutdown(); /* socket path sends BYE here */
+        transport_.reset();
     }
-    if (loaded_) {
-        scr_sim_unload(&api_);
-        loaded_ = false;
-    }
-    edit_submit_ = nullptr; /* dlclosed with the handle — never call stale */
     set_physics_process(false);
 }
 

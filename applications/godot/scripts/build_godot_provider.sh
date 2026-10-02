@@ -47,6 +47,14 @@ mkdir -p "applications/godot/build"
 ls -l "${SIM_OUT}"
 
 echo
+echo "== [1b/3] IPC simulation server (milestone 0008) =="
+(
+    cd "applications/godot/src/mojo"
+    "${MOJO}" build server/main.mojo -I . -o "../../build/scr_sim_server"
+)
+ls -l "applications/godot/build/scr_sim_server"
+
+echo
 echo "== [2/3] GDExtension adapter (godot-cpp, scons) =="
 mkdir -p "$(dirname "${EXT_OUT}")"
 "${SCONS}" -C "${ADAPTER_DIR}"

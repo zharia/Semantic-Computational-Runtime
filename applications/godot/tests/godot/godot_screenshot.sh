@@ -37,6 +37,20 @@ TICK_MIN="${TICK_MIN:-1900}"
 EXTRA_ARGS=()
 if [[ -n "${SCR_EXPECT_GLOW:-}" ]]; then EXTRA_ARGS+=("--expect-glow"); fi
 
+# Socket legs of this gate are WALL-TIME sensitive: the plume particle
+# lifetime (6 s) and the cloud display advance on wall time while sim ticks
+# advance on Godot physics frames. With the server's default wall pace the
+# sim reaches the capture tick ~2x faster than the in-process leg, so the
+# plume column has not developed and the sun sub-capture lands at a
+# different cloud phase (0008 §1.1 client-paced socket mode — the adapter
+# issues CMD_TICK 1 per physics frame, making socket tick timing equal the
+# in-process leg's). Set SCR_SIM_IPC_PACE=manual for the socket leg unless
+# the caller already chose a pace explicitly (deliberate wall runs pass
+# SCR_SIM_IPC_PACE=wall).
+if [[ "${SCR_SIM_TRANSPORT:-}" == "socket" && -z "${SCR_SIM_IPC_PACE+x}" ]]; then
+    export SCR_SIM_IPC_PACE=manual
+fi
+
 manual_fallback() {
     cat >&2 <<'EOF'
 MANUAL CAPTURE PROCEDURE (documented fallback, spec §7 exit criterion 2):

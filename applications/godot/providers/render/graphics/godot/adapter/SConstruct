@@ -66,7 +66,12 @@ env.Append(
     ],
 )
 
-sources = [File("scr_godot_adapter.cpp")]
+# 0008: ITransport split — adapter + in-process dlopen leg + socket leg.
+sources = [
+    File("scr_godot_adapter.cpp"),
+    File("transport_inproc.cpp"),
+    File("transport_socket.cpp"),
+]
 
 lib = env.SharedLibrary(TARGET, source=sources)
 Default(lib)

@@ -1,6 +1,6 @@
  {
   "id": "SCR-PROVIDER-RENDER-GODOT",
-  "version": 6,
+  "version": 7,
   "derived": true,
   "note": "Derived projection of 101_definition.md relationships; not authoritative (lib/README.md graph rule).",
  "nodes": [
@@ -80,7 +80,7 @@
    "source": "SCR-PROVIDER-RENDER-GODOT",
    "target": "SCR-MOJO-SIM-CORE",
    "relationship": "CONSUMED_BY",
-   "semantics": "adapter consumes RenderSnapshot from sim core; input uplink reversed"
+   "semantics": "adapter consumes RenderSnapshot from sim core over ITransport (in-process dlopen default, Unix-domain-socket to the spawned scr_sim_server opt-in — same byte stream); input/edit uplink reversed"
   },
   {
    "source": "SCR-PROVIDER-RENDER-GODOT",

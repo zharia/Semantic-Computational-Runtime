@@ -45,6 +45,8 @@ Godot scene graph / shaders / lights  (manifestation)
 | `HotbarManifestation` (12 HOTBAR → `scr_hotbar` 9-slot HUD, catalog names/colors from the mirror) | Implemented — milestone 0007 |
 | `TargetManifestation` (13 TARGET → `scr_target` readout; miss ⇒ "SKY / AIR") | Implemented — milestone 0007 |
 | `RigidPropManifestation` (14 RIGID_BODIES → `scr_props` pooled ≤ 16 meshes) | Implemented — milestone 0007 |
+| `SnapshotTransportSwap` (behind `ITransport`: in-process `dlopen` default, Unix-domain-socket client opt-in — same bytes either way, `104_contract.md` §2) | Implemented — milestone 0008 |
+| `SimServerSupervision` (spawn `build/scr_sim_server`, backoff restart, >5 restarts/30 s ⇒ fatal, `BYE` + reap on exit) | Implemented — milestone 0008 |
 | `PlayerCameraManifestation` | Implemented — milestone 0002 |
 | `InputUplink` (scr_input_batch) | Implemented — milestone 0002 |
 

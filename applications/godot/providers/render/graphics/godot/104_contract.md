@@ -21,7 +21,42 @@ Invariant: projection MUST NOT mutate world state; the adapter MUST NOT make sem
 
 ## 2. Transport
 
-In-process for this milestone: GDExtension adapter `dlopen`s the Mojo shared library (`libscr_sim.so`) and calls the C ABI functions directly. The contract is transport-agnostic; a later IPC transport must carry the same byte stream (`milestone_0002` spec §9).
+The contract is transport-agnostic: the byte streams of §4 (downlink) and §5 (uplink) are identical however they travel. Two implementations sit behind the C++ `ITransport` interface (`adapter/scr_transport.h`) and feed **one decode path** (`ScrSimDriver::decode_and_apply`) — replacing the transport never changes Port semantics (`APP-ADP-002`) and socket formats never appear outside the adapter (`APP-PRT-002`):
+
+- **In-process (default):** the GDExtension adapter `dlopen`s `libscr_sim.so` and calls the C ABI (§3) directly. Selected unless `SCR_SIM_TRANSPORT=socket`.
+- **Socket (opt-in, milestone 0008):** `SCR_SIM_TRANSPORT=socket` makes the adapter spawn/own `build/scr_sim_server` (override `SCR_SIM_SERVER_BIN`) and speak the framing protocol below over a Unix domain socket (endpoint `SCR_SIM_SOCKET`, else `user://scr_sim.sock`). With `SCR_SIM_SOCKET` set but no spawn, the adapter only connects to an externally owned server and never respawns it.
+- **Pacing (§2.1 HELLO flags; transport-neutral — same `CMD_TICK` semantics in §2.1 and the determinism harness):** default `wall` — the server free-runs its fixed 60 Hz clock and the adapter handshakes `SCR_IPC_FLAG_EDIT_CAP` only (pre-0008-sprint behavior, byte-for-byte). Opt-in `SCR_SIM_IPC_PACE=manual` (value `manual`; unset or anything else = `wall`) makes the adapter additionally handshake `SCR_IPC_FLAG_MANUAL_PACE` and issue `CMD_TICK 1` behind each Godot physics frame's `INPUT`/`EDIT` frames (worker thread only, SPSC FIFO — never on the render thread, AP-15), so exactly **one fixed tick executes per physics frame**. Socket tick↔wall timing then equals the in-process leg's (ticks are born on physics frames in both legs), which is what the rendered gates assert: content at a fixed sim tick is wall-clock-neutral only when sim ticks track physics frames — shader/`TIME` displays (clouds, plume particle lifetime) advance on wall time. Ticks are never dropped: a full uplink ring defers them to a debt counter the worker flushes after draining the ring. **Rendered/socket-deterministic gates run with `SCR_SIM_IPC_PACE=manual`** (`godot_screenshot.sh` and `godot_playability_test.sh` default it when `SCR_SIM_TRANSPORT=socket` — the playability F-leg reads the edit mirror only 2 physics frames after `submit_edit`, which a 60 Hz wall snapshot cannot serve in a fast headless run; harnesses and stall/supervision legs keep `wall` unless they ask otherwise). Safety default (invariant 7): without the env opt-in, socket pacing is unchanged.
+
+### 2.1 Framing protocol (`SCR_SIM_IPC_PROTO_VER = 1`)
+
+Little-endian; frame = `u32 magic = 0x54524353 ('SCRT') | u32 type | u32 seq | u32 length | payload[length]` (16-byte header; `length ≤ 16 MiB`).
+
+| Type | Dir | Payload | Semantics |
+|---|---|---|---|
+| 1 `HELLO` | C→S | `u32 proto, u32 abi, u32 schema, u32 flags` | First frame. `flags` bit0 = `SCR_IPC_FLAG_MANUAL_PACE`, bit1 = `SCR_IPC_FLAG_EDIT_CAP` |
+| 2 `HELLO_OK` | S→C | `u32 proto, u32 abi, u32 schema` | Sent iff all three match the server's own values; else (3) |
+| 3 `ERROR` | both | `u32 code, u32 msg_len, bytes msg` | Loud refusal/diagnostic; sender closes after a fatal error |
+| 4 `SNAPSHOT` | S→C | exact `RenderSnapshot` bytes (§4) | One per executed tick; `seq` monotonic per session; **payload byte-identical to the in-process `scr_sim_snapshot_write` output for the same tick** |
+| 5 `INPUT` | C→S | `scr_input_batch` (20 B, §5) | Applied to the tick(s) it precedes (same per-batch semantics as `scr_sim_step`) |
+| 6 `EDIT` | C→S | `scr_edit_batch` (4 B, §5.1) | Requires `SCR_IPC_FLAG_EDIT_CAP` in the handshake; otherwise the server answers `ERROR` |
+| 7 `ACK` | S→C | `u32 ack_seq` | Server confirms consumption |
+| 8 `BYE` | both | — | Graceful shutdown; the server exits after flushing (adapter sends it on scene exit) |
+| 9 `CMD_TICK` | C→S | `u32 n` | Only with `SCR_IPC_FLAG_MANUAL_PACE` handshaken: execute exactly `n` fixed ticks, emitting one `SNAPSHOT` per tick (determinism harness; also the adapter's client-paced socket mode — `SCR_SIM_IPC_PACE=manual`, §2) |
+
+**Version policy:** `SCR_SIM_IPC_PROTO_VER` (framing/handshake) changes only with framing changes. `abi`/`schema` mirror `scr_sim_abi_version()` / `scr_sim_schema_version()` of the running core; mismatch ⇒ `ERROR` + close in **both** directions — identical refusal semantics to the in-process `dlopen` gate (§3, §7). Deadlines: handshake 5 s against an externally owned server, 10 s against a spawned one (covers `dlopen` + world init); connect budget 5 s for a spawned server (immediate fail if the child dies), single-shot for an external endpoint.
+
+**Backpressure / coalescing:** the writer sends non-blocking; under backpressure it keeps only the newest snapshot (latest-wins); the client discards stale `seq ≤ last_applied`. Inputs are reliable-ordered (UDS) — the adapter-side SPSC ring (depth 16) merges deltas when full rather than dropping them.
+
+### 2.2 Neutrality assertion (0008 invariant — layout-neutral)
+
+- `SNAPSHOT` payload = the exact `RenderSnapshot` byte stream of §4. Milestone 0008 **changes no field, bumps neither `SCR_SIM_SCHEMA_VER` (6) nor `SCR_SIM_ABI_VERSION` (2), and regenerates no fixture** (249680 B seed-1 tick-1 fixture inherited as-is).
+- Single encoder, no transport-conditional code paths: byte-identity of the full in-process vs socket snapshot sequence (N = 600 ticks) is an exit gate.
+- Framing lives *above* this contract: §4/§5 tables are unchanged by transport choice.
+
+### 2.3 Session rules at the socket transport (normative)
+
+- **First-snapshot latch:** the client must apply the *first* `SNAPSHOT` of every session before adopting latest-wins coalescing. The session's first frame is the only one carrying the emission-gated sections (`TERRAIN`, `FLORA` — presence rules, 0006 invariant 5), and the render thread may not read for several server ticks during startup; dropping that frame would drop those sections for the whole session. A restart starts a new session ⇒ a new latch.
+- **Supervision (adapter-owned lifecycle):** spawn (`posix_spawn`, argv `[server, --socket, path, --seed, n]`, env inherited + `SCR_REPO_ROOT`), connect, re-handshake; on EOF/crash ⇒ backoff restart `100 → 200 → 400 → 800 → 1600 ms` (cap 2 s), fresh session with the **same seed** (world regenerates ⇒ `TERRAIN`/`FLORA` re-emit) and a logged session restart; **more than 5 restarts within 30 s ⇒ fatal, loud, stepping stops**. Scene exit sends `BYE` and reaps the child (no orphans). External-owner mode never respawns.
 
 ## 3. C ABI summary
 

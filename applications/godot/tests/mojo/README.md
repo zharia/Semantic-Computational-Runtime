@@ -3,7 +3,7 @@
 **Purpose:** Executable specification tests for the simulation core under `src/mojo/` (milestone_0002 Sprints 01+02, extended through milestone 0007).
 **Framework:** `std.testing` — each file defines `def test_*() raises:` functions, registered by hand in `main()` via
 `TestSuite.discover_tests[(...)]().run()`. Checks use a raise-based `_check` helper (`assert` is a no-op on this toolchain).
-**Status:** Active (v0.0.1 / milestones 0002–0007; snapshot schema 6, C ABI 2).
+**Status:** Active (v0.0.1 / milestones 0002–0008; snapshot schema 6, C ABI 2).
 
 ## Running (from repo root)
 
@@ -17,6 +17,15 @@ $M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_edit_op
 $M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_hotbar.mojo
 $M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_raycast.mojo
 $M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_props.mojo
+$M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_framing.mojo
+```
+
+IPC transport (milestone 0008 — server binary + frame harness):
+
+```sh
+bash applications/godot/scripts/build_sim_server.sh
+python3 applications/godot/tests/ipc/ipc_harness.py --self-test
+bash applications/godot/tests/ipc/test_ipc_version_refusal.sh
 ```
 
 ABI smoke + TERRAIN resend (build the shared library first, then dlopen it like the adapter):
@@ -44,12 +53,16 @@ nm -D applications/godot/build/libscr_sim.so | grep -c " T scr_"   # expect 8
 | `test_props.mojo` | 0007 §3.5: deterministic prop spawn anchors, gravity/ground clamp, euler zero |
 | `test_gerstner.mojo` | SCR-LIB-MATH-GERSTNER: dispersion, steepness bound, Jacobian/foam ranges, determinism |
 | `test_catalog.mojo` | AP-3/§6.5: every shading parameter derivable from `materials_catalog.json` (repo-relative) |
+| `test_framing.mojo` | 0008 §3.2: SCRT frame codec round-trips (all 9 types), AP-16 payload-blind copy, loud malformed refusal, HELLO verdict matrix (proto/abi/schema/flags) |
 | `test_golden_fixture.mojo` | Byte-exact golden snapshot (`../fixtures/snapshot_seed1_tick1.bin`), sections 1–14 |
 | `gen_golden_fixture.mojo` | Tool (not a test): regenerates the fixture after intentional changes |
 | `test_atmosphere.mojo`, `test_weather.mojo`, `test_quench.mojo`, `test_flora_placement.mojo`, `test_flock.mojo`, `test_shoreline_foam.mojo`, `test_material_blending.mojo` | Domain suites (0003–0006) |
 | `../abi_smoke.py` | 8 C ABI symbols, `scr_input_batch` 20 B, `scr_edit_batch` 4 B, SCR_ERR_* paths (incl. −5), FFI snapshot == fixture, section 12/13/14 framing |
 | `../test_terrain_resend.py` | TERRAIN presence rule: applied edit resends TERRAIN exactly once; miss does not |
 | `../test_schema_mismatch.sh` | Loader refuses SCR_SIM_SCHEMA_VER + 1 (stub lie), accepts the real library |
+| `../ipc/ipc_harness.py` | 0008 AP-15..18: pure-Python frame client (handshake, INPUT/CMD_TICK, snapshot capture) + in-process FFI leg; `--self-test` = handshake + 1 tick + AP-16 byte-identity + refusals |
+| `../ipc/test_ipc_version_refusal.sh` | 0008 §7: mismatched HELLO (proto/abi/schema/unknown flags) ⇒ ERROR + close + non-zero exit, never a SNAPSHOT |
+| `../../scripts/build_sim_server.sh` | 0008 entry: `mojo build server/main.mojo` → `build/scr_sim_server` (+ `libscr_sim.so` when absent) |
 
 ## Golden fixture
 

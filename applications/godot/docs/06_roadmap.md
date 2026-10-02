@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0007 Sprint 04)
+**Status:** Active (updated by milestone 0008 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -19,6 +19,7 @@
 | v0.0.1 | 0005 — Shoreline Fidelity (shore foam, crater material blending, quench evaluator) | Complete — all §7 exit criteria verified (schema 4, 13 mojo suites, foam-only-at-shoreline gate, crater-rim capture); see [spec](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) + [04 §8.5](04_simulation_engine.md) |
 | v0.0.1 | 0006 — Ecology (flora scatter, seabird flock) | Complete — all §7 exit criteria verified (schema 5, 15 mojo suites, flora/fauna region checks, foam gate kept green); see [spec](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) + [04 §8.6](04_simulation_engine.md) |
 | v0.0.1 | 0007 — Editing, Hotbar & Physics (dig/place, hotbar, rigid props) | Complete — all §7 exit criteria verified (schema 6 / ABI 2, 19 mojo suites, terrain-resend + ABI/schema negative tests, dig/place playability leg, editing-HUD screenshot assertions); see [spec](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) + [04 §8.7](04_simulation_engine.md) |
+| v0.0.1 | 0008 — IPC Transport Swap (out-of-process sim over UDS) | Complete — all §7 exit criteria verified (schema 6 / ABI 2 / proto 1 unchanged, 20 mojo suites, 600-tick byte-identity, dual-direction refusal, crash/restart + cap, AP-15 stall, docs/104 §2 rewrite); see [spec](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) + [04 §8.8](04_simulation_engine.md) |
 
 ### Milestone 0007 status detail (verified)
 
@@ -92,22 +93,30 @@ Resolved during verification: plume collapse (turbulence velocity influence — 
 
 Honest gaps: turbulence noise exposed with influence 0 (display turbulence `TBD`), glow lift is a documented display hack, sun-in-frame deviation (sub-capture record) — all in [04 §9](04_simulation_engine.md).
 
+### Milestone 0008 status detail (verified, 2026-10-01)
+
+Sprints 01–04 delivered: `src/mojo/server/` (`main.mojo` + `session.mojo` — same sim core and encoder behind a new entry, wall/manual pace, `BYE` ⇒ exit 0, socket unlink), `src/mojo/transport/framing.mojo` (SCRT frames, `SCR_SIM_IPC_PROTO_VER = 1`), adapter `ITransport` split (`scr_transport.h`, `transport_inproc.cpp` default, `transport_socket.cpp` worker thread + seqlock latest slot + SPSC uplink ring + spawn/supervise/backoff/cap + **first-snapshot latch**), env selection (`$SCR_SIM_TRANSPORT`, `$SCR_SIM_SOCKET`, `$SCR_SIM_SERVER_BIN`, `SCR_REPO_ROOT` at spawn — AP-4 clean), new gates (`ipc_harness.py`, `test_ipc_determinism.sh`, `test_ipc_version_refusal.sh`, `test_ipc_crash_restart.sh`, `fake_server.py`, `godot_ipc_smoke.sh`, `godot_render_stall_test.*`, `godot_socket_supervision_test.gd`), docs (`104_contract.md` §2 rewrite, `docs/04` §4.6 + §8.8 + §9, `docs/05` §6, this row, `102`/`103` capability).
+
+Final gates: determinism 600 ticks byte-identical (socket == in-process, 10950216 B), refusal both directions PASS, crash/restart + crash-loop cap + no orphans PASS, AP-15 stall PASS (structural grep + 2 s `SIGSTOP` ⇒ gaps 0.0223/0.0097 s < 0.05), default transport asserted `InprocTransport`, socket smoke/handshake PASS, `build_sim_server` + harness self-test PASS, layout-neutrality review clean (fixture 249680 B, no diff in `src/mojo/`, `lib/`, spec), 20/20 mojo suites, load/screenshot/playability PASS in **both** transports.
+
+Resolved during verification: socket screenshot leg showed `terrain_chunks=0, flora_groups=0` — the latest-wins handoff dropped the session's first (and only emission-gated) snapshot; fixed with the per-session **first-snapshot latch** (`104_contract.md` §2.3), all gates re-run green.
+
 ## Planned Milestones (specs drafted, Status: Planned)
 
 Future increments build on the stabilized snapshot contract. Each has a normative spec (Rule 10: specify before implementing); sequencing subject to user confirmation.
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| 0008 | [IPC transport](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) | Out-of-process sim over socket, byte-identical semantics | `804_Application`, `503_Simulation/Snapshot` |
+| — | (none drafted) | 0008 was the last spec under v0.0.1; 0009+ = `TBD — future milestone` (Rule 10) | — |
 
-Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007 completed 2026-09-30; 0008 remains Planned.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007 completed 2026-09-30; 0008 completed 2026-10-01.
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Exact sequencing of 0008: TBD — user decision. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Successor sequencing after 0008: `TBD — user decision`. Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 
 - From v0.0.1 [spec §6](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md): MLIR dialect/lowering work, CI pipeline expansion, performance optimization, provider qualification/conformance suites. Re-entry requires a normative spec.
-- From [milestone 0002 spec §9](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md): IPC transport, custom sky shader, shoreline foam fidelity, swim/`MAP_BOUND` parameter consolidation — deferred with honest notes in [04 §9](04_simulation_engine.md).
+- From [milestone 0002 spec §9](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md): ~~IPC transport~~ **delivered by 0008**; custom sky shader, shoreline foam fidelity (partially delivered by 0005), swim/`MAP_BOUND` parameter consolidation remain deferred with honest notes in [04 §9](04_simulation_engine.md).
 
 ## References
 

@@ -21,7 +21,7 @@
 | Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.1 / milestone 0007)
+## 2. Current Implementation (v0.0.1 / milestone 0008)
 
 - `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **flock**, **edit**, **raycast**, **hotbar**, **props**), `synthesis/` (noise + height field + voxel synthesis, single-column re-synthesis entry), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI incl. `scr_edit_submit`), `main.mojo` (CLI headless entry).
 - `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**, **`scr_hotbar` + `scr_target` + `scr_props` hosts (0007)**), `scripts/player_input.gd` (input + edit intent uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, **`scripts/hotbar_hud.gd` + `scripts/props_view.gd` (0007 presentation)**, `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap)**.
@@ -88,12 +88,30 @@ Normative spec: **[`providers/render/graphics/godot/104_contract.md`](../../prov
 | Integration | `tests/godot/godot_screenshot.sh` + `tests/godot/godot_screenshot.gd` + `tests/godot/check_luminance.py` | rendered non-blank capture + content assertions (terrain chunks, meta, HUD) + plume/lava region checks + night-glow spot check with `SCR_EXPECT_GLOW=1` (§8.3) + sun-disc sub-capture + rain-window capture (§8.4) + flora/fauna scene-tree assertions and sub-captures (§8.6) + **0007: editing HUD state — 9 named hotbar slots with swatches and exactly 1 selected flag, non-empty target readout, visible prop pool (§8.7)** |
 | Integration | `tests/godot/godot_playability_test.sh` + `tests/godot/godot_playability_test.gd` | scripted input: move/turn/jump, camera bounds, no fall-through, **+ F leg (0007): `submit_edit` select/dig/place uplink rc, HUD slot mirror, terrain mesh content changed by dig and again by place, target readout left "SKY / AIR"** |
 | Gate | `scripts/check_layout.sh` | layout + AP-1 (no engine types in `src/mojo/`) + AP-4 (no absolute paths) + **AP-15 (no wall-clock tokens in weather/atmosphere sim sources)** |
+| IPC binding (0008) | `tests/ipc/ipc_harness.py [--self-test]` | framing-level client without Godot: handshake/refusal legs, `CMD_TICK` manual pace, **AP-16 byte-identity of the first SNAPSHOT vs `scr_sim_snapshot_write`** |
+| IPC version gate (0008) | `tests/ipc/test_ipc_version_refusal.sh` | both directions: harness ⇒ server `ERROR`+close+non-zero exit (schema/abi/proto/unknown flag); `fake_server.py` ⇒ adapter refuses loudly (ERR_PRINT, inert scene, no frames, no in-process fallback) |
+| IPC supervision (0008) | `tests/ipc/test_ipc_crash_restart.sh` | kill -9 mid-run ⇒ respawn with backoff, same seed, tick reset, no orphan (phase A); crash-loop ⇒ exactly 6 spawns then FATAL cap (phase B); harness restart leg: EOF, tick 20→1, TERRAIN re-delivery, BYE rc 0 (phase C) |
+| IPC stall (0008) | `tests/godot/godot_render_stall_test.sh` | structural grep (zero socket syscalls in `scr_godot_adapter.cpp`, positive control in `transport_socket.cpp`) + SIGSTOP the server 2 s ⇒ frame/physics gaps stay `< FRAME_DT_CLAMP`, no restart |
+| IPC determinism (0008) | `tests/ipc/test_ipc_determinism.sh` | N = 600 ticks, in-process vs socket sequences byte-identical (AP-16) |
+| IPC load/smoke (0008) | `tests/godot/godot_ipc_smoke.sh` | `SCR_SIM_TRANSPORT=socket`: handshake OK, zero `ERROR:` lines, server exits 0 on BYE |
 
 All Mojo checks are **raise-based** (`_check(cond, msg)` → `raise Error`): this toolchain compiles `assert` to a no-op (verified in `test_volcano.mojo`), so the 0003 sprint converted every `assert` in `test_synthesis_conformance`, `test_gerstner`, `test_catalog` to `_check` — which immediately exposed three latent test-vs-spec bugs (§8.3).
 
 ### 4.5 Successor Specification Reference
 
-Milestone 0007 (Editing, Hotbar & Physics) is **complete** (§8.7). Exact successor sequencing for 0008+: `TBD — future milestone` (spec §10 table; Rule 10).
+Milestone 0008 (IPC Transport Swap) is **complete** (§8.8): the sim core runs out-of-process behind `ITransport`, default stays in-process, semantics unchanged (schema 6 / ABI 2 / proto 1). Successor sequencing for 0009+: `TBD — future milestone` (Rule 10).
+
+### 4.6 IPC transport, threading & supervision (milestone 0008)
+
+The Port (snapshot down / input+edit up, `104_contract.md` §4/§5) is unchanged; only the mechanism behind `ITransport` grew (normative: `104_contract.md` §2):
+
+- **Transports:** `InprocTransport` (default, `dlopen` + C ABI — byte-for-byte pre-0008 behavior) vs `SocketTransport` (opt-in `SCR_SIM_TRANSPORT=socket`): adapter spawns `build/scr_sim_server` (argv `--socket <path> --seed <n>`, env inherited + `SCR_REPO_ROOT`), endpoint = `SCR_SIM_SOCKET` else `user://scr_sim.sock`; with an external endpoint and no `SCR_SIM_SERVER_BIN` it connects only and never respawns (external-owner mode).
+- **Framing:** `SCRT` frames (`HELLO/HELLO_OK/ERROR/SNAPSHOT/INPUT/EDIT/ACK/BYE/CMD_TICK`, `SCR_SIM_IPC_PROTO_VER = 1`), handshake refuses proto/abi/schema mismatch in **both** directions with the same semantics as the `dlopen` gate (`104_contract.md` §2.1).
+- **Threading (AP-9/AP-15):** one worker thread owns every socket syscall and the framing; the render thread only reads a seqlock latest-snapshot slot and pushes inputs/edits through an SPSC ring (depth 16, merge-on-full). Structural gate (grep: zero socket syscalls in `scr_godot_adapter.cpp`) + measured gate (server `SIGSTOP`ped 2 s ⇒ frame gaps stay under `FRAME_DT_CLAMP`).
+- **Session rule — first-snapshot latch:** latest-wins coalescing never applies to a session's *first* snapshot; the client latches it until consumed (`transport_socket.cpp::publish`). Required because `TERRAIN`/`FLORA` are emission-gated to that frame (0006 invariant 5) while the render thread may not read for several ticks at startup. Found by the socket screenshot gate in this sprint (terrain/flora sections absent), fixed and re-gated (§8.8).
+- **Supervision:** backoff `100→1600 ms` (cap 2 s), fresh session + same seed + logged restart, **> 5 restarts / 30 s ⇒ fatal** (loud, stepping stops), `BYE` + reap on scene exit (no orphans), pause of the server is *not* a crash (stall test).
+- **Determinism:** same seed + same inputs ⇒ byte-identical snapshot sequence in both transports (600-tick gate, `tests/ipc/test_ipc_determinism.sh`); `CMD_TICK` manual pace makes the socket leg well-defined without wall-clock coupling.
+- **Pacing (wall default, manual opt-in — `104_contract.md` §2):** default `wall` = server free-run at its fixed 60 Hz clock (unchanged, safety default). `SCR_SIM_IPC_PACE=manual` = client-paced socket mode: the adapter handshakes `SCR_IPC_FLAG_MANUAL_PACE` and the worker sends `CMD_TICK 1` behind each physics frame's `INPUT`/`EDIT` (SPSC FIFO; a full ring defers the tick to a debt counter flushed after the next drain — ticks are delayed, never lost; no render-thread socket I/O, AP-15). One fixed tick per Godot physics frame ⇒ socket tick↔wall timing equals the in-process leg's. Required by the rendered socket gates (`godot_screenshot.sh` sets it for `SCR_SIM_TRANSPORT=socket`): plume lifetime and cloud/`TIME` displays run on wall time, so a wall-paced socket run reaches the capture tick too fast (plume 0 rows, sun-disc delta < 20). `godot_playability_test.sh` sets the same default — its F-leg reads the edit mirror 2 physics frames after `submit_edit`, faster than a 60 Hz wall snapshot round-trip in headless mode (wall-paced socket run failed F5/F6/F13; manual passed, re-gated 2026-10-02). `SCR_SIM_IPC_PACE=manual` on the client wins over the server's `--pace wall` (effective mode = CLI OR HELLO flag, `server/session.mojo`).
 
 ## 5. Scene ↔ State Mapping (the ADAPTER CONTRACT)
 
@@ -421,7 +439,17 @@ bash applications/godot/tests/godot/godot_playability_test.sh     # scripted inp
 python3 applications/godot/tests/abi_smoke.py               # C ABI (incl. scr_edit_submit, ABI 2)
 bash applications/godot/tests/test_schema_mismatch.sh       # negative: schema + ABI refusal
 python3 applications/godot/tests/test_terrain_resend.py     # negative/positive: edit ⇒ exactly-one TERRAIN resend
-for t in applications/godot/tests/mojo/test_*.mojo; do .venv/bin/mojo run -I applications/godot/src/mojo "$t"; done   # 19 spec-test files
+for t in applications/godot/tests/mojo/test_*.mojo; do .venv/bin/mojo run -I applications/godot/src/mojo "$t"; done   # 20 spec-test files (0008 + test_framing)
+
+# milestone 0008 (IPC transport) additions:
+bash applications/godot/scripts/build_sim_server.sh                # standalone server binary
+python3 applications/godot/tests/ipc/ipc_harness.py --self-test    # framing client, no Godot
+bash applications/godot/tests/ipc/test_ipc_determinism.sh          # 600 ticks: socket == in-process (byte-identical)
+bash applications/godot/tests/ipc/test_ipc_version_refusal.sh      # refusal both directions
+bash applications/godot/tests/ipc/test_ipc_crash_restart.sh        # kill/restart + crash-loop cap + harness restart leg
+SCR_SIM_TRANSPORT=socket bash applications/godot/tests/godot/godot_ipc_smoke.sh          # socket load, handshake OK
+SCR_SIM_TRANSPORT=socket bash applications/godot/tests/godot/godot_render_stall_test.sh  # AP-15 stall (structural + measured)
+# load/screenshot/playability are re-run with SCR_SIM_TRANSPORT=socket (§7 gate 9)
 ```
 
 **Sprint-04 results (2026-09-26):**
@@ -871,6 +899,40 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 | AP-13 | No parallel hotbar vocabulary | slots are `hotbar_slot_catalog_ids()` (one sim-side list, all ids conformance-tested against `materials_catalog.json` in `test_hotbar`); HUD names/colors arrive from `12 HOTBAR` through the adapter catalog mirror (MATERIALS wins, else `kVocabDisplay`); zero vocabulary in GDScript (grep: `hotbar_hud.gd` renders only received strings) |
 | AP-14 | No full-world rebuild per edit | chunk-local rebuild only (`TERRAIN_CHUNK_CELLS = 16`, ≤ 17×17 verts per edit), one `world_version` bump per op (perf note §6.9); `test_terrain_resend` proves exactly-one TERRAIN resend; playability F10/F13 show mesh-content changes landing through the normal decode path |
 
+### 8.8 Milestone 0008 (IPC Transport Swap) — Sprint 03/04 verification record (2026-10-01)
+
+Scope: out-of-process sim server + `ITransport` swap. **Invariant 1 held:** schema **6**, ABI **2**, proto **1**, fixture 249680 B untouched; `git diff` empty for `src/mojo/`, `lib/` and the 0008 spec (layout-neutrality review).
+
+| # | Gate (§7) | Result |
+|---|---|---|
+| 1 | `test_ipc_determinism.sh` (AP-16, N=600) | **PASS ×2** — `socket leg == in-process leg (600 ticks, 10950216 bytes, byte-identical)` |
+| 2 | `test_ipc_version_refusal.sh` (both directions) | **PASS** — harness: schema/abi/proto/unknown-flag ⇒ server `ERROR`+close+non-zero, no `SNAPSHOT`; adapter: `bad-abi`/`bad-schema`/`bad-proto`/`error-frame` via `fake_server.py` ⇒ loud refusal, inert scene, no handshake, no in-process fallback, no orphan |
+| 3 | `test_ipc_crash_restart.sh` (AP-18) | **PASS** — A: kill -9 ⇒ respawn, new PID, same seed, `tick=1` seen ≥2×, no orphan; B: crash-loop ⇒ exactly 6 spawns, `restart #5`, `FATAL … restart cap reached: 5 restarts within 30 s`, no spawn after fatal; C: harness restart leg ⇒ EOF, tick 20→1, TERRAIN re-delivery, same seed, BYE rc 0 |
+| 4 | `godot_render_stall_test.sh` (AP-15) | **PASS** — structural: zero socket syscalls in `scr_godot_adapter.cpp` (positive control present in `transport_socket.cpp`); measured: server `SIGSTOP` 2 s ⇒ max physics gap **0.0223 s**, process gap **0.0097 s** (< `FRAME_DT_CLAMP` 0.05), zero `ERROR:`, no restart, no orphan |
+| 5 | default = in-process / socket opt-in | **PASS** — `godot_load_test.sh` (env stripped) asserts `SCR: transport=InprocTransport`; `godot_ipc_smoke.sh` asserts `SCR: transport=SocketTransport handshake OK`, 0 `ERROR:` lines, server exit 0 on BYE |
+| 6 | standalone server + harness (no Godot) | **PASS** — `build_sim_server.sh`; `ipc_harness.py --self-test` (handshake, refusals, 1-tick round-trip, **AP-16 first snapshot == fixture 249680 B**) |
+| 7 | layout neutrality | **PASS** — `test_golden_fixture.mojo`, `abi_smoke.py`, `test_schema_mismatch.sh` (8 checks) all PASS; fixture byte-size unchanged; no diff in `src/mojo/snapshot`, `src/mojo/export`, `src/mojo/sim`, `lib/`, spec |
+| 8 | 0002 gates, both transports | **PASS** — `check_layout.sh`; mojo spec tests **20/20** (`test_framing.mojo` new); `godot_screenshot.sh` PASS in-process **and** socket (content + luminance + shoreline foam); `godot_playability_test.sh` PASS in-process **and** socket (move/jump/edit legs) |
+| 9 | docs | this record: `104_contract.md` §2 rewritten (framing + neutrality + session rules), §4.6 transport section, `docs/05` §6 (`APP-PRT-002`), `docs/06` 0008 row, `102`/`103` capability |
+| 10 | review pass | AP-1..10 re-verified + AP-15..18 below |
+
+**Defect found by gate 8 (socket screenshot leg) and fixed before completion:** the first socket run failed `scr_flora has no MultiMesh` — root cause: the client's latest-wins handoff overwrote the session's *first* snapshot (the only one carrying the emission-gated `TERRAIN`/`FLORA` sections) before the render thread's first read, so neither section was ever applied (diagnostic: `terrain_chunks=0` under socket vs 16 in-process). Fix = **first-snapshot latch** per session in `transport_socket.cpp::publish/snapshot_write/snapshot_size` (specified in `104_contract.md` §2.3, §4.6). After the fix both transports report `terrain_chunks=16, flora_groups=6, flora_total=154` and every gate above was re-run green.
+
+**Second socket screenshot defect (same sprint, pacing) and fix:** a later socket run failed the plume region check `0 rows` (needs ≥ 5) and drifted the sun-disc sub-capture delta (23 → 10 / −27), while in-process passed. Root cause = **wall-time divergence, not bytes**: the server's default wall clock executes ticks at 60 Hz regardless of render rate, so the capture at tick ~1945 arrived at wall ~35 s (socket) vs ~61 s (in-process) — the plume's 6 s particle lifetime had not accrued and shader/`TIME` clouds sat at a different phase (server tick log + pty-timestamped runs; emission toggled identically at tick ~1500 in both legs). `TICK_MIN` cannot fix it: the plume needs a later capture than the sun check allows. Fix = **client-paced socket mode** `SCR_SIM_IPC_PACE=manual` (0008 §1.1 `CMD_TICK`, adapter side): one `CMD_TICK 1` per Godot physics frame queued behind the frame's `INPUT`/`EDIT`, so socket ticks track physics frames exactly as in-process ticks do. `godot_screenshot.sh` enables it for the socket leg; wall remains the adapter default (safety default). Re-gated: socket screenshot PASS with `SCR_SIM_TRANSPORT=socket SCR_SIM_IPC_PACE=manual` (and plain `SCR_SIM_TRANSPORT=socket` — the script default), in-process unchanged.
+
+**Third socket defect (same sprint, pacing — playability F-leg):** a wall-paced socket `godot_playability_test.sh` failed F5/F6/F13 (hotbar select mirror and place-terrain re-check) while `SCR_SIM_IPC_PACE=manual` passed. Cause = the F-leg waits only 2 physics frames between `submit_edit` and reading the snapshot mirror; in a fast headless run those frames elapse well inside one 60 Hz server period, so the edited snapshot has not returned yet (request/response is per-tick under manual pace, per-wall-period under wall pace). Fix = `godot_playability_test.sh` defaults `SCR_SIM_IPC_PACE=manual` for the socket leg (same pattern and rationale as `godot_screenshot.sh`; caller override respected). Re-gated 2026-10-02: socket playability PASS ×2 with the script default.
+
+**Anti-pattern review — §2.1 (0002 AP-1..10, re-verified for 0008):** AP-1 PASS (`check_layout`), AP-2 as recorded in §8 (unchanged), AP-3 PASS (single catalog), AP-4 PASS — server binary/socket/repo root resolved at runtime (`res://`, `user://`, env; `SCR_REPO_ROOT` injected at spawn), zero `/home/` in sources, AP-5 PASS (transport dispatch = `ITransport` vtable, not if-else in the frame loop), AP-6 PASS (0 `dynamic_cast`), AP-7 PASS (`parameters.mojo` + §6), AP-8 PASS (display scripts still never write sim state; socket uplink carries intent only), AP-9/AP-15 PASS (structural + measured, gate 4), AP-10 PASS (this control-doc update).
+
+**Anti-pattern review — §2.2 (0008 AP-15..18):**
+
+| # | Verdict | Evidence |
+|---|---|---|
+| AP-15 render-thread socket I/O | PASS | all syscalls in `transport_socket.cpp` worker; render thread reads seqlock slot / SPSC ring only; grep gate + SIGSTOP stall gate (§8.8 gate 4) |
+| AP-16 transport-aware payload | PASS | single encoder, `SNAPSHOT` payload copied verbatim; 600-tick byte-identity + harness first-snapshot byte-identity (gates 1, 6) |
+| AP-17 silent version drift | PASS | handshake refusal both directions, `ERROR` frames logged loudly, negative gates (2) |
+| AP-18 orphan/zombie servers | PASS | spawn/reap/backoff/cap owned by the adapter; crash gates assert exactly-one/no orphan (3); graceful BYE + reap on scene exit (gates 3, 5) |
+
 ## 9. Honest Gaps (open)
 
 
@@ -891,6 +953,10 @@ fixture regenerated; `abi_smoke` + `test_envelope::test_terrain_blend_tuples`).
 13. **Wind-coupled sway (0006 AP-12):** sway amplitude/phase come from shader `TIME`, not from the sim wind vector — the wire has no phase field (and none was invented). Sway driven by sim wind = `TBD — future milestone` (needs a contract field + phase semantics, Rule 10).
 14. **Spawn-frame camera framing variance (0006, observed):** rendered runs occasionally capture `island.png` with a day-like sun-facing framing where others show the island-facing frame (measured: spawn mean 168.15 vs 181.66 across valid day runs; one night run measured a day-like dome flank — §8.6). Luminance/region/foam gates stayed green throughout, but the night dome check flaked once in three attempts. Root cause not isolated (rendered-physics/camera timing suspected); recorded honestly, no gate was weakened except the documented night-foam skip.
 15. **Interactive manual dig/place session (0007 §7) not executed this sprint:** the spec's manual procedure (interactive run, LMB dig, keys 2/3 + place, before/after captures) needs a human-driven session. Recorded evidence is the automated companion: playability F leg (select/dig/place uplink + mesh-content assertions, §8.7 gate 8) and screenshot HUD/state assertions (gate 9). The manual procedure stays documented in spec §7 for a user-run confirmation.
+
+18. **Adapter external-owner mode has no dedicated automated gate (0008):** connecting to an already-running server (`SCR_SIM_SOCKET` set, no `SCR_SIM_SERVER_BIN`, never respawn) is implemented and its no-respawn branch is covered by the supervision tests' design, but no script drives that exact combination end-to-end (the harness covers an external server at the framing level, the Godot gates spawn their own). `TBD — future milestone`.
+19. **Writer-side coalescing under sustained backpressure not directly measured (0008):** the `EAGAIN` latest-wins path is specified in `104_contract.md` §2.1 and the client-side first-snapshot latch + stall test cover startup/pause, but no gate forces a deliberately slow reader to make the writer coalesce. Observation-only for now; add a gate if coalescing ever misbehaves.
+20. **Restart-cap policy exercised through `fake_server.py` only (0008):** the >5-restarts/30 s fatal path uses the synthetic crash-loop; a real `scr_sim_server` crash-storm is not reproduced (single real kill -9 is, phase A of the crash test). Same policy code, narrower evidence — recorded honestly.
 16. **Deferred 0007 scope:** Material Inspector fields (spec §1.2), inter-body collision / advanced prop physics (`props.mojo` = gravity + ground contact only, §6.9), edit undo/history — all `TBD — future milestone` (spec §1.2/§9, invariant 11).
 17. **Day screenshot gate content-assertion flake (0007, observed during independent verification):** 1 of 6 consecutive day `godot_screenshot.sh` runs exited 1 at the scene/content-assertion phase; the failing run's stdout was not retained, so the specific assertion could not be isolated (all `exit 1` paths print a `SCREENSHOT: FAIL —` line — `godot_screenshot.gd:_fail`). The 5 other runs passed with full assertions (hotbar 9/9 named + 1 selected, target non-empty, props visible, plume/lava/sun/rain/flora/fauna regions). Same class as gap 14 (rendered-timing variance); no gate weakened; root cause `TBD — future milestone` if it recurs.
 

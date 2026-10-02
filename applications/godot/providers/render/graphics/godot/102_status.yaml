@@ -2,16 +2,19 @@ id: SCR-PROVIDER-RENDER-GODOT
 name: Godot Render Provider
 domain: render
 technology: godot
-version: 0.6.0
+version: 0.7.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
 schema_version: 6
 abi_version: 2
+ipc_proto_version: 1
 
 purpose: >
   Realize SCR renderable semantic state as a Godot 4.7.2 presentation via a
-  RenderSnapshot byte contract and an in-process GDExtension adapter.
+  RenderSnapshot byte contract and a GDExtension adapter whose transport sits
+  behind ITransport: in-process dlopen (default) or Unix-domain-socket client
+  to a spawned out-of-process sim server (SCR_SIM_TRANSPORT=socket).
   Provider only; never semantic authority.
 
 capabilities:
@@ -72,6 +75,12 @@ capabilities:
   - id: CAP-GODOT-RIGID-PROPS
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0007
+  - id: CAP-GODOT-TRANSPORT-SWAP
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0008
+  - id: CAP-GODOT-SIM-PROCESS-SUPERVISION
+    status: implemented
+    milestone: applications/godot/v0.0.1-milestone_0008
 
 depends_on:
   - SCR-LIB-RENDER
@@ -82,9 +91,11 @@ implementation:
   header: adapter/scr_godot_abi.h
   library_loaded: applications/godot/src/mojo/libscr_sim.so
   build: applications/godot/scripts/build_godot_provider.sh
+  transports: adapter/transport_inproc.cpp (default) + adapter/transport_socket.cpp (opt-in)
+  server_binary: applications/godot/build/scr_sim_server (via applications/godot/scripts/build_sim_server.sh)
 
 limitations:
-  - Snapshot transport is in-process dlopen only (IPC transport = future milestone)
+  - Socket transport is opt-in (SCR_SIM_TRANSPORT=socket); default stays in-process. Adapter external-owner mode (connect, never respawn) lacks a dedicated gate — docs/04 §9 gap 18
   - Flora sway and bird flap run on shader TIME (display-only; no phase bytes in the wire, 0006 AP-12)
   - Plume turbulence noise exposed with velocity influence locked to 0 (Godot velocity-influence collapses buoyant columns; docs/04 §8.3) — display turbulence = future milestone
   - Sun disc is not in the default spawn frame (arc elevation 68.75° vs FOV half-angle 35°); verified via a sun-aimed sub-capture — recorded deviation, docs/04 §8.4

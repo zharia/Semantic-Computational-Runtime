@@ -21,6 +21,8 @@
 #        ERROR:                       — any engine/adapter error, including
 #                                       adapter ERR_PRINT contract rejections
 #   4. the specific MATERIALS decode error must NOT appear (blocker witness).
+#   5. "SCR: transport=InprocTransport" (0008 §7 — the no-env default run must
+#      stay on the in-process transport; the socket leg is godot_ipc_smoke.sh).
 #
 # ALLOWED (not failed on) — enumerated deliberately:
 #   * WARNING: lines (e.g. missing uid on ext_resource, deprecation notes).
@@ -45,7 +47,10 @@ OUT="$(mktemp)"
 trap 'rm -f "${OUT}"' EXIT
 
 cd "${REPO_ROOT}"
-timeout 180 "${GODOT_BIN}" --headless --path "${PROJ}" --quit-after 120 \
+# 0008 §7: this is the DEFAULT (no env) gate — force the in-process leg even
+# if the caller's shell exports the socket-transport variables.
+env -u SCR_SIM_TRANSPORT -u SCR_SIM_SOCKET -u SCR_SIM_SERVER_BIN \
+    timeout 180 "${GODOT_BIN}" --headless --path "${PROJ}" --quit-after 120 \
     >"${OUT}" 2>&1
 rc=$?
 
@@ -61,6 +66,15 @@ if ! grep -q "SCR GDExtension adapter registered" "${OUT}"; then
     fail=1
 else
     echo "PASS: GDExtension adapter registered"
+fi
+
+# --- 0008 §7: the default transport must be the in-process one ---------------
+if ! grep -q "SCR: transport=InprocTransport" "${OUT}"; then
+    echo "FAIL: 'SCR: transport=InprocTransport' line not found — default transport regression" >&2
+    grep -n "SCR: transport=" "${OUT}" | sed 's/^/    /' >&2 || true
+    fail=1
+else
+    echo "PASS: default transport is InprocTransport"
 fi
 
 # --- hard-failure patterns (see header for the full allowlist rationale) ----
