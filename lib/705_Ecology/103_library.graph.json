@@ -1,0 +1,40 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-ECOLOGY",
+  "name": "Ecology",
+  "layer": "705_Ecology",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/705_Ecology",
+  "derived": true,
+  "note": "Derived control-plane graph — NOT authoritative. Source of truth: 101_definition.md (this directory). See 001_agents/11_control_plane.md. Edge types restricted to the controlled vocabulary in 001_agents/02_graph_relationships.md.",
+  "edges": [
+    {
+      "source": "SCR-LIB-ECOLOGY",
+      "target": "SCR-LIB-DATA",
+      "relationship": "REFINES",
+      "semantics": "Ecology refines its parent domain (101 front matter: parent: SCR-LIB-DATA); ecological state is structured meaningful information"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Ecological and environmental quantities are represented as Fields; fields influence populations, while populations modify fields (101 section 17)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY",
+      "target": "SCR-LIB-ECOLOGY-FLORA",
+      "relationship": "CONTAINS",
+      "semantics": "Ecology contains the Flora subdomain; flora population membership is an explicit instance list (ECOLOGY-INV-003)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY",
+      "target": "SCR-LIB-EVOLUTION",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Ecology provides the environment in which evolution may occur and describes co-evolutionary dynamics, while remaining distinct from evolution (101 sections 12-13; ECOLOGY-INV-013)"
+    }
+  ],
+  "subdomains": [
+    "Flora"
+  ]
+}

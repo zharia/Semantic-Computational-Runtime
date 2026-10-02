@@ -1,0 +1,79 @@
+---
+document: 102_status
+schema_version: 1.0.0
+
+# Status mapping: 101 front matter `status: draft` -> `specified`
+# (scr-domain-validator vocabulary: planned | specified | designed |
+#  partially-implemented | implemented | tested | validated | blocked | deprecated).
+# 101 definition complete and normative; implementation not started. Backfill of the
+# missing control plane — 101 front matter remains the authority for id/name/version/status.
+
+status: specified
+last_updated: 2026-10-02
+
+---
+
+module:
+  id: SCR-LIB-ECOLOGY
+  path: lib/705_Ecology
+  name: Ecology
+  version: 0.1.0
+  status: specified
+  created: 2026-09-05
+  updated: 2026-09-05
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+
+domain:
+  name: Ecology
+  description: >
+    Normative semantic computational domain concerned with the relationships, interactions,
+    dependencies, flows, feedbacks, and co-evolutionary dynamics among populations, entities,
+    systems, and their environments — including population, environment, community, ecological
+    fields, and ecological state semantics.
+  purpose: >
+    Provide representation-independent semantics for interacting populations, systems, resources,
+    and environments, including the flows, relationships, feedbacks, constraints, and collective
+    dynamics through which an ecosystem exists and changes, while keeping evolution distinct
+    (ECOLOGY-INV-013).
+
+dependencies:
+  - id: SCR-LIB-DATA
+    path: lib/201_Data
+    relationship: parent_domain_of_ecology
+  - id: SCR-LIB-FIELDS
+    path: lib/301_Field
+    relationship: ecological_and_environmental_quantities_represented_as_fields
+  - id: SCR-LIB-EVOLUTION
+    path: lib/704_Evolution
+    relationship: ecology_provides_environment_for_evolution_distinction_preserved
+
+subdomains:
+  - Flora
+
+invariants:
+  - ECOLOGY-INV-001
+  - ECOLOGY-INV-002
+  - ECOLOGY-INV-003
+  - ECOLOGY-INV-004
+  - ECOLOGY-INV-005
+  - ECOLOGY-INV-006
+  - ECOLOGY-INV-007
+  - ECOLOGY-INV-008
+  - ECOLOGY-INV-009
+  - ECOLOGY-INV-010
+  - ECOLOGY-INV-011
+  - ECOLOGY-INV-012
+  - ECOLOGY-INV-013
+  - ECOLOGY-INV-014
+  - ECOLOGY-INV-015
+  - ECOLOGY-INV-016
+  - ECOLOGY-INV-017
+  - ECOLOGY-INV-018

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-ECOLOGY-FLORA",
+  "name": "Flora",
+  "layer": "705_Ecology",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/705_Ecology/Flora",
+  "derived": true,
+  "note": "Derived control-plane graph — NOT authoritative. Source of truth: 101_definition.md (this directory). See 001_agents/11_control_plane.md. Edge types restricted to the controlled vocabulary in 001_agents/02_graph_relationships.md.",
+  "edges": [
+    {
+      "source": "SCR-LIB-ECOLOGY",
+      "target": "SCR-LIB-ECOLOGY-FLORA",
+      "relationship": "CONTAINS",
+      "semantics": "Ecology contains the Flora subdomain (parent 101 front matter: parent: SCR-LIB-ECOLOGY)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY-FLORA",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "REFINES",
+      "semantics": "The flora field is a Field specialization: establishment suitability assigns meaningful information over the terrain-cell domain (301_Field)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY-FLORA",
+      "target": "SCR-LIB-MORPHOLOGY-GROWTH",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Flora growth conforms to Morphology Growth: developmental accretion and volumetric expansion over time (401_Morphology/Growth)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY-FLORA",
+      "target": "SCR-LIB-EVOLUTION",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Flora selection and variation conform to Evolution; evolution meaning remains authoritative in 704_Evolution (ECOLOGY-INV-013 firewall)"
+    },
+    {
+      "source": "SCR-LIB-ECOLOGY-FLORA",
+      "target": "SCR-LIB-ECOLOGY",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Flora populations interact with ecological fields and environment: fields influence populations, populations modify fields (705_Ecology section 17)"
+    }
+  ],
+  "subdomains": []
+}

@@ -1,0 +1,97 @@
+---
+document: 102_status
+schema_version: 1.0.0
+
+# Status mapping: 101 front matter `status: draft` -> `specified`
+# (scr-domain-validator vocabulary: planned | specified | designed |
+#  partially-implemented | implemented | tested | validated | blocked | deprecated).
+# Definition is normative and authored (Sprint 00); implementation not started.
+
+status: specified
+last_updated: 2026-10-02
+
+---
+
+module:
+  id: SCR-LIB-ECOLOGY-FLORA
+  path: lib/705_Ecology/Flora
+  name: Flora
+  version: 0.1.0
+  status: specified
+  created: 2026-10-02
+  updated: 2026-10-02
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+
+domain:
+  name: Flora
+  description: >
+    Normative SCR Ecology subdomain defining living flora semantics: flora population membership
+    as an explicit instance list, the flora establishment field over the terrain-cell domain,
+    growth conformance to Morphology Growth, selection-and-variation conformance to Evolution,
+    and deterministic decision semantics.
+  purpose: >
+    Provide the definition that flora establishment, growth, trait variation, selection, death,
+    and regrowth implementations consume, while evolution meaning remains authoritative in
+    SCR-LIB-EVOLUTION and population/environment meaning remains authoritative in SCR-LIB-ECOLOGY.
+
+capabilities:
+  - id: CAP-FLORA-POPULATION
+    name: Flora Population Membership (Explicit Instance List)
+    status: specified
+  - id: CAP-FLORA-FIELD
+    name: Establishment Suitability Field over the Terrain-Cell Domain
+    status: specified
+  - id: CAP-FLORA-GROWTH
+    name: Developmental Growth Conformance (SCR-LIB-MORPHOLOGY-GROWTH)
+    status: specified
+  - id: CAP-FLORA-SELECTION
+    name: Selection and Variation Conformance (SCR-LIB-EVOLUTION)
+    status: specified
+  - id: CAP-FLORA-DETERMINISM
+    name: Deterministic Establishment, Growth, and Selection (Pure Functions)
+    status: specified
+
+dependencies:
+  - id: SCR-LIB-ECOLOGY
+    path: lib/705_Ecology
+    relationship: parent_domain_providing_population_environment_and_ecological_state
+  - id: SCR-LIB-FIELDS
+    path: lib/301_Field
+    relationship: provides_field_semantics_for_the_flora_field
+  - id: SCR-LIB-MORPHOLOGY-GROWTH
+    path: lib/401_Morphology/Growth
+    relationship: provides_growth_conformance_contract
+  - id: SCR-LIB-EVOLUTION
+    path: lib/704_Evolution
+    relationship: provides_variation_selection_viability_and_reproducibility_semantics
+
+subdomains: []
+
+invariants:
+  - ECOLOGY-INV-003
+  - ECOLOGY-INV-004
+  - ECOLOGY-INV-009
+  - ECOLOGY-INV-010
+  - ECOLOGY-INV-013
+  - EVOLUTION-INV-004
+  - EVOLUTION-INV-005
+  - EVOLUTION-INV-006
+  - EVOLUTION-INV-007
+  - EVOLUTION-INV-009
+  - EVOLUTION-INV-011
+  - EVOLUTION-INV-018
+  - MORPHOLOGY-INV-016
+  - MORPHOLOGY-INV-017
+  - MORPHOLOGY-INV-018
+  - FIELD-INV-001
+  - FIELD-INV-003
+  - FIELD-INV-004
+  - FIELD-INV-008

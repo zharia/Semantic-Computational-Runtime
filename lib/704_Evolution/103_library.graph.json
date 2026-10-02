@@ -1,0 +1,44 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-EVOLUTION",
+  "name": "Evolution",
+  "layer": "704_Evolution",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/704_Evolution",
+  "derived": true,
+  "note": "Derived control-plane graph — NOT authoritative. Source of truth: 101_definition.md (this directory). See 001_agents/11_control_plane.md. Edge types restricted to the controlled vocabulary in 001_agents/02_graph_relationships.md; 101 Domain Relationships verbs outside that vocabulary (EVOLVES, EXECUTES, USES, CO-EVOLVES) are encoded as INTERACTS_WITH or CONSUMES.",
+  "edges": [
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-DATA",
+      "relationship": "REFINES",
+      "semantics": "Evolution refines its parent domain (101 front matter: parent: SCR-LIB-DATA); evolutionary state is structured meaningful information"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-FIELDS",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Fields define environmental and selective conditions; fields themselves may evolve (101 Domain Relationships: Fields / INTERACTS_WITH)"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-MORPHOLOGY",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Morphological structures may evolve; morphology defines form and evolution defines its population-level historical transformation (101 Domain Relationships: Morphology / EVOLVES)"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-SIMULATION",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Simulation can realise evolutionary processes without becoming their semantic authority (101 Domain Relationships: Simulation / EXECUTES)"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-ECOLOGY",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Ecological conditions create selection pressures and co-evolutionary dynamics; evolution remains distinguishable from ecological dynamics (705_Ecology sections 12-13; ECOLOGY-INV-013)"
+    }
+  ],
+  "subdomains": []
+}

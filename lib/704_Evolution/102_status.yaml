@@ -1,0 +1,83 @@
+---
+document: 102_status
+schema_version: 1.0.0
+
+# Status mapping: 101 front matter `status: draft` -> `specified`
+# (scr-domain-validator vocabulary: planned | specified | designed |
+#  partially-implemented | implemented | tested | validated | blocked | deprecated).
+# 101 definition complete and normative; implementation not started. Backfill of the
+# missing control plane — 101 front matter remains the authority for id/name/version/status.
+
+status: specified
+last_updated: 2026-10-02
+
+---
+
+module:
+  id: SCR-LIB-EVOLUTION
+  path: lib/704_Evolution
+  name: Evolution
+  version: 0.1.0
+  status: specified
+  created: 2026-09-05
+  updated: 2026-09-05
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+
+domain:
+  name: Evolution
+  description: >
+    Normative semantic computational domain concerned with persistent change in populations,
+    systems, structures, or distributions across evolutionary timescales through variation,
+    inheritance, selection, transformation, and differential persistence — distinct from
+    adaptation, learning, and optimisation.
+  purpose: >
+    Provide representation-independent semantics for variation, selection, viability,
+    environmental conditions, lineage, and reproducibility that ecological domains (such as
+    Flora) consume conformantly, while evolution meaning remains authoritative here.
+
+dependencies:
+  - id: SCR-LIB-DATA
+    path: lib/201_Data
+    relationship: parent_domain_of_evolution
+  - id: SCR-LIB-FIELDS
+    path: lib/301_Field
+    relationship: fields_define_environmental_and_selection_conditions
+  - id: SCR-LIB-MORPHOLOGY
+    path: lib/401_Morphology
+    relationship: morphological_structures_may_evolve
+  - id: SCR-LIB-SIMULATION
+    path: lib/503_Simulation
+    relationship: simulation_realises_evolutionary_processes_without_defining_them
+  - id: SCR-LIB-ECOLOGY
+    path: lib/705_Ecology
+    relationship: ecology_hosts_evolutionary_pressure_distinction_preserved
+
+subdomains: []
+
+invariants:
+  - EVOLUTION-INV-001
+  - EVOLUTION-INV-002
+  - EVOLUTION-INV-003
+  - EVOLUTION-INV-004
+  - EVOLUTION-INV-005
+  - EVOLUTION-INV-006
+  - EVOLUTION-INV-007
+  - EVOLUTION-INV-008
+  - EVOLUTION-INV-009
+  - EVOLUTION-INV-010
+  - EVOLUTION-INV-011
+  - EVOLUTION-INV-012
+  - EVOLUTION-INV-013
+  - EVOLUTION-INV-014
+  - EVOLUTION-INV-015
+  - EVOLUTION-INV-016
+  - EVOLUTION-INV-017
+  - EVOLUTION-INV-018
