@@ -386,9 +386,11 @@ def encode_snapshot(
     """Serialize the world projection (104_contract §4).
     include_terrain: TERRAIN emitted only when terrain (re)generation
     occurred since the adapter's last consumed snapshot (§4.3).
-    include_flora: FLORA emitted under the same tracker rule (0006 §1.1 —
-    schema 5 sibling of TERRAIN: first snapshot after init, then only on
-    world_version change). FAUNA is emitted EVERY snapshot (§4.3)."""
+    include_flora: FLORA emitted under the change-driven rule (0009 §3.2 /
+    104_contract §10: first snapshot after init, then on count/species/
+    pose/yaw change or an instance scale delta ≥ FLORA_EMIT_EPS; absence
+    ⇒ the adapter retains cached instances). FAUNA is emitted EVERY
+    snapshot (§4.3)."""
     var payload = List[UInt8]()
     var section_count: UInt32 = 0
 
@@ -431,7 +433,8 @@ def encode_snapshot(
     _append_section(payload, SEC_SHORE_FOAM, foam^)
     section_count += 1
 
-    # Section 10: flora — emission-gated like TERRAIN (0006 §1.1, schema 5).
+    # Section 10: flora — change-driven (0009 §3.2 / 104_contract §10);
+    # TERRAIN keeps its own world_version rule. Layout unchanged (24 B/record).
     if include_flora:
         var flora = _encode_flora(world)
         _append_section(payload, SEC_FLORA, flora^)

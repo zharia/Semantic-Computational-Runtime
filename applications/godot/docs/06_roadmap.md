@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 **Purpose:** Record milestone status and forward milestones beyond v0.0.1 for the Godot application.
-**Status:** Active (updated by milestone 0008 Sprint 04)
+**Status:** Active (updated by milestone 0009 Sprint 04)
 **Owner milestone:** [v0.0.1 / milestone 0001 — Project Initiation](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md)
 
 ---
@@ -20,6 +20,7 @@
 | v0.0.1 | 0006 — Ecology (flora scatter, seabird flock) | Complete — all §7 exit criteria verified (schema 5, 15 mojo suites, flora/fauna region checks, foam gate kept green); see [spec](../program_increments/v0.0.1/milestone_0006_ecology/spec.md) + [04 §8.6](04_simulation_engine.md) |
 | v0.0.1 | 0007 — Editing, Hotbar & Physics (dig/place, hotbar, rigid props) | Complete — all §7 exit criteria verified (schema 6 / ABI 2, 19 mojo suites, terrain-resend + ABI/schema negative tests, dig/place playability leg, editing-HUD screenshot assertions); see [spec](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) + [04 §8.7](04_simulation_engine.md) |
 | v0.0.1 | 0008 — IPC Transport Swap (out-of-process sim over UDS) | Complete — all §7 exit criteria verified (schema 6 / ABI 2 / proto 1 unchanged, 20 mojo suites, 600-tick byte-identity, dual-direction refusal, crash/restart + cap, AP-15 stall, docs/104 §2 rewrite); see [spec](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md) + [04 §8.8](04_simulation_engine.md) |
+| v0.0.2 | 0009 — Flora Upgrade (establishment field, growth, selection) | Complete — all §7 exit criteria verified (schema 6 / ABI 2 unchanged, layout-neutral; fixture content-only 248 264 B sha256 `f76b6ccd…7d9cfe`, FLORA 154 → 95; 22 mojo suites `MOJO_FAILS=0`; rendered growth evidence + AP-1..22 PASS); see [spec](../program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md) + [04 §8.9](04_simulation_engine.md) |
 
 ### Milestone 0007 status detail (verified)
 
@@ -47,7 +48,7 @@ Anti-pattern review (spec §7 final item): **PASS** — AP-15..AP-18 checked ite
 
 ### Milestone 0006 status detail (verified)
 
-Sprints 01–04 delivered: sim-side `flora.mojo` (seeded band placement, species from `catalog.mojo`, cap 4096) + `flock.mojo` (64-slot boids, deterministic slot-order integration, waypoint orbit, bound-respawn), schema **5** (`10 FLORA` = `4 + 24·count` emission-gated, `11 FAUNA` = `4 + 20·count` every snapshot; fixture 249432 B, 11 sections), adapter decode/validate/dispatch (`apply_flora`/`apply_fauna`/`set_wetness_gain` latch, catalog mirror `scr::kSpeciesDisplay`), `island.tscn` hosts + `flora_view.gd`/`fauna_view.gd` + `flora_wing.gdshader` (display-only sway/flap), extended gates (flora/fauna region checks + sub-captures `island_flora.png`/`island_fauna.png`).
+Sprints 01–04 delivered: sim-side `flora.mojo` (seeded band placement, species from `catalog.mojo`, cap 4096) + `flock.mojo` (64-slot boids, deterministic slot-order integration, waypoint orbit, bound-respawn), schema **5** (`10 FLORA` = `4 + 24·count` with the 0006 `world_version`-gated presence rule (rewritten change-driven by 0009 §3.2, layout unchanged), `11 FAUNA` = `4 + 20·count` every snapshot; fixture 249432 B, 11 sections), adapter decode/validate/dispatch (`apply_flora`/`apply_fauna`/`set_wetness_gain` latch, catalog mirror `scr::kSpeciesDisplay`), `island.tscn` hosts + `flora_view.gd`/`fauna_view.gd` + `flora_wing.gdshader` (display-only sway/flap), extended gates (flora/fauna region checks + sub-captures `island_flora.png`/`island_fauna.png`).
 
 Final gates: 15/15 mojo spec-test files PASS (incl. `test_flora_placement`, `test_flock`), abi_smoke (schema 5) PASS, schema-mismatch PASS, layout PASS, build OK, load PASS (0 `ERROR:` lines), screenshot day PASS (flora/fauna assertions + green/near-white px), aerial + shoreline-foam PASS (`in-band=1269 out-of-band=0`, fauna hidden from foam frame — birds read as offshore foam), night-glow PASS, playability PASS.
 
@@ -99,7 +100,21 @@ Sprints 01–04 delivered: `src/mojo/server/` (`main.mojo` + `session.mojo` — 
 
 Final gates: determinism 600 ticks byte-identical (socket == in-process, 10950216 B), refusal both directions PASS, crash/restart + crash-loop cap + no orphans PASS, AP-15 stall PASS (structural grep + 2 s `SIGSTOP` ⇒ gaps 0.0223/0.0097 s < 0.05), default transport asserted `InprocTransport`, socket smoke/handshake PASS, `build_sim_server` + harness self-test PASS, layout-neutrality review clean (fixture 249680 B, no diff in `src/mojo/`, `lib/`, spec), 20/20 mojo suites, load/screenshot/playability PASS in **both** transports.
 
-Resolved during verification: socket screenshot leg showed `terrain_chunks=0, flora_groups=0` — the latest-wins handoff dropped the session's first (and only emission-gated) snapshot; fixed with the per-session **first-snapshot latch** (`104_contract.md` §2.3), all gates re-run green.
+Resolved during verification: socket screenshot leg showed `terrain_chunks=0, flora_groups=0` — the latest-wins handoff dropped the session's first (and only session-start) snapshot; fixed with the per-session **first-snapshot latch** (`104_contract.md` §2.3), all gates re-run green.
+
+### Milestone 0009 status detail (verified, 2026-10-03)
+
+Sprints 01–04 delivered: Sprint 00 definitions first (`lib/705_Ecology/Flora/` 101+102+103 + control-plane backfill for `704_Evolution`/`705_Ecology`, commit `8c686ec` = `lib/` only), `sim/flora.mojo` (establishment field + `FLORA_SUITABILITY_THRESHOLD`, per-instance `age` + smoothstep species growth curve with `FLORA_EMIT_EPS` quantization, trait variation via pure cell hashes, `flora_selection_passes` establishment/survival predicate, absorbing death, `flora_re_evaluate` edit re-scan), `sim/world.mojo` tick-phase ordering (re-scan ⇒ survival ⇒ aging), `sim/runtime.mojo` `_flora_dirty` change-driven FLORA emission (replaces the 0006 `world_version` gate; `104_contract.md` §10 rewritten), `parameters.mojo` §6.8.1 tunables (growth curves, threshold, EPS, trait salts, `W_ASH 0.70`/`W_DROUGHT 0.30`, `FLORA_ASH_FALLOFF_RADIUS 72`, `FLORA_DROUGHT_WETNESS_REF 1.0`), fixture content-only regen (248 264 B, FLORA 95), `flora_view.gd` wire-scale consumption, `docs/04` §4.1.1 + §6.8.1 + §8.9 + §9.21–24 + §10.
+
+Final gates: 22/22 mojo spec-test files PASS (`MOJO_FAILS=0`, incl. `test_flora_growth` 7/7 + `test_flora_evolution` 5/5), abi_smoke (schema 6, ABI 2) PASS, schema-mismatch PASS (8 checks), layout PASS (AP-1/4/15), build OK, terrain_resend PASS, load PASS (0 `ERROR:`, `InprocTransport`), screenshot day PASS (flora `groups=6 total=95`, `green_px=1625`, hotbar 9/9/1, foam `in-band=1247 out=0`, aerial PASS), playability PASS (`fails=0`), socket smoke PASS (manual pace), ipc determinism PASS (600 ticks, 11 446 164 B byte-identical), refusal/crash/stall gates PASS, definition gate 0 findings (0 non-lib paths in `8c686ec`).
+
+Growth evidence (headless probe, same sim code): mean scale `1.074440` (init) → `1.120794` (tick 1944, ≈ capture tick) → `1.121073` (saturated ≥ 2400), +4.34 %; 355 ε-dirty ticks / 3000 (change-driven emission, AP-22). PNGs read: `island.png` (grown flora on the ridge, tick 1943) + `island_flora.png` (fern/shrub crown sub-capture) — [04 §8.9](04_simulation_engine.md).
+
+Resolved during verification: stale `emission-gated`/`world_version` FLORA wording in `docs/04`/`docs/06`/`encode.mojo` comments (comment-only, TERRAIN rule untouched); fixture content change 154 → 95 explained (field + trait selection gate at init — [04 §9.24](04_simulation_engine.md)); screenshot flora assertions verified already `> 0` style (no exact-count hardcode).
+
+Honest gaps: no reproduction / cross-generational `INV-006/007` (trivial per instance), stress = crater-distance ∧ wetness with plume mask rejected (no sim-side plume mask — Rule 9), voxel-flora deviation still open — [04 §9.21–23](04_simulation_engine.md).
+
+Anti-pattern review (spec §7 final item): **PASS** — AP-1..22 item-by-item, evidence in [04 §10](04_simulation_engine.md).
 
 ## Planned Milestones (specs drafted, Status: Planned)
 
@@ -107,11 +122,11 @@ Future increments build on the stabilized snapshot contract. Each has a normativ
 
 | Milestone | Spec | Intent | Triggering contracts |
 |-----------|------|--------|----------------------|
-| — | (none drafted) | 0008 was the last spec under v0.0.1; 0009+ = `TBD — future milestone` (Rule 10) | — |
+| — | (none drafted) | 0009 was the last spec so far; 0010+ = `TBD — future milestone` (Rule 10) | — |
 
-Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007 completed 2026-09-30; 0008 completed 2026-10-01.
+Sequencing note: 0003 completed 2026-09-28; 0004 completed 2026-09-28; 0005 completed 2026-09-29; 0006 completed 2026-09-30; 0007 completed 2026-09-30; 0008 completed 2026-10-01; 0009 completed 2026-10-03 (v0.0.2).
 
-Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Successor sequencing after 0008: `TBD — user decision`. Sibling schema-bump rebase rules are stated inside each spec §3.
+Still unspecified (no spec yet — Rule 10): second scene (ocean/atmosphere lab parity) — `503_Simulation` scenarios; CI beyond local gates. Successor sequencing after 0009: `TBD — user decision` (candidate successors listed in [0009 §10](../program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md)). Sibling schema-bump rebase rules are stated inside each spec §3.
 
 ## Explicit Non-Goals Carried Forward
 

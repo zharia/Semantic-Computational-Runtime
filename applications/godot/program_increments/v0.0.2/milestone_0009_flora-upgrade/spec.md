@@ -4,7 +4,7 @@
 **Milestone:** 0009 — Flora Upgrade (field + morphogenesis + selection)
 **Project:** Godot Simulation (applications/godot)
 **Parent System:** Semantic Computational Runtime (SCR)
-**Status:** Planned
+**Status:** Complete
 **Primary Language:** Mojo
 **Initial Engine Provider:** Godot 4.7.2
 **Binding Architecture:** Definition-first (`lib/705_Ecology/Flora` + control-plane backfill) + layout-neutral contract change (FLORA emission rule; schema 6 / ABI 2 preserved)
@@ -258,20 +258,20 @@ applications/godot/
 
 All commands run from repo root; `M=.venv/bin/mojo`.
 
-- [ ] **Definition gate (Sprint 00 — blocking):** `scr-domain-validator` findings = 0 for `lib/705_Ecology` (incl. new `Flora`), `lib/704_Evolution`; required sections present; all `103` edges from controlled vocabulary; Sprint 00 commit contains zero `src/mojo` changes.
-- [ ] **Growth test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_growth.mojo` — monotonic bounded scale, run-twice identity, regrowth/death after dig, `0 < count ≤ 4096`, ε-emission triggers.
-- [ ] **Evolution test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_evolution.mojo` — trait sanity, low establishment in high-stress band, deterministic death on stress, run-twice identity, cap held.
-- [ ] **Placement/field oracle (automated):** extended `test_flora_placement.mojo` — establishment implies band + suitability threshold; species → catalog resolution retained.
-- [ ] **Determinism (automated):** `test_determinism.mojo` — growth + selection in the byte-identical snapshot sequence across two runs.
-- [ ] **Projection purity (automated):** `test_projection_purity.mojo` — extended fingerprint (growth state never mutated by projection).
-- [ ] **Contract framing + fixture (automated):** `test_envelope.mojo` round-trips change-driven FLORA; `gen_golden_fixture.mojo` re-run; `test_golden_fixture.mojo` passes (content-only regen).
-- [ ] **Version gates (automated):** `python3 applications/godot/tests/abi_smoke.py` (schema 6 asserts intact) + `bash applications/godot/tests/test_schema_mismatch.sh` (6 accepted; 5 and 7 refused).
-- [ ] **Build + layout (automated):** `bash applications/godot/scripts/build_godot_provider.sh` + `bash applications/godot/scripts/check_layout.sh`.
-- [ ] **Scene gates (automated):** `godot_load_test.sh` (0 `ERROR:` lines) + `godot_playability_test.sh` PASS (player unaffected).
-- [ ] **Rendered growth evidence (automated screenshot w/ documented manual fallback):** `godot_screenshot.sh` with flora assertions extended: instance count > 0 **and** scale distribution at capture differs from init distribution (growth observable); PNG + numbers recorded in `docs/04` evidence table.
-- [ ] **0008 transport gates re-run:** in-process smoke + `SCR_SIM_TRANSPORT=socket SCR_SIM_IPC_PACE=manual` `godot_ipc_smoke.sh` + `test_ipc_determinism.sh` (growth bytes travel both transports byte-identically).
-- [ ] **Full lineage gate set (automated):** all milestone 0002 §8 procedures of `docs/04_simulation_engine.md` re-run PASS after the emission-rule change.
-- [ ] **Review pass:** AP-1..22 checked item-by-item; Sprint 00 checklist + honest limitations (no reproduction, stress-model choice) recorded in `docs/04`.
+- [x] **Definition gate (Sprint 00 — blocking):** `scr-domain-validator` findings = 0 for `lib/705_Ecology` (incl. new `Flora`), `lib/704_Evolution`; required sections present; all `103` edges from controlled vocabulary; Sprint 00 commit contains zero `src/mojo` changes.
+- [x] **Growth test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_growth.mojo` — monotonic bounded scale, run-twice identity, regrowth/death after dig, `0 < count ≤ 4096`, ε-emission triggers.
+- [x] **Evolution test (automated):** `M run -I applications/godot/src/mojo applications/godot/tests/mojo/test_flora_evolution.mojo` — trait sanity, low establishment in high-stress band, deterministic death on stress, run-twice identity, cap held.
+- [x] **Placement/field oracle (automated):** extended `test_flora_placement.mojo` — establishment implies band + suitability threshold; species → catalog resolution retained.
+- [x] **Determinism (automated):** `test_determinism.mojo` — growth + selection in the byte-identical snapshot sequence across two runs.
+- [x] **Projection purity (automated):** `test_projection_purity.mojo` — extended fingerprint (growth state never mutated by projection).
+- [x] **Contract framing + fixture (automated):** `test_envelope.mojo` round-trips change-driven FLORA; `gen_golden_fixture.mojo` re-run; `test_golden_fixture.mojo` passes (content-only regen).
+- [x] **Version gates (automated):** `python3 applications/godot/tests/abi_smoke.py` (schema 6 asserts intact) + `bash applications/godot/tests/test_schema_mismatch.sh` (6 accepted; 5 and 7 refused).
+- [x] **Build + layout (automated):** `bash applications/godot/scripts/build_godot_provider.sh` + `bash applications/godot/scripts/check_layout.sh`.
+- [x] **Scene gates (automated):** `godot_load_test.sh` (0 `ERROR:` lines) + `godot_playability_test.sh` PASS (player unaffected).
+- [x] **Rendered growth evidence (automated screenshot w/ documented manual fallback):** `godot_screenshot.sh` with flora assertions extended: instance count > 0 **and** scale distribution at capture differs from init distribution (growth observable); PNG + numbers recorded in `docs/04` evidence table.
+- [x] **0008 transport gates re-run:** in-process smoke + `SCR_SIM_TRANSPORT=socket SCR_SIM_IPC_PACE=manual` `godot_ipc_smoke.sh` + `test_ipc_determinism.sh` (growth bytes travel both transports byte-identically).
+- [x] **Full lineage gate set (automated):** all milestone 0002 §8 procedures of `docs/04_simulation_engine.md` re-run PASS after the emission-rule change.
+- [x] **Review pass:** AP-1..22 checked item-by-item; Sprint 00 checklist + honest limitations (no reproduction, stress-model choice) recorded in `docs/04`.
 
 ---
 
