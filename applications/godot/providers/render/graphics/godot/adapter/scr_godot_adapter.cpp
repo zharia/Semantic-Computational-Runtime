@@ -96,7 +96,7 @@
  *                                            MultiMeshInstance3D per species
  *                                            from the validated §10 FLORA
  *                                            records (called ONLY when the
- *                                            emission-gated section is
+ *                                            change-driven section is
  *                                            present — invariant 5 keeps the
  *                                            cached instances otherwise);
  *                                            method set_wetness_gain(k) when
@@ -240,8 +240,11 @@
  * Milestone 0006 — schema 5 adapter decisions (FLORA/FAUNA)
  * ---------------------------------------------------------------------------
  * Schema gate: SCR_SIM_SCHEMA_VER == 5 (scr_godot_abi.h); sections 1..11,
- * FAUNA required in every snapshot, FLORA emission-gated (first snapshot
- * after init + world_version bump — 104_contract §4.2/§4.3, invariant 5).
+ * FAUNA required in every snapshot, FLORA change-driven (0009 §3.2: first
+ * snapshot after init, then on count/species/pose/yaw delta or any instance
+ * scale delta ≥ FLORA_EMIT_EPS vs last emission — 104_contract §4.2/§4.3 §10,
+ * invariant 5). The sim owns that decision; the adapter applies §10 whenever
+ * it is present.
  *
  *   - DECODE ONLY IN C++: section 10 (4 + 24·count, count ≤ 4096, species_id
  *     1..7, finite pose, scale > 0) and section 11 (4 + 20·count, count ≤ 64,
@@ -444,7 +447,8 @@ constexpr uint32_t kShoreFoamHeaderBytes = 12;
 constexpr uint32_t kShoreFoamGridMax = 1024;
 /* Schema 5 (milestone_0006 §1.1, 104_contract §4.3 §10/§11):
  *   10 FLORA = u32 count + count·24 B (f32 x/y/z, f32 yaw, f32 scale,
- *              u32 species_id) — emission-gated, count ≤ FLORA_N_MAX (4096).
+ *              u32 species_id) — change-driven presence (0009 §3.2), count ≤
+ *              FLORA_N_MAX (4096).
  *   11 FAUNA = u32 count + count·20 B (f32 x/y/z, f32 yaw, u8 species_id,
  *              u8×3 pad = 0) — every snapshot, count ≤ FLOCK_N_MAX (64). */
 constexpr uint32_t kFloraHeaderBytes = 4;
@@ -595,8 +599,9 @@ struct SnapshotView {
     uint32_t foam_grid_n = 0;
     float foam_cell_size = 0.0f;
     float foam_sea_level = 0.0f;
-    /* 10 FLORA (schema 5): 4 + 24·count bytes, emission-gated — null when
-     * absent (absent must NOT clear the view cache, invariant 5). */
+    /* 10 FLORA (schema 5): 4 + 24·count bytes, change-driven presence
+     * (0009 §3.2) — null when absent (absent must NOT clear the view cache,
+     * invariant 5). */
     bool has_flora = false;
     const uint8_t *flora = nullptr;
     uint32_t flora_count = 0;
@@ -857,7 +862,8 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
             }
             case SCR_SEC_FLORA: {
                 /* 10 FLORA (schema 5, 104_contract §4.3 §10): u32 count +
-                 * count·24 B, emission-gated. Size is DERIVED from count.
+                 * count·24 B, change-driven presence (0009 §3.2; the sim
+                 * decides, this frame validates). Size is DERIVED from count.
                  * Range checks written so NaN fails (never coerced, §8). */
                 if (sbytes < kFloraHeaderBytes) {
                     return fail(err, "FLORA: section shorter than count");
@@ -1043,7 +1049,8 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     }
     /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 6).
      * TERRAIN and FLORA are the only optional ones (TERRAIN: first snapshot /
-     * world_version bump; FLORA: emission-gated on the same rule). */
+     * world_version bump; FLORA: change-driven on population/pose/yaw or a
+     * scale delta ≥ FLORA_EMIT_EPS vs last emission — 0009 §3.2). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
         !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME] ||
@@ -2302,8 +2309,10 @@ Dictionary ScrSimDriver::flora_materials() {
 }
 
 void ScrSimDriver::apply_flora(const scr::SnapshotView &sv) {
-    /* Emission-gated (0006 invariant 5): an absent §10 NEVER clears the
-     * cached instances — simply do not touch the view. */
+    /* Change-driven emission (0009 §3.2): apply §10 whenever it is present;
+     * an absent §10 NEVER clears the cached instances — simply do not touch
+     * the view (0006 invariant 5). Dispatch is unconditional from
+     * decode_and_apply(): presence alone decides. */
     if (!sv.has_flora || sv.flora == nullptr) {
         return;
     }

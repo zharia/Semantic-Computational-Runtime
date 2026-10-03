@@ -8,7 +8,11 @@
 #   - no sway phase is stored anywhere — flora_wing.gdshader animates on
 #     shader TIME (0006 AP-12, spec §3.4).
 # Absent FLORA never clears this view (invariant 5): the adapter simply does
-# not call apply_flora() when the emission-gated section is missing.
+# not call apply_flora() when the change-driven section is missing (0009 §3.2
+# — emitted on count/species/pose/yaw change or an instance scale delta >=
+# FLORA_EMIT_EPS vs the last emission). Every call re-reads `scale` from the
+# wire and rebuilds the MultiMesh transforms, so growth is visible per
+# snapshot without any scene-side aging.
 #
 # Wire (104_contract §4.3 §10): u32 count + count·24 B records —
 # f32 x/y/z, f32 yaw, f32 scale, u32 species_id (1..7).

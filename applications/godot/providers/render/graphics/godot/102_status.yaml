@@ -81,6 +81,14 @@ capabilities:
   - id: CAP-GODOT-SIM-PROCESS-SUPERVISION
     status: implemented
     milestone: applications/godot/v0.0.1-milestone_0008
+  - id: CAP-GODOT-FLORA-CHANGE-EMISSION
+    status: implemented
+    milestone: applications/godot/v0.0.2-milestone_0009
+    note: >
+      Applies the §10 FLORA section whenever present (sim-side change-driven
+      rule, 104_contract §4.3 §10); absent section retains the cached
+      instances (invariant 5). Layout untouched: schema 6, ABI 2,
+      4 + 24·count records.
 
 depends_on:
   - SCR-LIB-RENDER

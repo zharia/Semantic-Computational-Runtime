@@ -268,8 +268,9 @@ public:
         }
         /* Consume the session-first latch before touching the latest slot
          * (see publish()): the render thread's first read must observe the
-         * session's first frame, otherwise the emission-gated TERRAIN/FLORA
-         * sections are lost for the whole session. */
+         * session's first frame, otherwise the optional TERRAIN/FLORA
+         * sections of that frame are lost (TERRAIN until the next
+         * regeneration, FLORA until its next change-driven emission). */
         if (first_pending_.load(std::memory_order_acquire)) {
             for (int attempt = 0; attempt < 64; ++attempt) {
                 const uint64_t f1 = first_epoch_.load(std::memory_order_acquire);
@@ -603,15 +604,17 @@ private:
              * (0008 §3.2 coalescing), and at session start the render thread
              * may not run its first read for several server ticks (scene /
              * shader startup) — consuming only the newest frame would drop
-             * the session's first frame for good, and that frame is the only
-             * one that carries the emission-gated sections (TERRAIN, FLORA:
-             * 0006 invariant 5, presence rules "first snapshot after init,
-             * then on world_version change"). The latch is released by the
+             * the session's first frame for good, and that frame carries the
+             * optional sections at their initial values (TERRAIN: first
+             * snapshot after init, then on world regeneration; FLORA: the
+             * first change-driven emission after init — 0006 invariant 5,
+             * 0009 §3.2; 104_contract §2.3/§4.3 §10). The latch is released by the
              * first snapshot_write()/snapshot_size() after it is published;
              * every other publish uses the ordinary latest slot. A restart
              * resets snaps_since_restart_ (start_session), so each fresh
              * session latches its own first frame (0008 §1.1 supervision:
-             * world regenerates ⇒ TERRAIN/FLORA re-emit). */
+             * world regenerates ⇒ the new session's first frame carries
+             * TERRAIN again, and FLORA re-emits under the same init rule). */
             const uint64_t f = first_epoch_.load(std::memory_order_relaxed);
             first_epoch_.store(f + 1, std::memory_order_relaxed);
             first_slot_.assign(payload, payload + n);
