@@ -289,11 +289,11 @@ comptime FLORA_SCALE_MAX: Float64 = 1.35
 #   samples ∈ [0, 1]; a candidate cell establishes only where the hard band
 #   preconditions pass AND suitability ≥ FLORA_SUITABILITY_THRESHOLD
 #   (threshold is part of the field semantics, not an implementation knob).
-#   Sprint 01 placeholder environmental inputs (Sprint 02 owns the real
-#   stress model — weather wetness + crater-distance ash, milestone §1.2):
-#     FLORA_WETNESS_NEUTRAL / FLORA_CRATER_STRESS_NEUTRAL are the neutral
-#     values fed at establishment until that wiring lands; neutral ⇒ no
-#     drought/stress penalty ⇒ the 0006 density band decides as before.
+#   FLORA_WETNESS_NEUTRAL / FLORA_CRATER_STRESS_NEUTRAL are NEUTRAL REFERENCE
+#   INPUTS for the pure-field unit oracles (tests evaluate the field at a
+#   no-drought / no-ash point). Production establishment call sites (Sprint
+#   02) feed the real declared environment: weather wetness + crater-distance
+#   ash per the stress model below — never these neutral values.
 # Growth (lib/705_Ecology/Flora §1.3 / 0009 §5 Sprint 01): scale =
 #   f_species(age), monotone non-decreasing to maturity, constant after:
 #     FLORA_GROWTH_SHAPE: 0 = linear-in-age, 1 = smoothstep to maturity.
@@ -329,6 +329,68 @@ comptime FLORA_TARGET_SCALE_CANOPY_TREE: Float64 = 1.35
 comptime FLORA_TARGET_SCALE_CANOPY_CLUSTER: Float64 = 1.20
 comptime FLORA_TARGET_SCALE_SHRUB: Float64 = 1.00
 comptime FLORA_TARGET_SCALE_FERN_CARPET: Float64 = 0.90
+
+# --- Flora stress model + trait variation (milestone_0009 Sprint 02; AP-7/AP-20)
+# Stress model (milestone §1.2 open decision RESOLVED — stakeholder-proceed on
+# the recommendation): stress = crater-distance ASH term + local-wetness
+# DROUGHT term, both pure sim state (0003 volcano subject center_x/center_z,
+# 0004 weather wetness). NO sim-side plume mask exists (plume advection is
+# shader-TIME only) and none is invented here (Rule 9 / R2 "no invented
+# inputs"). Exact expressions (all components derived, nothing hard-coded):
+#
+#   ash_raw(dist)  = clamp(1 − dist / FLORA_ASH_FALLOFF_RADIUS, 0, 1)
+#   drought_raw(w) = clamp((FLORA_DROUGHT_WETNESS_REF − w)
+#                          / FLORA_DROUGHT_WETNESS_REF, 0, 1)
+#   ash_term       = FLORA_STRESS_W_ASH · ash_raw          ∈ [0, W_ASH]
+#   drought_term   = FLORA_STRESS_W_DROUGHT · drought_raw  ∈ [0, W_DROUGHT]
+#   local_stress   = clamp(ash_term + drought_term, 0, 1)
+#                     (field environment term: env = 1 − local_stress)
+#
+# Establishment selection (EVOLUTION-INV-005, componentwise so both traits
+# are load-bearing): candidate fails iff ash_term > trait.ash OR
+# drought_term > trait.drought. Survival selection uses the SAME predicate
+# per tick against committed state (establishment and survival share one
+# threshold — see hysteresis note below).
+#
+# Survival hysteresis: NONE, by design. Death is absorbing in the tick phase
+# (a dead instance is removed the same tick and can only re-enter through a
+# field re-scan, which re-runs the full establishment gate), so death/rebirth
+# flicker is structurally impossible; a hysteresis band would add state
+# without removing any reachable oscillation. "Sustained local stress"
+# (INV-005) is read as the committed environmental state (weather wetness is
+# itself a sustained, history-dependent fold) — not a multi-tick streak
+# counter (documented choice; no extra mutable state, INV-018 preserved).
+#
+# Tolerance thresholds: trait tolerances are hash01 values ∈ [0, 1) compared
+# against the WEIGHTED component terms above (so the 0-drought floor at
+# drought_raw = 1 maps to drought_term = W_DROUGHT < 1 — a fully saturated
+# drought still admits tolerances in [W_DROUGHT, 1) instead of sterilizing
+# every candidate). 2 of the FLORA_TRAIT_COUNT = 4 slots are reserved for
+# future traits (salts below; R1).
+comptime FLORA_TRAIT_COUNT: Int = 4  # fixed trait-vector width (≤ 4; R1)
+# Pure trait hashes: (seed, cell, trait_salt) — AP-20, no RNG stream. The
+# two RESERVED salts are declared but unused until their trait exists.
+comptime FLORA_TRAIT_SALT_ASH: UInt64 = 0x600000001B3
+comptime FLORA_TRAIT_SALT_DROUGHT: UInt64 = 0x700000001B3
+comptime FLORA_TRAIT_SALT_RESERVED_0: UInt64 = 0x800000001B3
+comptime FLORA_TRAIT_SALT_RESERVED_1: UInt64 = 0x900000001B3
+# Crater-distance ash falloff: ash_raw = 0 at ≥ this distance from the
+# crater (volcano subject center). Island radius is 96 u, the caldera rim
+# outer radius 34 u — 72 u covers the whole inner island incl. the volcanic
+# slope band while leaving the outer beach ring ash-free.
+comptime FLORA_ASH_FALLOFF_RADIUS: Float64 = 72.0  # u
+# Stress-term weights (documented in the §1.2 decision block above).
+#   W_ASH  = 0.70: rim-area ash_term ≈ 0.26–0.37 (dist 34–48 u);
+#   W_DROUGHT = 0.30: drought_term at wetness 0 = 0.30 (dry-season floor).
+# Both keep local_stress < FLORA_SUITABILITY_THRESHOLD over the flora bands
+# (max ≈ 0.67 at the rim ⇒ the suitability gate never silently sterilizes a
+# band cell; the tolerance predicate is the binding selection).
+comptime FLORA_STRESS_W_ASH: Float64 = 0.70
+comptime FLORA_STRESS_W_DROUGHT: Float64 = 0.30
+# Drought reference wetness: drought_raw(w) = (REF − w)/REF clamped, so
+# w = REF ⇒ no drought, w = 0 ⇒ drought_raw = 1. Wetness is the 0..1
+# weather field (0004 §3.2 field 16) ⇒ REF = 1.0 is the full-scale dryness.
+comptime FLORA_DROUGHT_WETNESS_REF: Float64 = 1.0
 
 # --- Seabird flock (milestone_0006 §1.1/§5; AP-7 / 0006 AP-13) --------------
 # Slots are fixed (0..FLOCK_N_MAX-1); the first FLOCK_N_INIT are active at

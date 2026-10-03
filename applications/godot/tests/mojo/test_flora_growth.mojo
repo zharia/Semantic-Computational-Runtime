@@ -17,6 +17,7 @@ from std.memory import Layout, alloc
 from std.ffi import external_call, c_int
 
 from sim.island import build_island, IslandSubject
+from sim.volcano import volcano_from_island
 from sim.world import world_init, step_world, World
 from sim.flora import (
     FloraSubject,
@@ -77,6 +78,27 @@ def _check(cond: Bool, msg: String) raises:
         raise Error(msg)
 
 
+def _env(island: IslandSubject) raises -> Tuple[Float64, Float64, Float64]:
+    """Declared environmental inputs for the flora constructors (0009
+    Sprint 02 / EVOLUTION-INV-011): the island's crater (volcano subject
+    centroid) and wetness 0.0 — the committed initial weather state
+    (world_init commits weather with dt = 0, so wetness starts at 0)."""
+    var v = volcano_from_island(island)
+    return (v.center_x, v.center_z, 0.0)
+
+
+def _pop(island: IslandSubject, seed: UInt32) raises -> FloraSubject:
+    var e = _env(island)
+    return flora_from_island(island, seed, e[0], e[1], e[2])
+
+
+def _rescan(
+    island: IslandSubject, prev: FloraSubject, seed: UInt32
+) raises -> FloraSubject:
+    var e = _env(island)
+    return flora_re_evaluate(island, prev, seed, e[0], e[1], e[2])
+
+
 def _now_ns() -> Int64:
     # struct timespec { time_t sec; long nsec; } — two Int64 on linux/amd64.
     # 16 B deliberately leaked (libc free on the raw allocation crashed; the
@@ -122,7 +144,7 @@ def _flora_changed_since(
 
 def test_a_scale_monotone_bounded_until_maturity() raises:
     var island = build_island(SEED)
-    var flora = flora_from_island(island, SEED)
+    var flora = _pop(island, SEED)
     _check(flora.count > 0, "seed 1 has a population")
     var prev = List[Float64]()
     for i in range(flora.count):
@@ -187,8 +209,8 @@ def _final_scale(flora: FloraSubject, i: Int) -> Float64:
 def test_b_run_twice_identical_sequence() raises:
     var island1 = build_island(SEED)
     var island2 = build_island(SEED)
-    var f1 = flora_from_island(island1, SEED)
-    var f2 = flora_from_island(island2, SEED)
+    var f1 = _pop(island1, SEED)
+    var f2 = _pop(island2, SEED)
     _check(f1.count == f2.count, "same population size")
     for t in range(PROBE_TICKS + 1):
         for i in range(f1.count):
@@ -291,8 +313,8 @@ def test_c_dig_removes_anchor_and_freed_cell_may_establish() raises:
     # establish that cell (band + suit ≥ threshold) — a full re-scan from an
     # empty subject reproduces the pristine population including it.
     var restored = build_island(SEED)
-    var flora0 = flora_from_island(restored, SEED)
-    var rescan = flora_re_evaluate(restored, FloraSubject(), SEED)
+    var flora0 = _pop(restored, SEED)
+    var rescan = _rescan(restored, FloraSubject(), SEED)
     _check(
         rescan.count == flora0.count,
         "clean rescan reproduces the pristine population",
@@ -312,7 +334,7 @@ def test_c_dig_removes_anchor_and_freed_cell_may_establish() raises:
 # --- (d) count bound is checked inside (a); explicit smoke here too ----------
 
 def test_d_population_bound_at_every_tick() raises:
-    var flora = flora_from_island(build_island(SEED), SEED)
+    var flora = _pop(build_island(SEED), SEED)
     _check(0 < flora.count <= FLORA_N_MAX, "initial count in (0, N_MAX]")
     for _ in range(PROBE_TICKS):
         flora_tick(flora)
@@ -345,7 +367,7 @@ def test_e_emission_dirty_fires_exactly_on_epsilon_crossings() raises:
         "relative-to-prev scaling is correct",
     )
     # System level: over PROBE_TICKS of real ticking, fires == changes.
-    var flora = flora_from_island(build_island(SEED), SEED)
+    var flora = _pop(build_island(SEED), SEED)
     var last = _copy_instances(flora)
     var fires = 0
     var changes = 0
@@ -422,11 +444,11 @@ def test_perf_rescan_cost_reported() raises:
     """Measures flora_re_evaluate over the full grid (Sprint 01 gate: fill
     the measured µs into the world.mojo rescan-strategy comment)."""
     var island = build_island(SEED)
-    var flora = flora_from_island(island, SEED)
+    var flora = _pop(island, SEED)
     var reps = 5
     var t0 = _now_ns()
     for _ in range(reps):
-        var next_f = flora_re_evaluate(island, flora, SEED)
+        var next_f = _rescan(island, flora, SEED)
         flora = next_f^
     var t1 = _now_ns()
     var per_call_ns = (t1 - t0) // Int64(reps)

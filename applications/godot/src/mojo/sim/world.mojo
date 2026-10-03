@@ -24,7 +24,13 @@ from sim.subjects import (
 )
 from sim.volcano import VolcanoSubject, volcano_from_island, volcano_tick
 from sim.shore import compute_foam_field
-from sim.flora import FloraSubject, flora_from_island, flora_re_evaluate, flora_tick
+from sim.flora import (
+    FloraSubject,
+    flora_from_island,
+    flora_re_evaluate,
+    flora_tick,
+    flora_survival,
+)
 from sim.edit import EditQueue, edit_queue_init, consume_one_edit
 from sim.hotbar import HotbarSubject, hotbar_init
 from sim.props import PhysicsSubject, props_from_island, props_tick
@@ -117,10 +123,19 @@ def world_init(seed: UInt32) raises -> World:
     world.foam = compute_foam_field(
         world.island.heights, world.hydro.ocean, world.simulation_time
     )
-    # Ecology (milestone_0006 Sprint 01): flora scatter is a pure function of
-    # (seed, island); flock spawns from (seed, island). Construction only —
-    # no runtime mutation of these two outside flock_tick below.
-    world.flora = flora_from_island(world.island, world.seed)
+    # Ecology (milestone_0006 Sprint 01 / 0009 Sprint 02): flora scatter is
+    # a pure function of (seed, island, declared environment); flock spawns
+    # from (seed, island). Construction only — no runtime mutation of these
+    # two outside flock_tick / flora_survival below. Establishment gets the
+    # committed crater geometry + weather wetness as EXPLICIT inputs
+    # (EVOLUTION-INV-011): volcano and weather are initialized above.
+    world.flora = flora_from_island(
+        world.island,
+        world.seed,
+        world.volcano.center_x,
+        world.volcano.center_z,
+        world.weather.wetness,
+    )
     world.flock = flock_from_island(world.island, world.seed)
     # milestone_0007: hotbar slot table resolved against the catalog (loud
     # if any id fails — invariant 5), rigid props at deterministic beach
@@ -162,7 +177,18 @@ def tick_world(mut world: World, input: InputBatch) raises:
         # grid at pop 154 (test_flora_growth perf probe) vs an affected-
         # column bookkeeping structure — full rescan wins on simplicity at
         # this grid size (≤1 edit tick ⇒ ≤130 µs/tick of 16.6 ms budget).
-        world.flora = flora_re_evaluate(world.island, world.flora, world.seed)
+        # Environmental inputs (EVOLUTION-INV-011): crater geometry is static
+        # and wetness is THIS world's previously committed weather state (the
+        # edit hook runs before the weather advance below) — explicit, not
+        # derived inside the flora scan.
+        world.flora = flora_re_evaluate(
+            world.island,
+            world.flora,
+            world.seed,
+            world.volcano.center_x,
+            world.volcano.center_z,
+            world.weather.wetness,
+        )
     # Rigid props: gravity + ground contact, ascending slot order (§3.5).
     props_tick(world.props, world.island, FIXED_DT)
     world.simulation_tick += 1
@@ -177,6 +203,20 @@ def tick_world(mut world: World, input: InputBatch) raises:
     )
     # Volcano state is a pure function of (seed, tick, atmosphere) — AP-12.
     volcano_tick(world.volcano, world.seed, world.simulation_tick, world.atmosphere)
+    # Flora survival selection (0009 Sprint 02 / R3, EVOLUTION-INV-005):
+    # recompute every anchor's local stress from THIS tick's committed
+    # weather wetness + the static crater geometry and drop the instances
+    # whose tolerances no longer cover it — dead removed same tick (cap
+    # never violated, AP-22 / spec §6 invariant 5). Full recompute every
+    # tick (no amortization; O(count), documented in flora_survival).
+    # Pure given state ⇒ run-twice identical deaths (R6 / INV-018); tick
+    # phase ONLY (projection purity, spec §6 invariant 7).
+    flora_survival(
+        world.flora,
+        world.volcano.center_x,
+        world.volcano.center_z,
+        world.weather.wetness,
+    )
     # Shore foam (§3.3): pure function of (island heights, ocean, sim time) —
     # recomputed once per committed tick so the projection stays read-only.
     world.foam = compute_foam_field(
@@ -373,8 +413,9 @@ def world_fingerprint(world: World) -> UInt64:
 
     # Flora subject (milestone_0006): seed, count, every instance field —
     # folded so a projection that mutated flora fails projection purity.
-    # Ages (0009 R2, SIM-side only) fold too: a projection that ticked
-    # growth must fail the same way.
+    # Ages (0009 R2, SIM-side only) and trait vectors (0009 Sprint 02,
+    # SIM-side only — parallel list, never on the wire) fold too: a
+    # projection that ticked growth or selection must fail the same way.
     h = _fold_u64(h, UInt64(world.flora.seed))
     h = _fold_u64(h, UInt64(world.flora.count))
     for i in range(world.flora.count):
@@ -387,6 +428,11 @@ def world_fingerprint(world: World) -> UInt64:
         h = _fold_u64(h, UInt64(fi.species_id))
         if i < len(world.flora.ages):
             h = _fold_u64(h, UInt64(world.flora.ages[i]))
+        if i < len(world.flora.traits):
+            h = _fold_f64(h, world.flora.traits[i].ash)
+            h = _fold_f64(h, world.flora.traits[i].drought)
+            h = _fold_f64(h, world.flora.traits[i].reserved0)
+            h = _fold_f64(h, world.flora.traits[i].reserved1)
 
     # Flock subject (milestone_0006): seed, count, every slot's full state —
     # folded so a projection that mutated fauna fails projection purity.

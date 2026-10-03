@@ -18,6 +18,7 @@ from sim.flora import (
     establishment_suitability,
     FloraSubject,
 )
+from sim.volcano import volcano_from_island
 from sim.parameters import (
     GRID_N,
     CELL_SIZE,
@@ -63,6 +64,21 @@ def _check(cond: Bool, msg: String) raises:
         raise Error(msg)
 
 
+def _env(island: IslandSubject) raises -> Tuple[Float64, Float64, Float64]:
+    """Declared environmental inputs for flora_from_island (0009 Sprint 02 /
+    EVOLUTION-INV-011): the island's crater (volcano subject centroid) and
+    wetness 0.0 — the committed initial weather state (world_init commits
+    weather with dt = 0, so wetness starts at 0 and this test never ticks)."""
+    var v = volcano_from_island(island)
+    return (v.center_x, v.center_z, 0.0)
+
+
+def _pop(island: IslandSubject, seed: UInt32) raises -> FloraSubject:
+    """flora_from_island with the declared environment bound by _env."""
+    var e = _env(island)
+    return flora_from_island(island, seed, e[0], e[1], e[2])
+
+
 def anchor_cell(inst: FloraInstance) raises -> Tuple[Int, Int]:
     """Inverse of instance_for_column's world→cell mapping (exact lattice)."""
     var fx = Float64(inst.x) / CELL_SIZE + Float64(GRID_N) / 2.0 - 0.5
@@ -89,7 +105,7 @@ def test_band_invariants_seed1() raises:
     elevation threshold, within its band's slope cap, in the band's species
     set, at the anchor cell height, with scale in [SCALE_MIN, SCALE_MAX]."""
     var island = build_island(1)
-    var flora = flora_from_island(island, 1)
+    var flora = _pop(island, 1)
     _check(flora.count > 0, "flora instances for seed 1")
     _check(flora.count == len(flora.instances), "count == len(instances)")
     _check(flora.count <= FLORA_N_MAX, "cap: count ≤ FLORA_N_MAX")
@@ -175,8 +191,8 @@ def test_flora_construction_is_deterministic() raises:
     """Two constructions from the same (island, seed) are field-identical
     (0006 §6 invariant 4 / §7 determinism exit criterion)."""
     var island = build_island(1)
-    var a = flora_from_island(island, 1)
-    var b = flora_from_island(island, 1)
+    var a = _pop(island, 1)
+    var b = _pop(island, 1)
     _check(a.count == b.count, "count differs between equal constructions")
     for i in range(a.count):
         var ia = a.instances[i]
@@ -189,8 +205,8 @@ def test_flora_construction_is_deterministic() raises:
 def test_different_seed_changes_population() raises:
     """Seed is part of the placement function (0006 §1.1)."""
     var island = build_island(1)
-    var a = flora_from_island(island, 1)
-    var b = flora_from_island(island, 2)
+    var a = _pop(island, 1)
+    var b = _pop(island, 2)
     var differs = a.count != b.count
     if not differs:
         for i in range(a.count):
@@ -204,7 +220,7 @@ def test_species_enum_total_and_bounded() raises:
     """Emitting species ids stay inside 1..SPECIES_COUNT-1 and map through
     instance_for_column as the single source (AP-14 companion)."""
     var island = build_island(1)
-    var flora = flora_from_island(island, 1)
+    var flora = _pop(island, 1)
     for i in range(flora.count):
         var sid = Int(flora.instances[i].species_id)
         _check(sid >= 1 and sid <= 7, "species id in 1..7")
