@@ -1,8 +1,8 @@
 # 04 — Simulation Engine Design
 
 **Purpose:** Capture the simulation engine design for the Mojo/Godot application.
-**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; extended for milestone 0005 Shoreline Fidelity — Sprint 01..04; extended for milestone 0006 Ecology — Sprint 01..04; extended for milestone 0007 Editing/Hotbar/Physics — Sprint 01..04; extended for milestone 0008 IPC Transport — Sprint 01..04; extended for milestone 0009 Flora Upgrade — Sprint 01..04; honest gaps marked `TBD — future milestone`)
-**Owner milestone:** [v0.0.2 / milestone 0009 — Flora Upgrade](../program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md) (baselines: [milestone 0008](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md), [milestone 0007](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md), [milestone 0006](../program_increments/v0.0.1/milestone_0006_ecology/spec.md), [milestone 0005](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md), [milestone 0004](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md), [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
+**Status:** Active (filled for milestone 0002 — Sprint 01..04; extended for milestone 0003 Volcano — Sprint 01..04; extended for milestone 0004 Atmosphere & Weather — Sprint 01..04; extended for milestone 0005 Shoreline Fidelity — Sprint 01..04; extended for milestone 0006 Ecology — Sprint 01..04; extended for milestone 0007 Editing/Hotbar/Physics — Sprint 01..04; extended for milestone 0008 IPC Transport — Sprint 01..04; extended for milestone 0009 Flora Upgrade — Sprint 01..04; extended for milestone 0010 Flora Phenome — Sprint 01..04; honest gaps marked `TBD — future milestone`)
+**Owner milestone:** [v0.0.2 / milestone 0010 — Flora Phenome](../program_increments/v0.0.2/milestone_0010_flora-phenome/spec.md) (baselines: [milestone 0009](../program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md), [milestone 0008](../program_increments/v0.0.1/milestone_0008_ipc-transport/spec.md), [milestone 0007](../program_increments/v0.0.1/milestone_0007_editing-physics/spec.md), [milestone 0006](../program_increments/v0.0.1/milestone_0006_ecology/spec.md), [milestone 0005](../program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md), [milestone 0004](../program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md), [milestone 0003](../program_increments/v0.0.1/milestone_0003_volcano/spec.md), [milestone 0002](../program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md), [milestone 0001](../program_increments/v0.0.1/milestone_0001_project-initiation/spec.md))
 
 ---
 
@@ -21,12 +21,12 @@
 | Parameter table (AP-7, incl. volcano/plume/glow, atmosphere/weather) | **Active — §6** |
 | Performance budgets | **TBD — future milestone** (no perf work in scope; spec §9) |
 
-## 2. Current Implementation (v0.0.2 / milestone 0009)
+## 2. Current Implementation (v0.0.2 / milestone 0010)
 
-- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **flock**, **edit**, **raycast**, **hotbar**, **props**), `synthesis/` (noise + height field + voxel synthesis, single-column re-synthesis entry), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI incl. `scr_edit_submit`), `main.mojo` (CLI headless entry).
-- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**, **`scr_hotbar` + `scr_target` + `scr_props` hosts (0007)**), `scripts/player_input.gd` (input + edit intent uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, **`scripts/hotbar_hud.gd` + `scripts/props_view.gd` (0007 presentation)**, `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap)**.
-- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 6 / ABI 2**: sections 1–14 incl. `10 FLORA` change-driven (0009 §3.2), `11 FAUNA` every snapshot, **`12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`**; uplink `scr_input_batch` + **`scr_edit_batch`/`scr_edit_submit`**).
-- Tests: **22/22 Mojo spec test files** (adds `test_edit_ops`, `test_raycast`, `test_hotbar`, `test_props` (0007), `test_framing` (0008), `test_flora_growth`, `test_flora_evolution` (0009); see §4.4), ABI smoke, **terrain-resend test (`test_terrain_resend.py`)**, schema/ABI-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow + sun + rain + flora/fauna region checks + **editing HUD state**), playability gate (**with scripted dig/place leg**, see §8.7).
+- `src/mojo/` — full core slice: `sim/` (world, subjects, parameters, input table, runtime, **volcano**, **flora**, **phenome**, **flock**, **edit**, **raycast**, **hotbar**, **props**), `phenome/` (reference expander — tests only), `synthesis/` (noise + height field + voxel synthesis, single-column re-synthesis entry), `ocean/` (Gerstner), `materials/` (catalog loader), `snapshot/` (pure projection + encoder), `export/` (C ABI incl. `scr_edit_submit`), `main.mojo` (CLI headless entry).
+- `godot/` — main scene `scenes/island.tscn` (terrain host, ocean + Gerstner shader, sky, sun, camera, HUD, meta/materials group nodes, **`scr_crater_lava` + `scr_plume` (GPUParticles3D) + `scr_crater_glow` (OmniLight3D)**, **`scr_flora` + `scr_fauna` hosts with view scripts (0006)**, **`scr_hotbar` + `scr_target` + `scr_props` hosts (0007)**), `scripts/player_input.gd` (input + edit intent uplink only), `scripts/hud.gd` (controls hint only), **`scripts/flora_view.gd` + `scripts/fauna_view.gd` (0006 presentation)**, **`scripts/hotbar_hud.gd` + `scripts/props_view.gd` (0007 presentation)**, **`scripts/phenome_expand.gd` (0010 turtle L-system expander, pure) + `scripts/flora_view.gd` (bucketed mesh cache, LOD bands + hysteresis, wind-weight channel — 0010)**, `data/phenome_grammars.json` (single-source grammar), `shaders/ocean.gdshader`, **`shaders/lava.gdshader`**, **`shaders/flora_wing.gdshader` (0006 display-only sway/flap, 0010 × wind-weight `COLOR.r`)**.
+- `providers/render/graphics/godot/` — provider control docs + GDExtension adapter (`ScrSim`), normative contract `104_contract.md` (**schema 7 / ABI 2**: sections 1–14 incl. `10 FLORA` change-driven (0009 §3.2) with **32 B records + `variant_seed`/`stage` (0010 §3.2)**, `11 FAUNA` every snapshot, **`12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`**; uplink `scr_input_batch` + **`scr_edit_batch`/`scr_edit_submit`**).
+- Tests: **23/23 Mojo spec test files** (adds `test_edit_ops`, `test_raycast`, `test_hotbar`, `test_props` (0007), `test_framing` (0008), `test_flora_growth`, `test_flora_evolution` (0009), `test_phenome_grammar` (0010); see §4.4), ABI smoke, **terrain-resend test (`test_terrain_resend.py`)**, schema/ABI-mismatch negative test, headless load gate, screenshot gate (plume + lava + night-glow + sun + rain + flora/fauna region checks + **editing HUD state** + **phenome structural-content assertions**), playability gate (**with scripted dig/place leg**, see §8.7), **phenome gate (`godot_phenome_test.sh`, see §8.11)**.
 
 ## 3. Constraints Carried Forward (normative, from governing docs)
 
@@ -1039,6 +1039,123 @@ Scope: `sim/flora.mojo` (establishment field, per-instance `age` + species growt
 
 **Resolved / verified during Sprint 04:** stale `emission-gated`/`world_version` FLORA wording removed from this document, `docs/06` 0009 rows and `encode.mojo` comments (TERRAIN's `world_version` rule untouched); `encode.mojo` diff = docstring + comment lines only (no code, no layout); screenshot flora assertions already `> 0` style (no exact-154 assumption); growth evidence captured via headless probe because the screenshot harness exposes no tick-advance hook between sub-captures (single-tick capture by design).
 
+### 8.10 Milestone 0010 (Flora Phenome) — Sprint 04 verification record (2026-10-04)
+
+Scope: `lib/401_Morphology/Procedural/101_definition.md` (stub → grammar semantics), `lib/704_Evolution/Phenotype/` (new), `lib/705_Ecology/Flora/101_definition.md` (§1.6), `sim/phenome.mojo` (stage/seed/modulation, pure), `phenome/expand.mojo` (reference expander, tests only), `data/phenome_grammars.json` (single source), `snapshot/*` + `104_contract.md` §4.3 §10 (schema **7**, FLORA record 24 → **32 B**), adapter (`scr_godot_abi.h` `SCR_SIM_SCHEMA_VER 7`), `godot/scripts/phenome_expand.gd` + `flora_view.gd` (bucketed cache / LOD / wind channel) + `flora_wing.gdshader`. Model: §8.11.
+
+**Fixture (schema 7, Sprint 02 regen):** `tests/fixtures/snapshot_seed1_tick1.bin` = **249 024 B**, sha256 `ca9e7080f943c62158bc28719fa1e28b0a2fcf3bdd0a36b3f8f1ed7dfe225b43`, schema **7** / ABI **2**, FLORA section **3 044 B = 4 + 32·95** (count 95, 95 distinct `variant_seed`s), sections 1–9 and 11–14 byte-identical to the 0009 fixture. Untouched by Sprint 04 (`git diff --stat` vs HEAD shows only the Sprint-02 regen 248 264 → 249 024 B; sha re-verified this run).
+
+**Sprint-04 gates — full §7 sweep (repo root, serial, 2026-10-04):**
+
+| # | §7 box | Command | Result |
+|---|---|---|---|
+| 1 | Definition gate (Sprint 00) | `scr-domain-validator` checklist re-run over `lib/401_Morphology/Procedural`, `lib/704_Evolution/Phenotype`, `lib/705_Ecology/Flora` (+ `lib/704_Evolution/102_status.yaml`): front-matter `title`/`domain`, `## Purpose`/`## Scope`/`## Core Concepts`, no implementation details, no parent duplication, `102` status ∈ vocabulary + ISO `last_updated`, `103` JSON + edge types ∈ controlled vocabulary + targets resolve; manual checklist (grammar terms axiom/production/derivation/termination/determinism/tropism present ×12/8/29/4/6/6, Phenotype sections §1.1–1.6, Flora §1.6 with §17 Repetition (line 577) citation); `git diff --name-only -- lib/` + `git status --porcelain -- lib/` | **PASS — 0 findings**; diff = exactly the 6 Sprint-00 paths (`Procedural/101`, `704_Evolution/102_status`, `Flora/101` modified + `704_Evolution/Phenotype/{101,102,103}` new); `503_Simulation/Reproduction`, `203_Graph/*`, `401_Morphology/101` untouched |
+| 2 | Full mojo suite | `for t in applications/godot/tests/mojo/test_*.mojo; do .venv/bin/mojo run -I applications/godot/src/mojo "$t"; done` | **PASS — 23/23** (`MOJO_FAILS=0`; incl. `test_phenome_grammar` 8/8: grammar parse, stage monotone/bounded/JSON-exact, variant_seed pure+distinct, constants==JSON, modulation value-exact, expansion deterministic/depth non-decreasing/trait-sensitive, goldens match, wire record untouched) |
+| 3 | Grammar core + conformance | `… test_phenome_grammar.mojo` + `bash tests/godot/godot_phenome_test.sh` (golden rows vs GDScript expander) | **PASS** — reference-expansion goldens `tests/fixtures/phenome/goldens.txt` = **84/84** rows matched, **0 AP-24 mismatches** (discrete symbol strings only); stage monotonicity 7 species × 16 stages; trait modulation visible at stage 7 for all 7 species |
+| 4 | Fixture + versions | `python3 tests/abi_smoke.py` / `bash tests/test_schema_mismatch.sh` | **PASS** / **PASS** — abi smoke: `scr_sim_schema_version()==7`, `abi==2`, snapshot byte-identical to fixture 249 024 B, FLORA `4 + 32·count = 3044`, count 95, `stage ∈ 0..15`, pad zero; schema mismatch **11 checks**: schema 8 refused (`SCR_LOAD_ERR_SCHEMA`), schema 6 refused, ABI 3 refused (`SCR_LOAD_ERR_ABI`), real lib (schema 7) accepted |
+| 5 | Layout | `bash scripts/check_layout.sh` | **PASS** (paths, AP-1 0 engine-type matches, AP-4 0 `/home/`, AP-15 wall-clock clean) |
+| 6 | Build | `bash scripts/build_godot_provider.sh` | **PASS** (`OK — provider built`, 7 `scr_sim_*`, 1 `gdextension_init`, adapter decodes 32-B records) |
+| 7 | Scene gates (serial) | `bash tests/godot/godot_phenome_test.sh` / `godot_load_test.sh` / `godot_screenshot.sh` / `godot_playability_test.sh` | **PASS ×4** — phenome: **40 checks** (payload 95/3044, cache ≤ 112 measured **112**, `evict=0`, LOD band switches + hysteresis `far [0,0,95] → near [6,17,72] → far [0,0,95]`, expansions only on applies, wind `[0.10, 1.00]`, mesh ≥ 64 verts, group count ≤ 95); load: **0 `ERROR:` / 0 WARNING lines**, `InprocTransport`; screenshot: PASS twice, structural asserts `flora groups=63 total=95`, `structural meshes=63 verts64=true wind=[0.10,1.00]`, centre-box `green_px=98`, aerial + shoreline foam `in-band=1273 out-of-band=0`; playability: **22 checks, `fails=0`** (WASD 24.00 u, jump gain 1.73 u, yaw −0.750 rad, dig/place mesh-content) |
+| 8 | Transports | in-process leg (`godot_load_test.sh` `InprocTransport` + `ipc_harness.py --self-test` in-process snapshot leg); `SCR_SIM_TRANSPORT=socket SCR_SIM_IPC_PACE=manual bash tests/godot/godot_ipc_smoke.sh`; `bash tests/ipc/test_ipc_determinism.sh`; `test_ipc_version_refusal.sh`; `test_ipc_crash_restart.sh`; `python3 tests/ipc/ipc_harness.py --self-test` | **PASS ×5 (+ in-process legs)** — harness: versions `(1,2,7)`, first snapshot **249 024 B == fixture**, socket == in-process byte-identical, 3 refusals both directions (12 checks); smoke: handshake OK, 0 hard errors, server exit 0 on BYE; determinism: **600 ticks, 12 289 388 bytes, byte-identical** socket == in-process; refusal: bad-schema/bad-abi/bad-proto refused loudly both directions, no orphan; crash/restart: 6 spawns = initial + 5 restarts, FATAL cap, tick reset, TERRAIN re-delivery, no orphan |
+| 9 | Lineage (0002 §8 procedures) | `bash scripts/build_sim_server.sh`, `python3 tests/test_terrain_resend.py`, `bash tests/godot/godot_render_stall_test.sh` (+ rows 1–8) | **PASS ×3** — terrain resend (edit ⇒ exactly-one TERRAIN resend, `world_version` rule unchanged); AP-15 stall: structural grep 0 socket syscalls in `scr_godot_adapter.cpp` + SIGSTOP 2 s ⇒ `max physics frame gap 0.0225 s`, `max process frame gap 0.0178 s` (< 0.05), paused server not treated as crash. Night-glow **not run** — `git diff` shows `TIME_OF_DAY` untouched (§7 allows skip) |
+| 10 | Fixture untouched by Sprint 04 | `sha256sum tests/fixtures/snapshot_seed1_tick1.bin`; `git diff --stat -- <fixture>` | **PASS** — sha `ca9e7080…225b43` (= Sprint-02 value), size 249 024 B; working-tree diff = Sprint-02 regen only, no Sprint-04 write |
+| 11 | Process hygiene | `pgrep -x godot`, `pgrep -x scr_sim_server` after every gate | **0 / 0** — no orphan at any checkpoint |
+
+**Measurements (from this run's `godot_phenome_test.sh` log):** first-load expansion **69 336 µs (≈69 ms)**; worst LOD pass **36 776 µs (≈37 ms)**; expansions `exp=112` vs `applies=26` (expansion attributable to applies — **0 violations**; 26 ≈ the sim's growth/stage re-emission count per run, ε-scale by design); `lod_build_count=152` (lazy per-band builds); `cache=112` = `7·K` bound hit, `evict=0`.
+
+**Stage distribution (seed 1, from the fixture's FLORA records — actual wire bytes):** 95 instances, stages 0–14 all present, none at 15 yet (age ≪ maturity at tick 1):
+
+| stage | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| count | 5 | 7 | 3 | 5 | 7 | 10 | 8 | 4 | 7 | 9 | 2 | 7 | 6 | 9 | 6 | 0 |
+
+Species mix: `{1:3, 2:3, 4:19, 5:7, 6:36, 7:27}` — **species 3 (bamboo) unexercised at seed 1** (known limitation, §8.11). By the screenshot capture (tick ~1940) the group names read `…_s15` / one `…_s13`, i.e. the population has matured into stage 15 with mixed buckets still visible.
+
+**Evidence PNGs** (`applications/godot/build/`, read by this sprint; `island.png` framing variance noted honestly):
+
+| File | Content observed (this run) |
+|---|---|
+| `island.png` | day frame, tick 1940, HUD `seed 1`, hotbar 9/9 (slot 1 `Basalt` selected), target `Sand #3`, rain streaks + clouds; **spawn-framing variance (§9.14)**: camera faces the beach/ocean flank, volcano and most flora out of frame — luminance gate `mean=178.26 stddev=37.18` PASS, but no plant silhouettes visible in this particular framing |
+| `island_flora.png` | flora sub-capture, tick 1953: **one structured plant on the beach slope — faceted layered crown + stem silhouette, clearly not a primitive cylinder/sphere blob**; `mean=135.44` |
+| `aerial.png` | fog-OFF overhead (fresh session, tick 64): crater/lava/sulfur ring intact, **flora distribution intact as dark specks ringing the island** (LOD-far instances), chunks 16, foam gate `in-band=1273 out-of-band=0` |
+| `island_fauna.png` / `island_crater.png` / `island_rain.png` / `island_sun.png` | birds / lava+plume / rain window / sun disc — all luminance PASS |
+
+**Anti-pattern review:** AP-1..26 item-by-item in §10 (AP-23..26 new this milestone).
+
+### 8.11 Phenome model (0010) — traced domain model, parameters, honest limitations
+
+Traced to Sprint 00 definitions (Rule 10 / AP-23) and the single-source grammar `godot/data/phenome_grammars.json`. The wire carries only the compact generative description (`variant_seed` + `stage`) per `SCR-LIB-MORPHOLOGY` §17 Repetition (line 577) — **geometry never crosses the wire** (`Flora` §1.6).
+
+| Model element | Definition authority (Sprint 00) | Grammar JSON key | Code |
+|---|---|---|---|
+| Stage quantization (stage = f(age), monotone, 0..15, drives iteration depth) | `SCR-LIB-MORPHOLOGY-PROCEDURAL` §1.4 Derivation Step and Iteration Depth; `Flora` §1.6 (stage is developmental, from age) | `stage_max`, `stage_depths[16]`, `maturity[16]` | `sim/phenome.mojo::stage_for_age`, `parameters.mojo::STAGE_MAX` |
+| Axiom / parametric productions / derivation step | `SCR-LIB-MORPHOLOGY-PROCEDURAL` §1.1–1.4 (alphabet, axiom, context-free parametric rules, termination §1.5, determinism §1.6) | `axiom`, `axiom_jitter_mod`, `productions`, `params` | `phenome/expand.mojo` (reference), `phenome_expand.gd` (renderer) |
+| `variant_seed` (per-instance generative identity) | `Flora` §1.6 (seed + stage = instance identity state); Procedural §1.6 determinism | `axiom_jitter_mod` (axiom parameter 0 gains `variant_seed mod axiom_jitter_mod`) | `sim/phenome.mojo::variant_seed`, salt `PHENOME_VARIANT_SALT` |
+| Trait → grammar parameter modulation (genotype → phenotype) | `SCR-LIB-EVOLUTION-PHENOTYPE` §1.3 Genotype → Phenotype Mapping (+ §1.4/§1.5 firewall: form only — not selection, not growth) | `modulation.{ash_tolerance,drought_tolerance}.{param,delta}` | `sim/phenome.mojo::modulated_params`, `parameters.mojo::PHENOME_*` mirrors |
+| Tropism (parametric term) | `SCR-LIB-MORPHOLOGY-PROCEDURAL` §1.7 Tropism as Parametric Term | `tropism.{name,param,coefficient_milli,direction}` | `phenome_expand.gd` (renderer consumes) |
+| Compact description on the wire | `Flora` §1.6 + parent `Morphology` §17 Repetition (line 577); `104_contract.md` §4.3 §10 | — | FLORA record 32 B (`variant_seed` @24, `stage` @28, pad @29) |
+| Provider-independent expansion | `MORPHOLOGY-INV-017` (spec §1: substituting the expander preserves the contract) | whole grammar file | pure `(grammar, seed, stage, traits[, lod depth]) → structure` |
+
+**Stage quantization.** `stage_for_age(species, age) = min(STAGE_MAX, floor(age · STAGE_MAX / maturity(species)))` — pure, monotone non-decreasing, bounded `0..15`; every `FLORA_MATURITY_*` (§6.8.1) is divisible by 15 so the quantization boundaries coincide with the JSON `maturity` table (conformance-tested: mirror == JSON). Stage advances once per fixed tick in the tick phase; instance transform (`scale(age)`) stays on the 0009 axis — **structure complexity and physical size are separate explicit axes** (spec §1.1 stage-model decision).
+
+**Trait → grammar modulation map** (value-exact in `test_phenome_grammar` vs JSON; `trait_milli = clamp(floor(trait·1000), 0, 1000)`, `modulated = (base·1000 + delta·trait_milli)/1000`):
+
+| species (id → grammar_id) | base `crown_density` | ash Δ (→ crown_density) | base `leaf_count` | drought Δ (→ leaf_count) | stage_depths (stages 0..15) | maturity (ticks) | tropism coeff (milli) |
+|---|---|---|---|---|---|---|---|
+| 1 `flora.palm_cluster` | 60 | +18 | 8 | −2 | 0,0,1,1,2,2,3,3,3,4,4,4,5,5,5,5 | 1500 | 120 |
+| 2 `flora.palm_solo` | 60 | +15 | 6 | −1 | 0,0,0,1,1,2,2,3,3,3,4,4,4,4,5,5 | 1200 | 140 |
+| 3 `flora.bamboo_grove` | 64 | +12 | 10 | −3 | 0,0,1,1,2,2,2,3,3,4,4,4,5,5,5,5 | 1200 | 160 |
+| 4 `flora.canopy_tree` | 60 | +20 | 12 | −4 | 0,0,0,1,1,2,2,2,3,3,4,4,4,5,5,5 | 2400 | 180 |
+| 5 `flora.canopy_cluster` | 55 | +16 | 14 | −5 | 0,0,0,0,1,1,2,2,3,3,3,4,4,5,5,5 | 1800 | 200 |
+| 6 `flora.shrub` | 72 | +10 | 16 | −6 | 0,0,1,1,2,2,3,3,4,4,4,5,5,5,5,5 | 900 | 220 |
+| 7 `flora.fern_carpet` | 80 | +14 | 20 | −8 | 0,0,1,1,1,2,2,3,3,3,4,4,4,5,5,5 | 600 | 240 |
+
+Firewall: the map modulates **form parameters only** — selection stays in `704_Evolution` (`ECOLOGY-INV-013`), growth accretion in `Morphology/Growth` (`Phenotype` §1.4/§1.5). Reserved traits 2–3 declared, unused (no invented semantics).
+
+**Bucketed mesh cache (presentation).** `variant_seed` → bucket `posmod(hash(seed), K)` with `K = 16` per species ⇒ cache bound `7·K = 112` `ArrayMesh`es (one `MultiMeshInstance3D` per `(species, bucket, stage, band)`); mesh re-expanded **only on (species, bucket, stage) change** — never per frame, never in sim (AP-26). Measured: `cache=112`, `evict=0`, expansions attributable to applies (0 violations).
+
+**LOD bands (presentation only — never sent, never affects sim; INV-017).** 3 bands from camera distance with hysteresis: near ≤ 30 m (depth = stage depth), mid ≤ 60 m (depth −1), far > 60 m (depth −2), floor 1 (a depth-0 stage stays 0); switch up only beyond `upper + 2.0 m`, down only below `upper − 2.0 m`. Measured: initial `[6,16,73]` → far `[0,0,95]` → near `[6,17,72]` → far `[0,0,95]`, `lod_build_count=152`.
+
+**Wind channel (display-only).** Generated meshes carry a per-vertex flexibility weight in vertex `COLOR` (r=g=b=weight): trunk/axis **0.10**, fronds/leaves **1.00** (measured `[0.10, 1.00]`); `flora_wing.gdshader` scales `TIME` sway by `COLOR.r` — sway phase stays out of every byte (0009 AP-19 stands).
+
+**Parameter table** (AP-7; sources of truth `src/mojo/sim/parameters.mojo`, `godot/scripts/flora_view.gd`, `phenome_grammars.json` — values verified by grep this run):
+
+| Parameter | Value | Source |
+|---|---|---|
+| `STAGE_MAX` | `15` (`u8` on the wire, stages 0..15) | `parameters.mojo` (= JSON `stage_max`) |
+| `PHENOME_STAGE_COUNT` | `16` | `parameters.mojo` |
+| `PHENOME_TRAIT_QUANT` | `1000` (trait → milli) | `parameters.mojo` (= JSON `trait_quant`) |
+| `PHENOME_VARIANT_SALT` | `0xA00000001B3` (variant_seed hash salt) | `parameters.mojo` |
+| `FLORA_TRAIT_SALT_ASH` / `DROUGHT` | `0x600000001B3` / `0x700000001B3` (modulation inputs; 0009) | `parameters.mojo` |
+| `FLORA_TRAIT_SALT_RESERVED_0` / `_1` | `0x800000001B3` / `0x900000001B3` (declared, unused) | `parameters.mojo` |
+| `PHENOME_MOD_DELTA_*` (7 ash + 7 drought) | +18/+15/+12/+20/+16/+10/+14 ; −2/−1/−3/−4/−5/−6/−8 | `parameters.mojo` (= JSON `modulation.*.delta`, value-exact test) |
+| `PHENOME_PARAM_CROWN_*` / `PHENOME_PARAM_LEAF_*` | base params per species (table above) | `parameters.mojo` (= JSON `params`) |
+| `PHENOME_EXPAND_MAX_MODULES` | `65536` (reference-expander guard, tests only) | `parameters.mojo` |
+| `BUCKET_COUNT` (`K`) | `16` | `flora_view.gd` |
+| `CACHE_MAX` | `112` (= 7·K, LRU bound) | `flora_view.gd` |
+| `LOD_NEAR_M` / `LOD_FAR_M` | `30.0` / `60.0` (band 0/1/2 boundaries) | `flora_view.gd` |
+| `LOD_HYSTERESIS_M` | `2.0` (per-band switch margin) | `flora_view.gd` |
+| `DEFAULT_TRAIT_MILLIS` | `[500, 500]` (median traits — wire carries none) | `flora_view.gd` |
+| `HEADER_BYTES` / `RECORD_BYTES` / `SPECIES_MAX` | `4` / `32` / `7` | `flora_view.gd` (= `104_contract` §4.3 §10) |
+| wind weights (trunk / leaf) | `0.10` / `1.00` | `phenome_expand.gd` builder |
+| LOD depth reduction per band | `0` / `−1` / `−2`, floor 1 (depth-0 stays 0) | `phenome_expand.gd::lod_depth` |
+
+**Evidence summary:** fixture 249 024 B sha `ca9e7080…225b43` (FLORA 3044 B = 4+32·95); mojo suites **23/23**; conformance **84/84** golden rows, 0 mismatches (discrete axis); cache **112 / evict 0**; first-load expand **≈69 ms**, worst LOD pass **≈37 ms**; stage distribution + PNG reads in §8.10.
+
+**Honest limitations (0010):**
+
+1. **Traits are not on the wire.** The FLORA record carries `variant_seed` + `stage` only; the renderer modulates with **median traits** (`DEFAULT_TRAIT_MILLIS = [500,500]`). Trait→form modulation is proven **in-test** (7/7 species value-exact vs JSON + trait-sensitive derivations), but a rendered plant's form does not yet reflect *its instance's* ash/drought tolerances — per-instance trait delivery would need a contract change (Rule 10).
+2. **Species 3 (bamboo) unexercised at seed 1.** The seed-1 band table establishes species `{1,2,4,5,6,7}` only; `flora.bamboo_grove` grammar + modulation are conformance-tested (goldens, value-exact) but never rendered in the default scene.
+3. **Headless MultiMesh transform identity:** the phenome gate reads instance positions via the payload accessor (MultiMesh transforms are engine-internal in headless mode); cache/LOD/expansion counters come from the view script's own instrumentation.
+4. **Transient 1-frame instance undercount after apply** — observed once per apply while groups rebuild (reconciled next frame); not asserted against, recorded honestly.
+5. **Sim growth re-emits FLORA ~26×/run** (`applies=26` in this run) — ε-scale/stage change-driven by design (0009 AP-22 class), not per-tick spam.
+6. **No sim-side structure state** (no internode lists as world state) — spec §9, Rule 15; successor when a consumer (collision/footprint) exists.
+7. **No reproduction / cross-generational inheritance of grammar parameters** — `503_Simulation/Reproduction` stub untouched (0009 §9 carries; `EVOLUTION-INV-006/007` trivially per-instance only, §9.21).
+8. **Conformance axis is discrete-only** (symbol strings / production steps, AP-24). Float geometry determinism is asserted **per implementation** only — cross-language vertex equality is deliberately not asserted.
+9. **Grammar = parametric L-system only.** No MLIR/rewrite contract consumed: `203_Graph` §16/§29 stay background/MAY, `905_Transforms` §12 not consumed, no grammar dialect (spec §4 "Not consumed", MLIR-first policy §7 non-goal).
+10. **LOD and sway are display-only** — LOD choice and sway phase never enter bytes; wind-weight is a mesh channel, not sim state (AP-19).
+11. **Voxel/lattice flora still open** (Synthesis §3; §9.23 carried).
+
 ## 9. Honest Gaps (open)
 
 
@@ -1070,9 +1187,17 @@ Scope: `sim/flora.mojo` (establishment field, per-instance `age` + species growt
 23. **Voxel/lattice flora deviation still open (0006 §9 carried into 0009):** the instance/`MultiMeshInstance3D` realization is retained; Synthesis §3 voxel flora objects stay out of scope (0009 §1.1 decision row, Rule 15 minimal slice). Successor.
 24. **Fixture content change 154 → 95 instances (0009, explained — not a regression):** the golden fixture regenerated for **content only** — 248264 B, schema 6 / ABI 2, FLORA records still 24 B, sections 1–9 and 11–14 byte-identical. The count dropped because establishment now additionally requires `suit ≥ FLORA_SUITABILITY_THRESHOLD` **and** the trait-selection predicate (`flora_selection_passes`) over and above the 0006 bare density hash: cells the 0006 scatter admitted are refused by the field/selection gates at init (Sprint-01/02 selection, per spec §5). Scene/screenshot gates assert `flora_total > 0` (never an exact count) precisely because the population is now field-determined; species-group breakdowns recorded in §8.9.
 
-## 10. Anti-Pattern Review AP-1..22 (milestone 0009 close-out)
+**Milestone 0010 deviations (recorded during Sprint 04, 2026-10-04):**
 
-Item-by-item review required by 0009 §7 "Review pass". Sources: 0002 §2.1 (AP-1..10), 0006 §2.2 + 0007 §2.2 (AP-11..14 — both variants), 0008 §2.2 (AP-15..18), 0009 §2.2 (AP-19..22). All proving gates re-run in the §8.9 sweep (2026-10-03).
+25. **Real test paths differ from the spec/sprint prose (0010):** `abi_smoke.py` lives at `applications/godot/tests/abi_smoke.py` and `test_schema_mismatch.sh` at `applications/godot/tests/test_schema_mismatch.sh` — the 0010 spec §7 / sprint-02 text (and the `docs/04` §8 procedure list) named older locations (`tests/godot/abi_smoke.py`, `tests/ipc/test_schema_mismatch.sh`). Gates were run against the on-disk paths (Rule: current implementation resolves the prose; nothing moved). Spec wording left as-is (sprint artifacts are records, not re-edited).
+26. **abi smoke snapshot-2 now carries FLORA (0010, expected):** the schema-7 emission rule adds `variant_seed`/`stage` change triggers, so the second snapshot re-emits `10 FLORA` whenever growth/stage moved (`ids2 == [1,2,4..14]` asserted in `abi_smoke.py [4]`, comment cites 0010 §4.2). Not a regression against 0009's "FLORA change-driven" rule — same class, two more dirty triggers; TERRAIN suppression semantics untouched.
+27. **`flora_view.gd` RECORD_BYTES fix (0010 Sprint 03):** the view script was carried over from 0009 with `RECORD_BYTES := 24` and a `count·24` header comment; fixed to `32` (and comment → `count·32`) before the renderer gate — `git diff` vs HEAD shows exactly those two changed lines (comment + constant). The scene gates decode real schema-7 bytes, so the pre-fix value would have failed loudly (`godot_phenome_test` payload checks).
+28. **Spec record-size drafting correction 28 → 32 B (0010):** an intermediate draft counted the FLORA record as `24 + u32 + u8 = 28 B` (new fields without alignment); the normative layout pads to **32 B** (`u8 stage` @28 + `u8×3` pad @29 = 0) in spec §3.2, `104_contract.md` §4.3 §10, encode/decode, adapter validation (`stage ≤ 15`, `pad == 0`) and the fixture (`4 + 32·count`). No 28-B artifact exists on disk; §7/abi-smoke/mismatch gates all assert 32.
+29. **0010 honest limitations recorded in §8.11** (traits not on the wire → median-trait rendering; species 3 unexercised at seed 1; discrete-only conformance; no sim-side structure state; no reproduction; no MLIR/rewrite contract; voxel flora open; transient 1-frame apply undercount) — open, not violations.
+
+## 10. Anti-Pattern Review AP-1..26 (milestones 0009 + 0010 close-out)
+
+Item-by-item review required by 0009 §7 / 0010 §7 "Review pass". Sources: 0002 §2.1 (AP-1..10), 0006 §2.2 + 0007 §2.2 (AP-11..14 — both variants), 0008 §2.2 (AP-15..18), 0009 §2.2 (AP-19..22), 0010 §2.2 (AP-23..26). AP-1..22 proving gates re-run in the §8.9 sweep (2026-10-03) **and** re-exercised by the §8.10 sweep (2026-10-04); AP-23..26 proved in the §8.10 sweep.
 
 | # | Item (source) | How satisfied | Proving gate |
 |---|---|---|---|
@@ -1098,8 +1223,12 @@ Item-by-item review required by 0009 §7 "Review pass". Sources: 0002 §2.1 (AP-
 | AP-20 | Mutable RNG stream in field/growth/traits (0009) | Every decision is a pure hash of `(seed, cell, age, trait_salt)` — no stream state, order-independent | run-twice legs: `test_flora_growth` (b), `test_flora_evolution` (d), `test_determinism`, `test_flora_placement` seeded determinism (gates 2–5) |
 | AP-21 | Implementation-before-definition (0009) | Sprint 00 (`8c686ec`) landed `lib/` definitions + control-plane backfill **before** sprints 01–04; validator-style findings 0 | Definition gate: 0 non-lib paths in `8c686ec`, 7 files structurally clean (gate 1) |
 | AP-22 | Unbounded FLORA emission (0009) | Change-driven emission with `FLORA_EMIT_EPS = 0.01` relative quantization; `count ≤ FLORA_N_MAX` asserted every tick; deaths removed the tick they die; stored scale ε-snaps so dirty ⇔ change (355 ε-dirty ticks / 3000 — not per-tick spam) | `test_flora_growth` (d/e), `test_envelope` change-driven round-trip, `test_flora_evolution` (e), §8.9 growth table (gates 2, 3, 7) |
+| AP-23 | Renderer-invented grammar (0010) — productions/tropism/trait maps tuned in GDScript, spec backfilled, or divergent sim-vs-renderer copies | Grammar single-sourced in `godot/data/phenome_grammars.json`; Sprint 00 definitions (`Procedural` 101, `Phenotype` 101, `Flora` §1.6) precede any expansion code; `parameters.mojo` `PHENOME_*` are **mirrors**, conformance-tested against the JSON (`test_phenome_grammar` constants==JSON + modulation value-exact); `phenome_expand.gd` hardcodes no production/depth/modulation value; sim↔renderer discrete derivations asserted identical | Definition gate 0 findings + 6-path diff (§8.10 gate 1); `test_phenome_grammar` 8/8 (gate 2); `godot_phenome_test` 84 rows / 0 mismatches (gate 3) |
+| AP-24 | Float-geometry conformance (0010) — cross-language vertex/turtle-float equality | Conformance vectors = discrete symbol strings + production-step counts (integer-exact rational params); float geometry determinism asserted per implementation only; documented in spec tests + `goldens.txt` header | `godot_phenome_test` `AP-24 conformance mismatches = 0` over `tests/fixtures/phenome/goldens.txt` **84/84** (gate 3); `test_phenome_grammar` golden-vector leg (gate 2) |
+| AP-25 | Geometry / structure lists on the wire (0010) — internodes, vertices, L-strings streamed per tick | FLORA carries `variant_seed` + `stage` only (32 B record, `pad == 0`); no symbol strings/internodes/vertices in any section; adapter validates `stage ≤ 15` and exact `4 + 32·count` framing; compact-description rule cited in `104_contract.md` §4.3 §10 | `abi_smoke` FLORA strict-length + pad/stage checks (gate 4); `test_envelope` 32-B framing + malformed rejection (gate 2); fixture 3044 = 4+32·95 (§8.10) |
+| AP-26 | Expansion/thrash cost (0010) — per-frame re-expansion, unbounded mesh cache, LOD flicker | Expansion only on (species, bucket, stage) change; mesh cache ≤ `7·K = 112` (LRU); stage quantization bounds re-expansion rate; LOD hysteresis ±2 m; frame-path stall unchanged (AP-15 gate) | `godot_phenome_test`: `cache=112`, `evict=0`, `expansions attributable to applies (violations = 0)`, LOD hysteresis leg `[0,0,95] → [6,17,72] → [0,0,95]`, worst LOD pass 36 776 µs (gates 7, 9) |
 
-**Verdict: PASS — AP-1..22 all satisfied.** No deficient item found; the AP-2 partial-coverage note (§9.7) and §9.21–24 limitations are recorded as honest gaps, not violations.
+**Verdict: PASS — AP-1..26 all satisfied.** No deficient item found; the AP-2 partial-coverage note (§9.7), the §9.21–24 limitations and the 0010 limitations (§9.25–29 / §8.11) are recorded as honest gaps, not violations. AP-1..22 re-verified in the §8.10 sweep (layout/stall/determinism/refusal/crash gates re-ran green on schema-7 bytes).
 
 ## References
 
