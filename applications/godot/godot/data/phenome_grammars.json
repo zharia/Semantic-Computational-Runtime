@@ -1,0 +1,1092 @@
+{
+  "format": "scr.phenome_grammars/1",
+  "stage_max": 15,
+  "trait_quant": 1000,
+  "traits": [
+    "ash_tolerance",
+    "drought_tolerance"
+  ],
+  "semantics": {
+    "stage": "stage_for_age(species, age) = min(stage_max, floor(age / (maturity[stage_max] / stage_max))) = max s in 0..stage_max with maturity[s] <= age (monotone, bounded)",
+    "depth": "depth = stage_depths[stage]; derivation = axiom followed by exactly `depth` simultaneous replacement steps (parallel, context-free)",
+    "modulation": "trait_milli = clamp(floor(trait * trait_quant), 0, trait_quant); modulated = (base * trait_quant + delta * trait_milli) / trait_quant (exact rational); traits = [ash_tolerance, drought_tolerance] (milestone 0009 trait vector order)",
+    "variant": "axiom parameter 0 gains (variant_seed mod axiom_jitter_mod) before derivation begins (variability declared in the grammar \u2014 SCR-LIB-MORPHOLOGY-PROCEDURAL 1.6)",
+    "expression": "expr := number | [num, den] | {\"ref\": <lhs param>} | {\"param\": <grammar param>}; an object form may carry optional \"mul\" and/or \"div\" (each an expr), applied as value * mul / div in that order",
+    "tropism": "declared parametric term (SCR-LIB-MORPHOLOGY-PROCEDURAL 1.7); consumed by the renderer expander, not by this sprint's reference derivation"
+  },
+  "species": [
+    {
+      "species_id": 1,
+      "grammar_id": "flora.palm_cluster",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            16
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 5,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n"
+                },
+                {
+                  "param": "crown_density",
+                  "div": 10
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "F",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "F",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "lhs": "F",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 8
+                }
+              ]
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 60,
+        "leaf_count": 8
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 18
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -2
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 120,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 2,
+      "grammar_id": "flora.palm_solo",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            12
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 4,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n"
+                },
+                {
+                  "param": "crown_density",
+                  "div": 10
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "F",
+              "p": [
+                {
+                  "ref": "n"
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    2,
+                    3
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "lhs": "F",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 8
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 60,
+        "leaf_count": 6
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 15
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -1
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        80,
+        160,
+        240,
+        320,
+        400,
+        480,
+        560,
+        640,
+        720,
+        800,
+        880,
+        960,
+        1040,
+        1120,
+        1200
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 140,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 3,
+      "grammar_id": "flora.bamboo_grove",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            20
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 6,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                },
+                {
+                  "param": "crown_density",
+                  "div": 20
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 16
+                }
+              ]
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 64,
+        "leaf_count": 10
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 12
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -3
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        80,
+        160,
+        240,
+        320,
+        400,
+        480,
+        560,
+        640,
+        720,
+        800,
+        880,
+        960,
+        1040,
+        1120,
+        1200
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 160,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 4,
+      "grammar_id": "flora.canopy_tree",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            24
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 7,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                },
+                {
+                  "param": "crown_density",
+                  "div": 10
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    2,
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    2,
+                    3
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 16
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 60,
+        "leaf_count": 12
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 20
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -4
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        160,
+        320,
+        480,
+        640,
+        800,
+        960,
+        1120,
+        1280,
+        1440,
+        1600,
+        1760,
+        1920,
+        2080,
+        2240,
+        2400
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 180,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 5,
+      "grammar_id": "flora.canopy_cluster",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            20
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 8,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                },
+                {
+                  "param": "crown_density",
+                  "div": 12
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    5
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    5
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    5
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 24
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 55,
+        "leaf_count": 14
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 16
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -5
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        120,
+        240,
+        360,
+        480,
+        600,
+        720,
+        840,
+        960,
+        1080,
+        1200,
+        1320,
+        1440,
+        1560,
+        1680,
+        1800
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 200,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 6,
+      "grammar_id": "flora.shrub",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            8
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 4,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 8
+                }
+              ]
+            },
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 4
+                },
+                {
+                  "param": "crown_density",
+                  "div": 10
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 72,
+        "leaf_count": 16
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 10
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -6
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        60,
+        120,
+        180,
+        240,
+        300,
+        360,
+        420,
+        480,
+        540,
+        600,
+        660,
+        720,
+        780,
+        840,
+        900
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 220,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "species_id": 7,
+      "grammar_id": "flora.fern_carpet",
+      "axiom": [
+        {
+          "m": "A",
+          "p": [
+            6
+          ]
+        }
+      ],
+      "axiom_jitter_mod": 5,
+      "productions": [
+        {
+          "lhs": "A",
+          "params": [
+            "n"
+          ],
+          "rhs": [
+            {
+              "m": "T",
+              "p": [
+                {
+                  "ref": "n"
+                },
+                {
+                  "param": "crown_density",
+                  "div": 16
+                }
+              ]
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": {
+                    "param": "leaf_count"
+                  },
+                  "div": 6
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "["
+            },
+            {
+              "m": "L",
+              "p": [
+                {
+                  "ref": "n",
+                  "div": 2
+                }
+              ]
+            },
+            {
+              "m": "]"
+            },
+            {
+              "m": "A",
+              "p": [
+                {
+                  "ref": "n",
+                  "mul": [
+                    3,
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stationary": [
+        "[",
+        "]",
+        "L",
+        "T"
+      ],
+      "params": {
+        "crown_density": 80,
+        "leaf_count": 20
+      },
+      "modulation": {
+        "ash_tolerance": {
+          "param": "crown_density",
+          "delta": 14
+        },
+        "drought_tolerance": {
+          "param": "leaf_count",
+          "delta": -8
+        }
+      },
+      "stage_depths": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "maturity": [
+        0,
+        40,
+        80,
+        120,
+        160,
+        200,
+        240,
+        280,
+        320,
+        360,
+        400,
+        440,
+        480,
+        520,
+        560,
+        600
+      ],
+      "tropism": {
+        "name": "phototropism",
+        "param": "lean",
+        "coefficient_milli": 240,
+        "direction": [
+          0,
+          1
+        ]
+      }
+    }
+  ]
+}

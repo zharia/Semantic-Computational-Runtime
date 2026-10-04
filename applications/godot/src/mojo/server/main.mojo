@@ -37,7 +37,7 @@ def _help():
     print("  --seed N       world seed (default: 1)")
     print("  --pace MODE    wall | manual (default: wall)")
     print("")
-    print("protocol: SCRT frames, proto 1 / ABI 2 / schema 6")
+    print("protocol: SCRT frames, proto 1 / ABI 2 / schema 7")
 
 
 def _parse_u32(s: String) raises -> UInt32:

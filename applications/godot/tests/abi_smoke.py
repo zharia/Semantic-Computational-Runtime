@@ -52,13 +52,14 @@ SCR_SEC_HOTBAR = 12  # schema 6 (milestone_0007 §3.3)
 SCR_SEC_TARGET = 13
 SCR_SEC_RIGID_BODIES = 14
 
-SCHEMA_VERSION = 6  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
+SCHEMA_VERSION = 7  # must match sim/parameters.mojo + adapter/scr_godot_abi.h
 ABI_VERSION = 2  # ABI 2 adds scr_edit_submit (milestone_0007)
 SHORE_FOAM_BYTES = 12 + 4 * 64 * 64  # u32 grid_n + f32 cell_size + f32 sea_level + 64² f32
 TERRAIN_BYTES_SEED1 = 228100  # schema-3 size: the 4-byte vertex tuple is stride-neutral
 FLORA_N_MAX = 4096  # parameters.mojo FLORA_N_MAX (AP-13 cap)
 FLOCK_N_MAX = 64  # parameters.mojo FLOCK_N_MAX (AP-13 cap)
-FLORA_RECORD_BYTES = 24  # §10: 3xf32 pos + f32 yaw + f32 scale + u32 species_id
+FLORA_RECORD_BYTES = 32  # §10 schema 7: 3xf32 pos + f32 yaw + f32 scale
+                         # + u32 species_id + u32 variant_seed + u8 stage + u8×3 pad
 FAUNA_RECORD_BYTES = 20  # §11: 3xf32 pos + f32 yaw + u8 species + 3 pad
 HOTBAR_BYTES = 44  # §12: u32 count + u32 selected_index + 9x u32 catalog id
 HOTBAR_SLOT_WIRE = 9
@@ -219,11 +220,11 @@ def main() -> int:
     check(snapshot == fixture, "FFI snapshot byte-identical to golden fixture")
     check(snapshot[:4] == b"SCRS", "magic bytes 'SCRS'")
     check(
-        snapshot[4:8] == b"\x06\x00\x00\x00",
-        "schema_version == 6 (LE)",
+        snapshot[4:8] == b"\x07\x00\x00\x00",
+        "schema_version == 7 (LE)",
     )
 
-    # Section framing walk (§4.2), schema 6: sections 1..14.
+    # Section framing walk (§4.2), schema 7: sections 1..14.
     import struct as _st
 
     section_count = _st.unpack_from("<I", snapshot, 8)[0]
@@ -368,7 +369,10 @@ def main() -> int:
         f"seed-1 terrain carries blended boundary vertices ({blended_count})",
     )
 
-    print("\n[3e] FLORA + FAUNA framing (104_contract §4.3 §10/§11, schema 5)")
+    print(
+        "\n[3e] FLORA + FAUNA framing "
+        "(104_contract §4.3 §10/§11; FLORA records 32 B since schema 7)"
+    )
     f_off, f_len = spans[SCR_SEC_FLORA]
     check(f_len >= 4, f"FLORA header present (got {f_len} bytes)")
     flora_count = _st.unpack_from("<I", snapshot, f_off)[0]
@@ -378,12 +382,15 @@ def main() -> int:
     )
     check(
         f_len == 4 + FLORA_RECORD_BYTES * flora_count,
-        f"FLORA strict length 4 + 24*count "
+        f"FLORA strict length 4 + 32*count "
         f"({4 + FLORA_RECORD_BYTES * flora_count}, got {f_len})",
     )
     flora_species = set()
     for i in range(flora_count):
-        rec = _st.unpack_from("<5fI", snapshot, f_off + 4 + FLORA_RECORD_BYTES * i)
+        rec_base = f_off + 4 + FLORA_RECORD_BYTES * i
+        # schema 7: 3xf32 pos + f32 yaw + f32 scale + u32 species_id
+        # + u32 variant_seed + u8 stage + u8×3 pad = 32 bytes.
+        rec = _st.unpack_from("<5fIIB3x", snapshot, rec_base)
         sid = rec[5]
         flora_species.add(sid)
         if not (1 <= sid <= 7):
@@ -391,6 +398,14 @@ def main() -> int:
             break
         if not (0.8 <= rec[4] <= 1.35):  # FLORA_SCALE_MIN/MAX
             check(False, f"FLORA[{i}].scale in [0.8, 1.35] (got {rec[4]})")
+            break
+        stage = rec[7]
+        if not (0 <= stage <= 15):
+            check(False, f"FLORA[{i}].stage in 0..15 (got {stage})")
+            break
+        pad = snapshot[rec_base + 29 : rec_base + 32]
+        if pad != b"\x00\x00\x00":
+            check(False, f"FLORA[{i}] pad bytes nonzero (got {pad!r})")
             break
     else:
         check(True, f"FLORA records well-formed ({flora_count} instances)")
@@ -538,10 +553,13 @@ def main() -> int:
         sid2, slen2 = _st.unpack_from("<II", snap2, off2)
         ids2.append(sid2)
         off2 += 8 + slen2
+    # Schema 7 (0010 §4.2 presence rule): FLORA is change-driven — an
+    # established instance's scale/stage/variant_seed/pose change re-emits
+    # it (growth tick below maturity), so section 10 is present here too.
     check(
-        ids2 == [1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14],
-        f"TERRAIN/FLORA suppressed; VOLCANO/PLUME/SHORE_FOAM/FAUNA/"
-        f"HOTBAR/TARGET/RIGID_BODIES every snapshot (got {ids2})",
+        ids2 == [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        f"FLORA change-driven (scale growth); VOLCANO/PLUME/SHORE_FOAM/"
+        f"FAUNA/HOTBAR/TARGET/RIGID_BODIES every snapshot (got {ids2})",
     )
     check(
         12 in ids2 and 13 in ids2 and 14 in ids2,

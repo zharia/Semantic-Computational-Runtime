@@ -38,7 +38,7 @@ comptime FRAME_MAGIC: UInt32 = 0x54524353  # bytes 'S','C','R','T' (LE)
 comptime FRAME_HEADER_BYTES: Int = 16
 # Absurd-length cap: a header claiming more than this is rejected outright
 # (allocations are sized from validated lengths only). Snapshots are ~250 KB
-# at schema 6 (fixture 249680 B) — 16 MiB is >= 64x headroom.
+# at schema 7 (fixture 249024 B) — 16 MiB is >= 64x headroom.
 comptime MAX_PAYLOAD: UInt32 = 16777216
 
 comptime FT_HELLO: UInt32 = 1

@@ -58,6 +58,12 @@ from synthesis.voxel import (
 from snapshot.types import FloraInstance
 
 
+from sim.world import world_init, step_world
+from sim.input import idle_input
+from snapshot.encode import encode_snapshot
+from snapshot.decode import decode_envelope, decode_sections, find_section, read_flora
+from snapshot.types import SEC_FLORA, FLORA_HEADER_BYTES, FLORA_RECORD_BYTES
+
 def _check(cond: Bool, msg: String) raises:
     """Raise-based check (see header note: `assert` is a no-op here)."""
     if not cond:
@@ -311,6 +317,36 @@ def test_field_suitability_oracle_seed1() raises:
     _check(checked, "seed 1 has at least one establishment to oracle")
 
 
+
+def test_wire_carries_seed_and_stage() raises:
+    """0010 §3.2 / Sprint 02: schema-7 §10 records (32 B) carry
+    variant_seed + stage copied from the SIM-side parallel lists;
+    framing exact 4 + 32·count."""
+    var w = world_init(UInt32(1))
+    _ = step_world(w, 1.0 / 60.0, idle_input())
+    var data = encode_snapshot(w, False, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var i = find_section(secs, SEC_FLORA)
+    _check(i >= 0, "FLORA present in first snapshot")
+    var recs = read_flora(data, secs[i])
+    _check(Int(len(recs)) == w.flora.count, "decoded count == FloraSubject.count")
+    _check(
+        secs[i].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * w.flora.count,
+        "framing 4 + 32·count",
+    )
+    for k in range(w.flora.count):
+        _check(
+            recs[k].variant_seed == w.flora.variant_seeds[k],
+            "variant_seed round-trip at " + String(k),
+        )
+        _check(
+            Int(recs[k].stage) == w.flora.stages[k],
+            "stage round-trip at " + String(k),
+        )
+        _check(Int(recs[k].stage) <= 15, "stage <= STAGE_MAX")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -320,5 +356,5 @@ def main() raises:
             test_different_seed_changes_population,
             test_species_enum_total_and_bounded,
             test_field_suitability_oracle_seed1,
-        )
+            test_wire_carries_seed_and_stage,)
     ]().run()

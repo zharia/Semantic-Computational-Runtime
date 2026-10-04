@@ -4,7 +4,7 @@
 **Status:** Normative
 **Owner milestone:** [applications/godot v0.0.1 / milestone 0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) (baseline: [milestone 0002](../../../../applications/godot/program_increments/v0.0.1/milestone_0002_scene-initiation/spec.md))
 **C ABI header:** [`adapter/scr_godot_abi.h`](adapter/scr_godot_abi.h) (single source of truth for symbol names, struct layouts, error codes)
-**Schema version:** `6` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); 4 → 5 in [milestone_0006](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) §1.1 (new sections `10 FLORA` emission-gated — presence rule since rewritten to change-driven, milestone_0009 §3.2, §4.3 §10 — + `11 FAUNA` every snapshot; sections 1–9 byte-identical); 5 → 6 in [milestone_0007](../../../../applications/godot/program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) §1.1 (new sections `12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`, all every snapshot; sections 1–11 byte-identical; **C ABI 1 → 2** — new symbol `scr_edit_submit`)
+**Schema version:** `7` — 1 → 2 in [milestone_0003](../../../../applications/godot/program_increments/v0.0.1/milestone_0003_volcano/spec.md) §3.5 (additive sections `7 VOLCANO`, `8 PLUME`); 2 → 3 in [milestone_0004](../../../../applications/godot/program_increments/v0.0.1/milestone_0004_atmosphere-weather/spec.md) §1.1 (SKY 32 → 64 B); 3 → 4 in [milestone_0005](../../../../applications/godot/program_increments/v0.0.1/milestone_0005_shoreline-fidelity/spec.md) §3.6 (new section `9 SHORE_FOAM` + TERRAIN vertex payload semantic reframe); 4 → 5 in [milestone_0006](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md) §1.1 (new sections `10 FLORA` emission-gated — presence rule since rewritten to change-driven, milestone_0009 §3.2, §4.3 §10 — + `11 FAUNA` every snapshot; sections 1–9 byte-identical); 5 → 6 in [milestone_0007](../../../../applications/godot/program_increments/v0.0.1/milestone_0007_editing-physics/spec.md) §1.1 (new sections `12 HOTBAR`, `13 TARGET`, `14 RIGID_BODIES`, all every snapshot; sections 1–11 byte-identical; **C ABI 1 → 2** — new symbol `scr_edit_submit`); 6 → 7 in [milestone_0010](../../../../applications/godot/program_increments/v0.0.2/milestone_0010_flora-phenome/spec.md) §3.2 (§10 FLORA record 24 → 32 B: +`u32 variant_seed`, +`u8 stage` ∈ 0..15, +`u8×3` pad = 0; sections 1–9 and 11–14 byte-identical; ABI stays 2)
 **C ABI version:** `SCR_SIM_ABI_VERSION = 2` (1 → 2 in milestone_0007: symbol set grows by `scr_edit_submit`; the eight v1 semantics unchanged)
 
 ---
@@ -49,7 +49,7 @@ Little-endian; frame = `u32 magic = 0x54524353 ('SCRT') | u32 type | u32 seq | u
 
 ### 2.2 Neutrality assertion (0008 invariant — layout-neutral)
 
-- `SNAPSHOT` payload = the exact `RenderSnapshot` byte stream of §4. Milestone 0008 **changes no field, bumps neither `SCR_SIM_SCHEMA_VER` (6) nor `SCR_SIM_ABI_VERSION` (2), and regenerates no fixture** (249680 B seed-1 tick-1 fixture inherited as-is).
+- `SNAPSHOT` payload = the exact `RenderSnapshot` byte stream of §4. Milestone 0008 **changes no field, bumps neither `SCR_SIM_SCHEMA_VER` (then 6) nor `SCR_SIM_ABI_VERSION` (2), and regenerates no fixture** (249680 B seed-1 tick-1 fixture inherited as-is; 0010 Sprint 02 later bumps schema to 7 and regenerates the fixture at 249024 B).
 - Single encoder, no transport-conditional code paths: byte-identity of the full in-process vs socket snapshot sequence (N = 600 ticks) is an exit gate.
 - Framing lives *above* this contract: §4/§5 tables are unchanged by transport choice.
 
@@ -65,7 +65,7 @@ Little-endian; frame = `u32 magic = 0x54524353 ('SCRT') | u32 type | u32 seq | u
 | `scr_sim_init(seed)` | First call; initializes Mojo runtime + world; 0 = ok |
 | `scr_sim_shutdown()` | Tear down; safe after init |
 | `scr_sim_abi_version()` | must equal `SCR_SIM_ABI_VERSION` (2) |
-| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (6) |
+| `scr_sim_schema_version()` | must equal `SCR_SIM_SCHEMA_VER` (7) |
 | `scr_sim_step(dt, input*)` | Accumulate `dt`; run 0..n fixed ticks @ 60 Hz; input applied per executed tick; returns ticks run (≥0) or `SCR_ERR_*` |
 | `scr_sim_snapshot_size()` | Size of snapshot from most recent successful step |
 | `scr_sim_snapshot_write(buf, cap)` | Serialize; returns bytes written or `SCR_ERR_BUF_SMALL` etc. |
@@ -75,7 +75,7 @@ Little-endian; frame = `u32 magic = 0x54524353 ('SCRT') | u32 type | u32 seq | u
 
 **Adapter startup rejection:** refuse to run when `scr_sim_abi_version() != SCR_SIM_ABI_VERSION || scr_sim_schema_version() != SCR_SIM_SCHEMA_VER` (negative test required by exit criteria).
 
-## 4. Snapshot binary schema (version 6)
+## 4. Snapshot binary schema (version 7)
 
 All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit padding (all offsets documented). Offsets are bytes from snapshot start.
 
@@ -89,12 +89,14 @@ All fields **little-endian**. `f32`/`u32`/`u8` natural alignment; no implicit pa
 
 **Schema 5 → 6 migration (milestone_0007 §1.1):** the envelope `schema_version` field is now `6`. Two coordinated changes require this bump: **(a) new section `12 HOTBAR`** (44 B fixed) and **new section `14 RIGID_BODIES`** (`4 + 36·count` B) — both emitted **every snapshot**; **(b) new section `13 TARGET`** (32 B fixed) — emitted **every snapshot** (the sim-owned raycast is recomputed per snapshot from the current player pose). A full snapshot therefore has `section_count = 14` (12 when TERRAIN and FLORA are both suppressed in the same non-regeneration snapshot). Sections 1–11 are byte-identical to schema 5. **C ABI bumps 1 → 2** (§3): new symbol `scr_edit_submit` + new 4-byte uplink struct `scr_edit_batch` (§5.1); the eight v1 symbols keep their signatures. Schema-1..5 readers MUST refuse schema-6 bytes via the startup gate (§3/§7).
 
+**Schema 6 → 7 migration (milestone_0010 §3.2):** the envelope `schema_version` field is now `7`. One coordinated change requires this bump: **section `10 FLORA` per-instance record grows 24 → 32 bytes** — bytes 0..23 of each record are unchanged (pose + `species_id`), and three fields append: `u32 variant_seed` (offset 24), `u8 stage` ∈ 0..15 (offset 28), `u8×3` pad = 0 (offset 29). The section payload is therefore `4 + 32·count` bytes (was `4 + 24·count`, max 131 076 B at `FLORA_N_MAX`). Sections 1–9 and 11–14 are byte-identical to schema 6; section ids, `section_count` and every framing rule are unchanged; **`SCR_SIM_ABI_VERSION` stays 2** (no symbol or struct change — the C ABI is untouched by this bump). The growth curve and emission rule of milestone_0009 are unchanged apart from the new stage/`variant_seed` emission triggers (§4.3 §10). Schema-1..6 readers MUST refuse schema-7 bytes via the startup gate (§3/§7); the adapter MUST NOT parse a schema-6 `FLORA` section with the schema-7 record stride (the size check below makes that failure loud, not silent).
+
 ### 4.1 Envelope (48 bytes, always present)
 
 | Off | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x53524353` (bytes `S C R S`) |
-| 4 | u32 | `schema_version` | = 6 |
+| 4 | u32 | `schema_version` | = 7 |
 | 8 | u32 | `section_count` | number of sections that follow |
 | 12 | u32 | `world_version` | increments on world regeneration |
 | 16 | u32 | `state_generation` | increments every commit |
@@ -117,7 +119,7 @@ Sections follow the envelope consecutively. Each section:
 
 `payload_bytes = Σ (8 + section_bytes)`.
 
-Sections are emitted in id order 1,2,…,14 (ascending section id). Sections 1, 2, 4, 5, 6, **7, 8, 9, 11, 12, 13, 14** are emitted **every snapshot**; section 3 (TERRAIN) follows the presence rule in §4.3 (first snapshot after init, then on `world_version` change) and section 10 (FLORA) follows its change-driven presence rule in §4.3 §10 (first snapshot after init, then on count / species / position / `yaw` change or any instance scale delta ≥ `FLORA_EMIT_EPS` relative to the last emission).
+Sections are emitted in id order 1,2,…,14 (ascending section id). Sections 1, 2, 4, 5, 6, **7, 8, 9, 11, 12, 13, 14** are emitted **every snapshot**; section 3 (TERRAIN) follows the presence rule in §4.3 (first snapshot after init, then on `world_version` change) and section 10 (FLORA) follows its change-driven presence rule in §4.3 §10 (first snapshot after init, then on count / species / position / `yaw` change, any instance scale delta ≥ `FLORA_EMIT_EPS` relative to the last emission, or any stage / `variant_seed` delta — the last two triggers since schema 7, milestone_0010 R7).
 
 ### 4.3 Section payloads
 
@@ -265,14 +267,14 @@ PLUME carries **emission parameters only** — the GPU integrates particles for 
 
 Emitted **every snapshot** (foam evolves with wave phase — locked open decision, milestone_0005 §1.3.2). The field is computed sim-side, VERBATIM from the library formula `F = clamp(1 − Δy/d_foam, 0, 1)² · (0.6 + 0.4·sin(6Δy − 4t))` with `d_foam = 1.8 m` (`SCR-LIB-RENDER-WATER` §3, parameters in §6) over the terrain height field and the Gerstner authority (`src/mojo/sim/shore.mojo` is the formula's single home, AP-19). Deep water (`Δy ≥ 1.8`) and land above the max wave reach carry exactly 0. The adapter uploads the grid as an `ImageTexture`; the ocean shader **shades** this field for the shore band and never re-derives terrain-vs-water depth (AP-19). Crest whitecaps remain the disjoint 0002 display path (AP-22: `FOAM_JACOBIAN_THRESHOLD` / `FOAM_HEIGHT_THRESHOLD` in §6). Decode MUST reject: length ≠ `12 + 4·grid_n²`, `grid_n = 0` or `grid_n > 1024`, any value outside `[0, 1]` (§8 loud failure).
 
-**10 — FLORA** (`4 + 24·count` bytes; schema 5, [milestone_0006 §1.1](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md); presence rule rewritten to change-driven emission in [milestone_0009 §3.2](../../../../applications/godot/program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md) — layout unchanged)
+**10 — FLORA** (`4 + 32·count` bytes; schema 7, [milestone_0010 §3.2](../../../../applications/godot/program_increments/v0.0.2/milestone_0010_flora-phenome/spec.md) — record grew 24 → 32 B there; introduced in schema 5 by [milestone_0006 §1.1](../../../../applications/godot/program_increments/v0.0.1/milestone_0006_ecology/spec.md); presence rule rewritten to change-driven emission in [milestone_0009 §3.2](../../../../applications/godot/program_increments/v0.0.2/milestone_0009_flora-upgrade/spec.md))
 
 | Off (rel.) | Type | Field | Notes |
 |---|---|---|---|
 | 0 | u32 | `count` | instance count, `0 ≤ count ≤ 4096` (`FLORA_N_MAX`) |
-| 4 | record×count | `instances` | 24 B per record, below |
+| 4 | record×count | `instances` | 32 B per record, below |
 
-Per record (24 bytes, exactly):
+Per record (32 bytes, exactly):
 
 | Rel. | Type | Field |
 |---|---|---|
@@ -280,18 +282,23 @@ Per record (24 bytes, exactly):
 | 12 | f32 | `yaw` (radians) |
 | 16 | f32 | `scale` (uniform, `> 0`) |
 | 20 | u32 | `species_id` (1..7 — `materials/catalog.mojo` `SPECIES_*`, single-sourced to the Synthesis §3 feature vocabulary; `0` never emitted) |
+| 24 | u32 | `variant_seed` (generative identity of the plant — pure hash of (world seed, anchor cell), `sim/phenome.mojo` `variant_seed`; stable over the instance's life; **schema 7**) |
+| 28 | u8 | `stage` (developmental stage `0..15`, `STAGE_MAX` — `stage_for_age(species, age)` recomputed each tick; **schema 7**) |
+| 29 | u8×3 | `pad` = 0 (**schema 7**; MUST be 0) |
 
-Pose only: no per-instance animation phase (adapter runs display-side motion on `TIME` — AP-12). Species → display material resolves through the species → `materials_catalog.json` `id` table in `materials/catalog.mojo`; the adapter MUST NOT invent per-species colours (AP-14).
+Pose + identity only: no per-instance animation phase (adapter runs display-side motion on `TIME` — AP-12) and **no geometry, symbol strings or asset names on the wire** (§6 invariant 6 / AP-25 — renderers derive canopy shapes locally from `variant_seed` + `stage`, Morphology **§17 Repetition (line 577)** as the compact generative description). Species → display material resolves through the species → `materials_catalog.json` `id` table in `materials/catalog.mojo`; the adapter MUST NOT invent per-species colours (AP-14).
 
 Presence (**change-driven**, milestone_0009 §3.2 — this rule replaces the 0006 rule of "first snapshot after init + on world regeneration", which remains in force only for TERRAIN (§4.3 §3)): the FLORA section is present on
 
 - **(a)** the first snapshot after init (always), and on any snapshot where
 - **(b)** `count` differs from the last emission, or
-- **(c)** at least one instance's `scale` changed by **≥ `FLORA_EMIT_EPS` (relative: `|cur − prev| / prev ≥ ε`, `prev` = that instance's scale at the last emission, §6)** versus the last emission, or its `species_id` changed versus the last emission; a position or `yaw` change alone (none expected in milestone_0009) also triggers.
+- **(c)** at least one instance's `scale` changed by **≥ `FLORA_EMIT_EPS` (relative: `|cur − prev| / prev ≥ ε`, `prev` = that instance's scale at the last emission, §6)** versus the last emission, or its `species_id` changed versus the last emission; a position or `yaw` change alone (none expected in milestone_0009) also triggers, or
+- **(d)** at least one instance's `stage` differs from the last emission (sim-side list, index-wise), or
+- **(e)** at least one instance's `variant_seed` differs from the last emission (sim-side list, index-wise — expected only on re-establishment at a changed anchor hash).
 
-In every other snapshot the section is absent ⇒ the adapter **retains the cached instances** (0006 invariant 5 wording preserved: absence never clears the view). The tracker is the sim's (`src/mojo/sim/runtime.mojo` `_flora_dirty`, a pure comparison of the current flora population against a copy of the last emitted section); the adapter applies the section **whenever it is present** and makes no emission decision of its own.
+In every other snapshot the section is absent ⇒ the adapter **retains the cached instances** (0006 invariant 5 wording preserved: absence never clears the view). The tracker is the sim's (`src/mojo/sim/runtime.mojo` `_flora_dirty`, a pure comparison of the current flora population against a copy of the last emitted section plus stage/`variant_seed` trackers); the adapter applies the section **whenever it is present** and makes no emission decision of its own.
 
-**No layout change (milestone_0009 invariant 8):** `SCR_SIM_SCHEMA_VER == 6` and `SCR_SIM_ABI_VERSION == 2` are unchanged by this rule; the payload stays `4 + 24·count` bytes with the record table above untouched (schema 5 framing inherited as-is). The golden fixture (`tests/fixtures/snapshot_seed1_tick1.bin`) was regenerated **content-only** — same schema, same fourteen section ids, same framing; only section-10 payload bytes changed (0008 layout-neutral precedent: regenerating a fixture is not a schema bump). Validation is unchanged: a decoded `count` larger than `FLORA_N_MAX` (4096), a section byte count other than `4 + 24·count`, an out-of-range `species_id` (`species_id ∈ [1,7]`), or a non-positive `scale` MUST fail loudly (§8).
+**Schema 7 (milestone_0010 invariant — layout change, +8 B/record):** `SCR_SIM_SCHEMA_VER == 7` and `SCR_SIM_ABI_VERSION == 2` (ABI untouched). The payload is `4 + 32·count` bytes; the golden fixture (`tests/fixtures/snapshot_seed1_tick1.bin`) was **regenerated as schema 7** (same magic, same fourteen section ids, same framing; sections 1–9 and 11–14 byte-identical to the schema-6 fixture, section 10 grows by 8·`count` bytes). Validation is loud (§8): a decoded `count` larger than `FLORA_N_MAX` (4096), a section byte count other than `4 + 32·count`, an out-of-range `species_id` (`species_id ∈ [1,7]`), a non-positive `scale`, a `stage > 15`, or a nonzero pad byte MUST fail loudly. **Emission authority:** the wire `stage`/`variant_seed` fields are copied from the sim-side parallel lists (`FloraSubject.stages` / `FloraSubject.variant_seeds`); list-length drift versus `count` is a loud encode failure — the pose record alone is never the source of those two fields.
 
 **11 — FAUNA** (`4 + 20·count` bytes; schema 5, milestone_0006 §1.1)
 
@@ -495,7 +502,7 @@ Derivations (all pure functions of simulation state — AP-11/AP-15):
 ## 7. Versioning & compatibility
 
 - `SCR_SIM_ABI_VERSION` — symbol/semantic contract of the C functions (now `2`: `scr_edit_submit` added, milestone_0007). Mismatch ⇒ adapter refuses to start.
-- `SCR_SIM_SCHEMA_VER` — byte layout above. Mismatch ⇒ adapter refuses to start (negative test: `tests/test_schema_mismatch.sh`, stub reports `SCR_SIM_SCHEMA_VER + 1` derived from the header).
+- `SCR_SIM_SCHEMA_VER` — byte layout above. Mismatch ⇒ adapter refuses to start (negative test: `tests/test_schema_mismatch.sh`, stubs report `SCR_SIM_SCHEMA_VER + 1` and `SCR_SIM_SCHEMA_VER - 1`, both derived from the header — a schema-6 library must be refused by a schema-7 adapter).
 - Additive changes require a schema bump; adapters MUST NOT guess unknown layouts.
 - **Sibling rebasing rule (milestone_0003 §3.5):** milestones 0003 / 0004 / 0005 / 0006 are independent siblings under 0002. Whichever executes later MUST rebase on the then-current schema, fixture, adapter, and contract state — applying its own "+1 over then-current" bump — not on the layouts written in any one spec.
 

@@ -227,7 +227,10 @@ def tick_world(mut world: World, input: InputBatch) raises:
     flock_tick(world.flock, world.island, world.simulation_tick)
     # Flora growth (0009 R2/R3): +1 age/instance, ε-quantized scale snap —
     # tick phase ONLY (projection purity: the §10 projection reads state
-    # read-only after this commit).
+    # read-only after this commit). 0010 R4: this call also advances each
+    # instance's developmental stage (stage_for_age over the new age —
+    # quantized, monotone, 0..STAGE_MAX); variant_seed is establishment-
+    # time state, never recomputed here.
     flora_tick(world.flora)
 
 
@@ -433,6 +436,14 @@ def world_fingerprint(world: World) -> UInt64:
             h = _fold_f64(h, world.flora.traits[i].drought)
             h = _fold_f64(h, world.flora.traits[i].reserved0)
             h = _fold_f64(h, world.flora.traits[i].reserved1)
+        # Phenome state (milestone_0010, SIM-side only): developmental stage
+        # + generative variant seed fold too — a projection that advanced a
+        # stage or rewrote a seed must fail projection purity the same way
+        # ages/traits do (invariant 8).
+        if i < len(world.flora.stages):
+            h = _fold_u64(h, UInt64(world.flora.stages[i]))
+        if i < len(world.flora.variant_seeds):
+            h = _fold_u64(h, UInt64(world.flora.variant_seeds[i]))
 
     # Flock subject (milestone_0006): seed, count, every slot's full state —
     # folded so a projection that mutated fauna fails projection purity.

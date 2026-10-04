@@ -1,8 +1,9 @@
 # Spec test — Golden fixture (deterministic byte stream across code changes).
 # Fixture: tests/fixtures/snapshot_seed1_tick1.bin
 #   seed 1 → one step dt = 1/60 → scripted input → all fourteen sections
-#   (schema 6, milestone_0007: 1..9 unchanged framing from schema 4,
-#   + 10 FLORA + 11 FAUNA + 12 HOTBAR + 13 TARGET + 14 RIGID_BODIES;
+#   (schema 7, milestone_0010: sections 1..9 and 11..14 unchanged from
+#   schema 6; 10 FLORA records are 32 B — +u32 variant_seed, +u8 stage,
+#   +u8×3 pad; sections 12..14 as of schema 6, milestone_0007;
 #   TERRAIN vertex payload is the 4-byte blend tuple — same byte count).
 # Scripted input must stay identical to gen_golden_fixture.mojo and
 # tests/abi_smoke.py (all three document the same batch).
@@ -87,8 +88,8 @@ def test_fixture_exists_and_is_well_formed() raises:
     var fixture = read_file_bytes(path)
     _check(len(fixture) > ENVELOPE_BYTES, "fixture must contain envelope")
     _check(get_u32(fixture, 0) == 0x53524353, "magic SCRS")
-    _check(SCHEMA_VERSION == 6, "sim parameters SCHEMA_VERSION == 6")
-    _check(get_u32(fixture, 4) == 6, "schema v6")
+    _check(SCHEMA_VERSION == 7, "sim parameters SCHEMA_VERSION == 7")
+    _check(get_u32(fixture, 4) == 7, "schema v7")
     _check(get_u32(fixture, 8) == 14, "fourteen sections (first snapshot)")
     _check(get_u32(fixture, 20) == 1, "simulation_tick = 1")
     _check(get_u32(fixture, 28) == 1, "seed = 1")
@@ -109,7 +110,7 @@ def test_fixture_exists_and_is_well_formed() raises:
     _check(flora_count > 0 and flora_count <= FLORA_N_MAX, "FLORA count in cap")
     _check(
         secs[fli].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * flora_count,
-        "FLORA = 4 + 24·count bytes",
+        "FLORA = 4 + 32·count bytes",
     )
     var fai = find_section(secs, SEC_FAUNA)
     _check(fai >= 0, "fixture carries FAUNA (11)")

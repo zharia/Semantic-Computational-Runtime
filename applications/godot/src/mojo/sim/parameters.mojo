@@ -392,6 +392,65 @@ comptime FLORA_STRESS_W_DROUGHT: Float64 = 0.30
 # weather field (0004 §3.2 field 16) ⇒ REF = 1.0 is the full-scale dryness.
 comptime FLORA_DROUGHT_WETNESS_REF: Float64 = 1.0
 
+# --- Phenome core (milestone_0010 Sprint 01; AP-7 / AP-23 mirrors) ----------
+# Developmental stage (spec §1.1 stage model; invariant 5): stage = f(age)
+# quantized per species maturity curve, global cap STAGE_MAX (u8 on the wire
+# from Sprint 02). stage_for_age(species, age) = min(STAGE_MAX,
+# floor(age * STAGE_MAX / maturity(species))) — pure, monotone non-decreasing,
+# 0..STAGE_MAX. Every FLORA_MATURITY_* is divisible by 15 so the quantization
+# boundaries coincide with the phenome_grammars.json `maturity` stage table
+# (conformance-tested in test_phenome_grammar: mirror == JSON).
+comptime STAGE_MAX: Int = 15
+comptime PHENOME_STAGE_COUNT: Int = 16  # stages 0..STAGE_MAX inclusive
+# Trait quantization (JSON `trait_quant`): trait_milli = clamp(
+# floor(trait * PHENOME_TRAIT_QUANT), 0, PHENOME_TRAIT_QUANT) — the exact
+# integer input to the modulation map (AP-24: integer-exact conformance).
+comptime PHENOME_TRAIT_QUANT: Int = 1000
+# variant_seed = hash64_cells(seed, x, z, PHENOME_VARIANT_SALT) → u32
+# (R2 / AP-20: pure hash, no mutable RNG stream). Distinct from the 0009
+# trait/growth salts 0x1..0x9.
+comptime PHENOME_VARIANT_SALT: UInt64 = 0xA00000001B3
+# Reference-expander guard (tests only, never the tick path): a derivation
+# exceeding this module count is an error, not a memory event.
+comptime PHENOME_EXPAND_MAX_MODULES: Int = 65536
+# Trait → grammar-parameter modulation mirrors (R3: JSON is the single
+# source; test_phenome_grammar asserts every constant below == the
+# phenome_grammars.json value for the same (species, trait, param)).
+#   ash_tolerance    → crown_density: modulated = base + delta·ash_milli/1000
+#   drought_tolerance → leaf_count:   modulated = base + delta·drought_milli/1000
+# milli representation: modulated_milli = base·1000 + delta·trait_milli.
+# Base params (JSON `params`), enum order PALM_CLUSTER..FERN_CARPET.
+comptime PHENOME_PARAM_CROWN_PALM_CLUSTER: Int = 60
+comptime PHENOME_PARAM_CROWN_PALM_SOLO: Int = 60
+comptime PHENOME_PARAM_CROWN_BAMBOO_GROVE: Int = 64
+comptime PHENOME_PARAM_CROWN_CANOPY_TREE: Int = 60
+comptime PHENOME_PARAM_CROWN_CANOPY_CLUSTER: Int = 55
+comptime PHENOME_PARAM_CROWN_SHRUB: Int = 72
+comptime PHENOME_PARAM_CROWN_FERN_CARPET: Int = 80
+comptime PHENOME_PARAM_LEAF_PALM_CLUSTER: Int = 8
+comptime PHENOME_PARAM_LEAF_PALM_SOLO: Int = 6
+comptime PHENOME_PARAM_LEAF_BAMBOO_GROVE: Int = 10
+comptime PHENOME_PARAM_LEAF_CANOPY_TREE: Int = 12
+comptime PHENOME_PARAM_LEAF_CANOPY_CLUSTER: Int = 14
+comptime PHENOME_PARAM_LEAF_SHRUB: Int = 16
+comptime PHENOME_PARAM_LEAF_FERN_CARPET: Int = 20
+# ash_tolerance → crown_density deltas (JSON `modulation.ash_tolerance.delta`).
+comptime PHENOME_MOD_DELTA_ASH_CROWN_PALM_CLUSTER: Int = 18
+comptime PHENOME_MOD_DELTA_ASH_CROWN_PALM_SOLO: Int = 15
+comptime PHENOME_MOD_DELTA_ASH_CROWN_BAMBOO_GROVE: Int = 12
+comptime PHENOME_MOD_DELTA_ASH_CROWN_CANOPY_TREE: Int = 20
+comptime PHENOME_MOD_DELTA_ASH_CROWN_CANOPY_CLUSTER: Int = 16
+comptime PHENOME_MOD_DELTA_ASH_CROWN_SHRUB: Int = 10
+comptime PHENOME_MOD_DELTA_ASH_CROWN_FERN_CARPET: Int = 14
+# drought_tolerance → leaf_count deltas (JSON `modulation.drought_tolerance`).
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_PALM_CLUSTER: Int = -2
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_PALM_SOLO: Int = -1
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_BAMBOO_GROVE: Int = -3
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_CANOPY_TREE: Int = -4
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_CANOPY_CLUSTER: Int = -5
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_SHRUB: Int = -6
+comptime PHENOME_MOD_DELTA_DROUGHT_LEAF_FERN_CARPET: Int = -8
+
 # --- Seabird flock (milestone_0006 §1.1/§5; AP-7 / 0006 AP-13) --------------
 # Slots are fixed (0..FLOCK_N_MAX-1); the first FLOCK_N_INIT are active at
 # init. A bound violation despawns the slot and respawns it from
@@ -481,7 +540,10 @@ comptime SNAPSHOT_MAGIC: UInt32 = 0x53524353
 # 5 → 6 (milestone_0007 §1.1 sibling rebasing): NEW sections 12 HOTBAR,
 # 13 TARGET, 14 RIGID_BODIES (every snapshot); sections 1..11 byte-identical
 # to schema 5; ABI 1 → 2 (new scr_edit_submit + 4-byte scr_edit_batch).
-comptime SCHEMA_VERSION: UInt32 = 6
+# 6 → 7 (milestone_0010 §3.2 / 0010 Sprint 02): §10 FLORA record 24 → 32 B
+# (adds u32 variant_seed, u8 stage ∈ 0..STAGE_MAX, u8×3 pad = 0); sections
+# 1..9 and 11..14 byte-identical to schema 6; ABI stays 2 (no symbol change).
+comptime SCHEMA_VERSION: UInt32 = 7
 comptime ABI_VERSION: UInt32 = 2
 
 # --- Error codes (scr_godot_abi.h) ----------------------------------------

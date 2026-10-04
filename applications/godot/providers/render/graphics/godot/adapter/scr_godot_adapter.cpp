@@ -22,6 +22,10 @@
  *       milestone_0007_editing-physics/spec.md §1.1 (schema 6, HOTBAR/TARGET/
  *       RIGID_BODIES, ABI 2), §2.2 (0007 AP-11..AP-14), §3.2 (edit uplink),
  *       §5 (scene scripts own node construction), §5 Sprint-03 adapter work
+ *   - applications/godot/program_increments/v0.0.2/
+ *       milestone_0010_flora-phenome/spec.md §3.2 (schema 7, FLORA record
+ *       24 -> 32 B: +u32 variant_seed, +u8 stage, +u8[3] pad) and
+ *       sprints/sprint_02_contract.md (0010 Sprint 02 adapter work)
  *   - applications/godot/docs/05_provider_boundary.md
  *
  * SCOPE: representation conversion ONLY. Decode snapshot bytes -> Godot nodes;
@@ -319,6 +323,32 @@
  *     mirror of the last decoded §12 field, bound read-only) and submits
  *     select_slot — the sim still validates and applies (AP-13).
  *
+ * ---------------------------------------------------------------------------
+ * Milestone 0010 — schema 7 adapter decisions (FLORA record 24 -> 32 B,
+ * variant_seed + stage)
+ * ---------------------------------------------------------------------------
+ * Schema gate: SCR_SIM_SCHEMA_VER == 7 (scr_godot_abi.h); sections 1..14
+ * unchanged in id/absence rules; ABI gate stays SCR_SIM_ABI_VERSION == 2
+ * (no symbol change). Milestone 0007's block above documents the state as
+ * of schema 6 and remains the reference for §12..§14 decisions.
+ *
+ *   - §10 FLORA record (104_contract §4.3 §10, spec §3.2): u32 count +
+ *     count·32 B — f32 x/y/z, f32 yaw, f32 scale, u32 species_id (bytes
+ *     0..23 IDENTICAL to schema 6), then NEW u32 variant_seed (offset 24),
+ *     NEW u8 stage (offset 28), NEW u8[3] pad = 0 (offset 29).
+ *   - DECODE VALIDATION (loud, §8): section_bytes MUST equal
+ *     4 + 32·count, stage ≤ 15 (STAGE_MAX), pad MUST be 0 — any violation
+ *     skips the frame (same failure class as the §12..§14 checks). Stage
+ *     and variant_seed are validated, not interpreted: presentation choice
+ *     (animation variant, LOD) stays scene-side (§5).
+ *   - NO GEOMETRY ON THE WIRE (§6 invariant 6, AP-25): the record still
+ *     carries pose + identity only. Renderers derive canopy/shapes from
+ *     variant_seed + stage locally (Morphology §17 Repetition, line 577 —
+ *     compact generative description), so sim/provider bytes stay free of
+ *     geometry or symbol strings.
+ *   - PRESENCE unchanged (0009 §3.2): FLORA stays change-driven — now also
+ *     fires on any stage/variant_seed delta vs last emission (0010 R7).
+ *
  * Conventions (normative for Sprint-04 scene work): *   - YAW:    rotation.y = +yaw.  The sim's horizontal forward is
  *             (-sin yaw, -cos yaw) (src/mojo/sim/subjects.mojo), which equals
  *             Godot's -Z axis rotated by +yaw. No sign flip.
@@ -446,14 +476,18 @@ constexpr uint32_t kPlumeBytes = 32;
 constexpr uint32_t kShoreFoamHeaderBytes = 12;
 constexpr uint32_t kShoreFoamGridMax = 1024;
 /* Schema 5 (milestone_0006 §1.1, 104_contract §4.3 §10/§11):
- *   10 FLORA = u32 count + count·24 B (f32 x/y/z, f32 yaw, f32 scale,
- *              u32 species_id) — change-driven presence (0009 §3.2), count ≤
- *              FLORA_N_MAX (4096).
  *   11 FAUNA = u32 count + count·20 B (f32 x/y/z, f32 yaw, u8 species_id,
- *              u8×3 pad = 0) — every snapshot, count ≤ FLOCK_N_MAX (64). */
+ *              u8×3 pad = 0) — every snapshot, count ≤ FLOCK_N_MAX (64).
+ * Schema 7 (milestone_0010 §3.2, 104_contract §4.3 §10):
+ *   10 FLORA = u32 count + count·32 B (f32 x/y/z, f32 yaw, f32 scale,
+ *              u32 species_id, u32 variant_seed, u8 stage ∈ 0..15,
+ *              u8×3 pad = 0) — change-driven presence (0009 §3.2 + 0010 R7
+ *              stage/seed triggers), count ≤ FLORA_N_MAX (4096).
+ *              Schema 6's first 24 B per record are unchanged. */
 constexpr uint32_t kFloraHeaderBytes = 4;
-constexpr uint32_t kFloraRecordBytes = 24;
+constexpr uint32_t kFloraRecordBytes = 32;
 constexpr uint32_t kFloraNMax = 4096;
+constexpr uint32_t kFloraStageMax = 15; /* STAGE_MAX (sim/parameters.mojo) */
 constexpr uint32_t kFaunaHeaderBytes = 4;
 constexpr uint32_t kFaunaRecordBytes = 20;
 constexpr uint32_t kFaunaNMax = 64;
@@ -599,9 +633,9 @@ struct SnapshotView {
     uint32_t foam_grid_n = 0;
     float foam_cell_size = 0.0f;
     float foam_sea_level = 0.0f;
-    /* 10 FLORA (schema 5): 4 + 24·count bytes, change-driven presence
-     * (0009 §3.2) — null when absent (absent must NOT clear the view cache,
-     * invariant 5). */
+    /* 10 FLORA (schema 7): 4 + 32·count bytes, change-driven presence
+     * (0009 §3.2 + 0010 R7) — null when absent (absent must NOT clear the
+     * view cache, invariant 5). */
     bool has_flora = false;
     const uint8_t *flora = nullptr;
     uint32_t flora_count = 0;
@@ -635,7 +669,7 @@ inline bool fail(String &err, const String &msg) {
  * required-section absence, unknown section id, or meta/terrain disagreement. */
 bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                      String &err) {
-    /* seen[0] unused; indices 1..kMaxSectionId (schema 6 = sections 1..14). */
+    /* seen[0] unused; indices 1..kMaxSectionId (schema 7 = sections 1..14). */
     bool seen[kMaxSectionId + 1] = {};
 
     if (buf == nullptr || len < kEnvelopeBytes) {
@@ -684,7 +718,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
         }
         if (sid < 1u || sid > kMaxSectionId) {
             return fail(err,
-                        "section: unknown section_id (schema 6 defines 1..14)");
+                        "section: unknown section_id (schema 7 defines 1..14)");
         }
         if (seen[sid]) {
             return fail(err, "section: duplicate section_id");
@@ -861,10 +895,12 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 break;
             }
             case SCR_SEC_FLORA: {
-                /* 10 FLORA (schema 5, 104_contract §4.3 §10): u32 count +
-                 * count·24 B, change-driven presence (0009 §3.2; the sim
-                 * decides, this frame validates). Size is DERIVED from count.
-                 * Range checks written so NaN fails (never coerced, §8). */
+                /* 10 FLORA (schema 7, 104_contract §4.3 §10): u32 count +
+                 * count·32 B, change-driven presence (0009 §3.2 + 0010 R7
+                 * stage/seed triggers; the sim decides, this frame
+                 * validates). Size is DERIVED from count. Range checks
+                 * written so NaN fails (never coerced, §8); stage ≤ 15 and
+                 * pad == 0 are checked loudly (0010 Sprint 02). */
                 if (sbytes < kFloraHeaderBytes) {
                     return fail(err, "FLORA: section shorter than count");
                 }
@@ -875,7 +911,7 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                 const uint64_t want = (uint64_t)kFloraHeaderBytes +
                                       (uint64_t)kFloraRecordBytes * count;
                 if ((uint64_t)sbytes != want) {
-                    return fail(err, "FLORA: section_bytes != 4 + 24*count");
+                    return fail(err, "FLORA: section_bytes != 4 + 32*count");
                 }
                 for (uint32_t i = 0; i < count; i++) {
                     const uint8_t *rec = data + kFloraHeaderBytes +
@@ -886,6 +922,9 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                     const float yaw = rd_f32(rec + 12);
                     const float scale = rd_f32(rec + 16);
                     const uint32_t species = rd_u32(rec + 20);
+                    /* rec + 24: u32 variant_seed — opaque generative identity
+                     * (validated presence only; no range semantics here). */
+                    const uint8_t stage = rec[28];
                     if (!(x == x) || !(y == y) || !(z == z)) {
                         return fail(err, "FLORA: position is NaN");
                     }
@@ -899,6 +938,12 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
                         return fail(err,
                                     "FLORA: species_id outside [1,7] "
                                     "(SPECIES_NONE = 0 is never emitted)");
+                    }
+                    if (stage > kFloraStageMax) {
+                        return fail(err, "FLORA: stage > 15 (STAGE_MAX)");
+                    }
+                    if (rec[29] != 0 || rec[30] != 0 || rec[31] != 0) {
+                        return fail(err, "FLORA: nonzero pad bytes (29..31)");
                     }
                 }
                 out.has_flora = true;
@@ -1047,10 +1092,11 @@ bool decode_snapshot(const uint8_t *buf, uint64_t len, SnapshotView &out,
     if (walked != out.section_count) {
         return fail(err, "snapshot: section_count disagrees with framed sections");
     }
-    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 6).
+    /* Sections emitted in EVERY snapshot (104_contract §4.3, schema 7).
      * TERRAIN and FLORA are the only optional ones (TERRAIN: first snapshot /
-     * world_version bump; FLORA: change-driven on population/pose/yaw or a
-     * scale delta ≥ FLORA_EMIT_EPS vs last emission — 0009 §3.2). */
+     * world_version bump; FLORA: change-driven on population/pose/yaw, a
+     * scale delta ≥ FLORA_EMIT_EPS vs last emission, or a stage/variant_seed
+     * delta — 0009 §3.2 + 0010 R7). */
     if (!seen[SCR_SEC_PLAYER] || !seen[SCR_SEC_TERRAIN_META] ||
         !seen[SCR_SEC_OCEAN] || !seen[SCR_SEC_SKY] || !seen[SCR_SEC_MATERIALS] ||
         !seen[SCR_SEC_VOLCANO] || !seen[SCR_SEC_PLUME] ||

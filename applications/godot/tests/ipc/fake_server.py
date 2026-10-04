@@ -71,7 +71,7 @@ ERR_VERSION = 2
 
 PROTO_VER = 1
 ABI_VER = 2
-SCHEMA_VER = 6
+SCHEMA_VER = 7
 
 MODES = ("crash-loop", "error-frame", "bad-abi", "bad-schema", "bad-proto")
 

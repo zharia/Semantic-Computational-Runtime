@@ -65,6 +65,14 @@
 # CANOPY/SHRUB/FERN); the enum values live in materials/catalog.mojo so the
 # species → catalog table and the enum stay single-sourced.
 #
+# Phenome (milestone_0010 Sprint 01): instances additionally carry SIM-side
+# `stages` (developmental stage, advanced once per tick inside flora_tick)
+# and `variant_seeds` (generative identity) — parallel lists exactly like
+# `ages`/`traits`, never on the 24 B wire (layout neutrality until Sprint
+# 02), folded into the world fingerprint and into the emission-dirty rule.
+# Pure maps live in sim/phenome.mojo; grammar data in
+# godot/data/phenome_grammars.json.
+#
 # Honest limitation (recorded here per R5; docs/04 is Sprint 04's):
 # EVOLUTION-INV-006/007 are satisfied trivially per instance only.
 
@@ -130,6 +138,7 @@ from synthesis.voxel import (
 )
 from synthesis.noise import hash01_cells
 from snapshot.types import FloraInstance
+from sim.phenome import stage_for_age, variant_seed
 
 comptime TWO_PI: Float64 = 6.283185307179586
 comptime _SALT_DENSITY: UInt64 = 0x100000001B3
@@ -539,13 +548,27 @@ struct FloraSubject(Movable, Deinitable):
     neutrality rule as `ages` (never serialized; folded into the world
     fingerprint). Written once at establishment (pure hash of the anchor
     cell), never mutated afterwards (trivial inheritance, INV-006/007),
-    read by the survival pass each tick and copied by survivor re-scans."""
+    read by the survival pass each tick and copied by survivor re-scans.
+
+    `stages` (0010 Sprint 01, R1/R4) is the SIM-SIDE developmental stage per
+    instance — stage_for_age(species, ages[i]), recomputed once per fixed
+    tick inside flora_tick (tick phase), 0..STAGE_MAX, monotone in age
+    (invariant 5). `variant_seeds` (0010 R2) is the per-instance generative
+    identity — pure hash of (seed, anchor cell), written at establishment,
+    constant over the instance's life. BOTH are parallel to `instances`,
+    SIM-SIDE ONLY, never on the 24 B wire (layout neutrality — the wire
+    record gains them in Sprint 02, schema 7); folded into the world
+    fingerprint instead, and both join the FLORA emission-dirty rule
+    (runtime.mojo, R7)."""
 
     var seed: UInt32
-    var count: Int  # == len(instances) == len(ages) == len(traits), cap oracle
+    var count: Int  # == len(instances) == len(ages) == len(traits) == len(stages)
+    #                              == len(variant_seeds) — cap oracle
     var instances: List[FloraInstance]
     var ages: List[Int]  # SIM-SIDE only (parallel to instances)
     var traits: List[FloraTraits]  # SIM-SIDE only (parallel to instances)
+    var stages: List[Int]  # SIM-SIDE only (0010; parallel to instances)
+    var variant_seeds: List[UInt32]  # SIM-SIDE only (0010; parallel)
 
     def __init__(out self):
         self.seed = 0
@@ -553,6 +576,8 @@ struct FloraSubject(Movable, Deinitable):
         self.instances = List[FloraInstance]()
         self.ages = List[Int]()
         self.traits = List[FloraTraits]()
+        self.stages = List[Int]()
+        self.variant_seeds = List[UInt32]()
 
     def __deinit__(deinit self):
         pass
@@ -647,11 +672,15 @@ def flora_from_island(
             )
             if inst.species_id == SPECIES_NONE:
                 continue
+            var age = flora_initial_age(seed, ix, iz, inst.species_id)
             flora.instances.append(inst)
-            flora.ages.append(
-                flora_initial_age(seed, ix, iz, inst.species_id)
-            )
+            flora.ages.append(age)
             flora.traits.append(flora_traits(seed, ix, iz))
+            # 0010 Sprint 01: developmental stage from the establishment age
+            # (recomputed each tick in flora_tick); variant_seed from the
+            # pure (seed, cell) hash — both SIM-side parallel lists.
+            flora.stages.append(stage_for_age(inst.species_id, age))
+            flora.variant_seeds.append(variant_seed(seed, ix, iz))
             flora.count += 1
     return flora^
 
@@ -685,6 +714,11 @@ def flora_tick(mut flora: FloraSubject):
             continue
         var age = flora.ages[i] + 1
         flora.ages[i] = age
+        # 0010 R4/R5: stage advance happens HERE — once per fixed tick, tick
+        # phase only (called from world.mojo). Monotone by stage_for_age
+        # (age never decreases); variant_seed is constant over the life.
+        if i < len(flora.stages):
+            flora.stages[i] = stage_for_age(inst.species_id, age)
         var anchor = anchor_cell_of(inst.x, inst.z)
         var s0 = flora_anchor_scale(flora.seed, anchor[0], anchor[1])
         var a0 = flora_initial_age(
@@ -783,18 +817,26 @@ def flora_re_evaluate(
                     out.traits.append(prev.traits[pi])
                 else:
                     out.traits.append(flora_traits(seed, ix, iz))
+                # 0010: stage re-derived from the kept age (pure — same value
+                # as the copied one, self-healing if the list were short);
+                # variant_seed re-derived from the same (seed, cell) hash.
+                out.stages.append(stage_for_age(species, prev.ages[pi]))
+                out.variant_seeds.append(variant_seed(seed, ix, iz))
             else:
                 # Anchor voxel removed ⇒ dies same tick (0009 R5); the freed
                 # cell may establish fresh in this same scan (new plant:
                 # scale s0, age a0). Also covers brand-new valid cells and
                 # species changes.
+                var new_age = flora_initial_age(seed, ix, iz, species)
                 out.instances.append(
                     instance_for_column(
                         ix, iz, island.biomes[ci], slope, height, seed
                     )
                 )
-                out.ages.append(flora_initial_age(seed, ix, iz, species))
+                out.ages.append(new_age)
                 out.traits.append(flora_traits(seed, ix, iz))
+                out.stages.append(stage_for_age(species, new_age))
+                out.variant_seeds.append(variant_seed(seed, ix, iz))
             out.count += 1
     return out^
 
@@ -831,6 +873,8 @@ def flora_survival(
     var kept_i = List[FloraInstance]()
     var kept_a = List[Int]()
     var kept_t = List[FloraTraits]()
+    var kept_s = List[Int]()
+    var kept_v = List[UInt32]()
     for i in range(flora.count):
         var inst = flora.instances[i]
         var dx = Float64(inst.x) - crater_x
@@ -850,7 +894,19 @@ def flora_survival(
             kept_i.append(inst)
             kept_a.append(flora.ages[i])
             kept_t.append(t)
+            # 0010: parallel stage/seed lists survive the death filter —
+            # short lists re-derive from the pure functions (INV-018).
+            if i < len(flora.stages):
+                kept_s.append(flora.stages[i])
+            else:
+                kept_s.append(stage_for_age(inst.species_id, flora.ages[i]))
+            if i < len(flora.variant_seeds):
+                kept_v.append(flora.variant_seeds[i])
+            else:
+                kept_v.append(variant_seed(flora.seed, c[0], c[1]))
     flora.instances = kept_i^
     flora.ages = kept_a^
     flora.traits = kept_t^
+    flora.stages = kept_s^
+    flora.variant_seeds = kept_v^
     flora.count = len(flora.instances)

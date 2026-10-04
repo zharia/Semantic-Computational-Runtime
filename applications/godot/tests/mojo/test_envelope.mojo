@@ -14,6 +14,10 @@
 # Milestone_0007 §7 additions: schema == 6, sections 12 HOTBAR / 13 TARGET /
 # 14 RIGID_BODIES framing + payload validation (malformed refused),
 # schema ∈ {1,2,3,4,5,7} rejected, sections present every snapshot.
+# Milestone_0010 §7 additions: schema == 7, §10 FLORA record 24 → 32 B
+# (u32 variant_seed + u8 stage + u8×3 pad; framing 4 + 32·count), stage
+# round-trips the sim-side list, stage > 15 and nonzero pad refused loudly,
+# schema ∈ {1..6, 8} rejected.
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -163,8 +167,8 @@ def test_envelope_layout() raises:
     _check(len(data) >= ENVELOPE_BYTES, "envelope present")
     # Documented offsets (§4.1), little-endian, explicit.
     _check(get_u32(data, 0) == 0x53524353, "magic 'SCRS'")
-    _check(SCHEMA_VERSION == 6, "sim parameters SCHEMA_VERSION == 6")
-    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 6")
+    _check(SCHEMA_VERSION == 7, "sim parameters SCHEMA_VERSION == 7")
+    _check(get_u32(data, 4) == SCHEMA_VERSION, "schema_version == 7")
     var env = decode_envelope(data)
     _check(
         Int(env.section_count) == SECTIONS_AT_TICK1,
@@ -233,14 +237,14 @@ def test_section_framing_and_sizes() raises:
     _check(secs[pli].length == PLUME_BYTES, "PLUME = 32 bytes (§4.3 §8)")
     _check(secs[fi].length == SHORE_FOAM_BYTES, "SHORE_FOAM = 12 + 4·64² bytes")
     _check(secs[ti].length == TERRAIN_BYTES_SEED1, "TERRAIN stride-neutral (228100)")
-    # FLORA/FAUNA framing arithmetic (§4.3 §10/§11): exact 4 + 24·count /
+    # FLORA/FAUNA framing arithmetic (§4.3 §10/§11): exact 4 + 32·count /
     # 4 + 20·count, counts within the caps.
     var flora_count = Int(get_u32(data, secs[fli].offset))
     var fauna_count = Int(get_u32(data, secs[fai].offset))
     _check(flora_count > 0 and flora_count <= FLORA_N_MAX, "FLORA count in cap")
     _check(
         secs[fli].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * flora_count,
-        "FLORA section = 4 + 24·count",
+        "FLORA section = 4 + 32·count",
     )
     _check(
         fauna_count > 0 and fauna_count <= FLOCK_N_MAX, "FAUNA count in cap"
@@ -436,18 +440,19 @@ def test_bad_inputs_fail_loudly() raises:
     for i in range(ENVELOPE_BYTES - 1):
         trunc.append(data[i])
     _check(_expect_error(trunc), "truncation must raise")
-    # Unsupported schemas: 1..5 (all previous) and 7 (future) must be
-    # refused — only SCHEMA_VERSION (6) is accepted (0007 §1.1 sibling rebase).
-    for prev in range(1, 6):
+    # Unsupported schemas: 1..6 (all previous) and 8 (future) must be
+    # refused — only SCHEMA_VERSION (7) is accepted (0010 §3.2 sibling rebase;
+    # the schema-6 FLORA stride is 24 B and MUST NOT be parsed as 32 B).
+    for prev in range(1, 7):
         var old_schema = data.copy()
         old_schema[4] = UInt8(prev)
         _check(
             _expect_error(old_schema),
-            "schema " + String(prev) + " must be refused (expected 6)",
+            "schema " + String(prev) + " must be refused (expected 7)",
         )
-    var schema7 = data.copy()
-    schema7[4] = 7
-    _check(_expect_error(schema7), "schema 7 must be refused (expected 6)")
+    var schema8 = data.copy()
+    schema8[4] = 8
+    _check(_expect_error(schema8), "schema 8 must be refused (expected 7)")
     # payload_bytes inconsistent with buffer length.
     var wrong_len = data.copy()
     wrong_len[40] = wrong_len[40] + 1
@@ -644,10 +649,12 @@ def test_terrain_blend_tuples() raises:
 
 
 def test_flora_fauna_payloads() raises:
-    """§4.3 §10/§11 (0006 §3.2): FLORA/FAUNA framing + round-trip against
-    FloraSubject/FlockSubject; FLORA gated like TERRAIN (absent when
-    include_flora = False), FAUNA present either way; malformed records
-    (species_id = 0, scale <= 0, nonzero pad) fail loudly (§8)."""
+    """§4.3 §10/§11 (0006 §3.2 + 0010 §3.2): FLORA/FAUNA framing +
+    round-trip against FloraSubject/FlockSubject — including the schema-7
+    FLORA fields (variant_seed / stage mirror the SIM-side parallel lists);
+    FLORA gated like TERRAIN (absent when include_flora = False), FAUNA
+    present either way; malformed records (species_id = 0, scale <= 0,
+    stage > 15, nonzero pad) fail loudly (§8)."""
     var world = world_init(1)
     _ = step_world(world, 1.0 / 60.0, InputBatch())
     var data = encode_snapshot(world, True)
@@ -670,6 +677,17 @@ def test_flora_fauna_payloads() raises:
         _check(abs(flora[i].scale - inst.scale) < 1e-6, "flora scale round-trip")
         _check(flora[i].species_id >= 1, "SPECIES_NONE never emitted")
         _check(flora[i].scale > 0.0, "scale > 0")
+        # Schema 7 (0010 §3.2): variant_seed / stage mirror the sim-side
+        # parallel lists (FloraSubject is the wire authority for both).
+        _check(
+            flora[i].variant_seed == world.flora.variant_seeds[i],
+            "variant_seed round-trip at " + String(i),
+        )
+        _check(
+            Int(flora[i].stage) == world.flora.stages[i],
+            "stage round-trip at " + String(i),
+        )
+        _check(Int(flora[i].stage) <= 15, "stage <= STAGE_MAX")
 
     # FAUNA round-trip: every active slot in slot order, pose within bounds.
     var fai = find_section(secs, SEC_FAUNA)
@@ -717,6 +735,14 @@ def test_flora_fauna_payloads() raises:
     for k in range(4):
         bad_scale[f_off + FLORA_HEADER_BYTES + 16 + k] = 0
     _check(_expect_read_error(bad_scale, SEC_FLORA), "scale = 0 must raise")
+    # Malformed FLORA: stage = 16 (> STAGE_MAX) at record 0 (schema 7).
+    var bad_stage = data.copy()
+    bad_stage[f_off + FLORA_HEADER_BYTES + 28] = 16
+    _check(_expect_read_error(bad_stage, SEC_FLORA), "stage > 15 must raise")
+    # Malformed FLORA: nonzero pad byte 29 of record 0 (schema 7).
+    var bad_fpad = data.copy()
+    bad_fpad[f_off + FLORA_HEADER_BYTES + 29] = 1
+    _check(_expect_read_error(bad_fpad, SEC_FLORA), "nonzero FLORA pad must raise")
     # Malformed FLORA: declared section length off by 4.
     var bad_len = data.copy()
     var wrong_len = secs[fli].length - 4
@@ -903,27 +929,64 @@ def _frames_equal(a: List[UInt8], b: List[UInt8]) -> Bool:
     return True
 
 
+def _frames_equal_mod_stage(
+    a: List[UInt8], b: List[UInt8], count: Int
+) -> Bool:
+    """FLORA frame equality ignoring only the per-record `stage` byte
+    (schema 7 offset 28 within each 32 B record). Everything else —
+    position, yaw, scale, species_id, variant_seed, pad — must match."""
+    if len(a) != len(b):
+        return False
+    if len(a) != FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * count:
+        return False
+    for i in range(count):
+        var base = FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * i
+        for k in range(base, base + FLORA_RECORD_BYTES):
+            if k == base + 28:
+                continue
+            if a[k] != b[k]:
+                return False
+    return True
+
+
 def test_flora_change_driven_growth_framing() raises:
-    """0009 §3.2 / R7 (framing level): FLORA section bytes stay identical
-    while no stored scale crosses FLORA_EMIT_EPS (ε-quantized growth ⇒
-    byte-stable frames), then change once growth crosses ε; count/species
-    stay fixed (no edits), and gating still drops exactly section 10."""
+    """0009 §3.2 / 0010 R7 (framing level): FLORA section bytes stay
+    identical while no stored scale crosses FLORA_EMIT_EPS and no stage
+    advances (ε-quantized growth + quantized stage ⇒ byte-stable frames;
+    a stage byte may change only when a stage boundary is crossed), then
+    change once growth crosses ε; count/species stay fixed (no edits), and
+    gating still drops exactly section 10."""
     var world = world_init(1)
     _ = step_world(world, 1.0 / 60.0, InputBatch())
     var f0 = _flora_frame(world)
     var species0 = List[UInt32]()
+    var stages0 = List[Int]()
     for i in range(world.flora.count):
         species0.append(world.flora.instances[i].species_id)
+        stages0.append(world.flora.stages[i])
 
     # Sub-ε window: 5 ticks is below the provable first-crossing bound
     # (≥ ~10.6 ticks for any parameter combination in parameters.mojo).
+    # Schema 7: the stage byte is on the wire, so a stage-boundary crossing
+    # in this window flips exactly those bytes — every other byte must not
+    # move (0010 R7 stage trigger).
     for _ in range(5):
         _ = step_world(world, 1.0 / 60.0, InputBatch())
     var f1 = _flora_frame(world)
-    _check(
-        _frames_equal(f0, f1),
-        "FLORA bytes stable while no ε crossing (change-driven §3.2)",
-    )
+    var stage_changed = False
+    for i in range(world.flora.count):
+        if world.flora.stages[i] != stages0[i]:
+            stage_changed = True
+    if not stage_changed:
+        _check(
+            _frames_equal(f0, f1),
+            "FLORA bytes stable while no ε crossing (change-driven §3.2)",
+        )
+    else:
+        _check(
+            _frames_equal_mod_stage(f0, f1, world.flora.count),
+            "only stage bytes may differ when a stage boundary crossed",
+        )
 
     # Growth window: 400 ticks guarantees ≥ 1 stored-scale ε crossing for
     # seed 1 (maturity ≤ 2400, curve slope bounds in flora.mojo).
@@ -938,10 +1001,10 @@ def test_flora_change_driven_growth_framing() raises:
         len(f0) == len(f2),
         "FLORA frame length stable (count unchanged without edits)",
     )
-    # Count / species unchanged: only scale bytes may differ.
+    # Count / species unchanged: only scale / stage bytes may differ.
     _check(
         Int(len(f2)) == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * world.flora.count,
-        "frame length == header + 24 * count",
+        "frame length == header + 32 * count",
     )
     for i in range(world.flora.count):
         _check(

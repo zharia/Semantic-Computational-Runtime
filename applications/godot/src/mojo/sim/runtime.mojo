@@ -37,11 +37,18 @@ struct SimHandle(Movable, Deinitable):
     var last_terrain_emitted: UInt32  # world_version of last TERRAIN send
     # FLORA emission (0009 §3.2 / AP-22) is CHANGE-DRIVEN, not
     # world_version-driven: emitted whenever population/pose/yaw differ from
-    # the last send, or any stored scale crossed FLORA_EMIT_EPS relative to
+    # the last send, any stored scale crossed FLORA_EMIT_EPS relative to
     # the last sent scale (flora_emission_dirty — the stored scale is
-    # ε-quantized by flora_tick, so dirty ⇔ a stored scale changed).
+    # ε-quantized by flora_tick, so dirty ⇔ a stored scale changed), or
+    # (milestone_0010 R7) any instance's developmental stage or
+    # variant_seed differs from the last send (sim-side lists, compared
+    # index-wise against the trackers below — since Sprint 02 the schema-7
+    # 32 B wire record carries both fields, so a stage/seed change is a
+    # byte-visible §10 emission trigger).
     var flora_emitted_once: Bool
-    var last_flora: List[FloraInstance]  # copy of the last sent FLORA section
+    var last_flora: List[FloraInstance]  # pose copy of the last sent FLORA section (stage/seed tracked below)
+    var last_stages: List[Int]  # stage tracker of the last FLORA send (0010 R7)
+    var last_variant_seeds: List[UInt32]  # seed tracker of the last send (R7)
     var world: World
     var snapshot: List[UInt8]  # bytes from the most recent successful step
 
@@ -51,6 +58,8 @@ struct SimHandle(Movable, Deinitable):
         self.last_terrain_emitted = 0
         self.flora_emitted_once = False
         self.last_flora = List[FloraInstance]()
+        self.last_stages = List[Int]()
+        self.last_variant_seeds = List[UInt32]()
         self.world = World(0)
         self.snapshot = List[UInt8]()
 
@@ -58,14 +67,27 @@ struct SimHandle(Movable, Deinitable):
         pass
 
 
-def _flora_dirty(world: World, last: List[FloraInstance], once: Bool) -> Bool:
-    """0009 §3.2 emission predicate: first send after init always includes
-    FLORA; afterwards dirty ⇔ population structure (count / species / pos /
-    yaw) differs from the last send, or any instance's stored scale moved by
-    ≥ FLORA_EMIT_EPS relative to its last-sent scale."""
+def _flora_dirty(
+    world: World,
+    last: List[FloraInstance],
+    last_stages: List[Int],
+    last_seeds: List[UInt32],
+    once: Bool,
+) -> Bool:
+    """0009 §3.2 emission predicate EXTENDED by 0010 R7: first send after
+    init always includes FLORA; afterwards dirty ⇔ population structure
+    (count / species / pos / yaw) differs from the last send, any
+    instance's stored scale moved by ≥ FLORA_EMIT_EPS relative to its
+    last-sent scale, OR any instance's stage / variant_seed differs from
+    the last send (stage is tick-advanced; both trackers are sim-side
+    copies kept here — projection-side state, outside World)."""
     if not once:
         return True
     if world.flora.count != len(last):
+        return True
+    if world.flora.count != len(last_stages):
+        return True
+    if world.flora.count != len(last_seeds):
         return True
     for i in range(world.flora.count):
         var cur = world.flora.instances[i]
@@ -77,6 +99,14 @@ def _flora_dirty(world: World, last: List[FloraInstance], once: Bool) -> Bool:
         if cur.yaw != prev.yaw:
             return True
         if flora_emission_dirty(Float64(prev.scale), Float64(cur.scale)):
+            return True
+        # 0010 R7: stage or variant_seed change vs last emission ⇒ dirty.
+        if i >= len(world.flora.stages) or world.flora.stages[i] != last_stages[i]:
+            return True
+        if (
+            i >= len(world.flora.variant_seeds)
+            or world.flora.variant_seeds[i] != last_seeds[i]
+        ):
             return True
     return False
 
@@ -190,6 +220,8 @@ def runtime_init(seed: UInt32) -> Int32:
             h[].last_terrain_emitted = 0
             h[].flora_emitted_once = False
             h[].last_flora = List[FloraInstance]()
+            h[].last_stages = List[Int]()
+            h[].last_variant_seeds = List[UInt32]()
         h[].world = world_init(seed)
         h[].snapshot = List[UInt8]()
         h[].stepped = False
@@ -197,6 +229,8 @@ def runtime_init(seed: UInt32) -> Int32:
         # FLORA change-driven tracker reset (0009 §3.2): first send dirty.
         h[].flora_emitted_once = False
         h[].last_flora = List[FloraInstance]()
+        h[].last_stages = List[Int]()
+        h[].last_variant_seeds = List[UInt32]()
         h[].initialized = True
         return 0
     except e:
@@ -218,6 +252,8 @@ def runtime_shutdown():
         h[].last_terrain_emitted = 0
         h[].flora_emitted_once = False
         h[].last_flora = List[FloraInstance]()
+        h[].last_stages = List[Int]()
+        h[].last_variant_seeds = List[UInt32]()
         h[].initialized = False
     # Address stays in the env var: the (now empty) handle block is reused by
     # a later init. Block freed only by process exit — see file header.
@@ -238,18 +274,35 @@ def runtime_step(frame_dt: Float64, input: InputBatch) -> Int32:
         var ticks = step_world(h[].world, frame_dt, input)
         # TERRAIN only when (re)generation happened since last sent snapshot.
         var include_terrain = h[].world.world_version != h[].last_terrain_emitted
-        # FLORA: change-driven (0009 §3.2 / AP-22) — population/pose/yaw
-        # delta or any stored scale crossing FLORA_EMIT_EPS vs last send.
+        # FLORA: change-driven (0009 §3.2 / AP-22 + 0010 R7) — population/
+        # pose/yaw delta, any stored scale crossing FLORA_EMIT_EPS vs last
+        # send, or any stage / variant_seed delta vs last send.
         var include_flora = _flora_dirty(
-            h[].world, h[].last_flora, h[].flora_emitted_once
+            h[].world,
+            h[].last_flora,
+            h[].last_stages,
+            h[].last_variant_seeds,
+            h[].flora_emitted_once,
         )
         h[].snapshot = encode_snapshot(h[].world, include_terrain, include_flora)
         h[].last_terrain_emitted = h[].world.world_version
         if include_flora:
             var sent = List[FloraInstance]()
+            var sent_stages = List[Int]()
+            var sent_seeds = List[UInt32]()
             for i in range(h[].world.flora.count):
                 sent.append(h[].world.flora.instances[i])
+                if i < len(h[].world.flora.stages):
+                    sent_stages.append(h[].world.flora.stages[i])
+                else:
+                    sent_stages.append(0)
+                if i < len(h[].world.flora.variant_seeds):
+                    sent_seeds.append(h[].world.flora.variant_seeds[i])
+                else:
+                    sent_seeds.append(0)
             h[].last_flora = sent^
+            h[].last_stages = sent_stages^
+            h[].last_variant_seeds = sent_seeds^
             h[].flora_emitted_once = True
         h[].stepped = True
         return ticks

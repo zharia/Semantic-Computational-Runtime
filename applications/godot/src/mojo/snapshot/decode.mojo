@@ -4,7 +4,7 @@
 
 from std.collections import List
 
-from sim.parameters import SCHEMA_VERSION, FLORA_N_MAX, FLOCK_N_MAX
+from sim.parameters import SCHEMA_VERSION, FLORA_N_MAX, FLOCK_N_MAX, STAGE_MAX
 from materials.catalog import SPECIES_NONE, SPECIES_COUNT
 from snapshot.types import (
     ENVELOPE_BYTES,
@@ -421,12 +421,14 @@ def read_shore_foam(data: List[UInt8], sec: SectionRef) raises -> List[Float32]:
     return out^
 
 
-# --- Schema 5 (milestone_0006) readers ----------------------------------------
+# --- Schema 5 (milestone_0006) readers; FLORA since schema 7 (0010 §3.2) ---
 
 def read_flora(data: List[UInt8], sec: SectionRef) raises -> List[FloraInstance]:
-    """10 FLORA: u32 count + count×24 B (f32×3, yaw, scale, u32 species_id).
-    Framing must be exact (4 + 24·count); count ≤ FLORA_N_MAX (AP-13);
-    species_id ∈ 1..SPECIES_COUNT-1 (SPECIES_NONE never emitted)."""
+    """10 FLORA (schema 7): u32 count + count×32 B (f32×3, yaw, scale,
+    u32 species_id, u32 variant_seed, u8 stage, u8×3 pad = 0). Framing must
+    be exact (4 + 32·count); count ≤ FLORA_N_MAX (AP-13); species_id ∈
+    1..SPECIES_COUNT-1 (SPECIES_NONE never emitted); stage ≤ STAGE_MAX and
+    pad == 0 — loud on violation (§8: never silently coerced)."""
     if sec.length < FLORA_HEADER_BYTES:
         raise Error("FLORA section shorter than its header")
     var count = get_u32(data, sec.offset)
@@ -448,10 +450,19 @@ def read_flora(data: List[UInt8], sec: SectionRef) raises -> List[FloraInstance]
         inst.yaw = get_f32(data, o + 12)
         inst.scale = get_f32(data, o + 16)
         inst.species_id = get_u32(data, o + 20)
+        inst.variant_seed = get_u32(data, o + 24)
+        inst.stage = get_u8(data, o + 28)
         if inst.species_id == SPECIES_NONE or inst.species_id >= UInt32(SPECIES_COUNT):
             raise Error("FLORA species_id out of range: " + String(inst.species_id))
         if inst.scale <= 0.0:
             raise Error("FLORA scale must be > 0")
+        if Int(inst.stage) > STAGE_MAX:
+            raise Error(
+                "FLORA stage out of range: " + String(inst.stage) + " > "
+                + String(STAGE_MAX)
+            )
+        if get_u8(data, o + 29) != 0 or get_u8(data, o + 30) != 0 or get_u8(data, o + 31) != 0:
+            raise Error("FLORA nonzero pad byte at offset " + String(o + 29))
         out.append(inst)
         o += FLORA_RECORD_BYTES
     return out^

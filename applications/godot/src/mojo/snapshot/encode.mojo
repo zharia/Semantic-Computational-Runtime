@@ -14,6 +14,7 @@ from sim.parameters import (
     EYE_HEIGHT,
     SNAPSHOT_MAGIC,
     SCHEMA_VERSION,
+    STAGE_MAX,
 )
 from materials.catalog import MAT_WATER, MAT_VOCAB_COUNT
 from snapshot.types import (
@@ -39,9 +40,12 @@ from snapshot.types import (
     RIGID_HEADER_BYTES,
     RIGID_RECORD_BYTES,
     RIGID_BODIES_MAX,
+    FLORA_HEADER_BYTES,
+    FLORA_RECORD_BYTES,
     VOLCANO,
     TARGET,
     RigidBodyRecord,
+    FloraInstance,
     put_hotbar,
     put_target,
     put_rigid_bodies,
@@ -276,15 +280,37 @@ def _encode_shore_foam(world: World) raises -> List[UInt8]:
 
 
 def _encode_flora(world: World) raises -> List[UInt8]:
-    """10 FLORA (schema 5, 104_contract §4.3): u32 count + count×24 B
-    records — f32×3 position, f32 yaw, f32 scale, u32 species_id
-    (milestone_0006 §3.2). count ≤ FLORA_N_MAX (AP-13)."""
+    """10 FLORA (schema 7, 104_contract §4.3 §10): u32 count + count×32 B
+    records — f32×3 position, f32 yaw, f32 scale, u32 species_id,
+    u32 variant_seed, u8 stage ∈ 0..STAGE_MAX, u8×3 pad = 0
+    (milestone_0010 §3.2). count ≤ FLORA_N_MAX (AP-13). The wire record's
+    seed/stage are copied from the SIM-side parallel lists (FloraSubject is
+    the authority; the FloraInstance pose record alone does not carry them).
+    Loud (§8) on list-length drift or stage out of range — never coerced."""
     if world.flora.count > len(world.flora.instances):
         raise Error("FLORA count exceeds instance list")
     if world.flora.count != len(world.flora.instances):
         raise Error("FLORA count drift from instance list")
+    if world.flora.count != len(world.flora.stages):
+        raise Error("FLORA count drift from stage list")
+    if world.flora.count != len(world.flora.variant_seeds):
+        raise Error("FLORA count drift from variant_seed list")
+    var wire = List[FloraInstance]()
+    for i in range(world.flora.count):
+        var inst = world.flora.instances[i]
+        var st = world.flora.stages[i]
+        if st < 0 or st > STAGE_MAX:
+            raise Error(
+                "FLORA stage out of range: " + String(st) + " not in 0.."
+                + String(STAGE_MAX)
+            )
+        inst.stage = UInt8(st)
+        inst.variant_seed = world.flora.variant_seeds[i]
+        wire.append(inst)
     var b = List[UInt8]()
-    put_flora(b, world.flora.instances)
+    put_flora(b, wire)
+    if len(b) != FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * world.flora.count:
+        raise Error("FLORA section size drift: " + String(len(b)))
     return b^
 
 
@@ -434,7 +460,8 @@ def encode_snapshot(
     section_count += 1
 
     # Section 10: flora — change-driven (0009 §3.2 / 104_contract §10);
-    # TERRAIN keeps its own world_version rule. Layout unchanged (24 B/record).
+    # TERRAIN keeps its own world_version rule. Schema 7 layout (32 B/record,
+    # milestone_0010 §3.2).
     if include_flora:
         var flora = _encode_flora(world)
         _append_section(payload, SEC_FLORA, flora^)

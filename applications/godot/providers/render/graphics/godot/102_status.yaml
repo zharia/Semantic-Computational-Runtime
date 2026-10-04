@@ -6,7 +6,7 @@ version: 0.7.0
 status: operational
 spec: 101_definition.md
 contract: 104_contract.md
-schema_version: 6
+schema_version: 7
 abi_version: 2
 ipc_proto_version: 1
 
@@ -87,8 +87,22 @@ capabilities:
     note: >
       Applies the §10 FLORA section whenever present (sim-side change-driven
       rule, 104_contract §4.3 §10); absent section retains the cached
-      instances (invariant 5). Layout untouched: schema 6, ABI 2,
-      4 + 24·count records.
+      instances (invariant 5). Layout untouched by 0009: schema stayed 6,
+      ABI 2, 4 + 24·count records (grown to schema 7 by 0010 — see
+      CAP-GODOT-FLORA-SEED-STAGE).
+  - id: CAP-GODOT-FLORA-SEED-STAGE
+    status: implemented
+    milestone: applications/godot/v0.0.2-milestone_0010
+    note: >
+      §10 FLORA record 24 → 32 B (schema 7, spec §3.2): +u32 variant_seed
+      (offset 24), +u8 stage ∈ 0..15 (offset 28), +u8×3 pad = 0 (offset 29);
+      payload 4 + 32·count (max 131,076 B at FLORA_N_MAX). Adapter validates stage ≤ 15, pad == 0 and
+      exact framing loudly (104_contract §8); sections 1–9 and 11–14
+      byte-identical, ABI stays 2. No geometry or symbol strings on the
+      wire (invariant 6 / AP-25): renderers derive canopy shapes locally
+      from variant_seed + stage (Morphology §17 Repetition, line 577 —
+      compact generative description). Emission also fires on stage /
+      variant_seed deltas vs the last send (0010 R7).
 
 depends_on:
   - SCR-LIB-RENDER

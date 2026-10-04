@@ -25,6 +25,7 @@ from sim.parameters import (
     HOTBAR_SLOT_COUNT,
 )
 from sim.edit import edit_apply_batch
+from sim.phenome import stage_for_age
 from snapshot.encode import encode_snapshot
 from snapshot.decode import (
     decode_envelope,
@@ -176,14 +177,14 @@ def test_volcano_plume_sections_in_byte_identity() raises:
     var a = run_sequence(1, scripted_input())
     var b = run_sequence(1, scripted_input())
     var snap = a[SEQ_TICKS - 1].copy()
-    # Envelope: schema 6, fourteen sections (1..14 with TERRAIN + FLORA).
-    _check(SCHEMA_VERSION == 6, "sim parameters SCHEMA_VERSION == 6")
+    # Envelope: schema 7, fourteen sections (1..14 with TERRAIN + FLORA).
+    _check(SCHEMA_VERSION == 7, "sim parameters SCHEMA_VERSION == 7")
     _check(
         Int(get_u32(snap, 4)) == Int(SCHEMA_VERSION),
-        "envelope schema_version == 6",
+        "envelope schema_version == SCHEMA_VERSION (7)",
     )
     var env = decode_envelope(snap)
-    _check(Int(env.section_count) == 14, "section_count == 14 (schema 6)")
+    _check(Int(env.section_count) == 14, "section_count == 14 (schema 7)")
     # VOLCANO / PLUME / SHORE_FOAM / FLORA / FAUNA / HOTBAR / TARGET /
     # RIGID_BODIES framing.
     var secs = decode_sections(snap, env)
@@ -414,6 +415,46 @@ def test_growth_age_scale_sequence_byte_identical() raises:
             advanced += 1
     _check(advanced == w1.flora.count, "every instance aged past 0")
 
+def test_phenome_stage_and_seed_sequences_deterministic() raises:
+    """0010: sim-side stage/variant_seed sequences are run-twice identical
+    (byte identity cannot cover them — they are not on the wire until
+    Sprint 02) and stage always equals stage_for_age(species, age)."""
+    var w1 = world_init(1)
+    var w2 = world_init(1)
+    _check(
+        w1.flora.count == w2.flora.count and w1.flora.count > 0,
+        "identical non-empty population at init (phenome)",
+    )
+    _check(len(w1.flora.stages) == w1.flora.count, "stages parallel at init")
+    _check(
+        len(w1.flora.variant_seeds) == w1.flora.count,
+        "seeds parallel at init",
+    )
+    for k in range(60):
+        _ = step_world(w1, 1.0 / 60.0, InputBatch())
+        _ = step_world(w2, 1.0 / 60.0, InputBatch())
+        _check(
+            w1.flora.count == w2.flora.count,
+            "identical population count at tick " + String(k + 1),
+        )
+        _check(len(w1.flora.stages) == w1.flora.count, "stages stay parallel")
+        for i in range(w1.flora.count):
+            _check(
+                w1.flora.stages[i] == w2.flora.stages[i],
+                "identical stage sequence at tick " + String(k + 1),
+            )
+            _check(
+                w1.flora.variant_seeds[i] == w2.flora.variant_seeds[i],
+                "identical variant_seed sequence at tick " + String(k + 1),
+            )
+            _check(
+                w1.flora.stages[i]
+                == stage_for_age(
+                    w1.flora.instances[i].species_id, w1.flora.ages[i]
+                ),
+                "stage == stage_for_age at tick " + String(k + 1),
+            )
+
 
 def main() raises:
     TestSuite.discover_tests[
@@ -428,5 +469,6 @@ def main() raises:
             test_flock_present_and_capped,
             test_scripted_edits_are_byte_deterministic,
             test_growth_age_scale_sequence_byte_identical,
+            test_phenome_stage_and_seed_sequences_deterministic,
         )
     ]().run()

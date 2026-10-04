@@ -10,6 +10,9 @@
 # queue + rigid prop state (a projection that mutated section 12/13/14
 # source state is caught), and adapter-style reads consume HOTBAR / TARGET /
 # RIGID_BODIES too.
+# Milestone_0010 §7 amendment (Sprint 02): the fingerprint MUST include the
+# sim-side stage + variant_seed lists, and the adapter-style FLORA read
+# consumes every field of the schema-7 32 B record (stage + variant_seed).
 #
 # NOTE on `assert`: this Mojo 1.0.0 toolchain compiles `assert` to a no-op
 # (verified: `assert False` does not stop execution). Every check below uses
@@ -114,6 +117,7 @@ def _drive_projection(data: List[UInt8]) raises -> Int:
         sum += len(flora)
         for i in range(len(flora)):
             sum += Int(flora[i].species_id) + Int(flora[i].scale * 100.0)
+            sum += Int(flora[i].stage) + Int(flora[i].variant_seed)
     var fai = find_section(secs, SEC_FAUNA)
     var fauna = read_fauna(data, secs[fai])
     sum += len(fauna)
@@ -408,6 +412,61 @@ def test_flora_age_fingerprint_and_growth_purity() raises:
     world.flora.ages[0] = saved_age
     _check(world_fingerprint(world) == base, "fingerprint fully restored")
 
+def test_phenome_fingerprint_and_projection_purity() raises:
+    """0010 R9: the world fingerprint covers the sim-side stage +
+    variant_seed lists (a projection-side mutation of either must fail
+    projection purity the same way ages/traits do), and a full projection
+    leaves both lists untouched."""
+    var world = world_init(1)
+    for _ in range(30):
+        _ = step_world(world, 1.0 / 60.0, InputBatch())
+    _check(world.flora.count > 0, "population exists (phenome)")
+    _check(len(world.flora.stages) == world.flora.count, "stages parallel")
+    _check(
+        len(world.flora.variant_seeds) == world.flora.count,
+        "seeds parallel",
+    )
+    var base = world_fingerprint(world)
+    # Sensitivity: stage flip must be visible.
+    var saved_stage = world.flora.stages[0]
+    world.flora.stages[0] = saved_stage ^ 1
+    _check(
+        world_fingerprint(world) != base,
+        "fingerprint misses flora stage (sim-side state)",
+    )
+    world.flora.stages[0] = saved_stage
+    _check(world_fingerprint(world) == base, "stage restored")
+    # Sensitivity: variant_seed flip must be visible.
+    var saved_seed = world.flora.variant_seeds[0]
+    world.flora.variant_seeds[0] = saved_seed ^ UInt32(1)
+    _check(
+        world_fingerprint(world) != base,
+        "fingerprint misses flora variant_seed (sim-side state)",
+    )
+    world.flora.variant_seeds[0] = saved_seed
+    _check(world_fingerprint(world) == base, "seed restored")
+    # Purity: a full projection must not touch either list.
+    var stages_before = List[Int]()
+    var seeds_before = List[UInt32]()
+    for i in range(world.flora.count):
+        stages_before.append(world.flora.stages[i])
+        seeds_before.append(world.flora.variant_seeds[i])
+    var snap = encode_snapshot(world, True)
+    _ = _drive_projection(snap)
+    _check(
+        world_fingerprint(world) == base,
+        "projection mutated stage/seed state (phenome purity drift)",
+    )
+    for i in range(world.flora.count):
+        _check(
+            world.flora.stages[i] == stages_before[i],
+            "projection mutated a stage slot",
+        )
+        _check(
+            world.flora.variant_seeds[i] == seeds_before[i],
+            "projection mutated a variant_seed slot",
+        )
+
 
 def main() raises:
     TestSuite.discover_tests[
@@ -420,5 +479,6 @@ def main() raises:
             test_world_fingerprint_includes_flora_flock_state,
             test_world_fingerprint_includes_hotbar_queue_props,
             test_flora_age_fingerprint_and_growth_purity,
+            test_phenome_fingerprint_and_projection_purity,
         )
     ]().run()

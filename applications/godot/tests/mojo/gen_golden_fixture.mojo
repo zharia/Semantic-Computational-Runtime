@@ -2,8 +2,9 @@
 #
 # Regenerates tests/fixtures/snapshot_seed1_tick1.bin:
 #   seed 1 → one step dt = 1/60 with the documented scripted input →
-#   snapshot with all fourteen sections (schema 6: 1..9 framing from schema
-#   4, + 10 FLORA + 11 FAUNA + 12 HOTBAR + 13 TARGET + 14 RIGID_BODIES;
+#   snapshot with all fourteen sections (schema 7: 1..9 framing from schema
+#   4; 10 FLORA — 32 B records since 0010 Sprint 02; 11 FAUNA + 12 HOTBAR +
+#   13 TARGET + 14 RIGID_BODIES from schema 6;
 #   TERRAIN per-vertex payload is the 4-byte blend tuple — stride-neutral;
 #   include_terrain = True, include_flora = True, first snapshot).
 #

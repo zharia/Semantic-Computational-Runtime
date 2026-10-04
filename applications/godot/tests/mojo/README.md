@@ -3,7 +3,7 @@
 **Purpose:** Executable specification tests for the simulation core under `src/mojo/` (milestone_0002 Sprints 01+02, extended through milestone 0007).
 **Framework:** `std.testing` — each file defines `def test_*() raises:` functions, registered by hand in `main()` via
 `TestSuite.discover_tests[(...)]().run()`. Checks use a raise-based `_check` helper (`assert` is a no-op on this toolchain).
-**Status:** Active (v0.0.1 / milestones 0002–0008; snapshot schema 6, C ABI 2).
+**Status:** Active (v0.0.1 / milestones 0002–0010; snapshot schema 7, C ABI 2).
 
 ## Running (from repo root)
 
@@ -56,6 +56,8 @@ nm -D applications/godot/build/libscr_sim.so | grep -c " T scr_"   # expect 8
 | `test_framing.mojo` | 0008 §3.2: SCRT frame codec round-trips (all 9 types), AP-16 payload-blind copy, loud malformed refusal, HELLO verdict matrix (proto/abi/schema/flags) |
 | `test_golden_fixture.mojo` | Byte-exact golden snapshot (`../fixtures/snapshot_seed1_tick1.bin`), sections 1–14 |
 | `gen_golden_fixture.mojo` | Tool (not a test): regenerates the fixture after intentional changes |
+| `test_phenome_grammar.mojo` | 0010 Sprint 01: `stage_for_age` monotone/bounded and exact vs the JSON stage table; `variant_seed` deterministic + distinct on the 64×64 grid; trait modulation value-exact vs `phenome_grammars.json`; reference expansion run-twice identical, depth non-decreasing, goldens match; wire record still 24 B |
+| `gen_phenome_goldens.mojo` | Tool (not a test): regenerates `../fixtures/phenome/goldens.txt` after intentional grammar/expander changes |
 | `test_atmosphere.mojo`, `test_weather.mojo`, `test_quench.mojo`, `test_flora_placement.mojo`, `test_flock.mojo`, `test_shoreline_foam.mojo`, `test_material_blending.mojo` | Domain suites (0003–0006) |
 | `../abi_smoke.py` | 8 C ABI symbols, `scr_input_batch` 20 B, `scr_edit_batch` 4 B, SCR_ERR_* paths (incl. −5), FFI snapshot == fixture, section 12/13/14 framing |
 | `../test_terrain_resend.py` | TERRAIN presence rule: applied edit resends TERRAIN exactly once; miss does not |

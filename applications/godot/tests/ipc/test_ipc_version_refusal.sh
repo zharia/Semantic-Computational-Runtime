@@ -117,7 +117,7 @@ adapter_refusal() {
 
 adapter_refusal "error-frame" "server refused the handshake: ERROR code=2"
 adapter_refusal "bad-abi"     "ABI mismatch: server 3, adapter 2 (refusing to run)"
-adapter_refusal "bad-schema"  "schema mismatch: server 7, adapter 6 (refusing to run)"
+adapter_refusal "bad-schema"  "schema mismatch: server 8, adapter 7 (refusing to run)"
 adapter_refusal "bad-proto"   "proto mismatch: server 2, adapter 1 (refusing to run)"
 
 # The adapter must not leave its (misbehaving) server behind — AP-18.

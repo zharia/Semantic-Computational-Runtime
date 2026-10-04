@@ -12,7 +12,7 @@ The **Godot render provider** realizes SCR renderable semantic state as a Godot-
 
 ```text
 Renderable semantic state (Mojo sim, projected to RenderSnapshot)
-        │ contract: 104_contract.md (byte schema v6, C ABI v2)
+        │ contract: 104_contract.md (byte schema v7, C ABI v2)
         ▼
 Godot render provider adapter (GDExtension, godot-cpp)
         │ representation conversion only
@@ -31,7 +31,7 @@ Godot scene graph / shaders / lights  (manifestation)
 
 | Capability | Status |
 |---|---|
-| `RenderSnapshotDecode` (byte schema v6; v1→v2→v3→v4→v5→v6) | Implemented — milestones 0002–0007 |
+| `RenderSnapshotDecode` (byte schema v7; v1→v2→v3→v4→v5→v6→v7) | Implemented — milestones 0002–0007, 0010 |
 | `TerrainMeshManifestation` (chunked ArrayMesh; chunk-local rebuild on edit) | Implemented — milestones 0002, 0007 |
 | `OceanSurfaceManifestation` (Gerstner shader) | Implemented — milestone 0002 |
 | `SkyManifestation` (time-of-day sun, derived dome gradient, atmosphere-derived fog) | Implemented — milestones 0002, 0004 |

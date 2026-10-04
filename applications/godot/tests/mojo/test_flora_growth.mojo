@@ -4,6 +4,8 @@
 #   (c) simulated dig → anchor plant absent next tick, freed cell may re-establish
 #   (d) 0 < count ≤ FLORA_N_MAX at every tick
 #   (e) emission dirty fires exactly on ε-threshold crossings (§3.2, R7)
+#   (f) 0010 R4: stage/variant_seed lists parallel to instances, stage ==
+#       stage_for_age(species, age) after every tick, monotone + bounded
 # plus the measured cost of the flora_re_evaluate full rescan (µs, filled into
 # the world.mojo comment). Headless: runs without Godot.
 #
@@ -37,6 +39,7 @@ from sim.flora import (
     anchor_cell_of,
 )
 from sim.input import idle_input
+from sim.phenome import stage_for_age
 from sim.parameters import (
     GRID_N,
     CELL_SIZE,
@@ -51,6 +54,7 @@ from sim.parameters import (
     FLORA_SUITABILITY_THRESHOLD,
     FLORA_WETNESS_NEUTRAL,
     FLORA_CRATER_STRESS_NEUTRAL,
+    STAGE_MAX,
 )
 from sim.edit import edit_apply_batch, EDIT_OP_DIG
 from materials.catalog import (
@@ -71,6 +75,10 @@ comptime SEED: UInt32 = 1
 comptime MAX_MATURITY: Int = 2400
 comptime PROBE_TICKS: Int = 300  # loop length for (b)/(d)/(e) + perf probe
 
+
+from snapshot.encode import encode_snapshot
+from snapshot.decode import decode_envelope, decode_sections, find_section, read_flora
+from snapshot.types import SEC_FLORA, FLORA_HEADER_BYTES, FLORA_RECORD_BYTES
 
 def _check(cond: Bool, msg: String) raises:
     """Raise-based check (see header note: `assert` is a no-op here)."""
@@ -122,8 +130,11 @@ def _flora_changed_since(
     cur: FloraSubject, last: List[FloraInstance]
 ) -> Bool:
     """Structural + ε-scale comparison against a previous snapshot copy —
-    mirrors the runtime dirty rule (sim.runtime._flora_dirty) so the test
-    can count 'fires' independently of the handle plumbing."""
+    covers the structure + ε-scale parts of the runtime dirty rule
+    (sim.runtime._flora_dirty) so the test can count 'fires' independently
+    of the handle plumbing. The 0010 stage/variant_seed clauses of the real
+    rule are covered by test_f / runtime tests, deliberately kept OUT here
+    so the ε-crossing count remains the subject of (e)."""
     if cur.count != len(last):
         return True
     for i in range(cur.count):
@@ -468,6 +479,90 @@ def test_perf_rescan_cost_reported() raises:
     _check(per_call_ns < 2_000_000_000, "rescan under 2 s")
 
 
+# --- (f) 0010: developmental stage tracks age (R4) ---------------------------
+
+def test_f_stage_advances_monotonically_with_age() raises:
+    """0010 R1/R4: `stages`/`variant_seeds` stay parallel to `instances`,
+    stage == stage_for_age(species, age) after every tick (recomputed in
+    the tick phase only), monotone non-decreasing, 0..STAGE_MAX; the
+    variant seed is establishment-time state and never moves."""
+    var flora = _pop(build_island(SEED), SEED)
+    _check(flora.count > 0, "population exists (f)")
+    _check(len(flora.stages) == flora.count, "stages parallel at establishment")
+    _check(
+        len(flora.variant_seeds) == flora.count,
+        "seeds parallel at establishment",
+    )
+    var prev = List[Int]()
+    var seeds0 = List[UInt32]()
+    for i in range(flora.count):
+        prev.append(flora.stages[i])
+        seeds0.append(flora.variant_seeds[i])
+        _check(
+            flora.stages[i]
+            == stage_for_age(flora.instances[i].species_id, flora.ages[i]),
+            "stage == stage_for_age at establishment",
+        )
+        _check(
+            flora.stages[i] >= 0 and flora.stages[i] <= STAGE_MAX,
+            "stage bounded at establishment",
+        )
+    for _ in range(600):
+        flora_tick(flora)
+        _check(len(flora.stages) == flora.count, "stages stay parallel")
+        _check(len(flora.variant_seeds) == flora.count, "seeds stay parallel")
+        for i in range(flora.count):
+            var inst = flora.instances[i]
+            _check(
+                flora.stages[i]
+                == stage_for_age(inst.species_id, flora.ages[i]),
+                "stage == stage_for_age after tick",
+            )
+            _check(
+                flora.stages[i] >= prev[i],
+                "stage monotone non-decreasing",
+            )
+            _check(
+                flora.stages[i] >= 0 and flora.stages[i] <= STAGE_MAX,
+                "stage within [0, STAGE_MAX]",
+            )
+            _check(
+                flora.variant_seeds[i] == seeds0[i],
+                "variant_seed constant over instance life",
+            )
+            prev[i] = flora.stages[i]
+
+
+
+def test_wire_carries_seed_and_stage() raises:
+    """0010 §3.2 / Sprint 02: schema-7 §10 records (32 B) carry
+    variant_seed + stage copied from the SIM-side parallel lists;
+    framing exact 4 + 32·count."""
+    var w = world_init(SEED)
+    _ = step_world(w, 1.0 / 60.0, idle_input())
+    var data = encode_snapshot(w, False, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var i = find_section(secs, SEC_FLORA)
+    _check(i >= 0, "FLORA present in first snapshot")
+    var recs = read_flora(data, secs[i])
+    _check(Int(len(recs)) == w.flora.count, "decoded count == FloraSubject.count")
+    _check(
+        secs[i].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * w.flora.count,
+        "framing 4 + 32·count",
+    )
+    for k in range(w.flora.count):
+        _check(
+            recs[k].variant_seed == w.flora.variant_seeds[k],
+            "variant_seed round-trip at " + String(k),
+        )
+        _check(
+            Int(recs[k].stage) == w.flora.stages[k],
+            "stage round-trip at " + String(k),
+        )
+        _check(Int(recs[k].stage) <= 15, "stage <= STAGE_MAX")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -476,7 +571,8 @@ def main() raises:
             test_c_dig_removes_anchor_and_freed_cell_may_establish,
             test_d_population_bound_at_every_tick,
             test_e_emission_dirty_fires_exactly_on_epsilon_crossings,
+            test_f_stage_advances_monotonically_with_age,
             test_suitability_band_oracle,
             test_perf_rescan_cost_reported,
-        )
+            test_wire_carries_seed_and_stage,)
     ]().run()

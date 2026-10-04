@@ -14,6 +14,9 @@
 #       (counts, poses, ages, scales, traits every tick)
 #   (e) count ≤ FLORA_N_MAX held after death waves; count > 0 still —
 #       selection must not sterilize the seed-1 world
+#   (f) 0010: stages/variant_seeds stay parallel to instances through init,
+#       tick aging and the death pass; stage == stage_for_age; the seed
+#       re-derives from the pure (seed, anchor cell) hash
 # Stress model under test (milestone §1.2 decision, parameters.mojo block):
 #   local_stress = W_ASH·ash_raw(crater_dist) + W_DROUGHT·drought_raw(w),
 #   selection fails a candidate iff either WEIGHTED term exceeds its trait
@@ -47,6 +50,7 @@ from sim.flora import (
     cell_world_z,
 )
 from sim.input import idle_input
+from sim.phenome import stage_for_age, variant_seed
 from sim.parameters import (
     GRID_N,
     CELL_SIZE,
@@ -60,6 +64,7 @@ from sim.parameters import (
     FLORA_STRESS_W_ASH,
     FLORA_STRESS_W_DROUGHT,
     FLORA_DROUGHT_WETNESS_REF,
+    STAGE_MAX,
 )
 from materials.catalog import SPECIES_NONE
 from synthesis.voxel import BIOME_BEACH, BIOME_VOLCANIC_SLOPE
@@ -75,6 +80,10 @@ comptime TICKS: Int = 600  # (d)/(e) — well past 0009's 420-tick growth probe
 comptime INIT_WETNESS: Float64 = 0.0  # committed weather at world_init (dt = 0)
 comptime WET_WETNESS: Float64 = 1.0  # saturated wetness for the synthetic wave
 
+
+from snapshot.encode import encode_snapshot
+from snapshot.decode import decode_envelope, decode_sections, find_section, read_flora
+from snapshot.types import SEC_FLORA, FLORA_HEADER_BYTES, FLORA_RECORD_BYTES
 
 def _check(cond: Bool, msg: String) raises:
     """Raise-based check (see header note: `assert` is a no-op here)."""
@@ -507,6 +516,97 @@ def test_e_cap_held_and_world_not_sterilized() raises:
     )
 
 
+# --- (f) 0010 phenome parallel lists through the lifecycle -------------------
+
+def test_f_phenome_parallel_lists_through_lifecycle() raises:
+    """0010 R1/R2/R4: the sim-side stage/variant_seed lists are parallel to
+    `instances` at establishment, after every tick (aging + re-evaluate),
+    and after the death pass; stage == stage_for_age(species, age) and the
+    variant seed re-derives from variant_seed(seed, anchor cell)."""
+    var w = world_init(SEED)
+    _check(w.flora.count > 0, "init population non-empty (f)")
+    _check(len(w.flora.stages) == w.flora.count, "stages parallel at init")
+    _check(
+        len(w.flora.variant_seeds) == w.flora.count,
+        "seeds parallel at init",
+    )
+    for _ in range(60):
+        _ = step_world(w, 1.0 / 60.0, idle_input())
+        _check(len(w.flora.stages) == w.flora.count, "stages parallel each tick")
+        _check(
+            len(w.flora.variant_seeds) == w.flora.count,
+            "seeds parallel each tick",
+        )
+    for i in range(w.flora.count):
+        var inst = w.flora.instances[i]
+        _check(
+            w.flora.stages[i] == stage_for_age(inst.species_id, w.flora.ages[i]),
+            "stage == stage_for_age after ticks",
+        )
+        _check(
+            w.flora.stages[i] >= 0 and w.flora.stages[i] <= STAGE_MAX,
+            "stage within bounds after ticks",
+        )
+        var c = anchor_cell_of(inst.x, inst.z)
+        _check(
+            w.flora.variant_seeds[i] == variant_seed(SEED, c[0], c[1]),
+            "variant_seed re-derives from the anchor cell",
+        )
+    # Death pass (forced drought): the filtered subject keeps both lists
+    # parallel and consistent with the kept ages.
+    var island = build_island(SEED)
+    var e = _crater(island)
+    var wave = _wet_population(island)
+    flora_survival(wave, e[0], e[1], INIT_WETNESS)
+    _check(0 < wave.count <= FLORA_N_MAX, "wave count in (0, N_MAX]")
+    _check(len(wave.stages) == wave.count, "stages parallel after death wave")
+    _check(
+        len(wave.variant_seeds) == wave.count,
+        "seeds parallel after death wave",
+    )
+    for i in range(wave.count):
+        var inst = wave.instances[i]
+        _check(
+            wave.stages[i] == stage_for_age(inst.species_id, wave.ages[i]),
+            "stage == stage_for_age after death wave",
+        )
+        var c = anchor_cell_of(inst.x, inst.z)
+        _check(
+            wave.variant_seeds[i] == variant_seed(SEED, c[0], c[1]),
+            "seed survives the death wave unchanged",
+        )
+
+
+
+def test_wire_carries_seed_and_stage() raises:
+    """0010 §3.2 / Sprint 02: schema-7 §10 records (32 B) carry
+    variant_seed + stage copied from the SIM-side parallel lists;
+    framing exact 4 + 32·count."""
+    var w = world_init(SEED)
+    _ = step_world(w, 1.0 / 60.0, idle_input())
+    var data = encode_snapshot(w, False, True)
+    var env = decode_envelope(data)
+    var secs = decode_sections(data, env)
+    var i = find_section(secs, SEC_FLORA)
+    _check(i >= 0, "FLORA present in first snapshot")
+    var recs = read_flora(data, secs[i])
+    _check(Int(len(recs)) == w.flora.count, "decoded count == FloraSubject.count")
+    _check(
+        secs[i].length == FLORA_HEADER_BYTES + FLORA_RECORD_BYTES * w.flora.count,
+        "framing 4 + 32·count",
+    )
+    for k in range(w.flora.count):
+        _check(
+            recs[k].variant_seed == w.flora.variant_seeds[k],
+            "variant_seed round-trip at " + String(k),
+        )
+        _check(
+            Int(recs[k].stage) == w.flora.stages[k],
+            "stage round-trip at " + String(k),
+        )
+        _check(Int(recs[k].stage) <= 15, "stage <= STAGE_MAX")
+
+
 def main() raises:
     TestSuite.discover_tests[
         (
@@ -515,5 +615,6 @@ def main() raises:
             test_c_stress_raise_kills_deterministic_superset,
             test_d_run_twice_identical_population_sequence,
             test_e_cap_held_and_world_not_sterilized,
-        )
+            test_f_phenome_parallel_lists_through_lifecycle,
+            test_wire_carries_seed_and_stage,)
     ]().run()

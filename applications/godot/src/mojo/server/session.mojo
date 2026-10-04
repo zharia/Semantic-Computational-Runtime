@@ -96,7 +96,7 @@ comptime EINTR_CODE: Int = 4
 
 # --- session sizing --------------------------------------------------------
 
-comptime SNAP_CAP: Int = 4194304  # 4 MiB per staging buffer (fixture: 249680 B)
+comptime SNAP_CAP: Int = 4194304  # 4 MiB per staging buffer (fixture: 249024 B)
 comptime RX_SCRATCH_CAP: Int = 65536
 # Server-side cap on CLIENT frame payloads (INPUT/EDIT/CMD_TICK are <= 20 B;
 # anything above this is refused loudly before it is buffered).

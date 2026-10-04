@@ -24,9 +24,13 @@ extern "C" {
 /* Snapshot binary schema version. 5 -> 6 (milestone_0007): NEW section 12
  * HOTBAR (44 B fixed), NEW section 13 TARGET (32 B fixed), NEW section 14
  * RIGID_BODIES (u32 count + count * 36 B records, count <= 16);
- * sections 1-11 byte-identical to schema 5. Adapter refuses any library
- * whose scr_sim_schema_version() != this value. */
-#define SCR_SIM_SCHEMA_VER   6u
+ * sections 1-11 byte-identical to schema 5.
+ * 6 -> 7 (milestone_0010 §3.2): section 10 FLORA record grows 24 -> 32 bytes
+ * (+u32 variant_seed at offset 24, +u8 stage at 28 in 0..15, +u8[3] pad = 0
+ * at 29); sections 1-9 and 11-14 byte-identical to schema 6; ABI stays 2
+ * (no symbol change). Adapter refuses any library whose
+ * scr_sim_schema_version() != this value. */
+#define SCR_SIM_SCHEMA_VER   7u
 
 /* Snapshot section identifiers (104_contract.md §4). */
 #define SCR_SEC_PLAYER       1u
@@ -38,7 +42,8 @@ extern "C" {
 #define SCR_SEC_VOLCANO      7u  /* schema 2 (milestone_0003 §3.2) */
 #define SCR_SEC_PLUME        8u
 #define SCR_SEC_SHORE_FOAM   9u  /* schema 4 (milestone_0005 §3.3) */
-#define SCR_SEC_FLORA        10u /* schema 5 (milestone_0006 §1.1) */
+#define SCR_SEC_FLORA        10u /* schema 5 (0006 §1.1); 32 B record since
+                                  * schema 7 (milestone_0010 §3.2) */
 #define SCR_SEC_FAUNA        11u /* schema 5 (milestone_0006 §1.1) */
 #define SCR_SEC_HOTBAR       12u /* schema 6 (milestone_0007 §3.3) */
 #define SCR_SEC_TARGET       13u /* schema 6 (milestone_0007 §3.3) */

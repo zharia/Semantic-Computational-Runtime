@@ -52,9 +52,12 @@ comptime RIGID_RECORD_BYTES: Int = 36  # f32×3 pos + f32×3 euler + u32 + f32 +
 comptime RIGID_BODIES_MAX: Int = 16  # 0007 §1.1 LOCK (inv.7)
 
 # §10 FLORA / §11 FAUNA framing (104_contract §4.3): u32 count header, then
-# records of 24 B (FLORA) / 20 B (FAUNA) — layouts locked by 0006 §3.2.
+# records of 32 B (FLORA, schema 7 / 0010 §3.2) / 20 B (FAUNA) — layouts
+# locked by 0006 §3.2; FLORA grew 24 → 32 B in milestone_0010 (variant_seed
+# + stage + pad), sections 1..9 and 11..14 byte-identical.
 comptime FLORA_HEADER_BYTES: Int = 4
-comptime FLORA_RECORD_BYTES: Int = 24  # f32×3 + f32 yaw + f32 scale + u32 id
+# f32×3 + f32 yaw + f32 scale + u32 id + u32 variant_seed + u8 stage + u8×3 pad
+comptime FLORA_RECORD_BYTES: Int = 32
 comptime FAUNA_HEADER_BYTES: Int = 4
 comptime FAUNA_RECORD_BYTES: Int = 20  # f32×3 + f32 yaw + u8 id + u8×3 pad
 
@@ -65,10 +68,14 @@ comptime SHORE_FOAM_MAX_GRID: Int = 1024  # decode-side sanity bound
 
 
 struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
-    """One §10 FLORA record (0006 §3.2 — 24 bytes exactly): world-frame
-    position (y = surface height at the anchor cell), yaw (rad), uniform
-    scale (> 0) and the sim species enum (species → catalog table in
-    materials/catalog.mojo). Pose only — no animation phase (0006 AP-12)."""
+    """One §10 FLORA record (schema 7, 0010 §3.2 — 32 bytes exactly):
+    world-frame position (y = surface height at the anchor cell), yaw (rad),
+    uniform scale (> 0), the sim species enum (species → catalog table in
+    materials/catalog.mojo), the plant's generative variant seed (u32) and
+    its developmental stage (u8, 0..STAGE_MAX). Pad: 3 zero bytes (u8×3).
+    Pose only — no animation phase (0006 AP-12). Geometry stays renderer-side
+    (Morphology §17 Repetition, line 577 — compact generative description;
+    §6 invariant 6)."""
 
     var x: Float32
     var y: Float32
@@ -76,6 +83,8 @@ struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
     var yaw: Float32
     var scale: Float32
     var species_id: UInt32
+    var variant_seed: UInt32  # schema 7 (0010 §3.2): generative identity
+    var stage: UInt8  # schema 7 (0010 §3.2): 0..STAGE_MAX (u8)
 
     def __init__(out self):
         self.x = 0.0
@@ -84,6 +93,8 @@ struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
         self.yaw = 0.0
         self.scale = 1.0
         self.species_id = 0
+        self.variant_seed = 0
+        self.stage = 0
 
     def __init__(
         out self,
@@ -93,6 +104,8 @@ struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
         yaw: Float32,
         scale: Float32,
         species_id: UInt32,
+        variant_seed: UInt32 = 0,
+        stage: UInt8 = 0,
     ):
         self.x = x
         self.y = y
@@ -100,6 +113,8 @@ struct FloraInstance(Copyable, Movable, Deinitable, ImplicitlyCopyable):
         self.yaw = yaw
         self.scale = scale
         self.species_id = species_id
+        self.variant_seed = variant_seed
+        self.stage = stage
 
     def __deinit__(deinit self):
         pass
@@ -239,8 +254,10 @@ def put_plume(mut buf: List[UInt8], p: PLUME):
 
 
 def put_flora(mut buf: List[UInt8], instances: List[FloraInstance]):
-    """Serialize the §10 FLORA payload: u32 count + count×24 B records
-    (f32×3 position, f32 yaw, f32 scale, u32 species_id) — 0006 §3.2."""
+    """Serialize the §10 FLORA payload (schema 7, 0010 §3.2): u32 count +
+    count×32 B records (f32×3 position, f32 yaw, f32 scale, u32 species_id,
+    u32 variant_seed, u8 stage, u8×3 pad = 0) — 0006 §3.2 layout + 0010
+    fields. Stage/pad validation happens at encode (loud, §8)."""
     put_u32(buf, UInt32(len(instances)))
     for i in range(len(instances)):
         var inst = instances[i]
@@ -250,6 +267,11 @@ def put_flora(mut buf: List[UInt8], instances: List[FloraInstance]):
         put_f32(buf, inst.yaw)
         put_f32(buf, inst.scale)
         put_u32(buf, inst.species_id)
+        put_u32(buf, inst.variant_seed)
+        put_u8(buf, inst.stage)
+        put_u8(buf, 0)
+        put_u8(buf, 0)
+        put_u8(buf, 0)
 
 
 def put_fauna(mut buf: List[UInt8], birds: List[FlockBird]):
