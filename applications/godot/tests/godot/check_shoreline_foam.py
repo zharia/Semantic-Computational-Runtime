@@ -87,8 +87,10 @@ def parse_heights_and_sea(path: str):
     # TERRAIN (schema-4 blend tuples) and OCEAN layouts read here are
     # byte-identical, so schema 4/5/6 fixtures decode the same way (schema
     # 6 adds sections 12–14; sections 1–11 are byte-identical to schema 5).
-    if schema not in (4, 5, 6):
-        raise ValueError(f"fixture: schema {schema} not in (4, 5, 6)")
+    # Schema 7 (milestone_0010) rewrites only section 10 FLORA's records;
+    # the TERRAIN/OCEAN sections read here stay byte-identical.
+    if schema not in (4, 5, 6, 7):
+        raise ValueError(f"fixture: schema {schema} not in (4, 5, 6, 7)")
     section_count = struct.unpack_from("<I", buf, 8)[0]
     payload = struct.unpack_from("<I", buf, 40)[0]
     if payload != len(buf) - 48:

@@ -30,10 +30,15 @@ uniform float flap_speed = 9.0;                         // rad/s
 
 void vertex() {
 	if (sway_amount > 0.0) {
+		// Wind flexibility weight: flora meshes write it into the vertex
+		// COLOR channel (phenome_expand.Builder: trunk/axis 0.1, frond/leaf
+		// 1.0). Meshes without a color attribute default to white (1.0), so
+		// other users of this shader keep full sway. Display-only.
+		float wind_w = clamp(COLOR.r, 0.0, 1.0);
 		vec3 org = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 		float phase = TIME * sway_speed + (org.x * 0.37 + org.z * 0.53);
 		float h = clamp(VERTEX.y / max(sway_height, 0.001), 0.0, 1.0);
-		float lean = sin(phase) * sway_amount * h * h;
+		float lean = sin(phase) * sway_amount * h * h * wind_w;
 		VERTEX.x += lean;
 		VERTEX.z += lean * 0.5;
 	}

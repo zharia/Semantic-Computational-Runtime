@@ -424,6 +424,51 @@ func _check_node_state() -> bool:
 	print("SCREENSHOT: flora groups=%d total=%d (%s)" %
 	      [flora_groups, flora_total, ", ".join(flora_desc)])
 
+	# Sprint 03 (milestone 0010 R8): structural content, not primitive blobs.
+	# Sample the rendered meshes: ArrayMesh from the phenome expander, at
+	# least one mesh with a real silhouette (>= 64 verts), and the wind
+	# COLOR channel populated (trunk weight <= 0.35, leaf weight >= 0.85).
+	var flora_meshes := 0
+	var flora_verts_ok := false
+	var flora_w_min := 1.0
+	var flora_w_max := 0.0
+	for fc in flora_n.get_children():
+		if not (fc is MultiMeshInstance3D):
+			continue
+		var fmm := (fc as MultiMeshInstance3D).multimesh
+		if fmm == null or fmm.instance_count == 0:
+			continue
+		if not (fmm.mesh is ArrayMesh):
+			_fail(1, "scr_flora %s mesh is not ArrayMesh (primitive leftover)" %
+			      String(fc.name)); return false
+		flora_meshes += 1
+		var fam := fmm.mesh as ArrayMesh
+		for s in fam.get_surface_count():
+			var farr := fam.surface_get_arrays(s)
+			var fverts := farr[Mesh.ARRAY_VERTEX] as PackedVector3Array
+			if fverts != null and fverts.size() >= 64:
+				flora_verts_ok = true
+			var fcol: Variant = farr[Mesh.ARRAY_COLOR]
+			if fcol == null or (fcol as PackedColorArray).is_empty():
+				_fail(1, "scr_flora %s surface %d missing wind COLOR channel" %
+				      [String(fc.name), s]); return false
+			for c in (fcol as PackedColorArray):
+				flora_w_min = minf(flora_w_min, c.r)
+				flora_w_max = maxf(flora_w_max, c.r)
+	if flora_meshes < 1:
+		_fail(1, "scr_flora structural sample empty (meshes=%d)" %
+		      flora_meshes); return false
+	if not flora_verts_ok:
+		_fail(1, "scr_flora has no mesh with >= 64 verts (blob, not silhouette)"); return false
+	if flora_w_min > 0.35:
+		_fail(1, "scr_flora wind weight min %.2f > 0.35 (no trunk flexibility)" %
+		      flora_w_min); return false
+	if flora_w_max < 0.85:
+		_fail(1, "scr_flora wind weight max %.2f < 0.85 (no leaf flexibility)" %
+		      flora_w_max); return false
+	print("SCREENSHOT: flora structural meshes=%d verts64=%s wind=[%.2f,%.2f]" %
+	      [flora_meshes, str(flora_verts_ok), flora_w_min, flora_w_max])
+
 	var fauna_n: Node = _first_in_group("scr_fauna")
 	if fauna_n == null:
 		_fail(1, "group scr_fauna absent from island.tscn"); return false
