@@ -1,0 +1,74 @@
+---
+document: 102_status
+schema_version: 1.0.0
+
+# Status mapping: 101 front matter `status: draft` -> `specified`
+# (scr-domain-validator vocabulary: planned | specified | designed |
+#  partially-implemented | implemented | tested | validated | blocked | deprecated).
+# Definition is normative and authored (Sprint 00 of milestone 0010 — Flora Phenome);
+# implementation not started.
+
+status: specified
+last_updated: 2026-10-03
+
+---
+
+module:
+  id: SCR-LIB-EVOLUTION-PHENOTYPE
+  path: lib/704_Evolution/Phenotype
+  name: Phenotype
+  version: 0.1.0
+  status: specified
+  created: 2026-10-03
+  updated: 2026-10-03
+
+  specification:
+    file: 101_definition.md
+    version: 0.1.0
+    status: normative
+
+  ownership:
+    authority: SCR
+    owner: semantic-library
+
+domain:
+  name: Phenotype
+  description: >
+    Normative SCR Evolution subdomain defining the genotype (trait vector) to phenotype
+    (form parameters) mapping as a pure deterministic function, its distinction from
+    selection and from growth, and its determinism and reproducibility conformance.
+  purpose: >
+    Provide the definition that trait-to-form modulation implementations consume, while
+    selection remains authoritative in SCR-LIB-EVOLUTION, growth in
+    SCR-LIB-MORPHOLOGY-GROWTH, grammar and derivation semantics in
+    SCR-LIB-MORPHOLOGY-PROCEDURAL, and ecology membership in SCR-LIB-ECOLOGY-FLORA.
+
+capabilities:
+  - id: CAP-PHENOTYPE-MAPPING
+    name: Genotype (Trait Vector) to Phenotype (Form Parameters) Pure Mapping
+    status: specified
+  - id: CAP-PHENOTYPE-DISTINCTION
+    name: Distinction from Selection, Growth, and Ecology Membership (Firewall)
+    status: specified
+  - id: CAP-PHENOTYPE-DETERMINISM
+    name: Deterministic and Reproducible Trait-to-Form Modulation
+    status: specified
+
+dependencies:
+  - id: SCR-LIB-EVOLUTION
+    path: lib/704_Evolution
+    relationship: parent_domain_providing_variation_selection_and_reproducibility_semantics
+  - id: SCR-LIB-MORPHOLOGY-PROCEDURAL
+    path: lib/401_Morphology/Procedural
+    relationship: provides_grammar_semantics_whose_form_parameters_the_phenotype_modulates
+  - id: SCR-LIB-ECOLOGY-FLORA
+    path: lib/705_Ecology/Flora
+    relationship: consumes_the_trait_to_form_mapping_for_flora_instances
+
+subdomains: []
+
+invariants:
+  - EVOLUTION-INV-004
+  - EVOLUTION-INV-011
+  - EVOLUTION-INV-018
+  - ECOLOGY-INV-013

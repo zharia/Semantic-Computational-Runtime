@@ -12,7 +12,7 @@ version: 0.1.0
 status: draft
 
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 
 parent: SCR-LIB-ECOLOGY
 authority: SCR
@@ -36,6 +36,7 @@ In scope: flora population membership (the instance list), the flora establishme
 3. **Growth** (§1.3) — developmental accretion per `SCR-LIB-MORPHOLOGY-GROWTH`; wire magnitudes are representations only.
 4. **Selection & variation** (§1.4) — trait variation plus establishment/survival filtering per `SCR-LIB-EVOLUTION`; differential persistence without reproduction.
 5. **Determinism** (§1.5) — pure functions of (seed, cell, world state, age); no mutable RNG stream; age is ecological time.
+6. **Phenome conformance** (§1.6) — structure complexity is developmental (stage); the wire carries a compact generative description (`variant_seed` + `stage`), never geometry.
 
 ---
 
@@ -95,6 +96,15 @@ Flora semantics are deterministic under declared inputs:
 - **Temporal explicitness** (`ECOLOGY-INV-010`, Temporal Explicitness): instance age is ecological/developmental time and MUST remain distinguishable from wall-clock and implementation time. Growth advances with ecological time, never with wall-clock time.
 - Determinism is a property of the semantics; any stochastic variant must declare its stochastic semantics explicitly (`SCR-LIB-ECOLOGY` §43).
 
+### 1.6 Phenome Conformance
+
+Flora phenome conformance binds an instance's structural complexity to developmental stage and binds its carried description to the compact generative description:
+
+- **Structure complexity is developmental.** An instance's structural complexity is quantified by a developmental **stage** derived from its age — quantized per species maturity curve, bounded, and consistent with age. Stage grows *branching complexity*; growth magnitude (§1.3) continues to describe volumetric expansion. The two are separate, explicit axes.
+- **Stage is monotone.** Stage is non-decreasing in age: structure accretes and never regresses while the instance lives (death and regrowth are population transitions of §1.1, not stage steps). This preserves `ECOLOGY-INV-010` temporal explicitness — stage is ecological/developmental time, never wall-clock time — and keeps stage-driven derivation consistent with §1.5 determinism.
+- **The wire carries a compact generative description.** Repeated structure is carried as `variant_seed` (the instance's generative identity) plus `stage` (its developmental depth) — a compact generative description per `SCR-LIB-MORPHOLOGY` §17 Repetition (line 577: "Repeated structure MAY be represented as a compact generative description rather than explicitly materialised instances"). **Geometry never crosses the wire**: no meshes, vertices, symbol strings, or internode lists. The generative description is a representation, subordinate to `MORPHOLOGY-INV-016`, `MORPHOLOGY-INV-017`, and `MORPHOLOGY-INV-018`.
+- **Derivation is bounded by stage.** Stage bounds the iteration depth of the morphological grammar (`SCR-LIB-MORPHOLOGY-PROCEDURAL`: axiom, parametric production rules, declared termination bound); the same generative description yields the same structure (`EVOLUTION-INV-018` reproducibility, `MORPHOLOGY-INV-017` provider independence).
+
 ---
 
 ## 2. Semantic Firewall — ECOLOGY-INV-013
@@ -125,6 +135,7 @@ This domain is a firewall-respecting consumer, not a re-definer:
 | `EVOLUTION-INV-009` Viability Integrity | `SCR-LIB-EVOLUTION` | Viability decisions, no scalar-fitness collapse (§1.4) |
 | `EVOLUTION-INV-011` Environmental Integrity | `SCR-LIB-EVOLUTION` | Stress/moisture conditions explicit (§1.4) |
 | `EVOLUTION-INV-018` Reproducibility Integrity | `SCR-LIB-EVOLUTION` | Pure functions of declared state; replayable (§1.4, §1.5) |
+| `MORPHOLOGY-INV-012` State Integrity | `SCR-LIB-MORPHOLOGY` | Phenome conformance: stage monotone non-decreasing in age — developmental stage transitions produce valid, accreting morphological states; the wire carries the compact generative description (`variant_seed` + `stage`) per §17 Repetition (line 577), never geometry (§1.6) |
 | `MORPHOLOGY-INV-016` Representation Independence | `SCR-LIB-MORPHOLOGY` | Growth meaning independent of carrier representation (§1.3) |
 | `MORPHOLOGY-INV-017` Provider Independence | `SCR-LIB-MORPHOLOGY` | Growth algorithm/provider substitution preserves contract (§1.3) |
 | `MORPHOLOGY-INV-018` Rendering Independence | `SCR-LIB-MORPHOLOGY` | Visual appearance does not define growth meaning (§1.3) |
@@ -148,6 +159,7 @@ Relationship types below are restricted to the controlled vocabulary of `001_age
 | `lib/401_Morphology/Growth` | `INTERACTS_WITH` | Growth conformance: developmental accretion and volumetric expansion over time |
 | `lib/704_Evolution` | `INTERACTS_WITH` | Selection-and-variation conformance; evolution meaning remains authoritative in `704_Evolution` |
 | `lib/705_Ecology` | `INTERACTS_WITH` | Flora populations interact with ecological fields and environment (fields influence populations, populations modify fields) |
+| `lib/401_Morphology/Procedural` | `INTERACTS_WITH` | Phenome conformance: developmental stage bounds the grammar derivation (axiom, parametric production rules, iteration depth); the wire carries only the compact generative description (`variant_seed` + `stage`) per parent §17 Repetition (line 577), never geometry (§1.6) |
 
 These relationships are semantic and do not automatically imply implementation dependencies.
 

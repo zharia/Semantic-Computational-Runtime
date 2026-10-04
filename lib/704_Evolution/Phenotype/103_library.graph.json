@@ -1,0 +1,32 @@
+{
+  "$schema": "https://scr.internal/schemas/graph.json",
+  "id": "SCR-LIB-EVOLUTION-PHENOTYPE",
+  "name": "Phenotype",
+  "layer": "704_Evolution",
+  "node_type": "domain",
+  "version": "0.1.0",
+  "path": "lib/704_Evolution/Phenotype",
+  "derived": true,
+  "note": "Derived control-plane graph — NOT authoritative. Source of truth: 101_definition.md (this directory). See 001_agents/11_control_plane.md. Edge types restricted to the controlled vocabulary in 001_agents/02_graph_relationships.md.",
+  "edges": [
+    {
+      "source": "SCR-LIB-EVOLUTION",
+      "target": "SCR-LIB-EVOLUTION-PHENOTYPE",
+      "relationship": "CONTAINS",
+      "semantics": "Evolution contains the Phenotype subdomain (parent 101 front matter: parent: SCR-LIB-EVOLUTION; parent 101 Expected Subdomains tree lists phenotype)"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION-PHENOTYPE",
+      "target": "SCR-LIB-MORPHOLOGY-PROCEDURAL",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "The genotype-to-phenotype mapping supplies trait-modulated form parameters that enter grammar axiom/production parameters; Procedural remains authoritative over grammar and derivation semantics (401_Morphology/Procedural)"
+    },
+    {
+      "source": "SCR-LIB-EVOLUTION-PHENOTYPE",
+      "target": "SCR-LIB-ECOLOGY-FLORA",
+      "relationship": "INTERACTS_WITH",
+      "semantics": "Flora instances carry trait vectors whose mapped form parameters drive per-instance structure; Flora states conformance only and phenotype meaning stays authoritative in 704_Evolution (705_Ecology/Flora)"
+    }
+  ],
+  "subdomains": []
+}

@@ -9,7 +9,7 @@ schema_version: 1.0.0
 # missing control plane — 101 front matter remains the authority for id/name/version/status.
 
 status: specified
-last_updated: 2026-10-02
+last_updated: 2026-10-03
 
 ---
 
@@ -20,7 +20,7 @@ module:
   version: 0.1.0
   status: specified
   created: 2026-09-05
-  updated: 2026-09-05
+  updated: 2026-10-03
 
   specification:
     file: 101_definition.md
@@ -60,7 +60,8 @@ dependencies:
     path: lib/705_Ecology
     relationship: ecology_hosts_evolutionary_pressure_distinction_preserved
 
-subdomains: []
+subdomains:
+  - Phenotype
 
 invariants:
   - EVOLUTION-INV-001
